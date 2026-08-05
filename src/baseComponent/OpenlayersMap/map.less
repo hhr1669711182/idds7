@@ -1,0 +1,369 @@
+.iframe_panel_iframe {
+  width: 100%;
+  height: 100vh;
+  border: 0;
+}
+
+#map, #dispatch-map {
+  height: 100%;
+  width: 100%;
+  touch-action: none; /* 优化触摸体验 */
+}
+
+:deep(.el-button + .el-button) {
+  margin-left: 0px;
+}
+
+.nav_panel {
+  position: absolute;
+  top: 0.5em;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  width: 340px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.nav_panel_new {
+  position: absolute;
+  top: 0.5em;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  min-width: 450px;
+  width: auto;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.fire_popup {
+  position: absolute;
+  min-width: 260px;
+  max-width: 320px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  pointer-events: auto;
+}
+
+.fire_popup_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fire_popup_title {
+  font-size: 14px;
+  color: #111827;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.fire_popup_close {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.fire_popup_body {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.fire_popup_row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 8px;
+  font-size: 12px;
+  color: #111827;
+}
+
+.fire_popup_k {
+  color: rgba(17, 24, 39, 0.7);
+}
+
+.fire_popup_v {
+  word-break: break-all;
+}
+
+.car_popup {
+  position: absolute;
+  min-width: 260px;
+  max-width: 320px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  pointer-events: auto;
+}
+
+.car_popup_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.car_popup_title {
+  font-size: 14px;
+  color: #111827;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.car_popup_close {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.car_popup_body {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.car_popup_row {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 8px;
+  font-size: 12px;
+  color: #111827;
+}
+
+.car_popup_k {
+  color: rgba(17, 24, 39, 0.7);
+}
+
+.car_popup_v {
+  word-break: break-all;
+}
+
+.nav_row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.nav_row + .nav_row {
+  margin-top: 10px;
+}
+
+.nav_label {
+  font-size: 13px;
+  color: #111827;
+  line-height: 32px;
+}
+
+.nav_field {
+  position: relative;
+  display: grid;
+  gap: 8px;
+}
+
+.nav_input_ep {
+  width: 100%;
+}
+
+.nav_input {
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  padding: 0 10px;
+  outline: none;
+  font-size: 13px;
+}
+
+.nav_input:focus {
+  border-color: rgba(37, 99, 235, 0.7);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.nav_pick {
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(17, 24, 39, 0.9);
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.nav_pick:hover {
+  background: rgba(17, 24, 39, 1);
+}
+
+.nav_dropdown {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  max-height: 220px;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.nav_option {
+  width: 100%;
+  text-align: left;
+  padding: 10px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.2;
+  color: #111827;
+}
+
+.nav_option:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.nav_actions {
+  display: flex;
+  gap: 10px;
+}
+
+.nav_action {
+  flex: 1;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(37, 99, 235, 0.92);
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.nav_action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.nav_action_secondary {
+  background: rgba(255, 255, 255, 0.92);
+  color: #111827;
+}
+
+/* 基础控件样式 */
+:global(.ol-control) {
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 4px;
+}
+
+:global(.ol-control button) {
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+}
+
+/* 移动端适配 */
+:global(.is-mobile .ol-control button) {
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+}
+
+:global(.is-mobile .ol-scale-line) {
+  font-size: 14px;
+  padding: 2px 8px;
+}
+
+:global(.ol-overviewmap) {
+  bottom: 1.7em;
+  left: 0.5em;
+  z-index: 1;
+}
+
+:deep(.ol-overviewmap .ol-overviewmap-map) {
+  width: 180px !important;
+  height: 120px !important;
+  position: absolute;
+  bottom: 0;
+  left: calc(36px + 10px);
+  button {
+   display: inline-block;
+  }
+}
+
+.ol-overviewmap:not(.ol-collapsed) button {
+    bottom: 0;
+    left: 0;
+    position: absolute;
+}
+
+:global(.is-mobile .ol-overviewmap) {
+  bottom: 5em;
+  width: 120px;
+  height: 120px;
+}
+
+/* 打印控件适配 */
+:global(.ol-control.ol-print-dialog) {
+  top: 0.5em;
+  right: 7.5em;
+}
+
+:global(.is-mobile .ol-control.ol-print-dialog) {
+  display: none;
+}
+
+/* 全屏控件适配 */
+:global(.ol-rotate) {
+  top: 3em;
+  right: 0.5em;
+}
+
+:global(.is-mobile .ol-rotate) {
+  top: 4em;
+}
+
+:global(.ol-scale-line) {
+  bottom: 28px !important;
+  left: 4em;
+}
+
+/* 缩放控件适配 */
+:global(.ol-zoom) {
+  top: calc(100% - 140px) !important;
+  left: 0.5em;
+}
+
+:global(.is-mobile .ol-zoom) {
+  left: 0.5em;
+  top: calc(100% - 120px) !important;
+}
+
+:global(.ol-zoom button) {
+  width: 36px;
+  height: 36px;
+}
+
+:global(.is-mobile .ol-zoom button) {
+  width: 44px;
+  height: 44px;
+}

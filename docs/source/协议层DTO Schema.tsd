@@ -1,0 +1,843 @@
+/**
+ * 协议层 DTO Schema (TypeScript Schema Format)
+ * =====================================================================
+ * 文件: 协议层DTO Schema.tsd
+ * 版本: v1.0
+ * 日期: 2026-07-24
+ * 范围: GIS 前端五层架构 — 协议层 (Service ↔ Ctrl) 标准契约
+ *
+ * 设计原则:
+ * 1. 所有 DTO 强约束 WGS84 坐标系 (经度, 纬度) 顺序，渲染层前由底座插件转换
+ * 2. 所有 ID 必填，加业务前缀 (alarm_/call_/route_/plan_/vehicle_/trail_)
+ * 3. 协议层只承载"业务控制层输出 ↔ 通用控制层输入"的契约
+ * 4. 状态机迁移严格遵循 08-业务状态机定义.md 的有向边
+ * 5. 协议版本号 v1.0；任何字段变更必须升级 minor 版本
+ *
+ * 文件命名规范: *.tsd (TypeScript Schema Definition)
+ * 校验工具: zod 3.x / valibot 0.30+
+ * =====================================================================
+ */
+
+// =====================================================================
+// 0. 基础类型 (Base Types)
+// =====================================================================
+
+/** 协议版本号（必须随字段升级而升 minor 版本） */
+export type ProtocolVersion = '1.0';
+
+/** WGS84 经度（-180 ~ 180） */
+export type Longitude = number;
+
+/** WGS84 纬度（-90 ~ 90） */
+export type Latitude = number;
+
+/** ISO 8601 时间戳 */
+export type ISOTimestamp = string;
+
+/** 业务 ID（必须含业务前缀，由 protectInvariants 校验） */
+export type BusinessId = string;
+
+/** 缩放级别（0~22） */
+export type ZoomLevel = number;
+
+/** 距离（单位米） */
+export type Meters = number;
+
+/** 角度（弧度） */
+export type Radians = number;
+
+/** 比例系数（0~1） */
+export type Ratio = number;
+
+// =====================================================================
+// 1. 地理基础 (Geo Primitives)
+// =====================================================================
+
+/** WGS84 地理坐标点 */
+export interface GeoPoint {
+  /** 经度（-180 ~ 180） */
+  lng: Longitude;
+  /** 纬度（-90 ~ 90） */
+  lat: Latitude;
+}
+
+/** WGS84 坐标点数组（用于路径、轨迹） */
+export interface GeoPath {
+  coordinates: GeoPoint[];
+  /** 总距离（米） */
+  distance: Meters;
+  /** 总耗时（秒） */
+  duration: number;
+}
+
+/** 矩形包围盒（用于视野自适应） */
+export interface BoundingBox {
+  southWest: GeoPoint;
+  northEast: GeoPoint;
+}
+
+// =====================================================================
+// 2. 统一消息信封 (Message Envelope)
+// =====================================================================
+
+/**
+ * 统一消息信封 — 所有协议事件的载体
+ * 业务控制层输出 / 通用控制层输入 / IO 控制层输出
+ */
+export interface MessageEnvelope<T = unknown> {
+  /** 消息全局唯一 ID（UUID v4） */
+  messageId: string;
+  /** 消息类型（例：AlarmChanged / VehicleChanged / DispatchChanged） */
+  messageType: MessageType;
+  /** 消息载荷（业务数据） */
+  payload: T;
+  /** 时间戳 */
+  timestamp: ISOTimestamp;
+  /** 消息来源（业务控制层标识） */
+  source: ControlLayerSource;
+  /** 协议版本 */
+  version: ProtocolVersion;
+  /** 业务追踪 ID（用于链路追踪） */
+  traceId?: string;
+}
+
+/** 消息类型枚举 */
+export type MessageType =
+  // 业务控制层输出
+  | 'AlarmChanged'
+  | 'CallChanged'
+  | 'InquiryChanged'
+  | 'DispatchChanged'
+  | 'DutyChanged'
+  | 'TrackingChanged'
+  // 通用控制层输入
+  | 'GenericControlInput'
+  // IO 控制层输出
+  | 'InputEvent'
+  | 'OutputEvent'
+  // 状态机事件
+  | 'StateMachineEvent'
+  // 异常事件
+  | 'ExceptionEvent';
+
+/** 控制层来源标识 */
+export type ControlLayerSource =
+  | 'AlarmCtrl'
+  | 'CallCtrl'
+  | 'InquiryCtrl'
+  | 'DispatchCtrl'
+  | 'DutyCtrl'
+  | 'TrackingCtrl'
+  | 'GeometryCtrl'
+  | 'KinematicCtrl'
+  | 'SpatialCtrl'
+  | 'ViewCtrl'
+  | 'InputCtrl'
+  | 'OutputCtrl';
+
+// =====================================================================
+// 3. 业务控制层输出 DTO (Business Ctrl Output)
+// =====================================================================
+
+/** 警情状态枚举 */
+export type AlarmStatus =
+  | 'CREATED'
+  | 'INQUIRING'
+  | 'DISPATCHED'
+  | 'ON_SCENE_HANDLING'
+  | 'RE_DISPATCH'
+  | 'CLOSED';
+
+/** 警情类型 */
+export type AlarmType =
+  | 'FIRE'           // 火灾
+  | 'RESCUE'         // 救援
+  | 'TRAFFIC'        // 车祸
+  | 'HAZARD'         // 抢险
+  | 'OTHER';         // 其他
+
+/** 严重等级 1~5 */
+export type SeverityLevel = 1 | 2 | 3 | 4 | 5;
+
+/** 警情 DTO（业务控制层输出 / 通用控制层输入） */
+export interface AlarmProfile {
+  /** 警情 ID（必填，含 alarm_ 前缀） */
+  alarmId: BusinessId;
+  /** 警情位置（WGS84） */
+  alarmLocation: GeoPoint;
+  /** 警情类型 */
+  alarmType: AlarmType;
+  /** 严重等级 */
+  severityLevel: SeverityLevel;
+  /** 发生时间 */
+  occurredAt: ISOTimestamp;
+  /** 警情状态 */
+  status: AlarmStatus;
+  /** 关联来电 ID（可选） */
+  callId?: BusinessId;
+  /** 关联车辆 ID 列表（可选） */
+  vehicleIds?: BusinessId[];
+  /** 调派计划 ID（可选） */
+  dispatchPlanId?: BusinessId;
+}
+
+/** 警情变更事件载荷 */
+export interface AlarmChangedPayload {
+  alarmId: BusinessId;
+  /** 变更前的状态 */
+  previousStatus?: AlarmStatus;
+  /** 变更后的状态 */
+  currentStatus: AlarmStatus;
+  /** 警情完整数据 */
+  alarm: AlarmProfile;
+  /** 触发原因 */
+  reason: string;
+  /** 操作人 ID */
+  operatorId: string;
+}
+
+// =====================================================================
+
+/** 来电 DTO */
+export interface CallLocation {
+  /** 来电 ID（必填，含 call_ 前缀） */
+  callId: BusinessId;
+  /** 主叫号码 */
+  callerNumber: string;
+  /** 来电位置（WGS84） */
+  callLocation: GeoPoint;
+  /** 弹屏时间 */
+  arrivedAt: ISOTimestamp;
+  /** 关联警情 ID（可选） */
+  alarmId?: BusinessId;
+  /** 问询信息 */
+  payload?: InquiryPayload;
+}
+
+/** 问询信息 */
+export interface InquiryPayload {
+  /** 事发地址 */
+  address: string;
+  /** 灾情类型 */
+  disasterType: AlarmType;
+  /** 伤亡情况 */
+  casualties?: string;
+  /** 受困人数 */
+  trappedPersons?: number;
+  /** 补充信息 */
+  extraInfo?: string;
+}
+
+/** 来电变更事件载荷 */
+export interface CallChangedPayload {
+  callId: BusinessId;
+  /** 来电完整数据 */
+  call: CallLocation;
+  /** 触发原因 */
+  reason: string;
+  /** 操作人 ID */
+  operatorId: string;
+}
+
+// =====================================================================
+
+/** 调派计划状态 */
+export type DispatchStatus =
+  | 'DRAFT'
+  | 'READY'
+  | 'DISPATCHED'
+  | 'EXECUTING'
+  | 'REVOKED'
+  | 'COMPLETED';
+
+/** 调派计划 DTO */
+export interface DispatchPlan {
+  /** 调派计划 ID（必填，含 plan_ 前缀） */
+  planId: BusinessId;
+  /** 关联警情 ID */
+  alarmId: BusinessId;
+  /** 调派车辆 ID 列表 */
+  vehicleIds: BusinessId[];
+  /** 调派状态 */
+  status: DispatchStatus;
+  /** 调派路径（可选） */
+  route?: DispatchRoute;
+  /** 围栏列表（可选） */
+  fences?: Fence[];
+  /** 创建时间 */
+  createdAt: ISOTimestamp;
+  /** 提交时间（可选） */
+  submittedAt?: ISOTimestamp;
+}
+
+/** 调派路径 DTO */
+export interface DispatchRoute {
+  /** 调派计划 ID */
+  planId: BusinessId;
+  /** 路径坐标串（WGS84） */
+  coordinates: GeoPoint[];
+  /** 路径距离（米） */
+  distance: Meters;
+  /** 路径耗时（秒） */
+  duration: number;
+  /** 是否降级 */
+  fallback: boolean;
+}
+
+/** 调派路径 ID 前缀为 route_ */
+export type RouteId = BusinessId & { __prefix: 'route_' };
+
+/** 调派变更事件载荷 */
+export interface DispatchChangedPayload {
+  planId: BusinessId;
+  /** 变更前状态 */
+  previousStatus?: DispatchStatus;
+  /** 变更后状态 */
+  currentStatus: DispatchStatus;
+  /** 调派计划完整数据 */
+  plan: DispatchPlan;
+  /** 触发原因 */
+  reason: string;
+  /** 操作人 ID */
+  operatorId: string;
+}
+
+// =====================================================================
+
+/** 车辆状态 */
+export type VehicleStatus =
+  | 'IN_GARAGE'        // 车库待命
+  | 'EN_ROUTE'         // 出动中
+  | 'ON_SCENE'         // 到场
+  | 'TRANSFERRING'     // 转场中
+  | 'HANDLING'         // 处置中
+  | 'RETURNING'        // 返回中
+  | 'UNAVAILABLE'      // 不可用
+  | 'CLOSED';          // 已归档
+
+/** 车辆 DTO */
+export interface VehicleGPS {
+  /** 车辆 ID（必填，含 vehicle_ 前缀） */
+  vehicleId: BusinessId;
+  /** 车牌号 */
+  plateNumber: string;
+  /** 当前位置（WGS84） */
+  position: GeoPoint;
+  /** 车辆状态 */
+  status: VehicleStatus;
+  /** 当前警情 ID（可选） */
+  currentAlarmId?: BusinessId;
+  /** 最后 GPS 时间 */
+  lastGpsAt: ISOTimestamp;
+  /** GPS 是否丢失 */
+  gpsLost: boolean;
+  /** 速度（米/秒，可选） */
+  speed?: number;
+  /** 航向角（弧度，可选） */
+  heading?: Radians;
+}
+
+/** 车辆变更事件载荷 */
+export interface VehicleChangedPayload {
+  vehicleId: BusinessId;
+  /** 变更前状态 */
+  previousStatus?: VehicleStatus;
+  /** 变更后状态 */
+  currentStatus: VehicleStatus;
+  /** 车辆完整数据 */
+  vehicle: VehicleGPS;
+  /** 触发原因 */
+  reason: string;
+  /** 操作人 ID */
+  operatorId: string;
+}
+
+// =====================================================================
+
+/** 跟踪会话 DTO */
+export interface TrackingSession {
+  /** 会话 ID */
+  sessionId: string;
+  /** 车辆 ID */
+  vehicleId: BusinessId;
+  /** 关联警情 ID（可选） */
+  alarmId?: BusinessId;
+  /** 联动摄像头 ID 列表 */
+  cameraIds: string[];
+  /** 启动时间 */
+  startedAt: ISOTimestamp;
+}
+
+/** 跟踪变更事件载荷 */
+export interface TrackingChangedPayload {
+  sessionId: string;
+  /** 跟踪会话完整数据 */
+  session: TrackingSession;
+  /** 触发原因 */
+  reason: string;
+  /** 操作人 ID */
+  operatorId: string;
+}
+
+// =====================================================================
+
+/** 值守视图 DTO */
+export interface DutyView {
+  /** 所属指挥中心 ID */
+  centerId: string;
+  /** 视野 */
+  view: View;
+  /** 加载图层 ID 列表 */
+  layerIds: string[];
+  /** 接警员 ID */
+  operatorId: string;
+  /** 启动时间 */
+  startedAt: ISOTimestamp;
+}
+
+/** 值守变更事件载荷 */
+export interface DutyChangedPayload {
+  operatorId: string;
+  /** 值守视图完整数据 */
+  view: DutyView;
+  /** 触发原因 */
+  reason: string;
+}
+
+// =====================================================================
+// 4. 通用控制层输入 DTO (Generic Control Input DTOs)
+// =====================================================================
+
+/** 视野定位指令 */
+export interface LocateInput {
+  /** 指令类型 */
+  type: 'LocateInput';
+  /** 目标位置（WGS84） */
+  target: GeoPoint;
+  /** 缩放级别 */
+  zoom: ZoomLevel;
+  /** 留边比例（0~1） */
+  padding?: Ratio;
+  /** 是否动画 */
+  animate?: boolean;
+  /** 触发方 */
+  source: ControlLayerSource;
+}
+
+/** 视野自适应指令 */
+export interface FitInput {
+  /** 指令类型 */
+  type: 'FitInput';
+  /** 目标包围盒（WGS84） */
+  bbox: BoundingBox;
+  /** 留边比例（10%~15%，强制 0.1~0.15） */
+  padding: Ratio;
+  /** 是否动画 */
+  animate?: boolean;
+  /** 触发方 */
+  source: ControlLayerSource;
+}
+
+/** 镜头跟随指令 */
+export interface FollowInput {
+  /** 指令类型 */
+  type: 'FollowInput';
+  /** 被跟随的目标 ID */
+  targetId: BusinessId;
+  /** 目标类型 */
+  targetType: 'vehicle' | 'alarm' | 'call';
+  /** 缩放级别 */
+  zoom: ZoomLevel;
+  /** 触发方 */
+  source: ControlLayerSource;
+}
+
+/** 几何图形绘制指令 */
+export interface DrawGeometryInput {
+  /** 指令类型 */
+  type: 'DrawGeometryInput';
+  /** 几何 ID（必填，加业务前缀） */
+  geometryId: BusinessId;
+  /** 几何类型 */
+  geometryType: 'point' | 'polyline' | 'polygon' | 'circle';
+  /** 几何数据（WGS84） */
+  geometry: GeoPoint | GeoPoint[] | GeoPath;
+  /** 样式 */
+  style: GeometryStyle;
+  /** 触发方 */
+  source: ControlLayerSource;
+}
+
+/** 几何样式 */
+export interface GeometryStyle {
+  strokeColor?: string;
+  strokeWidth?: number;
+  fillColor?: string;
+  opacity?: Ratio;
+  lineDash?: number[];
+  zIndex?: number;
+}
+
+/** 运动学更新指令 */
+export interface UpdateKinematicsInput {
+  /** 指令类型 */
+  type: 'UpdateKinematicsInput';
+  /** 目标 ID */
+  targetId: BusinessId;
+  /** 新位置（WGS84） */
+  position: GeoPoint;
+  /** 速度（米/秒） */
+  speed?: number;
+  /** 航向角（弧度） */
+  heading?: Radians;
+  /** 时间戳 */
+  timestamp: ISOTimestamp;
+  /** 触发方 */
+  source: ControlLayerSource;
+}
+
+/** 空间查询指令 */
+export interface SpatialQueryInput {
+  /** 指令类型 */
+  type: 'SpatialQueryInput';
+  /** 查询类型 */
+  queryType: 'within' | 'intersects' | 'nearby';
+  /** 查询源（中心点或几何） */
+  source: GeoPoint | GeoPath;
+  /** 查询半径（米，仅 nearby 用） */
+  radius?: Meters;
+  /** 图层编码（例：gis:fire_vehicle） */
+  layerCode?: string;
+  /** 触发方 */
+  source: ControlLayerSource;
+}
+
+/** 通用控制指令联合类型 */
+export type GenericControlInput =
+  | LocateInput
+  | FitInput
+  | FollowInput
+  | DrawGeometryInput
+  | UpdateKinematicsInput
+  | SpatialQueryInput;
+
+// =====================================================================
+// 5. 通用控制层输出 DTO (Generic Ctrl Output)
+// =====================================================================
+
+/** 视野 DTO */
+export interface View {
+  /** 中心点（WGS84） */
+  center: GeoPoint;
+  /** 缩放级别 */
+  zoom: ZoomLevel;
+  /** 旋转角（弧度） */
+  rotation?: Radians;
+  /** 留边（0~1） */
+  padding?: Ratio;
+}
+
+/** 围栏 DTO */
+export interface Fence {
+  /** 围栏 ID */
+  fenceId: string;
+  /** 圆心（WGS84） */
+  center: GeoPoint;
+  /** 半径（米） */
+  radius: Meters;
+  /** 围栏级别 */
+  level: 'L1' | 'L2' | 'L3' | 'L4';
+  /** 颜色 */
+  color: string;
+  /** 线型 */
+  style: 'dashed' | 'solid';
+}
+
+/** 资源图层 DTO */
+export interface ResourceLayer {
+  /** 图层 ID */
+  layerId: string;
+  /** 图层编码（例：gis:env_build_aoi / gis:env_entrance_exit / gis:env_fire_water / gis:env_greatchina_road / gis:fire_vehicle） */
+  layerCode: string;
+  /** 最小缩放 */
+  minZoom?: ZoomLevel;
+  /** 最大缩放 */
+  maxZoom?: ZoomLevel;
+  /** 是否可见 */
+  visible: boolean;
+}
+
+// =====================================================================
+// 6. 焦点与互斥 (Focus & Mutual Exclusion)
+// =====================================================================
+
+/** 焦点拥有者 */
+export type FocusOwner =
+  | 'DutyCtrl'        // 值守（最低优先级）
+  | 'CallCtrl'        // 来电
+  | 'InquiryCtrl'     // 问询
+  | 'TrackingCtrl'    // 跟踪
+  | 'DispatchCtrl';   // 调派（最高优先级）
+
+/** 焦点变更事件载荷 */
+export interface FocusChangedPayload {
+  /** 变更前焦点拥有者 */
+  previousOwner?: FocusOwner;
+  /** 变更后焦点拥有者 */
+  currentOwner: FocusOwner;
+  /** 触发原因 */
+  reason: string;
+  /** 时间戳 */
+  timestamp: ISOTimestamp;
+}
+
+/** 焦点冲突事件载荷 */
+export interface FocusConflictPayload {
+  /** 冲突的焦点拥有者列表 */
+  contenders: FocusOwner[];
+  /** 裁决结果 */
+  winner: FocusOwner;
+  /** 触发原因 */
+  reason: string;
+  /** 时间戳 */
+  timestamp: ISOTimestamp;
+}
+
+// =====================================================================
+// 7. 状态机事件 (State Machine Event)
+// =====================================================================
+
+/** 状态机迁移事件 */
+export interface StateMachineEventPayload {
+  /** 状态机类型 */
+  machine: 'AlarmStateMachine' | 'VehicleStateMachine' | 'DispatchStateMachine';
+  /** 业务实体 ID */
+  entityId: BusinessId;
+  /** 变更前状态 */
+  fromState: string;
+  /** 变更后状态 */
+  toState: string;
+  /** 触发事件 */
+  trigger: string;
+  /** 时间戳 */
+  timestamp: ISOTimestamp;
+  /** 操作人 ID */
+  operatorId: string;
+}
+
+// =====================================================================
+// 8. 异常事件 (Exception Event)
+// =====================================================================
+
+/** 异常类型 */
+export type ExceptionType =
+  | 'COORD_VIOLATION'              // 坐标系污染
+  | 'ILLEGAL_TRANSITION'           // 非法状态迁移
+  | 'ROUTE_FALLBACK'               // 算路降级
+  | 'GPS_LOST'                     // GPS 丢失
+  | 'FOCUS_CONFLICT'               // 焦点冲突
+  | 'ID_PREFIX_MISSING'            // ID 缺失前缀
+  | 'PADDING_AUTO_FIX'             // Auto-Fit 留边自动修正
+  | 'VIEW_OUT_OF_BOUNDS'           // 视野越界
+  | 'FENCE_OUT_OF_RANGE'           // 围栏越界
+  | 'WORKER_DEGRADED'              // Web Worker 降级
+  | 'TRACKING_OVER_LIMIT'          // 跟踪车辆超限
+  | 'CALL_QUEUE_OVERFLOW'          // 弹屏排队超限
+  | 'PROTO_DESERIALIZE_FAIL'       // 协议反序列化失败
+  | 'RESOURCE_LEAK'                // 资源回收失败
+  | 'PERMISSION_DENIED';           // 权限不足
+
+/** 异常严重级别 */
+export type Severity = 'P0' | 'P1' | 'P2' | 'P3';
+
+/** 异常事件载荷 */
+export interface ExceptionEventPayload {
+  /** 异常类型 */
+  type: ExceptionType;
+  /** 严重级别 */
+  severity: Severity;
+  /** 异常消息 */
+  message: string;
+  /** 异常上下文 */
+  context: Record<string, unknown>;
+  /** 时间戳 */
+  timestamp: ISOTimestamp;
+  /** 触发源 */
+  source: ControlLayerSource;
+}
+
+// =====================================================================
+// 9. 操作记录 (Operation Log)
+// =====================================================================
+
+/** 操作记录 DTO */
+export interface OperationLog {
+  /** 记录 ID */
+  recordId: string;
+  /** 操作类型 */
+  operationType: string;
+  /** 操作人 ID */
+  operatorId: string;
+  /** 操作原因 */
+  reason?: string;
+  /** 操作结果 */
+  result: 'SUCCESS' | 'FAILURE' | 'EXCEPTION';
+  /** 操作时间 */
+  operationAt: ISOTimestamp;
+  /** 业务上下文（警情 ID、车辆 ID 等） */
+  context: Record<string, unknown>;
+}
+
+// =====================================================================
+// 10. 协议版本演进规则 (Version Evolution)
+// =====================================================================
+
+/**
+ * 协议版本演进规则：
+ * 1. 任何新增字段必须升级 minor 版本（v1.0 → v1.1）
+ * 2. 任何删除字段必须升级 major 版本（v1.x → v2.0）
+ * 3. 任何修改字段语义必须升级 major 版本
+ * 4. 向后兼容策略：旧版本字段在 major 升级后保留 6 个月
+ * 5. 版本号通过 MessageEnvelope.version 字段携带
+ *
+ * v1.0 (2026-07-24): 初版发布
+ *   - 业务控制层输出：Alarm/Call/Inquiry/Dispatch/Duty/Tracking
+ *   - 通用控制层输入：Locate/Fit/Follow/DrawGeometry/UpdateKinematics/SpatialQuery
+ *   - 通用控制层输出：View/Fence/ResourceLayer
+ *   - 状态机事件 + 异常事件 + 操作记录
+ */
+
+// =====================================================================
+// 11. 不变量校验契约 (Invariant Validation Contract)
+// =====================================================================
+
+/**
+ * protectInvariants() 强制校验的 5 条规则：
+ * 1. 坐标系 WGS84: GeoPoint.lng ∈ [-180, 180] && GeoPoint.lat ∈ [-90, 90]
+ * 2. 业务 ID 前缀: BusinessId 以 alarm_/call_/route_/plan_/vehicle_/trail_ 之一开头
+ * 3. 状态机迁移: 在 08-业务状态机定义.md 的迁移表内
+ * 4. 业务焦点互斥: 同时仅一个业务域拥有焦点
+ * 5. 操作人权限: 满足 04-角色与权限矩阵.md 定义
+ */
+export interface InvariantValidationResult {
+  /** 是否通过 */
+  valid: boolean;
+  /** 违反的不变量类型 */
+  violation?: ExceptionType;
+  /** 详细消息 */
+  message?: string;
+  /** 违反的字段路径 */
+  fieldPath?: string;
+}
+
+// =====================================================================
+// 12. 导出 (Exports)
+// =====================================================================
+
+export type {
+  // Base
+  ProtocolVersion,
+  Longitude,
+  Latitude,
+  ISOTimestamp,
+  BusinessId,
+  ZoomLevel,
+  Meters,
+  Radians,
+  Ratio,
+  // Geo
+  GeoPoint,
+  GeoPath,
+  BoundingBox,
+  // Envelope
+  MessageEnvelope,
+  MessageType,
+  ControlLayerSource,
+  // Business
+  AlarmStatus,
+  AlarmType,
+  SeverityLevel,
+  AlarmProfile,
+  AlarmChangedPayload,
+  CallLocation,
+  InquiryPayload,
+  CallChangedPayload,
+  DispatchStatus,
+  DispatchPlan,
+  DispatchRoute,
+  RouteId,
+  DispatchChangedPayload,
+  VehicleStatus,
+  VehicleGPS,
+  VehicleChangedPayload,
+  TrackingSession,
+  TrackingChangedPayload,
+  DutyView,
+  DutyChangedPayload,
+  // Generic Input
+  LocateInput,
+  FitInput,
+  FollowInput,
+  DrawGeometryInput,
+  GeometryStyle,
+  UpdateKinematicsInput,
+  SpatialQueryInput,
+  GenericControlInput,
+  // Generic Output
+  View,
+  Fence,
+  ResourceLayer,
+  // Focus
+  FocusOwner,
+  FocusChangedPayload,
+  FocusConflictPayload,
+  // State Machine
+  StateMachineEventPayload,
+  // Exception
+  ExceptionType,
+  Severity,
+  ExceptionEventPayload,
+  // Operation Log
+  OperationLog,
+  // Invariant
+  InvariantValidationResult,
+};
+
+// =====================================================================
+// 13. Schema 校验辅助 (Validation Helpers)
+// =====================================================================
+
+/**
+ * 校验 GeoPoint 是否合法 WGS84
+ * @returns true 合法
+ */
+export function isValidGeoPoint(point: GeoPoint): boolean {
+  return (
+    typeof point.lng === 'number' &&
+    typeof point.lat === 'number' &&
+    point.lng >= -180 &&
+    point.lng <= 180 &&
+    point.lat >= -90 &&
+    point.lat <= 90
+  );
+}
+
+/**
+ * 校验 BusinessId 是否含业务前缀
+ * @returns true 合法
+ */
+export function isValidBusinessId(id: string): boolean {
+  return /^(alarm_|call_|route_|plan_|vehicle_|trail_)/.test(id);
+}
+
+/**
+ * 校验 Auto-Fit Padding 是否在 10%~15% 范围内
+ * @returns true 合法
+ */
+export function isValidPadding(padding: Ratio): boolean {
+  return padding >= 0.1 && padding <= 0.15;
+}
+
+// =====================================================================
+// END OF FILE
+// =====================================================================

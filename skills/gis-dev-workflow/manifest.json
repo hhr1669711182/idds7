@@ -1,0 +1,261 @@
+{
+  "name": "gis-dev-workflow",
+  "displayName": "GIS 前端开发工作流",
+  "version": "1.2.0",
+  "description": "Vue 3 + TypeScript + OpenLayers/ThreeJS GIS 前端工程分阶段开发工作流技能集。",
+  "author": {
+    "name": "Telewave IDS / GIS Frontend Architecture Group",
+    "email": "gis-arch@telewave.tech"
+  },
+  "license": "Internal",
+  "homepage": "https://gitlab.telewave.tech/ids/ids-gis-web",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.telewave.tech/ids/ids-gis-web.git"
+  },
+  "category": "Frontend / GIS",
+  "tags": [
+    "vue3",
+    "typescript",
+    "openlayers",
+    "threejs",
+    "gis",
+    "frontend",
+    "workflow",
+    "five-stage",
+    "harness-engineering"
+  ],
+  "compatibleAgents": [
+    "codex",
+    "hermes",
+    "claude-code",
+    "cursor",
+    "trae",
+    "openai-agents"
+  ],
+  "schemaVersion": "1.0",
+  "entryPoint": "SKILL.md",
+
+  "stages": [
+    {
+      "id": "gis-analysis",
+      "name": "分析",
+      "description": "把 docs/source/** 与 mds/** 资料按五层分层，输出 docs/analysis/01-五层索引目录.md",
+      "entry": "skills/gis-analysis/SKILL.md",
+      "order": 1,
+      "gate": "01-五层索引目录.md 落盘并经用户审阅",
+      "estimatedDuration": "1-2h",
+      "loadRequired": ["workflow-contract", "gis-architecture"],
+      "loadOptional": ["gis-business-scenarios"],
+      "defer": ["vue3-conventions", "gis-controller-patterns", "gis-performance-sla", "gis-state-machines", "component-usage", "handover-template", "anti-patterns", "decision-trees"],
+      "toolsRequired": ["read_documentation", "write_stage_artifact"],
+      "superpowersSkill": null,
+      "trustLevel": "L1_suggest",
+      "selfReflectionQuestions": [
+        "本阶段是否覆盖了 docs/source/ 全部 15 份文档？",
+        "每份资料是否标注了强/中/弱/不相关四档？",
+        "五层索引目录是否引用了 references/gis-architecture.md？",
+        "是否触发了任何 hard_constraints？",
+        "是否产生了 TODO/TBD/待补充？"
+      ]
+    },
+    {
+      "id": "gis-design",
+      "name": "设计",
+      "description": "基于分析产物产出七份设计文档",
+      "entry": "skills/gis-design/SKILL.md",
+      "order": 2,
+      "gate": "七份设计文档 + 用户最终审阅",
+      "estimatedDuration": "3-5d",
+      "loadRequired": ["workflow-contract", "gis-architecture", "gis-controller-patterns", "gis-state-machines"],
+      "loadOptional": ["gis-coord-system", "gis-business-scenarios", "anti-patterns"],
+      "defer": ["vue3-conventions", "gis-performance-sla", "component-usage", "handover-template", "decision-trees"],
+      "toolsRequired": ["read_documentation", "write_stage_artifact", "invoke_superpowers"],
+      "superpowersSkill": "superpowers:brainstorming",
+      "trustLevel": "L1_suggest",
+      "selfReflectionQuestions": [
+        "七份设计文档是否字段级 + 方法级？",
+        "业务/通用/IO 协议字段是否可逐字段追踪到 协议层DTO Schema.tsd？",
+        "5 个核心场景 AC 是否全部映射到设计产物？",
+        "性能 SLA 是否映射到具体设计？",
+        "状态机定义是否与业务控制层方法一一对应？",
+        "业务不变量校验是否在设计阶段定义？",
+        "异常处理是否在设计阶段定义？"
+      ]
+    },
+    {
+      "id": "gis-planning",
+      "name": "计划",
+      "description": "基于已审阅设计产出可执行计划",
+      "entry": "skills/gis-planning/SKILL.md",
+      "order": 3,
+      "gate": "六份计划 + 无 TODO/TBD/待补充",
+      "estimatedDuration": "1-2d",
+      "loadRequired": ["workflow-contract", "gis-controller-patterns", "gis-state-machines", "anti-patterns"],
+      "loadOptional": ["gis-coord-system", "gis-performance-sla", "decision-trees"],
+      "defer": ["vue3-conventions", "component-usage", "handover-template"],
+      "toolsRequired": ["read_documentation", "write_stage_artifact", "invoke_superpowers"],
+      "superpowersSkill": "superpowers:writing-plans",
+      "trustLevel": "L1_suggest",
+      "selfReflectionQuestions": [
+        "六份计划是否可追溯到对应设计文档？",
+        "每份计划是否含可执行步骤、文件范围、测试要求、验收标准？",
+        "是否彻底消除了 TODO/TBD/待补充/TBC？",
+        "references/* 适用于当前层级的规则是否已转换为实现步骤？",
+        "性能 SLA 验收点是否已转换为基准测试要求？"
+      ]
+    },
+    {
+      "id": "gis-implementation",
+      "name": "实现",
+      "description": "按五层 + 集成顺序实现，强制 TDD，覆盖率 ≥ 80%",
+      "entry": "skills/gis-implementation/SKILL.md",
+      "order": 4,
+      "gate": "pnpm lint/type-check/test + 5 场景 AC 覆盖 + 性能 SLA 覆盖",
+      "estimatedDuration": "5-10d",
+      "loadRequired": ["vue3-conventions", "gis-architecture", "gis-coord-system", "gis-controller-patterns", "gis-state-machines", "anti-patterns", "component-usage"],
+      "loadOptional": ["gis-performance-sla", "decision-trees"],
+      "defer": ["handover-template"],
+      "toolsRequired": ["read_documentation", "write_stage_artifact", "run_quality_gate", "invoke_superpowers"],
+      "superpowersSkills": ["superpowers:test-driven-development", "superpowers:subagent-driven-development"],
+      "trustLevel": "L2_confirm",
+      "selfReflectionQuestions": [
+        "每个实现步骤是否先有失败测试再写生产代码？",
+        "GPS ≥ 2fps 高频数据是否走 Web Worker + Transferable Objects？",
+        "业务控制层方法是否可注入 genericController mock？",
+        "通用控制层方法是否可注入 store mock？",
+        "业务控制层方法命名是否符合'业务动词 + 业务名词'？",
+        "业务 ID 是否加业务前缀？",
+        "Auto-Fit 是否保留 10-15% Padding？",
+        "覆盖率是否 ≥ 80%？",
+        "是否触发了 anti-patterns 中的任何一条？"
+      ]
+    },
+    {
+      "id": "gis-test",
+      "name": "测试",
+      "description": "Playwright 端到端 + 性能基准 + 综合评分",
+      "entry": "skills/gis-test/SKILL.md",
+      "order": 5,
+      "gate": "覆盖率 ≥ 80% + 综合评分 ≥ 80 分 + final-acceptance.md",
+      "estimatedDuration": "1-2d",
+      "loadRequired": ["gis-performance-sla", "gis-architecture"],
+      "loadOptional": ["gis-business-scenarios", "anti-patterns", "decision-trees"],
+      "defer": ["vue3-conventions", "gis-controller-patterns", "gis-state-machines", "component-usage", "handover-template"],
+      "toolsRequired": ["read_documentation", "write_stage_artifact", "run_quality_gate", "invoke_superpowers"],
+      "superpowersSkills": ["superpowers:verification-before-completion", "superpowers:requesting-code-review"],
+      "trustLevel": "L2_confirm",
+      "selfReflectionQuestions": [
+        "5 个核心场景 AC 是否全部通过？",
+        "性能 SLA 是否全部达标？",
+        "综合评分是否 ≥ 80 分？",
+        "状态机合法/非法迁移是否全部测试？",
+        "异常降级是否全部测试？",
+        "严禁事项清单是否无违反？",
+        "WGS84 责任分工是否无违反？",
+        "业务/通用 DTO 是否严格分离？"
+      ]
+    }
+  ],
+
+  "companions": [
+    {
+      "id": "handover-doc",
+      "name": "项目交接",
+      "description": "基于仓库事实生成项目交接文档，可在任何阶段后调用",
+      "entry": "skills/handover-doc/SKILL.md",
+      "order": 0,
+      "gate": "交接文档 + 敏感信息脱敏 + 用户审阅",
+      "loadRequired": ["handover-template", "workflow-contract"],
+      "loadOptional": ["gis-architecture"],
+      "defer": ["vue3-conventions", "gis-coord-system", "gis-business-scenarios", "gis-performance-sla", "gis-controller-patterns", "gis-state-machines", "component-usage", "anti-patterns", "decision-trees"],
+      "toolsRequired": ["read_documentation", "write_stage_artifact"],
+      "superpowersSkill": null,
+      "trustLevel": "L1_suggest"
+    }
+  ],
+
+  "progressiveDisclosure": {
+    "enabled": true,
+    "strategy": "load_required_only",
+    "summary": "每个阶段只加载必需的 references，其余按需 deferred",
+    "tokenSavingEstimate": "30-40%"
+  },
+
+  "failureRecovery": {
+    "enabled": true,
+    "policyFile": "agent.yaml#failure_recovery",
+    "summary": "14 种异常均定义 retry/on_exhausted/fallback_message"
+  },
+
+  "tokenBudget": {
+    "enabled": true,
+    "policyFile": "agent.yaml#token_budget",
+    "summary": "每阶段独立预算，80%/95%/100% 三道警戒线"
+  },
+
+  "trustLevels": {
+    "enabled": true,
+    "policyFile": "agent.yaml#trust_levels",
+    "summary": "L0/L1/L2/L3 四级信任，校准 Agent 自主决策边界"
+  },
+
+  "selfReflection": {
+    "enabled": true,
+    "policyFile": "agent.yaml#self_reflection",
+    "summary": "每阶段产出自检报告"
+  },
+
+  "antiPatterns": {
+    "enabled": true,
+    "file": "references/anti-patterns.md",
+    "summary": "10+ 条反模式（症状/后果/预防/检测规则）"
+  },
+
+  "decisionTrees": {
+    "enabled": true,
+    "file": "references/decision-trees.md",
+    "summary": "阶段选择、异常处理、信任决策的决策树"
+  },
+
+  "costLatencyBudget": {
+    "enabled": true,
+    "policyFile": "agent.yaml#cost_latency_budget",
+    "summary": "每阶段 Token/时间/成本估算"
+  },
+
+  "references": [
+    { "id": "workflow-contract", "file": "references/workflow-contract.md", "required": true },
+    { "id": "vue3-conventions", "file": "references/vue3-conventions.md", "required": true, "deferToStages": ["gis-implementation"] },
+    { "id": "gis-architecture", "file": "references/gis-architecture.md", "required": true },
+    { "id": "gis-coord-system", "file": "references/gis-coord-system.md", "required": true, "deferToStages": ["gis-design", "gis-planning", "gis-implementation"] },
+    { "id": "gis-business-scenarios", "file": "references/gis-business-scenarios.md", "required": true },
+    { "id": "gis-performance-sla", "file": "references/gis-performance-sla.md", "required": true, "deferToStages": ["gis-planning", "gis-implementation", "gis-test"] },
+    { "id": "gis-controller-patterns", "file": "references/gis-controller-patterns.md", "required": true, "deferToStages": ["gis-design", "gis-planning", "gis-implementation"] },
+    { "id": "gis-state-machines", "file": "references/gis-state-machines.md", "required": true, "deferToStages": ["gis-design", "gis-planning", "gis-implementation"] },
+    { "id": "component-usage", "file": "references/component-usage.md", "required": false, "stage": "gis-implementation" },
+    { "id": "handover-template", "file": "references/handover-template.md", "required": false, "stage": "handover-doc" },
+    { "id": "anti-patterns", "file": "references/anti-patterns.md", "required": true, "deferToStages": ["gis-design", "gis-planning", "gis-implementation", "gis-test"] },
+    { "id": "decision-trees", "file": "references/decision-trees.md", "required": true, "deferToStages": ["gis-planning", "gis-implementation", "gis-test"] }
+  ],
+
+  "tools": [
+    { "id": "read_documentation", "file": "tools/read_documentation.json", "stages": ["*"] },
+    { "id": "write_stage_artifact", "file": "tools/write_stage_artifact.json", "stages": ["*"] },
+    { "id": "run_quality_gate", "file": "tools/run_quality_gate.json", "stages": ["gis-implementation", "gis-test"] },
+    { "id": "invoke_superpowers", "file": "tools/invoke_superpowers.json", "stages": ["gis-design", "gis-planning", "gis-implementation", "gis-test"] }
+  ],
+
+  "context": {
+    "repositoryRoot": "d:/work/telewave/ids/ids-gis-web",
+    "singleSourceOfTruth": "docs/source/",
+    "legacyDocs": "mds/",
+    "docsSourceCount": 15
+  },
+
+  "configuration": {
+    "agent": "agent.yaml",
+    "tools": "tools/",
+    "promptTemplates": "prompts/"
+  }
+}

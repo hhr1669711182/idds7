@@ -1,0 +1,93 @@
+{
+  "name": "run_quality_gate",
+  "version": "1.0.0",
+  "description": "运行工程质量门禁（type-check / lint / test / bench / build）",
+  "type": "function",
+  "category": "shell",
+  "applicable_stages": [
+    "gis-implementation",
+    "gis-test"
+  ],
+  "parameters": {
+    "type": "object",
+    "required": ["commands"],
+    "properties": {
+      "commands": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "enum": ["type-check", "lint", "test", "bench", "build"]
+        },
+        "description": "要执行的质量门禁命令集"
+      },
+      "fail_fast": {
+        "type": "boolean",
+        "default": true,
+        "description": "遇到第一个失败命令是否立即停止"
+      },
+      "coverage_threshold": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100,
+        "default": 80,
+        "description": "覆盖率阈值（仅 test 命令生效）"
+      }
+    }
+  },
+  "command_mapping": {
+    "type-check": "pnpm type-check",
+    "lint": "pnpm lint",
+    "test": "pnpm test",
+    "bench": "pnpm bench",
+    "build": "pnpm build"
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "all_passed": {
+        "type": "boolean"
+      },
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "command": { "type": "string" },
+            "exit_code": { "type": "integer" },
+            "duration_ms": { "type": "integer" },
+            "stdout": { "type": "string" },
+            "stderr": { "type": "string" }
+          }
+        }
+      },
+      "coverage": {
+        "type": "object",
+        "properties": {
+          "lines": { "type": "number" },
+          "statements": { "type": "number" },
+          "functions": { "type": "number" },
+          "branches": { "type": "number" }
+        }
+      }
+    }
+  },
+  "permissions": ["shell:execute"],
+  "gate_thresholds": {
+    "type-check": { "exit_code": 0 },
+    "lint": { "exit_code": 0, "warning_count_max": 0 },
+    "test": { "exit_code": 0, "coverage_min": 80 },
+    "bench": {
+      "frame_rate_p95_min": 30,
+      "call_popup_latency_max": 500,
+      "route_planning_p95_max": 1000
+    },
+    "build": { "exit_code": 0 }
+  },
+  "error_codes": {
+    "COMMAND_NOT_FOUND": "命令不存在",
+    "EXECUTION_TIMEOUT": "执行超时",
+    "COVERAGE_BELOW_THRESHOLD": "覆盖率低于阈值",
+    "BENCHMARK_BELOW_SLA": "性能基准低于 SLA"
+  }
+}

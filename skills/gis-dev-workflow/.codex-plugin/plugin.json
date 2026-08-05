@@ -1,0 +1,35 @@
+{
+  "name": "gis-dev-workflow",
+  "version": "1.0.0",
+  "description": "Vue 3 + TypeScript + OpenLayers/ThreeJS 前端 GIS 工程分阶段开发技能集，按分析→设计→计划→实现→测试五阶段推进。",
+  "author": {
+    "name": "Telewave IDS"
+  },
+  "repository": "https://gitlab.telewave.tech/ids/ids-gis-web",
+  "keywords": [
+    "vue3",
+    "typescript",
+    "openlayers",
+    "threejs",
+    "gis",
+    "frontend"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "GIS 前端开发工作流",
+    "shortDescription": "按阶段推进 Vue3+OL+ThreeJS GIS 前端开发。",
+    "longDescription": "提供分析、设计、计划、实现、测试五阶段技能以及交接文档生成技能；由使用者显式选择阶段，每个阶段独立执行前置门禁。默认基线对齐 Service→Protocol→Calc→Ctrl→Render 五层架构与 WGS84 坐标硬约束。",
+    "developerName": "Telewave IDS",
+    "category": "Frontend",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Execute"
+    ],
+    "defaultPrompt": [
+      "使用 $gis-dev-workflow:gis-analysis 分析 mds/minmax_output 下的架构与产品资料。",
+      "使用 $gis-dev-workflow:gis-design 根据已确认的分析结果完成五层架构设计。",
+      "使用 $gis-dev-workflow:gis-test 验证当前实现并生成验收证据。"
+    ]
+  }
+}

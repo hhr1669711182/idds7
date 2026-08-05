@@ -1,0 +1,101 @@
+{
+  "name": "invoke_superpowers",
+  "version": "1.0.0",
+  "description": "调用 superpowers 配套技能（brainstorming / writing-plans / TDD / subagent / verification / code-review）",
+  "type": "function",
+  "category": "skill",
+  "applicable_stages": [
+    "gis-design",
+    "gis-planning",
+    "gis-implementation",
+    "gis-test"
+  ],
+  "parameters": {
+    "type": "object",
+    "required": ["skill"],
+    "properties": {
+      "skill": {
+        "type": "string",
+        "enum": [
+          "superpowers:brainstorming",
+          "superpowers:writing-plans",
+          "superpowers:test-driven-development",
+          "superpowers:subagent-driven-development",
+          "superpowers:verification-before-completion",
+          "superpowers:requesting-code-review",
+          "superpowers:receiving-code-review"
+        ],
+        "description": "要调用的 superpowers 技能"
+      },
+      "context": {
+        "type": "object",
+        "description": "传递给 superpowers 技能的上下文",
+        "properties": {
+          "current_stage": {
+            "type": "string",
+            "enum": [
+              "gis-design",
+              "gis-planning",
+              "gis-implementation",
+              "gis-test"
+            ]
+          },
+          "artifacts": {
+            "type": "array",
+            "description": "当前阶段已产出的文档路径"
+          },
+          "constraints": {
+            "type": "array",
+            "description": "约束条件（如五层架构、坐标系等）"
+          }
+        }
+      }
+    }
+  },
+  "stage_mapping": {
+    "gis-design": {
+      "primary_skill": "superpowers:brainstorming",
+      "purpose": "业务问题确认"
+    },
+    "gis-planning": {
+      "primary_skill": "superpowers:writing-plans",
+      "purpose": "产出可执行计划"
+    },
+    "gis-implementation": {
+      "primary_skills": [
+        "superpowers:test-driven-development",
+        "superpowers:subagent-driven-development"
+      ],
+      "purpose": "TDD 循环 + 多文件跨层并行"
+    },
+    "gis-test": {
+      "primary_skill": "superpowers:verification-before-completion",
+      "secondary_skills": [
+        "superpowers:requesting-code-review",
+        "superpowers:receiving-code-review"
+      ],
+      "purpose": "完成前必须验证 + 内部审阅"
+    }
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "skill": { "type": "string" },
+      "output": { "type": "string" },
+      "artifacts": {
+        "type": "array",
+        "description": "superpowers 技能产出的文档/代码路径"
+      },
+      "status": {
+        "type": "string",
+        "enum": ["success", "partial", "failed"]
+      }
+    }
+  },
+  "permissions": ["skill:invoke"],
+  "error_codes": {
+    "SKILL_NOT_FOUND": "superpowers 技能未安装",
+    "STAGE_MISMATCH": "技能不适用于当前阶段",
+    "INVOCATION_FAILED": "调用失败"
+  }
+}

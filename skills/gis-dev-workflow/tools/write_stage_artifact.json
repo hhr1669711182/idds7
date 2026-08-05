@@ -1,0 +1,114 @@
+{
+  "name": "write_stage_artifact",
+  "version": "1.0.0",
+  "description": "写入阶段产物文档（强制按阶段路径落盘）",
+  "type": "function",
+  "category": "file",
+  "applicable_stages": [
+    "gis-analysis",
+    "gis-design",
+    "gis-planning",
+    "gis-implementation",
+    "gis-test",
+    "handover-doc"
+  ],
+  "parameters": {
+    "type": "object",
+    "required": ["stage", "path", "content"],
+    "properties": {
+      "stage": {
+        "type": "string",
+        "enum": [
+          "gis-analysis",
+          "gis-design",
+          "gis-planning",
+          "gis-implementation",
+          "gis-test",
+          "handover-doc"
+        ],
+        "description": "所属阶段"
+      },
+      "path": {
+        "type": "string",
+        "description": "产物路径（必须匹配阶段规范路径）",
+        "examples": [
+          "docs/analysis/01-五层索引目录.md",
+          "docs/design/01-业务域设计.md",
+          "docs/plan/01-Service与Protocol层计划.md",
+          "docs/handover/<project-name>-交接文档.md"
+        ]
+      },
+      "content": {
+        "type": "string",
+        "description": "文档内容（Markdown / TypeScript / YAML）"
+      },
+      "commit_message": {
+        "type": "string",
+        "description": "Git 提交信息（可选）"
+      }
+    }
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "written": {
+        "type": "boolean"
+      },
+      "path": {
+        "type": "string"
+      },
+      "bytes": {
+        "type": "integer"
+      }
+    }
+  },
+  "permissions": ["file:write"],
+  "validations": {
+    "gis-analysis": {
+      "allowed_paths": ["docs/analysis/01-五层索引目录.md"],
+      "forbidden_keywords": []
+    },
+    "gis-design": {
+      "allowed_paths": [
+        "docs/design/00-设计总览.md",
+        "docs/design/01-业务域设计.md",
+        "docs/design/02-协议层设计.md",
+        "docs/design/03-控制层设计.md",
+        "docs/design/04-渲染层设计.md",
+        "docs/design/05-状态机设计.md",
+        "docs/design/06-异常与降级设计.md"
+      ],
+      "forbidden_keywords": []
+    },
+    "gis-planning": {
+      "allowed_paths": [
+        "docs/plan/00-计划总览.md",
+        "docs/plan/01-Service与Protocol层计划.md",
+        "docs/plan/02-Calc层计划.md",
+        "docs/plan/03-Ctrl业务控制层计划.md",
+        "docs/plan/04-Ctrl通用控制层计划.md",
+        "docs/plan/05-Ctrl-IO控制层与Render层计划.md",
+        "docs/plan/06-测试与验收计划.md"
+      ],
+      "forbidden_keywords": ["TODO", "TBD", "待补充", "TBC"]
+    },
+    "gis-implementation": {
+      "allowed_paths": ["src/**", "tests/**"],
+      "forbidden_keywords": []
+    },
+    "gis-test": {
+      "allowed_paths": ["tests/report/final-acceptance.md", "tests/perf/report.json"],
+      "forbidden_keywords": []
+    },
+    "handover-doc": {
+      "allowed_paths": ["docs/handover/**"],
+      "forbidden_keywords": []
+    }
+  },
+  "error_codes": {
+    "INVALID_PATH": "路径不符合阶段规范",
+    "FORBIDDEN_KEYWORD": "内容含禁用关键词",
+    "PERMISSION_DENIED": "无写权限",
+    "PATH_TRAVERSAL": "路径越界"
+  }
+}

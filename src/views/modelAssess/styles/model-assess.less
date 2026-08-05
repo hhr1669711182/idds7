@@ -1,0 +1,853 @@
+/*
+ * @Description: 模型研判（2.5D 指挥大屏）独立样式
+ * @FilePath: \ids-gis-web\src\views\modelAssess\styles\model-assess.less
+ */
+
+@ma-bg: #0a0e1a;
+@ma-bg-card: #0000004b;
+@ma-bg-panel: #1a2236;
+@ma-bg-deep: #0d1322;
+@ma-border: #1f2940;
+@ma-border-light: #2a3556;
+@ma-orange: #ff7a00;
+@ma-orange-light: #ff9500;
+@ma-orange-soft: rgba(255, 122, 0, 0.15);
+@ma-text: #e6ebf5;
+@ma-text-dim: #8a96b0;
+@ma-text-muted: #5b6478;
+@ma-red: #ff4d4f;
+@ma-blue: #3385ff;
+@ma-green: #22c55e;
+@ma-yellow: #fbbf24;
+
+/* ===================== 容器 ===================== */
+.model-assess-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at top, #0d1322 0%, @ma-bg 70%);
+  color: @ma-text;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  // padding: 10px;
+  box-sizing: border-box;
+  gap: 4px;
+}
+
+/* ===================== 顶部卡片容器 ===================== */
+.top-cards-wrapper {
+  position: relative;
+  width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.top-cards {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding-bottom: 4px;
+  flex: 1;
+}
+
+.top-cards::-webkit-scrollbar {
+  height: 6px;
+}
+
+.top-cards::-webkit-scrollbar-thumb {
+  background: @ma-border-light;
+  border-radius: 3px;
+}
+
+.top-cards::-webkit-scrollbar-thumb:hover {
+  background: @ma-orange;
+}
+
+.scroll-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 48px;
+  background: rgba(13, 19, 34, 0.8);
+  border: 1px solid @ma-border-light;
+  color: @ma-orange;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.scroll-arrow:hover {
+  background: @ma-bg-panel;
+  color: @ma-orange-light;
+  box-shadow: 0 0 8px rgba(255, 122, 0, 0.4);
+}
+
+.scroll-arrow.left {
+  left: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.scroll-arrow.right {
+  right: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+@keyframes arrowPulseLeft {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-3px); }
+}
+
+@keyframes arrowPulseRight {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(3px); }
+}
+
+.scroll-arrow.left svg {
+  animation: arrowPulseLeft 1.5s infinite;
+}
+
+.scroll-arrow.right svg {
+  animation: arrowPulseRight 1.5s infinite;
+}
+
+/* ===================== 主体三列 ===================== */
+.main-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 360px 1fr 340px;
+  gap: 10px;
+  min-height: 0;
+}
+
+.main-body .left,
+.main-body .right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.main-body .center {
+  position: relative;
+  background: linear-gradient(180deg, @ma-bg-deep 0%, @ma-bg 100%);
+  border: 1px solid @ma-border;
+  border-radius: 6px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ===================== 通用 panel ===================== */
+.ma-panel {
+  background: linear-gradient(180deg, @ma-bg-card 0%, @ma-bg-panel 100%);
+  border: 1px solid @ma-border;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ma-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 122, 0, 0.25), transparent 2px) top left / 100% 4px no-repeat,
+    linear-gradient(0deg, rgba(255, 122, 0, 0.25), transparent 2px) bottom left / 100% 4px no-repeat;
+}
+
+.ma-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid @ma-border;
+  font-size: 13px;
+  font-weight: 600;
+  background: linear-gradient(90deg, rgba(255, 122, 0, 0.08), transparent);
+}
+
+.ma-panel-title {
+  color: @ma-orange;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ma-panel-title .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: @ma-orange;
+  box-shadow: 0 0 8px @ma-orange;
+}
+
+.ma-panel-body {
+  padding: 12px;
+  font-size: 12px;
+  color: @ma-text-dim;
+}
+
+/* ===================== 相似警情卡片 (样式已迁移至组件内部) ===================== */
+
+/* ===================== 主警情面板 ===================== */
+.master-panel .head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid @ma-border;
+  background: @ma-bg-deep;
+}
+
+.master-panel .head .label {
+  color: @ma-orange;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.master-panel .head .label .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: @ma-orange;
+  box-shadow: 0 0 6px @ma-orange;
+}
+
+.master-panel .head .status {
+  color: @ma-orange;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid @ma-orange;
+  border-radius: 10px;
+  background: @ma-orange-soft;
+}
+
+.master-panel .body {
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: @ma-text-dim;
+}
+
+.master-panel .body .row {
+  display: flex;
+  gap: 4px;
+}
+
+.master-panel .body .row .key {
+  color: @ma-text-dim;
+  flex-shrink: 0;
+}
+
+.master-panel .body .row .val {
+  color: @ma-text;
+  font-weight: 500;
+}
+
+.master-panel .body .fire-highlight {
+  color: @ma-orange !important;
+  font-weight: 700;
+  text-shadow: 0 0 6px rgba(255, 122, 0, 0.6);
+}
+
+/* 判研区 */
+.factor-list {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid @ma-border;
+}
+
+.factor-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.factor-row .label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: @ma-text-dim;
+  font-size: 11px;
+}
+
+.factor-row .ctrl {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.factor-row .ctrl .step-btn {
+  width: 22px;
+  height: 22px;
+  border: 1px solid @ma-border;
+  background: @ma-bg-deep;
+  color: @ma-text;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.factor-row .ctrl .step-btn:hover {
+  border-color: @ma-orange;
+  color: @ma-orange;
+}
+
+.factor-row .ctrl .val {
+  flex: 1;
+  text-align: center;
+  background: @ma-bg-deep;
+  border: 1px solid @ma-border;
+  border-radius: 3px;
+  padding: 3px 6px;
+  color: @ma-text;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.factor-row .ctrl .val.fire-val {
+  color: @ma-orange;
+  font-weight: 700;
+  border-color: @ma-orange;
+}
+
+.factor-row .ctrl select {
+  flex: 1;
+  background: @ma-bg-deep;
+  border: 1px solid @ma-border;
+  color: @ma-text;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.factor-row .note {
+  grid-column: 2;
+  font-size: 10px;
+  color: @ma-text-muted;
+  margin-top: -2px;
+}
+
+.save-bar {
+  margin-top: 10px;
+  background: linear-gradient(90deg, @ma-orange 0%, @ma-orange-light 100%);
+  color: #fff;
+  text-align: center;
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  cursor: pointer;
+  border-radius: 0 0 6px 6px;
+  border-top: 1px solid @ma-orange;
+  transition: filter 0.2s;
+}
+
+.save-bar:hover {
+  filter: brightness(1.1);
+}
+
+/* ===================== 3D 地图视图 ===================== */
+.tilt-map {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, #131826 0%, #050810 80%);
+  perspective: 1200px;
+  overflow: hidden;
+}
+
+.layer-tabs {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0;
+  background: rgba(10, 14, 26, 0.7);
+  border: 1px solid @ma-border;
+  border-radius: 4px;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+
+.layer-tabs .tab {
+  padding: 6px 16px;
+  color: @ma-text-dim;
+  font-size: 12px;
+  cursor: pointer;
+  border-right: 1px solid @ma-border;
+  transition: all 0.2s;
+}
+
+.layer-tabs .tab:last-child {
+  border-right: none;
+}
+
+.layer-tabs .tab.active {
+  color: @ma-orange;
+  background: @ma-orange-soft;
+  font-weight: 600;
+}
+
+.tilt-stage {
+  position: absolute;
+  inset: 40px 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+}
+
+.tilt-3d {
+  position: relative;
+  width: 600px;
+  height: 380px;
+  transform-style: preserve-3d;
+  transition: transform 0.4s;
+}
+
+.building {
+  position: absolute;
+  background: linear-gradient(180deg, #1a2236 0%, #0d1322 100%);
+  border: 1px solid @ma-border-light;
+  transform-style: preserve-3d;
+}
+
+.building.main {
+  width: 80px;
+  height: 280px;
+  left: 260px;
+  top: 60px;
+  background: linear-gradient(180deg, #2a3556 0%, #131826 100%);
+  border: 1px solid @ma-orange;
+  box-shadow: 0 0 20px rgba(255, 122, 0, 0.5);
+}
+
+.building.main::before {
+  content: '';
+  position: absolute;
+  inset: 30% 0 50% 0;
+  background: @ma-orange;
+  opacity: 0.4;
+  animation: pulse 1.5s infinite;
+}
+
+.building.s3 {
+  width: 60px;
+  height: 160px;
+  left: 80px;
+  top: 140px;
+}
+
+.building.s4 {
+  width: 70px;
+  height: 200px;
+  left: 400px;
+  top: 100px;
+}
+
+.building-label {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: @ma-text-dim;
+  white-space: nowrap;
+}
+
+.building.main .building-label {
+  color: @ma-orange;
+  font-weight: 700;
+}
+
+.road {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    @ma-text-dim 0,
+    @ma-text-dim 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  opacity: 0.4;
+}
+
+.road.r2 {
+  top: auto;
+  bottom: 30%;
+  transform: rotate(-15deg);
+  left: -10%;
+  right: -10%;
+}
+
+.road.r3 {
+  top: 70%;
+  transform: rotate(20deg);
+  left: -10%;
+  right: -10%;
+}
+
+.fire-station {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: @ma-red;
+  box-shadow: 0 0 10px @ma-red;
+  border: 2px solid #fff;
+  z-index: 5;
+}
+
+.fire-station::after {
+  content: attr(data-label);
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: @ma-red;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.trapped-marker {
+  position: absolute;
+  background: rgba(255, 77, 79, 0.9);
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-weight: 700;
+  z-index: 6;
+}
+
+.altitude-tag {
+  position: absolute;
+  top: 50px;
+  right: 30px;
+  font-size: 10px;
+  color: @ma-orange;
+  font-weight: 600;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid @ma-orange;
+  border-radius: 2px;
+}
+
+.fire-tag {
+  position: absolute;
+  top: 30%;
+  right: 30%;
+  font-size: 9px;
+  color: @ma-red;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+/* ===================== 受困救援面板 ===================== */
+.rescue-panel .trapped-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.rescue-panel .trapped-item {
+  display: grid;
+  grid-template-columns: 50px 1fr 70px 26px;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 4px 6px;
+  background: @ma-bg-deep;
+  border: 1px solid @ma-border;
+  border-radius: 3px;
+}
+
+.rescue-panel .trapped-item .floor {
+  color: @ma-text;
+  font-weight: 700;
+  font-family: 'Consolas', monospace;
+}
+
+.rescue-panel .trapped-item .dir {
+  color: @ma-text-dim;
+}
+
+.rescue-panel .trapped-item .count-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.rescue-panel .trapped-item .count-ctrl button {
+  width: 18px;
+  height: 18px;
+  background: @ma-bg-card;
+  border: 1px solid @ma-border;
+  color: @ma-text;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rescue-panel .trapped-item .count-ctrl button:hover {
+  border-color: @ma-orange;
+  color: @ma-orange;
+}
+
+.rescue-panel .trapped-item .count-ctrl .num {
+  flex: 1;
+  text-align: center;
+  color: @ma-orange;
+  font-weight: 700;
+  font-family: 'Consolas', monospace;
+}
+
+.rescue-panel .trapped-item .del {
+  background: transparent;
+  border: none;
+  color: @ma-text-muted;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.rescue-panel .trapped-item .del:hover {
+  color: @ma-red;
+}
+
+.rescue-panel .add-form {
+  padding: 8px 12px;
+  border-top: 1px solid @ma-border;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 28px;
+  gap: 4px;
+  align-items: center;
+}
+
+.rescue-panel .add-form input,
+.rescue-panel .add-form select {
+  background: @ma-bg-deep;
+  border: 1px solid @ma-border;
+  color: @ma-text;
+  padding: 4px 6px;
+  border-radius: 2px;
+  font-size: 11px;
+  min-width: 0;
+}
+
+.rescue-panel .add-form .add-btn {
+  background: @ma-orange;
+  border: none;
+  color: #fff;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  height: 24px;
+}
+
+.rescue-panel .add-form .add-btn:hover {
+  background: @ma-orange-light;
+}
+
+.rescue-panel .total {
+  padding: 8px 12px;
+  border-top: 1px solid @ma-border;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: @ma-text-dim;
+}
+
+.rescue-panel .total .num {
+  color: @ma-orange;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'Consolas', monospace;
+}
+
+.rescue-panel .sync-hint {
+  padding: 6px 12px;
+  font-size: 10px;
+  color: @ma-green;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ===================== 指南针 + 三维视角 ===================== */
+.compass-3d {
+  background: @ma-bg-card;
+  border: 1px solid @ma-border;
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.compass-3d .compass {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    @ma-red 0deg,
+    @ma-red 90deg,
+    @ma-bg-deep 90deg,
+    @ma-bg-deep 180deg,
+    @ma-blue 180deg,
+    @ma-blue 270deg,
+    @ma-bg-deep 270deg,
+    @ma-bg-deep 360deg
+  );
+  position: relative;
+  border: 2px solid @ma-orange;
+  box-shadow: 0 0 10px rgba(255, 122, 0, 0.4);
+}
+
+.compass-3d .compass::after {
+  content: 'N';
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.compass-3d .compass .needle {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.3s;
+}
+
+.compass-3d .compass .needle::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom-color: @ma-red;
+}
+
+.compass-3d .compass .needle::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: @ma-text;
+}
+
+.view-control {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.view-control .item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.view-control .item .label {
+  font-size: 10px;
+  color: @ma-text-dim;
+  display: flex;
+  justify-content: space-between;
+}
+
+.view-control .item .label .val {
+  color: @ma-orange;
+  font-family: 'Consolas', monospace;
+}
+
+.view-control .item input[type='range'] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  background: @ma-border;
+  border-radius: 2px;
+  outline: none;
+}
+
+.view-control .item input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  background: @ma-orange;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 6px @ma-orange;
+}
+
+/* ===================== 动画 ===================== */
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.9; }
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: @ma-border-light;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: @ma-orange;
+}

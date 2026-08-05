@@ -1,0 +1,82 @@
+{
+  "name": "read_documentation",
+  "version": "1.0.0",
+  "description": "读取 docs/source/** 与 mds/** 文档，触发阶段门禁文档核验",
+  "type": "function",
+  "category": "file",
+  "applicable_stages": [
+    "gis-analysis",
+    "gis-design",
+    "gis-planning",
+    "gis-implementation",
+    "gis-test",
+    "handover-doc"
+  ],
+  "parameters": {
+    "type": "object",
+    "required": ["path"],
+    "properties": {
+      "path": {
+        "type": "string",
+        "description": "文档路径（相对仓库根或绝对路径）",
+        "examples": [
+          "docs/source/00-文档集索引与前言.md",
+          "docs/source/05-五层架构领域模型设计.md",
+          "mds/minmax_output/GIS前端数据交互与架构全景设计(整合版).md"
+        ]
+      },
+      "purpose": {
+        "type": "string",
+        "enum": [
+          "analysis",
+          "design",
+          "planning",
+          "implementation",
+          "test",
+          "handover",
+          "review"
+        ],
+        "description": "读取目的（用于上下文标注）",
+        "default": "review"
+      }
+    }
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string",
+        "description": "文档内容（UTF-8）"
+      },
+      "path": {
+        "type": "string",
+        "description": "文档实际路径"
+      },
+      "exists": {
+        "type": "boolean",
+        "description": "文件是否存在"
+      },
+      "size_bytes": {
+        "type": "integer",
+        "description": "文件字节数"
+      }
+    }
+  },
+  "permissions": ["file:read"],
+  "error_codes": {
+    "FILE_NOT_FOUND": "文档不存在",
+    "PATH_TRAVERSAL": "路径越界（禁止访问仓库根之外）",
+    "ENCODING_ERROR": "文件编码错误（要求 UTF-8）"
+  },
+  "examples": [
+    {
+      "input": { "path": "docs/source/00-文档集索引与前言.md" },
+      "output": {
+        "content": "# 00-文档集索引与前言\n...",
+        "path": "docs/source/00-文档集索引与前言.md",
+        "exists": true,
+        "size_bytes": 6528
+      }
+    }
+  ]
+}
