@@ -78,6 +78,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     defaultVisible: true,
     icon: 'mdi:alert-circle-outline',
     noEsSearch: true,
+    useWebMock: true,
   },
   {
     ...dispatchGroup,

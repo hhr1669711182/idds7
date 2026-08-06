@@ -39,9 +39,9 @@
 ### 3.2 消火栓
 
 | 状态 | 图标颜色 |
-| -- | ---- |
-| 可用 | 绿色   |
-| 停用 | 灰色   |
+| ---- | -------- |
+| 可用 | 红色     |
+| 停用 | 灰色     |
 
 ### 3.3 重点单位
 
@@ -334,22 +334,15 @@ public dispatchResourceQueryHighlight(data) {
 
 数据来源为 `src/config/layers.ts` 中的 `LAYER_SOURCE_CONFIGS`。
 
-| 图层名称      | Layer ID                   | GeoServer typeName         | ES 查询 | 默认可见 |
-| --------- | -------------------------- | -------------------------- | :---: | :--: |
-| 消防站（主管队站） | `gis:view_res_org_dept`    | `gis:view_res_org_dept`    |   否   |   是  |
-| 消火栓       | `gis:env_fire_water`       | `gis:env_fire_water`       |   是   |   否  |
-| 重点单位      | `gis:view_env_enterprises` | `gis:view_env_enterprises` |   否   |   否  |
-| 消防车辆      | `gis:env_car`              | `gis:fire_vehicle`         |   否   |   否  |
-| 未结案警情     | `gis:disaster_info`        | `gis:disaster_info`        |   否   |   是  |
-| 来电定位      | `gis:incoming_call`        | `gis:incoming_call`        |   否   |   是  |
-| 街道区划      | `gis:env_area_fence`       | `gis:env_area_fence`       |   否   |   否  |
-| 队站辖区      | `gis:view_juris_zone`      | `gis:view_juris_zone`      |   否   |   否  |
-| 小区微围栏     | `gis:env_build_aoi`        | `gis:env_build_aoi`        |   否   |   否  |
-| 兴趣点       | `gis:env_place_poi`        | `gis:env_place_poi`        |   否   |   否  |
-| 建筑        | `gis:view_env_building`    | `gis:view_env_building`    |   否   |   否  |
-| 出入口       | `gis:env_entrance_exit`    | `gis:env_entrance_exit`    |   否   |   否  |
-| 局部道路      | `gis:env_greatchina_road`  | `gis:env_greatchina_road`  |   否   |   否  |
-| 人密场所      | `gis:env_crowd_place`（占位）  | `gis:env_crowd_place`（占位）  |   待定  |   否  |
+| 图层名称           | Layer ID                      | GeoServer typeName            | ES 查询 | 默认可见 |
+| ------------------ | ----------------------------- | ----------------------------- | :-----: | :------: |
+| 消防站（主管队站） | `gis:view_res_org_dept`       | `gis:view_res_org_dept`       |   否    |    是    |
+| 消火栓             | `gis:env_fire_water`          | `gis:env_fire_water`          |   否    |    否    |
+| 重点单位           | `gis:view_env_enterprises`    | `gis:view_env_enterprises`    |   否    |    否    |
+| 队站辖区           | `gis:view_juris_zone`         | `gis:view_juris_zone`         |   否    |    否    |
+| 小区微围栏         | `gis:env_build_aoi`           | `gis:env_build_aoi`           |   否    |    否    |
+| 出入口             | `gis:env_entrance_exit`       | `gis:env_entrance_exit`       |   否    |    否    |
+| 人密场所           | `gis:env_crowd_place`（占位） | `gis:env_crowd_place`（占位） |  待定   |    否    |
 
 ***
 
@@ -422,30 +415,142 @@ BFF 将前端传入的过滤参数编译为 GeoServer CQL Filter，静态资源�
 
 **完整 CQL Filter 示例**
 
+| 场景 | CQL Filter |
+|------|-----------|
+| 圆形范围 + 状态过滤 + 文本检索 | `DWITHIN(geom, POINT(118.786 32.042), 1000, meters) AND is_enabled=true AND (water_name ILIKE '%软件园%' OR address ILIKE '%软件园%')` |
+| 多边形范围 + 状态过滤 | `INTERSECTS(geom, POLYGON((118.78 32.04, 118.80 32.04, 118.80 32.06, 118.78 32.06, 118.78 32.04))) AND is_enabled=true` |
+| 视口范围 + 类型过滤 | `BBOX(geom, 118.78, 32.04, 118.80, 32.06) AND intake_form IN ('地上式', '地下式')` |
+
+### 9.4 对外协议接口 JSON
+
+#### 9.4.1 空间查询接口（MAP_BASE_ES_QUERY）
+
+外部系统向前端发送空间查询请求：
+
+```json
+{
+  "eventType": "map.base.es_query",
+  "data": {
+    "types": ["gis:view_res_org_dept", "gis:env_fire_water", "gis:view_env_enterprises"],
+    "geometry": {
+      "type": "Circle",
+      "center": [118.786, 32.042],
+      "radius": 1000
+    },
+    "limit": 50,
+    "request_id": "uuid"
+  }
+}
 ```
-DWITHIN(geom, POINT(118.786 32.042), 1000, meters)
-AND is_enabled=true
-AND is_deleted=false
-AND (water_name ILIKE '%软件园%' OR address ILIKE '%软件园%')
+
+**传入条件说明**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `eventType` | string | 是 | 固定为 `map.base.es_query` |
+| `data.types` | string[] | 否 | 查询的资源类型列表，不传则查所有图层 |
+| `data.geometry` | object | 否 | 空间几何条件，不传则走 VIEWPORT 模式 |
+| `data.geometry.type` | string | 否 | `Circle` / `Polygon` / `BBox` |
+| `data.geometry.center` | number[] | 否 | 中心点经纬度，`type=Circle` 时生效 |
+| `data.geometry.radius` | number | 否 | 半径数值，配合 `radius_unit` 单位 |
+| `data.geometry.coordinates` | number[][][] | 否 | 多边形坐标，`type=Polygon` 时生效 |
+| `data.limit` | number | 否 | 返回数量上限，默认 50 |
+| `data.request_id` | string | 否 | 请求追踪 ID |
+
+#### 9.4.2 图层显隐接口（LAYER_SET_VISIBLE）
+
+外部系统控制指定图层显隐：
+
+```json
+{
+  "eventType": "layer.set.visible",
+  "data": {
+    "layerId": "gis:env_fire_water",
+    "visible": true
+  }
+}
 ```
 
-### 9.4 GeoServer 图层标识
+**传入条件说明**
 
-| 资源类型 | GeoServer Layer ID  | 数据表                       |
-| ---- | ------------------- | ------------------------- |
-| 消防站  | `gis:fire_station`  | `public.fire_station`     |
-| 消火栓  | `gis:env_hydrant`   | `public.res_water`        |
-| 重点单位 | `gis:key_unit`      | `public.key_unit`         |
-| 水源   | `gis:water_source`  | `public.res_water_source` |
-| 消防设施 | `gis:fire_facility` | `public.fire_facility`    |
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `eventType` | string | 是 | 固定为 `layer.set.visible` |
+| `data.layerId` | string | 是 | 图层 ID，来源 `LAYER_SOURCE_CONFIGS` |
+| `data.visible` | boolean | 是 | `true` 显示，`false` 隐藏 |
 
-### 9.5 GeoServer SLD 样式标识
+#### 9.4.3 图层刷新接口（LAYER_REFRESH）
 
-| 资源类型 | 默认样式                    | 样式规则         |
-| ---- | ----------------------- | ------------ |
-| 消防站  | `fire_station_default`  | 按站级          |
-| 消火栓  | `hydrant_default`       | 可用=绿色，停用=灰色  |
-| 重点单位 | `key_unit_default`      | 按风险等级        |
-| 水源   | `water_source_default`  | 可用=实心，不可用=空心 |
-| 消防设施 | `fire_facility_default` | 按设施类型        |
+外部系统强制刷新指定图层的 WMS 瓦片：
+
+```json
+{
+  "eventType": "layer.refresh",
+  "data": {
+    "layerIds": ["gis:env_fire_water"],
+    "timestamp": 1753324800000
+  }
+}
+```
+
+**传入条件说明**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `eventType` | string | 是 | 固定为 `layer.refresh` |
+| `data.layerIds` | string[] | 是 | 需要刷新的图层 ID 列表 |
+| `data.timestamp` | number | 否 | 刷新时间戳，不传则自动生成 |
+
+#### 9.4.4 调派资源检索接口（DISPATCH_RESOURCE_QUERY_HIGHLIGHT）
+
+调派阶段内触发缓冲 + 检索 + 高亮联动：
+
+```json
+{
+  "eventType": "dispatch.resource.query.highlight",
+  "data": {
+    "incidentId": "INC001",
+    "center": { "longitude": 118.786, "latitude": 32.042 },
+    "radius": 1000,
+    "resourceTypes": ["gis:env_fire_water", "gis:view_env_enterprises"],
+    "highlight": true
+  }
+}
+```
+
+**传入条件说明**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `eventType` | string | 是 | 固定为 `dispatch.resource.query.highlight` |
+| `data.incidentId` | string | 是 | 警情 ID |
+| `data.center` | object | 是 | 中心点经纬度 |
+| `data.radius` | number | 是 | 缓冲半径（米） |
+| `data.resourceTypes` | string[] | 否 | 查询资源类型，不传则查所有 |
+| `data.highlight` | boolean | 否 | 是否绘制缓冲圈高亮，默认 `false` |
+
+### 9.5 GeoServer 图层标识
+
+> 来源同八、数据来源中的 Layer ID，保持一致。
+
+| 资源类型 | GeoServer Layer ID |
+| ---- | --- |
+| 消防站（主管队站） | `gis:view_res_org_dept` |
+| 消火栓 | `gis:env_fire_water` |
+| 重点单位 | `gis:view_env_enterprises` |
+| 队站辖区 | `gis:view_juris_zone` |
+| 小区微围栏 | `gis:env_build_aoi` |
+| 出入口 | `gis:env_entrance_exit` |
+| 人密场所 | `gis:env_crowd_place` |
+
+### 9.6 GeoServer SLD 样式标识
+
+| 资源类型 | 默认样式 | 样式规则 |
+| ---- | ----- | ----- |
+| 消防站（主管队站） | `fire_station_default` | 按站级 |
+| 消火栓 | `hydrant_default` | 可用=红色，停用=灰色 |
+| 重点单位 | `key_unit_default` | 按风险等级 |
+| 队站辖区 | `juris_zone_default` | 按辖区区分 |
+| 小区微围栏 | `build_aoi_default` | 按 AOI 区分 |
+| 出入口 | `entrance_exit_default` | 按类型区分 |
 
