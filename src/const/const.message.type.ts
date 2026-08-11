@@ -107,6 +107,12 @@ export const MESSAGE_EVENT_KEY = {
   MAP_LOCATE: 'map.locate',
   MAP_POI_PICK: 'map.poi.pick',
 
+  INCOMING_CALL: 'xxx',
+  ADDR_SYNC_RESULT: 'xxx',
+  ROUTE_PLAN_REQUEST: 'xxx',
+  ROUTE_PLAN_MULTIPLE: 'xxx',
+  ROUTE_PLAN_CANCEL: 'xxx',
+
 } as const
 
 export type MessageEventKey = (typeof MESSAGE_EVENT_KEY)[keyof typeof MESSAGE_EVENT_KEY]

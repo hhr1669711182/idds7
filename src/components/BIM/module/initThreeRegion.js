@@ -1,6 +1,7 @@
-import * as THREE from "three";
+﻿import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createWhiteBuildings, loadBuildingData } from "./createWhiteBuildings.js";
+import { loadEnvBuildings, createExtrudedBuildings } from "../building3d.js";
 import { load3DBuilding } from "./createBIMBuilding.js";
 import {
   loadFireFighter,
@@ -21,6 +22,16 @@ let fireTruck = undefined;
 let isMicroRegion = true;
 let mixer;
 let fireFloor = 0
+
+
+async function attachEnvBuildings(group) {
+  try {
+    const features = await loadEnvBuildings();
+    createExtrudedBuildings(features, group, { color: 0xe8eef7, opacity: 0.7 });
+  } catch (e) {
+    console.warn("[building3d] load failed", e);
+  }
+}
 let needleBox
 
 export const initThree = async (container, allFloors, dispatchStore, route, data = undefined) => {
@@ -136,6 +147,7 @@ const updateAllData = async (allFloors, dispatchStore, route, data) => {
     createWhiteBuildings(buildingsGroup, dataZH);
   }
   await createBuildingByFloors(buildingsGroup, allFloors, dataZH, isMicroRegion);
+  await attachEnvBuildings(buildingsGroup);
   loadAroundData(buildingsGroup)
   await createTrappedPerson(buildingsGroup, dataZH, fireFloor)
 
@@ -170,6 +182,7 @@ const loadData = async (allFloors, dispatchStore, route) => {
     createWhiteBuildings(buildingsGroup, dataZH);
   }
   await createBuildingByFloors(buildingsGroup, allFloors, dataZH, isMicroRegion);
+  await attachEnvBuildings(buildingsGroup);
   loadAroundData(buildingsGroup)
   await createTrappedPerson(buildingsGroup, dataZH, fireFloor)
   //isPointInPolygon(113.54581672, 22.22169833);
@@ -317,3 +330,4 @@ async function isPointInPolygon(lon, lat) {
     return false;
   }
 }
+

@@ -69,8 +69,7 @@ const mapZoomLevel = ref(ZOOM.INIT);
 const navPanelRef = ref<InstanceType<typeof NavPanel> | null>(null);
 
 // == 抽离出的 Popups 管理 ==
-// useMapPopups() 返回普通对象，必须用 reactive() 包装才能保持 ref 响应式
-const popups = reactive(useMapPopups());
+const popups = useMapPopups();
 const { carPopupRef } = popups;
 
 const getCarPopupElement = () => {
@@ -199,10 +198,8 @@ const setTempFrontendLayerVisible = (id: string, visible: boolean) => {
     [TEMP_FRONTEND_LAYER_IDS.INCOMING_CALL]: incomingCallManager,
   };
   const manager = managerMap[id];
-  console.log("🚀 ~ setTempFrontendLayerVisible ~ manager:", manager)
   if (!manager) return false;
   manager.setVisible(visible);
-  console.log(id, "🚀 ~ setTempFrontendLayerVisible ~ visible:", visible)
   if (visible) {
     if (id === TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER) fetchAlarmHotspots();
   }
@@ -385,7 +382,6 @@ const initMap = () => {
     });
   }
 
-  console.log("🚀 ~ initMap ~ popups.jrAlarmPopupRef.value:", popups.jrAlarmPopupRef.value)
   if (popups.jrAlarmPopupRef.value) {
     jrAlarmManager = mountJRAlarmLayer({
       map,

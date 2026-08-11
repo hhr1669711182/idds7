@@ -1,0 +1,1 @@
+var e={DAY:`DAY`,NIGHT:`NIGHT`},t=[`/login`];export{e as n,t};

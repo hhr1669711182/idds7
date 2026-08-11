@@ -27,7 +27,7 @@
       "Execute"
     ],
     "defaultPrompt": [
-      "使用 $gis-dev-workflow:gis-analysis 分析 mds/minmax_output 下的架构与产品资料。",
+      "使用 $gis-dev-workflow:gis-analysis 分析 mds/output 下的架构与产品资料。",
       "使用 $gis-dev-workflow:gis-design 根据已确认的分析结果完成五层架构设计。",
       "使用 $gis-dev-workflow:gis-test 验证当前实现并生成验收证据。"
     ]

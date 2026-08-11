@@ -1,0 +1,20 @@
+{
+  "kind": "webpage_snapshot",
+  "url": "https://github.com/AlexAnys/openclaw-feishu/blob/main/README.md",
+  "final_url": "https://github.com/AlexAnys/openclaw-feishu/blob/main/README.md",
+  "status": 200,
+  "read_status": "blocked",
+  "content_type": "text/html; charset=utf-8",
+  "fetched_at": "2026-07-16T10:02:24.444807600+00:00",
+  "title": "openclaw-feishu/README.md at main · AlexAnys/openclaw-feishu · GitHub",
+  "description": "飞书插件 × OpenClaw 保姆级配置指南 & 社区支持 （0328 - 更新飞书cli调用指南，增加 API 耗尽根因排查、Lark Webhook 内网穿透方案） - openclaw-feishu/README.md at main · AlexAnys/openclaw-feishu",
+  "site_name": "GitHub",
+  "published_at": null,
+  "source_type": "source_repo",
+  "text": "",
+  "quote_candidates": [],
+  "word_count": 0,
+  "truncated": false,
+  "blocked": true,
+  "source": "direct_http"
+}

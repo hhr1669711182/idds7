@@ -1,3 +1,11 @@
+<!--
+ * @Author: hhr
+ * @Date: 2026-04-16 14:00:56
+ * @LastEditTime: 2026-08-10 18:54:05
+ * @LastEditors: hhr
+ * @Description: 文件描述
+ * @FilePath: \ids-gis-web\src\layout\MainLayout.vue
+-->
 <template>
   <div class="common-layout h-full bg-gray-50/50">
     <router-view v-slot="{ Component }">
@@ -6,7 +14,7 @@
       </keep-alive>
     </router-view>
     
-    <bottomNav />
+    <!-- <bottomNav /> -->
   </div>
 </template>
 <script setup lang="ts">

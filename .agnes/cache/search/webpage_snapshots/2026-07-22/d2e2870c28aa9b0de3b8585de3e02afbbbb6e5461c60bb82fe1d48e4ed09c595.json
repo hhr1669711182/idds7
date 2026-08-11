@@ -1,0 +1,26 @@
+{
+  "kind": "webpage_snapshot",
+  "url": "https://docs.pencil.dev/getting-started/installation",
+  "final_url": "https://docs.pencil.dev/getting-started/installation",
+  "status": 200,
+  "read_status": "ok",
+  "content_type": "text/html; charset=utf-8",
+  "fetched_at": "2026-07-22T09:46:58.127245900+00:00",
+  "title": "Installation",
+  "description": "pen.dev fundamentally increases your engineering speed by bringing designing directly into your preferred IDE.",
+  "site_name": "pen.dev",
+  "published_at": null,
+  "source_type": "documentation",
+  "text": "Getting Started Installation Copy page Installation pen.dev is available as an IDE extension and a standalone desktop application. Choose the option that best fits your workflow. VS Code Extension Installation Open VS Code Go to Extensions (Cmd/Ctrl + Shift + X) Search for “pen.dev” Click Install Verification Create a new file with a .pen extension (e.g., test.pen ) Open the file Look for the pen.dev icon in the top-right corner of the editor If you don’t see the icon: Open Command Palette (Cmd/Ctrl + Shift + P) Search for “pen.dev” to see available commands Check that the extension is enabled in your Extensions panel Cursor Extension Installation Open Cursor Go to Extensions Search for “pen.dev” Click Install Verification Same as VS Code - create a .pen file and verify the pen.dev icon appears. Common Issues Extension doesn’t connect: Ensure Claude Code is logged in ( claude CLI) Complete the activation process Check that pen.dev MCP server is connected Don’t see the prompt editor/prompt box: Check activation/login status Restart Cursor Reinstall the extension if issues persist “You need Cursor Pro” message: This may occur depending on Cursor’s plan/tooling restrictions Check your Cursor subscription status Desktop Application macOS Download: Get the latest .dmg from the pen.dev website or releases page Drag pen.dev to your Applications folder Launch pen.dev First Launch: macOS may ask you to verify the app (right-click → Open if you see a security warning) Complete the activation process Login to Claude Code if you plan to use AI features Linux Supported: pen.dev runs on Linux Download the appropriate package for your distribution Known Issues: Some Wayland/Hyprland UI issues may occur X11 environments are more stable Installation: # Example for .deb package sudo dpkg -i pencil- * .deb # Example for .AppImage chmod +x pencil- * .AppImage ./pencil-*.AppImage Windows Desktop App: pen.dev runs on Windows Windows users can also use the VS Code or Cursor extension Extension (Windows): Follow the VS Code or Cursor installation instructions above Works the same as on macOS/Linux Claude Code CLI pen.dev’s AI features require Claude Code to be installed and authenticated. Installation # Install Claude Code CLI npm install -g @anthropic-ai/claude-code-cli # Or using the official installer curl https://claude.ai/cli/install.sh | sh Authentication # Login to Claude Code claude # Follow the browser authentication flow Verification # Check that you're logged in claude --version MCP Server The pen.dev MCP (Model Context Protocol) server runs automatically when you use pen.dev. It provides AI assistants with tools to read and manipulate .pen files. Automatic Setup The MCP server starts when you open pen.dev It runs locally on your machine No additional configuration needed for basic use Verification In Cursor: Open Settings → Tools & MCP Verify pencil appears in the MCP server list In Codex CLI: Run pen.dev first Open Codex Run /mcp pencil should appear in the MCP list Post-Installation After installing pen.dev: Complete activation - You’ll need to activate pen.dev with your email Login to Claude Code - Required for AI features Open the welcome file - Right-click canvas → Open Welcome File Create your first design - See how to create a .pen file Updating pen.dev VS Code/Cursor Extension Extensions update automatically by default. To manually update: Go to Extensions Find pen.dev Click Update if available Desktop App The app will notify you when updates are available Download and install the latest version from the website Troubleshooting Installation Extension installed but doesn’t connect: Verify Claude Code is logged in Complete the activation process Restart your IDE Activation email not received: Check spam/junk folder Try a different email address Reinstall the extension “Invalid API key” or “Please run /login”: Run claude CLI and complete authentication Ensure no conflicting auth configurations (environment keys, custom providers) See the full Troubleshooting guide for more issues and solutions. Last updated on July 20, 2026 pen.dev Documentation Authentication",
+  "quote_candidates": [
+    "Getting Started Installation Copy page Installation pen.",
+    "dev is available as an IDE extension and a standalone desktop application.",
+    "Choose the option that best fits your workflow.",
+    "VS Code Extension Installation Open VS Code Go to Extensions (Cmd/Ctrl + Shift + X) Search for “pen.",
+    "dev” Click Install Verification Create a new file with a ."
+  ],
+  "word_count": 638,
+  "truncated": false,
+  "blocked": false,
+  "source": "direct_http"
+}

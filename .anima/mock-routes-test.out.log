@@ -1,0 +1,4 @@
+Mock WebSocket server listening on ws://0.0.0.0:8791/
+HTTP API: http://0.0.0.0:8791/api/route-plan-request
+Broadcast API: POST http://0.0.0.0:8791/api/broadcast-route-plan
+Push interval: 60000ms

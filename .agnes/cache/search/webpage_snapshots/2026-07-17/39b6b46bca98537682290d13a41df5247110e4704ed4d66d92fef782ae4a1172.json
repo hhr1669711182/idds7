@@ -1,0 +1,26 @@
+{
+  "kind": "webpage_snapshot",
+  "url": "https://jishuzhan.net/article/2044380809528934401",
+  "final_url": "https://jishuzhan.net/article/2044380809528934401",
+  "status": 200,
+  "read_status": "ok",
+  "content_type": "text/html;charset=utf-8",
+  "fetched_at": "2026-07-17T02:09:38.886229800+00:00",
+  "title": "Hermes Agent喂饭级教程：安装、迁移 OpenClaw、接入飞书全流程 - 技术栈",
+  "description": "大家好，我是小肥肠。Openclaw 还没完全摸透，hermes-agent 又来了，这几天社群里都在问安装教程，我去看了一下相关资料发现确实值得卷一下。这篇教程就教大家在自己的 云服务器 上从0到1将hermes-agent安装并接入 飞书 ，感兴趣就码住跟练哦~",
+  "site_name": null,
+  "published_at": null,
+  "source_type": "unknown",
+  "text": "技术栈 Hermes Agent喂饭级教程：安装、迁移 OpenClaw、接入飞书全流程 后端小肥肠 2026-04-15 19:42 大家好，我是小肥肠。 Openclaw 还没完全摸透， hermes-agent 又来了，这几天社群里都在问安装教程，我去看了一下相关资料发现 确实值得卷一下 。 这篇教程就教大家在自己的 云服务器 上从0到1将hermes-agent安装并接入 飞书 ，感兴趣就码住跟练哦~ 1. 前言 hermes-agent （后文简称hermes）是 Nous Research 开源的 AI Agent 框架，定位是 会自我成长的 Agent 。它有一个内置的学习闭环，用完之后会自动沉淀 skill、优化记忆、跨会话召回历史，还能对你这个用户建立越来越深的画像。 说白了，就是用得越久越聪明。 贴一下hermes仓库地址： github.com/NousResearc... 我之前一直在用 Openclaw ，用得还算顺手，但看到 hermes 的介绍之后有点心动：支持的模型更多、会自动沉淀学习、还能从 Openclaw 一键迁移数据。这几点戳到我了，于是决定试试。 2. hermes-agent还是Openclaw？ 说实话，在决定装 hermes 之前，我纠结了一下：我已经在用 Openclaw 了，有没有必要再折腾一个新的？于是我认真对比了一下两者，结论是：可以混用，各有各的位置。 对比维度 Openclaw hermes-agent 定位 自托管 AI Agent 网关，专注多渠道消息路由与任务执行 自我成长型 AI Agent，专注长期记忆与自动学习闭环 支持模型 接入主流 LLM 提供商，通过配置切换，MIT 开源无锁定 支持 200+ 模型，随时 /model 切换，无锁定 消息平台 飞书、微信、QQ、Telegram、Discord、WhatsApp、Signal 等，国内平台支持好 Telegram、Discord、Slack、WhatsApp、Signal 等，国内平台支持相对少一些 学习能力 无内置学习闭环，记忆依赖手动维护 内置学习闭环，自动沉淀 skill、优化记忆、跨会话召回，越用越聪明 上手难度 安装简单，Web 控制台可视化操作，新手友好 命令行安装，支持从 Openclaw 一键迁移数据 适合场景 日常任务自动化、多平台消息接入、多 Agent 路由管理 需要长期记忆、自动学习、复杂任务沉淀的场景 还有一点让我比较在意：hermes 可以直接从 ``Openclaw`` 迁移数据，包括 skill、记忆、API key、消息平台配置，基本上无缝衔接，不用从零开始。 两个工具并不冲突。我的思路是：Openclaw 继续跑着处理日常任务，hermes 作为补充，用来跑一些需要长期记忆和自动学习的场景。 前几天看一个博主说它俩之间可以互相通信协同跑任务，这块我也打算在后续教程中实践。 3. hermes-agent安装与集成至飞书 我把 Openclaw 跟 hermes 都安装到了同一个云服务器上，首先来到云服务器命令行面板，输入命令： bash 复制代码 curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash 安装中途它会显示 是否要迁移Openclaw旧数据 ，输入 y 后按一下键盘上的回车按钮： 从下图可以看出Openclaw中的skill被迁移到了hermes目录下： 到了 hermes 安装配置环节，输入 1 后按一下键盘上的回车键，选择模型服务商，这边我选择的是 MiniMax ，按下键盘上的回车键，后续自行输入key配置： 进入消息平台绑定环节，选择即刻绑定 set upmessaging now ，按下回车键，可以看到支持的消息平台很多，还有国内主流的 飞书 ， 微信 ， QQ 这些，输入 11 ，按下回车键开始绑定飞书消息通道： 由下图 How would you like to set up Feishu/Lark？ 可知有两种配置 飞书消息平台 的方式，第一种是自动创建飞书机器人，第二种是输入已有飞书应用的 AppID 和 AppSecret ，我选择的第一种，按下键盘上的回车键： 等一会就会弹出 飞书机器人创建网址 。 点击进入网址后 输入应用信息 创建飞书应用。 回到服务器命令行面板，在 How should direct message be authorized？ 输入 1 ，按下回车键，这个选项的意思是使用 私聊配对授权 ，适合个人及小团队自用，最安全省心，输入后按下键盘上的回车键： 在 How should group chats be hanled？ 中选择第一个选项按下回车键： 如下图把网关安装成 systemd 系统服务，在键盘上输入 y 后按下回车键： 在选择网关运行方式的时候选择第二个(云服务器、生产环境、7×24 小时在线)，如果你是本地电脑就选 1 ： 在 run the system gateway service as which user 处输入 root ，按下回车键： 在 start the service now ？处输入 y ，按下回车键： 在 launch hermes chat now 处输入y，按下回车键，出现以下界面代表安装完成了： 回到刚刚创建好飞书机器人对话页面，输入 \"你好\" ，出现配对指令： 将指令粘贴到服务器命令行面板： 接下来就能通过飞会话操作 hermes-agent 了： 看一下之前 Openclaw 的skill有没有被迁移到 hermes ，由下图可知迁移成功。 到这里，hermes-agent已经安装成功了，之后将给大家更新更多 hermes 相关教程，感兴趣的小伙伴可以持续关注哦~~ 4. 结语 如果你本身就在用 Openclaw，其实完全可以像我这样先装起来试试，不需要一下子全量切换。先跑通安装、把消息平台接上，再慢慢感受它和 Openclaw 的区别，这样最稳。 如本次分享对你有帮助，欢迎一键三连支持一下小肥肠，我们下期再见~ 人工智能 agent 上一篇： Reg Organizer：安全清理注册表与优化系统性能的实用教程 下一篇： 大人工智能时代下前端界面全新开发模式的思考（三） 相关推荐 哈__ 3 分钟前 MCP 协议落地实践：国产化数据库 AI 一站式 SQL 诊断调优方案 数据库 · 人工智能 · sql 2501_91106766 5 分钟前 市政标杆视角：标准化建设+精品工程，叁仟智慧灯杆打造杭州市政新基建样板 人工智能 集之互动 6 分钟前 破解出海传播壁垒 集之互动AI TVC双维适配助力品牌全球化精准传播 人工智能 长风230 7 分钟前 Day 17: 突破 AOB 框架霸权 —— 插件界面重构与大屏呈现 人工智能 · 安全 用户93851563507 8 分钟前 知识库预处理实战：从URL加载到语义分块的全链路解析 javascript · 人工智能 · 全栈 何时梦醒 9 分钟前 🧠 大模型知识蒸馏：小模型如何\"偷师\"大模型？ 人工智能 刘棕霆 13 分钟前 企业测试造数为什么这么难？我把熟手经验做成了一个可交付的造数 Skill aigc · agent · 测试 萧青山 13 分钟前 AI+HI人机协同范式：从ElementsClaw到政务智能体的分层进化论 人工智能 · 机器学习 · 政务 · ai+hi人机协同 武子康 17 分钟前 HunyuanVideo 全家族选型：原版 13B / I2V / Avatar / Foley / 1.5 8.3B 怎么分工 人工智能 · llm · aigc wenzhangli7 17 分钟前 OODER Studio设计工具导入体系深度解析 人工智能 · 自动化 热门推荐 01 2026年7月AI圈大地震：GPT-5.6被政府限制、Claude入驻Slack、Anthropic自研芯片 02 GitHub 镜像站点 03 AI科技热点日报 | 2026年07月01日 04 幻兽帕鲁 - 服务器管理员权限与 GM 命令完全指南 05 AI 编程 IDE 全景解析 2026：Agent 全面接管开发链路 06 国内可直接用、免费额度/永久免费的大模型API清单（含 SiliconFlow、火山、阿里、智谱、百度、Kimi、DeepSeek、DMXAPI 等） 07 Codex 下载安装指南：Windows 和 macOS 官方版下载 08 2026 国产 AI 大模型横评：DeepSeek、通义千问、Kimi、文心一言、星火、豆包谁更能打？ 09 2026 年 AI 大模型 & AI 编程工具实战全总结 10 GPT-5.5 对比 GPT-5.6 Sol、Terra、Luna：官方性能数据与选型分析",
+  "quote_candidates": [
+    "技术栈 Hermes Agent喂饭级教程：安装、迁移 OpenClaw、接入飞书全流程 后端小肥肠 2026-04-15 19:42 大家好，我是小肥肠。",
+    "Openclaw 还没完全摸透， hermes-agent 又来了，这几天社群里都在问安装教程，我去看了一下相关资料发现 确实值得卷一下 。",
+    "这篇教程就教大家在自己的 云服务器 上从0到1将hermes-agent安装并接入 飞书 ，感兴趣就码住跟练哦~ 1.",
+    "前言 hermes-agent （后文简称hermes）是 Nous Research 开源的 AI Agent 框架，定位是 会自我成长的 Agent 。",
+    "它有一个内置的学习闭环，用完之后会自动沉淀 skill、优化记忆、跨会话召回历史，还能对你这个用户建立越来越深的画像。"
+  ],
+  "word_count": 403,
+  "truncated": false,
+  "blocked": false,
+  "source": "direct_http"
+}

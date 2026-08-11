@@ -1,0 +1,20 @@
+{
+  "kind": "webpage_snapshot",
+  "url": "https://platform.minimaxi.com/docs/token-plan/claude-code",
+  "final_url": "https://platform.minimaxi.com/docs/token-plan/claude-code",
+  "status": 200,
+  "read_status": "blocked",
+  "content_type": "text/html; charset=utf-8",
+  "fetched_at": "2026-07-16T10:16:38.100640400+00:00",
+  "title": "Claude Code - MiniMax 开放平台文档中心",
+  "description": "在 Claude Code 中使用最新的 MiniMax M 系列模型进行 AI 编程。",
+  "site_name": "MiniMax 开放平台文档中心",
+  "published_at": null,
+  "source_type": "unknown",
+  "text": "",
+  "quote_candidates": [],
+  "word_count": 0,
+  "truncated": false,
+  "blocked": true,
+  "source": "direct_http"
+}

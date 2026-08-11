@@ -1,0 +1,6 @@
+- [x] `MapCore` 类支持通过 `.use()` 动态注册插件并能在实例化时自动初始化。
+- [x] 所有业务模块（如 `useBaseMap`、`useFeatureStyle`、`useOverlay` 等）均使用 Class 面向对象或组合式 Hook 实现，解耦视图框架（Vue/React）。
+- [x] 代码具备完整的 TypeScript 类型声明和方法重载支持。
+- [x] `useBusUpWMS` 模块允许外部注入 fetch/alova 等请求客户端。
+- [x] 提供一套完整的 `index.ts` ESM 导出文件，方便外部引入和 NPM 打包发布。
+- [x] `useDraw` 和 `useMapStatus` 支持常用交互、状态控制及清理操作（防内存泄漏）。

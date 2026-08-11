@@ -100,6 +100,7 @@ onActivated(() => {
   <bigPanel />
   <config @save="handleConfigSave" />
   <layers :onLayerChange="handleLayerChange" />
+  
 </template>
 
 <style scoped>

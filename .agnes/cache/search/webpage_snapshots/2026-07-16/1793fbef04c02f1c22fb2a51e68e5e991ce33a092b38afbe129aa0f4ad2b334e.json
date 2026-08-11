@@ -1,0 +1,20 @@
+{
+  "kind": "webpage_snapshot",
+  "url": "https://docs.insforge.dev/mcp-setup",
+  "final_url": "https://docs.insforge.dev/mcp-setup",
+  "status": 200,
+  "read_status": "blocked",
+  "content_type": "text/html; charset=utf-8",
+  "fetched_at": "2026-07-16T09:44:35.625283800+00:00",
+  "title": "Set up MCP for Cursor, Claude, Windsurf, and more - InsForge Docs",
+  "description": "Connect Cursor, Claude, Windsurf, and other editors to InsForge over MCP so AI agents can query your database, auth, storage, and functions.",
+  "site_name": "InsForge Docs",
+  "published_at": null,
+  "source_type": "documentation",
+  "text": "",
+  "quote_candidates": [],
+  "word_count": 0,
+  "truncated": false,
+  "blocked": true,
+  "source": "direct_http"
+}
