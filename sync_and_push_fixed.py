@@ -6,7 +6,7 @@ from datetime import datetime
 
 SRC_DIR = r"D:\work\telewave\ids\ids-gis-web"
 DEST_DIR = r"C:\Users\16697\Desktop\github\TW\idds7"
-LOG_FILE = os.path.join(SRC_DIR, "sync_log.txt")
+LOG_FILE = os.path.join(DEST_DIR, "sync_log.txt")
 
 EXCLUDE_DIRS = ['.git', 'node_modules', '__pycache__', '.venv', 'venv', '.idea', '.vscode']
 EXCLUDE_FILES = ['Thumbs.db', '*.pyc']
