@@ -15,6 +15,7 @@ declare module 'vue' {
     Brp: typeof import('./../components/map/brp.vue')['default']
     Card: typeof import('./../components/map/card.vue')['default']
     CardSetting: typeof import('./../components/map/component/card-setting.vue')['default']
+    CesiumDuty: typeof import('./../components/BIM/CesiumDuty.vue')['default']
     CircleForm: typeof import('./../components/map/form/circleForm.vue')['default']
     Clear: typeof import('./../components/map/clear.vue')['default']
     Compass: typeof import('./../components/map/compass.vue')['default']

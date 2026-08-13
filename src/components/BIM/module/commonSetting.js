@@ -1,4 +1,4 @@
-﻿/*
+/*
  * @Author: huanghuanrong
  * @Date: 2026-05-12 18:35:02
  * @LastEditTime: 2026-05-26 16:35:41
@@ -10,7 +10,7 @@ import * as turf from '@turf/turf'
 import { CoordinateUtil } from './transformCoordinate'
 
 export const commonSetting = {
-  basePoint: { baseLon: 113.9469, baseLat: 22.5390 }, // 软件园一期
+  basePoint: { baseLon: 113.93499, baseLat: 22.54678 },
   disasterBuildingID: "bld8147cdcc0891edb6e86605eed6",
   // basePoint: { baseLon: 113.93481, baseLat: 22.54756 },
   // disasterBuildingID: "bld2b83f576b5ff0cbb62cb67b9bb",
@@ -112,4 +112,3 @@ const calculatePath = (fullPath) => {
   }
   return fullPath.slice(idx);
 };
-

@@ -1,7 +1,9 @@
 import * as THREE from "three";
 import * as ClipperLib from "js-clipper";
+import * as turf from '@turf/turf'
 import { lonLatToLocalCoord, loadGLTF } from "./commonThree.js";
 import { commonSetting } from "./commonSetting.js";
+import { createClearTextSprite } from "./createAroundFacilities.js";
 
 const WALL_HEIGHT = commonSetting.wallAndFloor.WALL_HEIGHT;
 const WALL_THICKNESS = commonSetting.wallAndFloor.WALL_THICKNESS;
@@ -30,6 +32,24 @@ export async function createBuildingByFloors(
   //增加楼顶
   if (isMicroRegion) groupFloor.add(floor);
   buildingsGroup.add(groupFloor);
+  const text = `总楼高：${floors}F / ${floors*3}m`
+  drawTotalFloorText(buildingsGroup, dataZH.disasterBuilding, addH, text)
+}
+
+function drawTotalFloorText(buildingsGroup, feat, addH, text) {
+  const centerPoint = turf.centroid(feat) 
+  const coor = centerPoint.geometry.coordinates
+  const coord = lonLatToLocalCoord(coor[0], coor[1]); 
+  const localCoord = new THREE.Vector3(coord.x, addH, -coord.y)
+
+  const sprite = createClearTextSprite(text, {
+      fontSize: 9,
+      padding: 2,
+      bgColor: 'rgba(0,0,0,0.6)'
+    });
+  
+  sprite.position.copy(localCoord.clone().add(new THREE.Vector3(0.8, 0, 0)));
+  buildingsGroup.add(sprite);
 }
 
 async function createBuilding(allFloors, points, i) {

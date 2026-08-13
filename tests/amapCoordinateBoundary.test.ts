@@ -1,11 +1,3 @@
-/*
- * @Author: hhr
- * @Date: 2026-05-22 14:34:53
- * @LastEditTime: 2026-08-06 09:51:23
- * @LastEditors: hhr
- * @Description: 文件描述
- * @FilePath: \ids-gis-web\tests\amapCoordinateBoundary.test.ts
- */
 import test from "node:test";
 import assert from "node:assert/strict";
 

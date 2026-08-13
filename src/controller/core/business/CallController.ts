@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-07-01 11:11:28
- * @LastEditTime: 2026-08-05 18:30:31
+ * @LastEditTime: 2026-07-10 16:56:40
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\controller\core\business\CallController.ts
@@ -48,7 +48,7 @@ export class CallController {
 
     view.fitBounds({
       geometry: buffer,
-      padding: [50, 50, 50, 50]
+      // padding: [50, 50, 50, 50]
     });
   }
 

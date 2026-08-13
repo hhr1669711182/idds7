@@ -1,7 +1,7 @@
 <!--
  * @Author: huanghuanrong
  * @Date: 2026-04-16 14:00:56
- * @LastEditTime: 2026-08-10 19:34:38
+ * @LastEditTime: 2026-08-13 11:19:27
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\components\map\brp.vue
@@ -48,7 +48,7 @@ onMounted(() => {
   display: block;
   position: absolute;
   background: #ffffffb3;
-  bottom: 18px;
+  bottom: 8px;
   right: 8px;
   color: #000000bf;
   padding: 2px 6px;

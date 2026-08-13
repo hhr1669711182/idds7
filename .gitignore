@@ -1,9 +1,40 @@
-# Sync scripts and logs - not part of the source repo
-sync_and_push_fixed.py
-sync_and_push.py
-sync_log.txt
-sync_and_push.bat
-run_sync_manual.bat
-setup_scheduler.bat
-setup_scheduler.ps1
-scripts/sync_and_push_recipe.md
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+# server
+dist
+dist-ssr
+dist-lib
+*.local 
+*/types/auto-imports.d.ts
+*/types/components.d.ts
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.trae*
+/src/**/*.md
+*.anima*
+*.agnes*
+*.hermes*
+mds/hhr*
+skills*
+
+# jenkins
+.dockerignore
+Dockerfile
+nginx.conf

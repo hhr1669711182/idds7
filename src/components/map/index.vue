@@ -1,7 +1,7 @@
 <!--
  * @Author: hhr
  * @Date: 2026-05-21 19:13:51
- * @LastEditTime: 2026-07-09 15:32:04
+ * @LastEditTime: 2026-08-13 11:07:18
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\components\map\index.vue
@@ -100,7 +100,6 @@ onActivated(() => {
   <bigPanel />
   <config @save="handleConfigSave" />
   <layers :onLayerChange="handleLayerChange" />
-  
 </template>
 
 <style scoped>

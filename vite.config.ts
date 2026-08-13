@@ -18,6 +18,7 @@ import VueDevTools from "vite-plugin-vue-devtools";
 import { createSvgIconsPlugin } from "vite-plugin-svg-icons";
 import { fileURLToPath, URL } from "node:url";
 import { resolve } from "node:path";
+import cesium from 'vite-plugin-cesium'
 // import { resolve } from "path";
 
 export default defineConfig(({ mode, command }) => {
@@ -40,6 +41,7 @@ export default defineConfig(({ mode, command }) => {
       vueJsx(),
       // VueDevTools(),
       UnoCSS(),
+      cesium(),
       AutoImport({
         imports: ["vue", "vue-router", "pinia"],
         dts: "src/types/auto-imports.d.ts",

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
  * @LastEditTime: 2026-06-03 18:38:46
@@ -17,7 +17,7 @@ export const ZOOM = { MAX: 20, MIN: 0, INIT: 15 };
 // export const CENTER = [114.3005, 30.5928];
 // export const CENTER = [116.4074, 39.9042];
 // export const CENTER = [113.5437, 22.2657];
-export const CENTER = [113.9469, 22.5390]; // 深圳南山区软件园一期
+export const CENTER = [113.9354071, 22.54831];
 
 
 //水印文字
@@ -57,4 +57,3 @@ export const ANIMATE_TYPES = [
     value: "Bern",
   },
 ];
-

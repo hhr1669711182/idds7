@@ -189,7 +189,7 @@ function createRoadPath(buildingsGroup, pathPoints, color = 0xFAD87C) {
   buildingsGroup.add(line);
 }
 
-function createClearTextSprite(text, options = {}) {
+export function createClearTextSprite(text, options = {}) {
   const dpr = window.devicePixelRatio || 1;
 
   const {

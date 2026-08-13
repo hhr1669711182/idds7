@@ -9,6 +9,7 @@
 import * as THREE from "three";
 import { lonLatToLocalCoord } from "./commonThree.js";
 import { commonSetting } from "./commonSetting.js";
+import * as turf from '@turf/turf'
 //import { dataZH } from "@/data/buildDemo.js";
 
 export const createWhiteBuildings = async (buildingsGroup, dataZH) => { 
@@ -23,8 +24,13 @@ export const createWhiteBuildings = async (buildingsGroup, dataZH) => {
   dataZH.whiteBuilding.forEach((feature) => {
     const buildGuid = feature.properties.building_id;
     const name = feature.properties.short_name;
-    const height = feature.properties.met_upfloors / 10.0;
-    const coordinates = feature.geometry.coordinates[0]; // 提取Polygon轮廓   
+    const height = (feature.properties.met_upfloors ?? 1) / 10.0;
+    let coordinates
+    if(feature.geometry.type == "Polygon"){
+      coordinates = feature.geometry.coordinates[0]; // 提取Polygon轮廓   
+    }else if(feature.geometry.type == "MultiPolygon"){
+      coordinates = feature.geometry.coordinates[0][0]; // 提取Polygon轮廓     
+    }    
 
     const shapePoints = [];
     coordinates.forEach(([lon, lat]) => {
@@ -54,17 +60,21 @@ export const createWhiteBuildings = async (buildingsGroup, dataZH) => {
 };
 
 export const loadBuildingData = async (op) => {
-  const lon = op?.lon ?? commonSetting.basePoint.baseLon 
-  const lat = op?.lat ?? commonSetting.basePoint.baseLat
+  let lon = op?.lon ?? commonSetting.basePoint.baseLon 
+  let lat = op?.lat ?? commonSetting.basePoint.baseLat
 
-  const buildGuid = op?.buildId ?? commonSetting.disasterBuildingID
+  let buildGuid = op?.buildId ?? commonSetting.disasterBuildingID
   const radius = commonSetting.searchRadius
   const url = commonSetting.geoServerUrl
   const ws = commonSetting.gisWorkspace
   const layerName = op?.layer ?? commonSetting.whiteBuilding.layerName
-  const geom = commonSetting.whiteBuilding.geom
+  const geom = commonSetting.whiteBuilding.geom  
 
-  // if(!lon || !lat || !layerName) return
+  if(!lon || !lat) {
+    [lon, lat] = await getBuildingCoordinate(buildGuid)
+    commonSetting.basePoint.baseLon = lon
+    commonSetting.basePoint.baseLat = lat
+  }
 
   const postBody = `
     <wfs:GetFeature service="WFS" version="1.0.0" outputFormat="json"
@@ -90,6 +100,8 @@ export const loadBuildingData = async (op) => {
     body: postBody,
   });
   const data = await res.json();
+  if(!buildGuid) buildGuid = getBuildingID(lon, lat, data)
+
   const whiteBuilding = data.features.filter( item => item.properties.building_id != buildGuid) 
   const disasterBuilding = data.features.find( item => item.properties.building_id === buildGuid) 
   console.log("disasterBuilding ", disasterBuilding)
@@ -98,6 +110,64 @@ export const loadBuildingData = async (op) => {
     aoiBuilding = await loadAOIData(disasterBuilding.properties.aoi_id)
   }
   return { whiteBuilding, disasterBuilding, aoiBuilding }
+};
+
+const getBuildingCoordinate = async (buildingId) => {
+  if(!buildingId) return undefined
+  const layerName = commonSetting.whiteBuilding.layerName 
+  const ws = commonSetting.gisWorkspace
+
+  const postBody = `
+    <wfs:GetFeature service="WFS" version="1.0.0" outputFormat="json"
+    xmlns:wfs="http://www.opengis.net/wfs"
+    xmlns:ogc="http://www.opengis.net/ogc"
+    xmlns:gml="http://www.opengis.net/gml">
+    <wfs:Query typeName="${layerName}">
+        <ogc:Filter>
+          <ogc:PropertyIsEqualTo>
+            <ogc:PropertyName>building_id</ogc:PropertyName>
+            <ogc:Literal>${buildingId}</ogc:Literal>
+          </ogc:PropertyIsEqualTo>
+        </ogc:Filter>
+    </wfs:Query>
+    </wfs:GetFeature>`;
+
+  const res = await fetch(`geoserver/${ws}/ows`, {
+    method: "POST",
+    headers: { "Content-Type": "text/xml" },
+    body: postBody,
+  });
+  const data = await res.json();
+  
+  if(!data.features || (data.features.length == 0)) return undefined
+  const geo = data.features[0].geometry  
+  const centerPoint = turf.centroid(geo);
+  const [lng, lat] = centerPoint.geometry.coordinates;  
+  return [lng, lat]
+}
+
+const getBuildingID = (lon, lat, data) => {
+  if (data.features.length == 0) return undefined;
+
+  const pt = turf.point([lon, lat]);
+  let buildingId;
+  let dist = Number.MAX_SAFE_INTEGER;
+  data.features.forEach((item) => {
+    const coor = item.geometry.coordinates;
+    let poly;
+    if (item.geometry.type == "Polygon") {
+      poly = turf.polygon(coor);
+    } else {
+      poly = turf.multiPolygon(coor);
+    }
+   
+    const currDist = turf.pointToPolygonDistance(pt, poly, { units: "meters" });
+    if (currDist < dist) {      
+      dist = currDist
+      buildingId = item.properties.building_id;   
+    }
+  });
+  return buildingId;
 };
 
 export const loadAOIData = async(id) => {
@@ -128,6 +198,11 @@ export const loadAOIData = async(id) => {
   const data = await res.json();
   
   if(!data.features || (data.features.length == 0)) return undefined
-  const coordinates = data.features[0].geometry.coordinates[0]  
+  let coordinates
+  if(data.features[0].geometry.type == "Polygon"){
+    coordinates = data.features[0].geometry.coordinates[0]
+  }else if(data.features[0].geometry.type == "MultiPolygon"){
+    coordinates = data.features[0].geometry.coordinates[0][0]  
+  } 
   return coordinates
 }

@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-04-29 18:16:57
- * @LastEditTime: 2026-06-09 16:30:51
+ * @LastEditTime: 2026-08-13 10:45:26
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\service\geoserver.ts
@@ -21,8 +21,8 @@ export interface WMSFeatureInfoParams {
   layers: string
   query_layers: string
   bbox: string
-  width: number
-  height: number
+  width?: number
+  height?: number
   x: number
   y: number
   srs?: string  // 'EPSG:4326' | 'EPSG:3857'

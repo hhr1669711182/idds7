@@ -93,8 +93,17 @@ export const staticRoutes: RouteRecordRaw[] = [
     name: ROUTE_NAMES.VIEWER_MICRO_REGION,
     component: () => import('@/components/BIM/ThreejsViewerRegion.vue'),
     meta: {
-      title: '模型',
+      title: '微区域',
       query: 'inquiryBuilding',
+    },
+  },
+  {
+    path: '/CesiumDuty',
+    name: ROUTE_NAMES.VIEWER_DUTY,
+    component: () => import('@/components/BIM/CesiumDuty.vue'),
+    meta: {
+      title: '值守',
+      //query: 'inquiryBuilding',
     },
   },
   {

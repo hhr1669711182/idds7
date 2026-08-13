@@ -172,6 +172,7 @@ export class CircleQueryTool extends BaseTool {
         }),
         zIndex: 100,
       });
+      console.log("🚀 ~ CircleQueryTool ~ updateWMSLayer ~ this.wmsLayer:", this.wmsLayer)
       this.map.addLayer(this.wmsLayer);
     } else {
       const source = this.wmsLayer.getSource();

@@ -96,7 +96,7 @@ onMounted(() => {
   width: 52px;
   position: absolute;
   right: 18px;
-  bottom: 58px;
+  bottom: 38px;
   z-index: 5;
   background: url(../../assets/earth-navi-control-pc4.png) 0% 0% / 266px
     no-repeat;
