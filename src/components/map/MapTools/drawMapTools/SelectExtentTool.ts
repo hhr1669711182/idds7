@@ -1,4 +1,4 @@
-import { DragZoom } from "ol/interaction";
+﻿import { DragZoom } from "ol/interaction";
 import { always } from "ol/events/condition";
 import { BaseTool } from "./BaseTool";
 import Map from "ol/Map";

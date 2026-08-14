@@ -1,3 +1,4 @@
+﻿import { markRaw, toRaw } from "vue";
 import { Draw, Modify } from "ol/interaction";
 import TileLayer from "ol/layer/Tile";
 import ImageLayer from "ol/layer/Image";
@@ -25,8 +26,10 @@ export class CircleQueryTool extends BaseTool {
   listeners: EventsKey[] = [];
   radiusTooltip!: Overlay;
   radiusTooltipElement!: HTMLElement;
-  wmsLayer!: TileLayer<TileWMS> | ImageLayer<ImageWMS>;
-  private moveendTimer: ReturnType<typeof setTimeout> | null = null;
+  // 实际只使用 ImageWMS,这里收紧类型
+  wmsLayer!: ImageLayer<ImageWMS>;
+  private moveendThrottle: ReturnType<typeof setTimeout> | null = null;
+  private moveendLeading: boolean = false;
 
   drawStyle = new Style({
     stroke: new Stroke({
@@ -54,18 +57,18 @@ export class CircleQueryTool extends BaseTool {
     this.radiusTooltipElement.style.borderRadius = "4px";
     this.radiusTooltipElement.style.whiteSpace = "nowrap";
 
-    this.radiusTooltip = new Overlay({
+    this.radiusTooltip = markRaw(new Overlay({
       element: this.radiusTooltipElement,
       offset: [15, 0],
       positioning: "center-left",
-    });
+    }));
     this.map.addOverlay(this.radiusTooltip);
 
-    this.draw = new Draw({
+    this.draw = markRaw(new Draw({
       source: this.vectorLayer?.getSource(),
       type: "Circle",
       style: this.drawStyle,
-    });
+    }));
 
     this.map.addInteraction(this.draw);
 
@@ -91,18 +94,18 @@ export class CircleQueryTool extends BaseTool {
       feature.setId(this.uuid);
       feature.setStyle(this.drawStyle);
 
-      // 绘制结束，触发一次 WMS 查询
+      // 绘制结束,触发一次 WMS 查询
       this.updateRadiusAndWMS(feature.getGeometry() as Circle, true);
 
       this.map.removeInteraction(this.draw);
 
-      const featureCollection = new Collection([feature]);
-      this.modify = new Modify({
+      const featureCollection = markRaw(new Collection([feature]));
+      this.modify = markRaw(new Modify({
         features: featureCollection,
-      });
+      }));
       this.map.addInteraction(this.modify);
 
-      // Modify 拖拽结束，触发 WMS 查询
+      // Modify 拖拽结束,触发 WMS 查询
       const modifyEndKey = this.modify.on("modifyend", (e: any) => {
         const features = e.features.getArray();
         if (features.length > 0) {
@@ -112,10 +115,18 @@ export class CircleQueryTool extends BaseTool {
       });
       this.listeners.push(modifyEndKey);
 
-      // 地图缩放/平移结束后，300ms 防抖后触发 WMS 查询
+      // 地图缩放/平移结束后,节流触发 WMS 查询
+      // 关键:节流(throttle)而非防抖(debounce),避免连续 moveend 累积
+      // 第一次 moveend 立即执行,后续 300ms 内只执行最后一次
       const moveEndKey = this.map.on("moveend", () => {
-        if (this.moveendTimer) clearTimeout(this.moveendTimer);
-        this.moveendTimer = setTimeout(() => {
+        if (this.moveendLeading) {
+          // 已经有定时器在等,跳过
+          return;
+        }
+        this.moveendLeading = true;
+        this.moveendThrottle = setTimeout(() => {
+          this.moveendLeading = false;
+          this.moveendThrottle = null;
           if (this.wmsLayer) {
             const geom = feature.getGeometry() as Circle;
             this.updateRadiusAndWMS(geom, true);
@@ -154,25 +165,23 @@ export class CircleQueryTool extends BaseTool {
     const cqlFilter = `1=1 and DWITHIN(geom,Point(${centerLonLat[0]} ${centerLonLat[1]}), ${radiusInMeters},meters)`;
 
     if (!this.wmsLayer) {
-      const wmsParams = {
-        LAYERS: "gis:mapresource",
-        VERSION: "1.1.0",
-        FORMAT: "image/png",
-        TRANSPARENT: true,
-        CQL_FILTER: cqlFilter,
-      };
-
-      this.wmsLayer = new ImageLayer({
-        source: new ImageWMS({
+      // 关键:source 必须 markRaw,否则 OL 内部状态写入会被 Vue 代理放大
+      this.wmsLayer = markRaw(new ImageLayer({
+        source: markRaw(new ImageWMS({
           url: geoserverApi.getWMSServiceUrl("gis"),
-          params: wmsParams,
+          params: {
+            LAYERS: "gis:mapresource",
+            VERSION: "1.1.0",
+            FORMAT: "image/png",
+            TRANSPARENT: true,
+            CQL_FILTER: cqlFilter,
+          },
           serverType: "geoserver",
           crossOrigin: "anonymous",
           ratio: 1.5,
-        }),
+        })),
         zIndex: 100,
-      });
-      console.log("🚀 ~ CircleQueryTool ~ updateWMSLayer ~ this.wmsLayer:", this.wmsLayer)
+      })) as ImageLayer<ImageWMS>;
       this.map.addLayer(this.wmsLayer);
     } else {
       const source = this.wmsLayer.getSource();
@@ -183,11 +192,12 @@ export class CircleQueryTool extends BaseTool {
   }
 
   destroy() {
-    // 清除防抖定时器
-    if (this.moveendTimer) {
-      clearTimeout(this.moveendTimer);
-      this.moveendTimer = null;
+    // 清除节流定时器
+    if (this.moveendThrottle) {
+      clearTimeout(this.moveendThrottle);
+      this.moveendThrottle = null;
     }
+    this.moveendLeading = false;
     // 断开所有事件监听
     this.listeners.forEach((key) => unByKey(key));
     this.listeners = [];

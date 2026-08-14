@@ -1,4 +1,5 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
+import { markRaw } from "vue";
 import { storeToRefs } from "pinia";
 import { Draw } from "ol/interaction";
 import { useMapStore } from "../../../store";
@@ -8,11 +9,11 @@ const mapStore = useMapStore();
 const { mapTool: MapTool } = storeToRefs(mapStore);
 
 const draw = () => {
-  const draw = new Draw({
+  const draw = markRaw(new Draw({
     source: MapTool.value.layers.vectorLayer.getSource(),
     type: "Polygon",
     // style: this.style2,
-  });
+  }));
   MapTool.value.map.addInteraction(draw);
 };
 </script>

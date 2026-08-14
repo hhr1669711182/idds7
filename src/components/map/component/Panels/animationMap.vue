@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { onMounted } from "vue";
+﻿<script setup lang="ts">
+import { onMounted, markRaw } from "vue";
 import Map from "ol/Map";
 import View from "ol/View";
 import * as olProj from "ol/proj";
@@ -12,17 +12,17 @@ import {
 import { easeOut, easeIn } from "ol/easing";
 import { Coordinate } from "ol/coordinate";
 
-let mapInstance: Map;
+let mapInstance: Map | null;
 const initMap = () => {
   console.log(AMAP_LAYER);
-  mapInstance = new Map({
+  mapInstance = markRaw(new Map({
     layers: [AMAP_LAYER("animationMap")],
     target: "animationMap",
     view: new View({
       center: olProj.fromLonLat(CENTER),
       zoom: ZOOM.INIT+3,
     }),
-  });
+  }));
 };
 const bounce = (t: number) => {
   // 弹跳动画

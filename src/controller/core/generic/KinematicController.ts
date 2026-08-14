@@ -1,8 +1,9 @@
-import type { SmoothMoveData, TrackAppendData, TrackPlayData } from '../protocol';
+﻿import type { SmoothMoveData, TrackAppendData, TrackPlayData } from '../protocol';
 import OlMap from 'ol/Map';
 import { fromLonLat } from 'ol/proj';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
+import { markRaw } from 'vue';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import LineString from 'ol/geom/LineString';
@@ -12,10 +13,10 @@ export class KinematicController {
   private animationFrameId: number | null = null;
 
   constructor(private map: OlMap) {
-    this.trackLayer = new VectorLayer({
+        this.trackLayer = markRaw(new VectorLayer({
       source: new VectorSource(),
       zIndex: 999
-    });
+    }));
     this.map.addLayer(this.trackLayer);
   }
 

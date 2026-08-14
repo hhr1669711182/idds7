@@ -1,4 +1,5 @@
-import { defineStore } from "pinia";
+﻿import { defineStore } from "pinia";
+import { markRaw, toRaw } from "vue";
 import { Map } from "ol";
 
 export interface DispatchMapState {
@@ -16,7 +17,8 @@ export const useDispatchMapStore = defineStore("dispatchMapStore", {
 
   actions: {
     setMap(val: Map) {
-      this.map = val;
+      // 防止 Pinia 把 OL Map 深度代理，触发 rAF 卡顿
+      this.map = markRaw(toRaw(val));
     },
     setCheckedIds(ids: string[]) {
       this.checkedIds = ids;

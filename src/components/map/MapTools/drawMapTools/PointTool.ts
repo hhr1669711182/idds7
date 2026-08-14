@@ -1,4 +1,4 @@
-import Map from "ol/Map";
+﻿import Map from "ol/Map";
 import { Type } from "ol/geom/Geometry";
 import { BaseTool } from "./BaseTool";
 import { Coordinate } from "ol/coordinate";

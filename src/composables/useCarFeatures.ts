@@ -1,3 +1,4 @@
+﻿import { markRaw } from 'vue'
 import type Map from 'ol/Map'
 import Overlay from 'ol/Overlay'
 import Feature from 'ol/Feature'
@@ -243,22 +244,22 @@ export const mountCarFeatures = (
   params: MountCarFeaturesParams,
 ): CarFeaturesManager => {
   const source = new VectorSource()
-  const layer = new VectorLayer({
+  const layer = markRaw(new VectorLayer({
     source,
     className: 'CAR_LAYER',
     zIndex: CAR_LAYER_ZINDEX,
     visible: params.visible ?? false,
     updateWhileAnimating: true,
     updateWhileInteracting: true,
-  })
+  }))
   params.map.addLayer(layer)
 
-  const overlay = new Overlay({
+  const overlay = markRaw(new Overlay({
     element: params.popupElement,
     positioning: 'bottom-center',
     offset: [0, -28],
     stopEvent: true,
-  })
+  }))
   params.map.addOverlay(overlay)
 
   const closePopup = () => {

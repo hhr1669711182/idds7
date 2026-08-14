@@ -1,4 +1,4 @@
-<!--
+﻿<!--
  * @Author: huanghuanrong
  * @Date: 2026-04-16 14:00:56
  * @LastEditTime: 2026-08-13 11:19:27
@@ -7,7 +7,7 @@
  * @FilePath: \ids-gis-web\src\components\map\brp.vue
 -->
 <script setup lang="ts">
-import { onMounted, nextTick, toRaw, ref } from "vue";
+import { onMounted, nextTick, toRaw, ref, markRaw } from "vue";
 import { storeToRefs } from "pinia";
 import { transform } from "ol/proj";
 import { useCurrentMap } from "@/composables/useCurrentMap";
@@ -18,7 +18,7 @@ const { currentMap: MapInstance } = useCurrentMap();
 const coordinate = ref("");
 
 const initEvent = () => {
-  const mapInstance: any = toRaw(MapInstance.value);
+  const mapInstance: any = markRaw(toRaw(MapInstance.value));
   if(Object.keys(mapInstance).length==0){
       return
   }

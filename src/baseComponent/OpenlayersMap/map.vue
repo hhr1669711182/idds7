@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { onMounted, nextTick, onUnmounted, ref, watch, markRaw } from "vue";
+﻿<script setup lang="ts">
+import { onMounted, nextTick, onUnmounted, ref, watch, markRaw, toRaw } from "vue";
 import OLMap from "ol/Map";
 import View from "ol/View";
 import * as olProj from "ol/proj";
@@ -7,7 +7,7 @@ import { unByKey } from "ol/Observable";
 import type { EventsKey } from "ol/events";
 import TileLayer from "ol/layer/Tile";
 import { ScaleLine, OverviewMap } from "ol/control";
-import { KeyboardPan } from "ol/interaction";
+// import { KeyboardPan } from "ol/interaction";
 import PrintDialog from "ol-ext/control/PrintDialog";
 import jsPDF from "jspdf";
 import { saveAs } from "file-saver";
@@ -54,7 +54,7 @@ import { useLayersStore } from "@/store/useLayersStore";
 
 import NavPanel from "./NavPanel.vue";
 import { useMapPopups, carTypeLabel, carStatusLabel } from "./useMapPopups.ts";
-import { getLayerByClassName } from "@/util/mapTool.ts";
+// import { getLayerByClassName } from "@/util/mapTool.ts";
 
 const props = withDefaults(defineProps<{ mapId?: string; }>(), { mapId: "map" });
 const emit = defineEmits(["setMap"]);
@@ -137,15 +137,15 @@ const addLayer = (id: string, visible?: boolean) => {
   const config = layersStore.getConfig(id);
   if (!config || wmsLayerMap.has(id)) return;
   const options = getWMSLayerOptions(config);
-  const wmsLayer = new TileLayer({
-    source: new TileWMS({
+  const wmsLayer = markRaw(new TileLayer({
+    source: markRaw(new TileWMS({
       url: options.url,
       params: options.params,
       serverType: options.serverType,
       crossOrigin: options.crossOrigin,
-    }),
+    })),
     opacity: options.opacity,
-  });
+  }))
   map.addLayer(wmsLayer);
   wmsLayer.set('id', id);
   wmsLayer.setVisible(visible ?? config.visible ?? true);
@@ -239,7 +239,7 @@ const initMap = () => {
   overviewLayer = AMAP_LAYER();
   syncBaseSourceLayer();
 
-  map = 
+  map = markRaw(
     new OLMap({
       layers: [baseLayer, GOOGLE_LAYER, VECTOR_LAYER()],
       target: props.mapId,
@@ -249,7 +249,7 @@ const initMap = () => {
         minZoom: ZOOM.MIN,
         maxZoom: ZOOM.MAX,
       }),
-    }),
+    }));
 
   // 全量预注册wms图层
   layersStore.layerConfigs.forEach(({ id }) => {

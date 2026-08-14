@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { ref, toRaw, onMounted, computed } from "vue";
+﻿<script setup lang="ts">
+import { ref, toRaw, onMounted, computed, markRaw } from "vue";
 import { storeToRefs } from "pinia";
 import { Draw } from "ol/interaction";
 import Feature from "ol/Feature";
@@ -41,7 +41,7 @@ const btnState = computed(() => {
 
 const { map } = storeToRefs(mapStore);
 
-const mapInstance = toRaw(map.value);
+const mapInstance = markRaw(toRaw(map.value));
 
 const activeIndex = ref("");
 
@@ -108,11 +108,11 @@ const exitDraw = () => {
 const drawStart = () => {
   exitDraw();
 
-  draw = new Draw({
+  draw = markRaw(new Draw({
     source: vectorLayer.getSource(),
     type: "Point",
     style: styles.selectPointStyle,
-  });
+  }));
 
   mapInstance.addInteraction(draw);
 
@@ -158,12 +158,12 @@ let overlays: Overlay[] = [];
 const popup = ref();
 
 const addOverlay = ({ coordinates, index, type = "point" }) => {
-  const overlay = new Overlay({
+  const overlay = markRaw(new Overlay({
     element: type == "point" ? createElement(index) : popup.value,
     positioning: "bottom-center",
     offset: type == "point" ? [0, 70] : [200, 70],
     position: coordinates,
-  });
+  }));
 
   mapInstance.addOverlay(overlay);
 

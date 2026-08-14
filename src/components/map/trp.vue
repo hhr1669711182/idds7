@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { toRaw, ref } from "vue";
+﻿<script setup lang="ts">
+import { toRaw, ref, markRaw } from "vue";
 import { storeToRefs } from "pinia";
 import {
   useCardStore,
@@ -66,7 +66,7 @@ const handleClickOpIcon = (type: any) => {
       break;
     default:
       if (isDrawType) {
-        cardStore.setMapDrawTool({ drawType: type, map: toRaw(MapInstance.value) as any });
+        cardStore.setMapDrawTool({ drawType: type, map: markRaw(toRaw(MapInstance.value)) as any });
       }
       break;
   }

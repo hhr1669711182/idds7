@@ -1,7 +1,7 @@
 /*
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-06-30 14:21:13
+ * @LastEditTime: 2026-08-14 13:35:17
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\vite.config.ts
@@ -14,7 +14,7 @@ import UnoCSS from "unocss/vite";
 import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
-import VueDevTools from "vite-plugin-vue-devtools";
+// import VueDevTools from "vite-plugin-vue-devtools";
 import { createSvgIconsPlugin } from "vite-plugin-svg-icons";
 import { fileURLToPath, URL } from "node:url";
 import { resolve } from "node:path";

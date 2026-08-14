@@ -1,4 +1,4 @@
-import Map from "ol/Map";
+﻿import Map from "ol/Map";
 import Feature from "ol/Feature";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";

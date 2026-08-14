@@ -1,3 +1,4 @@
+﻿import { markRaw } from 'vue';
 import OlMap from 'ol/Map';
 import TileLayer from 'ol/layer/Tile';
 import TileWMS from 'ol/source/TileWMS';
@@ -30,15 +31,15 @@ export class SpatialController {
     };
 
     if (!this.queryWmsLayer) {
-      this.queryWmsLayer = new TileLayer({
-        source: new TileWMS({
+      this.queryWmsLayer = markRaw(new TileLayer({
+        source: markRaw(new TileWMS({
           url: geoserverApi.getWMSServiceUrl('gis'),
           params: wmsParams,
           serverType: 'geoserver',
           crossOrigin: 'anonymous',
-        }),
+        })),
         zIndex: 10,
-      });
+      }));
       this.map.addLayer(this.queryWmsLayer);
     } else {
       this.queryWmsLayer.getSource()?.updateParams(wmsParams);

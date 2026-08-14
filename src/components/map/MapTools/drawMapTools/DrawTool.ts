@@ -1,3 +1,4 @@
+﻿import { markRaw } from "vue";
 import Map from "ol/Map";
 import Feature from "ol/Feature";
 import { Style, Stroke, Fill } from "ol/style";
@@ -42,20 +43,20 @@ export class DrawTool extends BaseTool {
 
   initInteraction() {
     if ([TYPES.CIRCLE, TYPES.RECT].includes(this.type)) {
-      this.draw = new Draw({
+          this.draw = markRaw(new Draw({
         source: this.vectorLayer?.getSource(),
         type: "Circle",
         style: this.drawStyle,
         freehand: true,
         geometryFunction:
           this.type === TYPES.CIRCLE ? createRegularPolygon(300) : createBox(),
-      });
+      }));
     } else {
-      this.draw = new Draw({
+          this.draw = markRaw(new Draw({
         source: this.vectorLayer?.getSource(),
         type: this.type,
         style: this.drawStyle,
-      });
+      }));
     }
 
     this.map.addInteraction(this.draw);

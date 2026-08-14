@@ -1,4 +1,4 @@
-import { createApp, App } from "vue";
+﻿import { createApp, App, markRaw } from "vue";
 import Map from "ol/Map";
 import Overlay from "ol/Overlay";
 import TileWMS from "ol/source/TileWMS";
@@ -18,7 +18,7 @@ export class FeatureClickQuery {
   constructor(map: Map) {
     this.map = map;
     this.overlayElement = document.createElement("div");
-    this.overlay = new Overlay({
+    this.overlay = markRaw(new Overlay({
       element: this.overlayElement,
       autoPan: {
         animation: {
@@ -27,7 +27,7 @@ export class FeatureClickQuery {
       },
       positioning: "bottom-center",
       offset: [0, -15],
-    });
+    }));
   }
 
   public activate() {

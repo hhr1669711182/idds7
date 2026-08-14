@@ -1,11 +1,11 @@
-import Map from "ol/Map";
+﻿import Map from "ol/Map";
 import Feature from "ol/Feature";
 import * as IDW from "ol-ext/source/IDW";
 import { Point } from "ol/geom";
 import { Style, Text, Stroke } from "ol/style";
 import { Vector as VectorSource } from "ol/source";
 import { Vector as VectorLayer, Image as ImageLayer } from "ol/layer";
-import { toRaw } from "vue";
+import { toRaw, markRaw } from "vue";
 
 export class HeatMapTools {
   map: Map;
@@ -19,18 +19,18 @@ export class HeatMapTools {
     this.initHeatMap();
   }
   initHeatMap() {
-    this.idwSource = new IDW.default({
+        this.idwSource = markRaw(new IDW.default({
       source: new VectorSource(),
       weight: "weightVal",
-    });
+    }));
 
-    this.idwLayer = new ImageLayer({
+        this.idwLayer = markRaw(new ImageLayer({
       source: this.idwSource,
       opacity: 0.5,
-    });
+    }));
 
     this.map.addLayer(this.idwLayer);
-    this.vecLayer = new VectorLayer({
+        this.vecLayer = markRaw(new VectorLayer({
       source: this.idwSource.getSource(),
       style: function (f) {
         return new Style({
@@ -40,7 +40,7 @@ export class HeatMapTools {
           }),
         });
       },
-    });
+    }));
 
     this.map.addLayer(this.vecLayer);
   }

@@ -1,4 +1,5 @@
-import { Coordinate } from "ol/coordinate";
+﻿import { Coordinate } from "ol/coordinate";
+import { markRaw } from "vue";
 import Map from "ol/Map";
 import Feature from "ol/Feature";
 import * as olStyle from "ol/style";
@@ -48,11 +49,11 @@ export class MeasureAreaTool extends BaseTool {
   sketch!: Feature | null;
 
   init() {
-    this.draw = new Draw({
+        this.draw = markRaw(new Draw({
       source: this.vectorLayer?.getSource(),
       type: "Polygon",
       style: this.style2,
-    });
+    }));
     this.map.addInteraction(this.draw);
 
     const setHelpTooltip: (evt: MapBrowserEvent) => void = (evt) => {

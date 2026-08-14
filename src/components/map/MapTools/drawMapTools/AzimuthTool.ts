@@ -1,4 +1,5 @@
-import { Coordinate } from "ol/coordinate";
+﻿import { Coordinate } from "ol/coordinate";
+import { markRaw } from "vue";
 import Map from "ol/Map";
 import Feature from "ol/Feature";
 import { Style, Stroke, Icon, Text, Fill } from "ol/style";
@@ -45,11 +46,11 @@ export class AzimuthTool extends BaseTool {
   marker!: Feature;
 
   init() {
-    this.draw = new Draw({
+        this.draw = markRaw(new Draw({
       source: this.vectorLayer?.getSource(),
       type: "LineString",
       style: this.lineStyle,
-    });
+    }));
 
     this.map.addInteraction(this.draw);
 

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onMounted, nextTick, onUnmounted, ref, computed, watch, markRaw } from "vue";
 import OLMap from "ol/Map";
 import View from "ol/View";
@@ -174,15 +174,15 @@ const addLayer = (id: string) => {
   if (!config || wmsLayerMap.has(id)) return false;
 
   const options = getWMSLayerOptions(config);
-  const wmsLayer = new TileLayer({
-    source: new TileWMS({
+  const wmsLayer = markRaw(new TileLayer({
+    source: markRaw(new TileWMS({
       url: options.url,
       params: options.params,
       serverType: options.serverType,
       crossOrigin: options.crossOrigin,
-    }),
+    })),
     opacity: options.opacity,
-  });
+  }));
 
   map.addLayer(wmsLayer);
   wmsLayerMap.set(id, wmsLayer);

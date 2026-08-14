@@ -1,4 +1,4 @@
-/*
+﻿/*
  * @Author: hhr
  * @Date: 2026-04-21 19:55:12
  * @LastEditTime: 2026-04-21 20:02:13
@@ -6,6 +6,7 @@
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\plugins\mapPlugins\plugins\useBusUpWMS.ts
  */
+import { markRaw } from 'vue';
 import type OlMap from 'ol/Map';
 import TileLayer from 'ol/layer/Tile';
 import ImageLayer from 'ol/layer/Image';
@@ -40,30 +41,30 @@ export class BusUpWmsPlugin implements MapPlugin {
   }
 
   public addTile(options: WmsLayerOptions): TileLayer<TileWMS> {
-    const layer = new TileLayer({
-      source: new TileWMS({
+    const layer = markRaw(new TileLayer({
+      source: markRaw(new TileWMS({
         url: options.url,
         params: options.params,
         serverType: options.serverType,
         crossOrigin: options.crossOrigin ?? 'anonymous',
-      }),
+      })),
       visible: options.visible ?? true,
-    });
+    }));
     this.layers.set(options.id, layer);
     this.map?.addLayer(layer);
     return layer;
   }
 
   public addImage(options: WmsLayerOptions): ImageLayer<ImageWMS> {
-    const layer = new ImageLayer({
-      source: new ImageWMS({
+    const layer = markRaw(new ImageLayer({
+      source: markRaw(new ImageWMS({
         url: options.url,
         params: options.params,
         serverType: options.serverType,
         crossOrigin: options.crossOrigin ?? 'anonymous',
-      }),
+      })),
       visible: options.visible ?? true,
-    });
+    }));
     this.layers.set(options.id, layer);
     this.map?.addLayer(layer);
     return layer;

@@ -1,5 +1,5 @@
-<script setup>
-import { toRaw } from "vue";
+﻿<script setup>
+import { toRaw, markRaw } from "vue";
 import { storeToRefs } from "pinia";
 import { Graticule } from "ol/layer";
 import { useMapStore } from "../../../store/index";
@@ -16,7 +16,7 @@ const { showSwipe, map } = storeToRefs(mapStore);
 let swipeLayer;
 
 const getLayer = () => {
-  const mapInstance = toRaw(map.value);
+  const mapInstance = markRaw(toRaw(map.value));
   const layer = mapInstance
     .getLayers()
     .getArray()
@@ -28,7 +28,7 @@ const getLayer = () => {
 };
 const swiperControl = new SwipeControl();
 const changeHandle = (visible) => {
-  const mapInstance = toRaw(map.value);
+  const mapInstance = markRaw(toRaw(map.value));
   if (!swipeLayer) {
     swipeLayer = getLayer();
   }

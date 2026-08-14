@@ -37,7 +37,7 @@ const handleSave = () => {
 const handleDelete = () => {
   let { marker: targetMarker, overlay: targetOverlay, feature } = getItem();
   if (targetOverlay) {
-    MapStore.map.removeOverlay(targetOverlay);
+    MapStore.map?.removeOverlay(targetOverlay);
   }
   const vectorLayer = (cardstore.drawTool as any)?.vectorLayer;
   if (vectorLayer) {
@@ -84,7 +84,7 @@ const formComponent = computed(() => {
 <template>
   <div class="card_panel" v-if="!!showUuid" :key="showUuid">
     <div class="card_header">
-      <span>{{ CARD_TITLE[form.type] }}</span>
+      <span>{{ CARD_TITLE[form.type as keyof typeof CARD_TITLE] }}</span>
       <span
         role="img"
         tabindex="-1"

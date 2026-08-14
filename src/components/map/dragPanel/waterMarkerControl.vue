@@ -1,5 +1,5 @@
-<script setup>
-import { toRaw } from "vue";
+﻿<script setup>
+import { toRaw, markRaw } from "vue";
 import { storeToRefs } from "pinia";
 import { useMapStore } from "../../../store/index";
 import {
@@ -15,7 +15,7 @@ const getWaterMarkLayer = WATER_LAYER({});
 const { showWaterMarker, map } = storeToRefs(mapStore);
 
 const changeHandle = (visible) => {
-  const mapInstance = toRaw(map.value);
+  const mapInstance = markRaw(toRaw(map.value));
   let layer = mapInstance
     .getLayers()
     .getArray()

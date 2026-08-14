@@ -1,3 +1,4 @@
+﻿import { markRaw } from "vue";
 import Map from "ol/Map";
 import View from "ol/View";
 import Feature from "ol/Feature";
@@ -930,24 +931,24 @@ export class AmapRealtimeNav {
 
   private ensureLayers() {
     if (!this.routeLayer) {
-      this.routeLayer = new VectorLayer({
+      this.routeLayer = markRaw(new VectorLayer({
         source: new VectorSource(),
         zIndex: 20,
-      });
+      }));
       this.map.addLayer(this.routeLayer);
     }
     if (!this.maskLayer) {
-      this.maskLayer = new VectorLayer({
+      this.maskLayer = markRaw(new VectorLayer({
         source: new VectorSource(),
         zIndex: 10,
-      });
+      }));
       this.map.addLayer(this.maskLayer);
     }
     if (!this.pointLayer) {
-      this.pointLayer = new VectorLayer({
+      this.pointLayer = markRaw(new VectorLayer({
         source: new VectorSource(),
         zIndex: 30,
-      });
+      }));
       this.map.addLayer(this.pointLayer);
     }
   }

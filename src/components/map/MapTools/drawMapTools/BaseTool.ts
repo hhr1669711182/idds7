@@ -1,4 +1,5 @@
-import Map from "ol/Map";
+﻿import Map from "ol/Map";
+import { markRaw, toRaw } from "vue";
 import { Coordinate } from "ol/coordinate";
 import { Type } from "ol/geom/Geometry";
 import { Point } from "ol/geom";
@@ -45,7 +46,9 @@ export class BaseTool {
     type: Type;
     cb: Function;
   }) {
-    this.map = map;
+    // 兜底 markRaw:防止上游传进来的 map 是 Vue Proxy,
+    // 避免 OL 渲染循环被 Proxy get/set 拦截拖慢
+    this.map = markRaw(toRaw(map)) as Map;
     this.uuid = uuid;
     this.callback = cb;
     this.type = type;

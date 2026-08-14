@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { onMounted, ref } from "vue";
+﻿<script setup lang="ts">
+import { onMounted, ref, markRaw } from "vue";
 import Map from "ol/Map";
 import View from "ol/View";
 import * as olProj from "ol/proj";
@@ -23,17 +23,17 @@ import * as turf from "@turf/turf";
 import { Style, Stroke, Fill } from "ol/style";
 import { Polygon } from "ol/geom";
 
-let mapInstance: Map;
+let mapInstance: Map | null;
 const vectoryLayer = VECTOR_LAYER();
 const initMap = () => {
-  mapInstance = new Map({
+  mapInstance = markRaw(new Map({
     layers: [AMAP_LAYER("animationMap"), vectoryLayer],
     target: "animationMap",
     view: new View({
       center: olProj.fromLonLat(CENTER),
       zoom: ZOOM.INIT + 3,
     }),
-  });
+  }));
 };
 
 const DRAWCICRLE = "DRAWCICRLE";

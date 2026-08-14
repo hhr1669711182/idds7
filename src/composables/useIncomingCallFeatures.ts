@@ -1,3 +1,4 @@
+﻿import { markRaw } from 'vue'
 import type Map from 'ol/Map'
 import Overlay from 'ol/Overlay'
 import Feature from 'ol/Feature'
@@ -346,19 +347,19 @@ export const mountIncomingCallFeatures = (
   const pointSource = new VectorSource()
   const circleSource = new VectorSource()
 
-  const circleLayer = new VectorLayer({
+  const circleLayer = markRaw(new VectorLayer({
     source: circleSource,
     className: 'INCOMING_CALL_CIRCLE_LAYER',
     zIndex: CIRCLE_LAYER_ZINDEX,
     visible: params.visible ?? true,
-  })
+  }))
 
-  const layer = new VectorLayer({
+  const layer = markRaw(new VectorLayer({
     source: pointSource,
     className: 'INCOMING_CALL_POINT_LAYER',
     zIndex: POINT_LAYER_ZINDEX,
     visible: params.visible ?? true,
-  })
+  }))
 
   map.addLayer(circleLayer)
   map.addLayer(layer)
@@ -367,12 +368,12 @@ export const mountIncomingCallFeatures = (
   const popupElement = document.createElement('div')
   popupElement.className = POPUP_CLASS
 
-  const overlay = new Overlay({
+  const overlay = markRaw(new Overlay({
     element: popupElement,
     positioning: 'bottom-center',
     offset: [0, -28],
     stopEvent: true,
-  })
+  }))
   map.addOverlay(overlay)
 
   const onCloseButtonClick = (event: Event) => {

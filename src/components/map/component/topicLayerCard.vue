@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { ref, toRaw } from "vue";
+﻿<script setup lang="ts">
+import { ref, toRaw, markRaw } from "vue";
 import { storeToRefs } from "pinia";
 import { PANEL_MAP_TYPE, THEMATIC_MAP_TYPES } from "../../../const/index";
 import { useTopicLayerStore, useMapStore, usePanelStore } from "../../../store";
@@ -39,7 +39,7 @@ const hideCard = () => {
 
 const handleTools = (type: string) => {
   resetMap();
-  const p = { map: toRaw(mapStore.map) };
+  const p = { map: markRaw(toRaw(mapStore.map)) };
   switch (type) {
     case THEMATIC_MAP_TYPES.CLUSTERL:
       toolMap = new ClusterTools(p);

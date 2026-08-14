@@ -1,18 +1,19 @@
-/*
+﻿/*
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-06-15 19:13:15
+ * @LastEditTime: 2026-08-13 19:39:36
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\store\useMapStore.ts
  */
 import { defineStore } from "pinia";
+import { markRaw, toRaw } from "vue";
 import { Map } from "ol";
 import { CENTER, ZOOM } from "@/baseComponent/OpenlayersMap/const.map";
 import { fromLonLat } from "ol/proj";
 
 export interface MapState {
-  map: Map | null;
+  map: any;
   mode: string;
   showGrid: boolean;
   showWaterMarker: boolean;
@@ -26,7 +27,7 @@ export interface MapState {
 export const useMapStore = defineStore("mapStore", {
   state: (): MapState => {
     return {
-      map: null,
+      map: {},
       mode: "2D",
       showGrid: false,
       showWaterMarker: false,
@@ -40,7 +41,8 @@ export const useMapStore = defineStore("mapStore", {
   },
   actions: {
     setMap(map: Map) {
-      this.map = map;
+      // 防止 Pinia 把 OL Map 深度代理，触发 rAF 卡顿
+      this.map = markRaw(toRaw(map));
     },
     resetMapView() {
       this.map?.getView().animate({

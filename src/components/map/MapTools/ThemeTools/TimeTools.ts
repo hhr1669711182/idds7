@@ -1,3 +1,4 @@
+﻿import { markRaw } from "vue";
 import Map from "ol/Map";
 import { Style, Circle, Fill } from "ol/style";
 import * as DayNight from "ol-ext/source/DayNight";
@@ -12,7 +13,7 @@ export class TimeTools {
   }
   initHeatMap() {
     var vectorSource = new DayNight.default({});
-    this.vecLayer = new VectorLayer({
+    this.vecLayer = markRaw(new VectorLayer({
       source: vectorSource,
       style: new Style({
         image: new Circle({
@@ -23,7 +24,7 @@ export class TimeTools {
           color: [0, 0, 50, 0.5],
         }),
       }),
-    });
+    }));
 
     this.map.addLayer(this.vecLayer);
   }

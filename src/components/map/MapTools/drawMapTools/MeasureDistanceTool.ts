@@ -1,4 +1,5 @@
-import { Coordinate } from "ol/coordinate";
+﻿import { Coordinate } from "ol/coordinate";
+import { markRaw } from "vue";
 import Map from "ol/Map";
 import Feature from "ol/Feature";
 import { Style, Stroke } from "ol/style";
@@ -39,11 +40,11 @@ export class MeasureDistanceTool extends BaseTool {
   measureTooltip!: Overlay;
 
   init() {
-    this.draw = new Draw({
+        this.draw = markRaw(new Draw({
       source: (this.vectorLayer as any)?.getSource(),
       type: "LineString",
       style: this.lineStyle,
-    });
+    }));
 
     this.map.addInteraction(this.draw);
 

@@ -1,4 +1,5 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
+import { markRaw, toRaw } from "vue";
 import { PANEL_MAP_TYPE } from "../../const/index.ts";
 import { LAYER_NAMES } from "../../baseComponent/OpenlayersMap/layers.ts";
 import { MODAL_SETTING } from "../../const/const.modals.ts";

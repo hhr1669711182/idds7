@@ -1,4 +1,4 @@
-/*
+﻿/*
  * @Author: hhr
  * @Date: 2026-04-21 19:55:09
  * @LastEditTime: 2026-04-21 20:00:05
@@ -6,6 +6,7 @@
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\plugins\mapPlugins\plugins\useDraw.ts
  */
+import { markRaw } from 'vue';
 import type OlMap from 'ol/Map';
 import { Draw, Modify, Snap } from 'ol/interaction';
 import type { Type as OlGeometryType } from 'ol/geom/Geometry';
@@ -64,16 +65,16 @@ export class DrawPlugin implements MapPlugin {
         : undefined;
 
     const drawType: GeometryType = (type === 'Box' || type === 'Square') ? 'Circle' : type;
-    this.draw = new Draw({ source, type: drawType, geometryFunction });
+    this.draw = markRaw(new Draw({ source, type: drawType, geometryFunction }));
     if (onEnd) this.draw.on('drawend', onEnd);
     this.map.addInteraction(this.draw);
 
     if (this.enableModify) {
-      this.modify = new Modify({ source });
+      this.modify = markRaw(new Modify({ source }));
       this.map.addInteraction(this.modify);
     }
     if (this.enableSnap) {
-      this.snap = new Snap({ source });
+      this.snap = markRaw(new Snap({ source }));
       this.map.addInteraction(this.snap);
     }
   }
