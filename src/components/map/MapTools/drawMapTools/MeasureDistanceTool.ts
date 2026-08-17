@@ -121,7 +121,7 @@ export class MeasureDistanceTool extends BaseTool {
     if (tooltipElement) {
       tooltipElement.className = "ol-tooltip ol-tooltip-static";
     }
-    this.measureTooltip.setOffset([0, -127]);
+    this.measureTooltip.setOffset([0, -35]);
     evt.feature.setStyle(this.lineStyle);
 
     this.cleanup(false);
