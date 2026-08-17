@@ -1,5 +1,5 @@
 import Map from "ol/Map";
-import Feature from "ol/Feature";
+import Feature from "ol/Feature";  
 import {
   Circle as CircleStyle,
   Fill,
@@ -18,7 +18,7 @@ export class ClusterTools {
   markers: Array<Feature> = [];
   markersLimitNum: number = 1000;
   clusterslayer!: VectorLayer;
-  clusterSource: Cluster;
+  clusterSource!: Cluster;
   constructor({
     map,
     markersLimitNum = 50,
@@ -52,7 +52,7 @@ export class ClusterTools {
       );
     }
   }
-  initCluster(temp: { temp: Array<Feature>[] }) {
+  initCluster(temp: Array<Feature>) {
     this.clusterSource = new Cluster({
       distance: 150,
       minDistance: 20,
@@ -61,7 +61,7 @@ export class ClusterTools {
       }),
     });
     this.markers = temp;
-    const styleCache: object = {};
+    const styleCache: Record<number, Style> = {};
 
     this.clusterslayer = new VectorLayer({
       source: this.clusterSource,

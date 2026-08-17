@@ -32,7 +32,7 @@ export const isTempFrontendLayerId = (id: string) =>
 /**矢量图地址 */
 export const AMAP_URL =
   "https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}"; //矢量图
-  // "http://webst04.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}";
+// "http://webst04.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}";
 
 /**影像图地址 */
 export const GOOGLE_URL =
@@ -43,10 +43,10 @@ export const AMAP_LAYER = (layerName?: string) => {
     source: new XYZ({
       url: AMAP_URL,
       crossOrigin: "anonymous",
+      transition: 500,
     }),
     className: layerName || LAYER_NAMES.AMAP_LAYER,
     preload: 4,
-    transition: 500,
     background: '#fcf9f2'
   });
 };

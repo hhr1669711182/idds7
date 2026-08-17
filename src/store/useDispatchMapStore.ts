@@ -1,4 +1,12 @@
-﻿import { defineStore } from "pinia";
+﻿/*
+ * @Author: hhr
+ * @Date: 2026-08-14 18:57:09
+ * @LastEditTime: 2026-08-17 17:47:25
+ * @LastEditors: hhr
+ * @Description: 文件描述
+ * @FilePath: \ids-gis-web\src\store\useDispatchMapStore.ts
+ */
+import { defineStore } from "pinia";
 import { markRaw, toRaw } from "vue";
 import { Map } from "ol";
 
@@ -17,7 +25,6 @@ export const useDispatchMapStore = defineStore("dispatchMapStore", {
 
   actions: {
     setMap(val: Map) {
-      // 防止 Pinia 把 OL Map 深度代理，触发 rAF 卡顿
       this.map = markRaw(toRaw(val));
     },
     setCheckedIds(ids: string[]) {

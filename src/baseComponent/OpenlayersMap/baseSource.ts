@@ -82,6 +82,7 @@ const buildUrlSource = ({
     tileGrid,
     crossOrigin,
     wrapX: true,
+    transition: 500,
   });
 
 const withNightFilter = (source: XYZ, enabled: boolean) => {
@@ -141,7 +142,8 @@ const createKailideSource = (mode: BaseSourceMode) => {
 const createOfflineSource = (mode: BaseSourceMode) => {
   const key = mode === "image" ? "VITE_BASE_SOURCE_OFFLINE_IMAGE_URL" : "VITE_BASE_SOURCE_OFFLINE_ROAD_URL";
   return buildUrlSource({
-    url: envOr(key, `/tiles/offline/${mode}/{z}/{x}/{y}.png`),
+    url: envOr(key, `http://192.168.173.198:8080/geoserver/gwc/service/tms/1.0.0/mbtiles:mbtiles_VectorTiles@WebMercatorQuad@jpeg/{z}/{x}/{-y}.jpeg`),
+    // url: envOr(key, `/tiles/offline/${mode}/{z}/{x}/{y}.png`),
   });
 };
 

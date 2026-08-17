@@ -56,8 +56,8 @@ export class MeasureDistanceTool extends BaseTool {
       if (dragging) return;
 
       const helpMsg = this.sketch
-        ? "Move and click to add point, right click to finish"
-        : "Click to choose start point";
+        ? "移动并点击添加点，右键点击完成绘制"
+        : "点击选择起点";
 
       this.helpTooltip.setPosition(coordinate);
       this.helpTooltipElement.innerHTML = helpMsg;
@@ -121,7 +121,7 @@ export class MeasureDistanceTool extends BaseTool {
     if (tooltipElement) {
       tooltipElement.className = "ol-tooltip ol-tooltip-static";
     }
-    this.measureTooltip.setOffset([0, -7]);
+    this.measureTooltip.setOffset([0, -127]);
     evt.feature.setStyle(this.lineStyle);
 
     this.cleanup(false);

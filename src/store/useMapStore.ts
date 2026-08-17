@@ -1,7 +1,7 @@
 ﻿/*
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-08-13 19:39:36
+ * @LastEditTime: 2026-08-17 17:41:06
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\store\useMapStore.ts
@@ -41,7 +41,6 @@ export const useMapStore = defineStore("mapStore", {
   },
   actions: {
     setMap(map: Map) {
-      // 防止 Pinia 把 OL Map 深度代理，触发 rAF 卡顿
       this.map = markRaw(toRaw(map));
     },
     resetMapView() {
