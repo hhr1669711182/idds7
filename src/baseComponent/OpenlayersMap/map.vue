@@ -1,5 +1,5 @@
-﻿<script setup lang="ts">
-import { onMounted, nextTick, onUnmounted, ref, watch, markRaw, toRaw } from "vue";
+<script setup lang="ts">
+import { onMounted, nextTick, onUnmounted, ref, watch, markRaw } from "vue";
 import OLMap from "ol/Map";
 import View from "ol/View";
 import * as olProj from "ol/proj";
@@ -13,6 +13,7 @@ import jsPDF from "jspdf";
 import { saveAs } from "file-saver";
 import { v4 as uuidv4 } from "uuid";
 import { FeatureClickQuery } from "./FeatureClickQuery.ts";
+import { useExtent } from "@/components/map/MapTools/commonTools/useExtent.ts";
 import {
   AMAP_LAYER,
   GOOGLE_LAYER,
@@ -29,6 +30,7 @@ import {
   mountJRAlarmLayer,
 } from "../amap/useAmapTools.ts";
 import { mountCarFeatures } from "@/composables/useCarFeatures";
+import { mountSSRKFeatures } from "@/composables/useSSRKFeatures";
 import { mountIncomingCallFeatures } from "@/composables/useIncomingCallFeatures";
 import amapData from "../amap/data.json";
 import carImg from "../amap/imgs/car.png";
@@ -89,6 +91,7 @@ const showOnlineCarLayer = async () => {
 };
 
 let carManager: any = null;
+let ssrkManager: any = null;
 let incomingCallManager: any = null;
 let fireManager: any = null;
 let alarmOverlayManager: any = null;
@@ -137,15 +140,15 @@ const addLayer = (id: string, visible?: boolean) => {
   const config = layersStore.getConfig(id);
   if (!config || wmsLayerMap.has(id)) return;
   const options = getWMSLayerOptions(config);
-  const wmsLayer = markRaw(new TileLayer({
-    source: markRaw(new TileWMS({
+  const wmsLayer = new TileLayer({
+    source: new TileWMS({
       url: options.url,
       params: options.params,
       serverType: options.serverType,
       crossOrigin: options.crossOrigin,
-    })),
+    }),
     opacity: options.opacity,
-  }))
+  });
   map.addLayer(wmsLayer);
   wmsLayer.set('id', id);
   wmsLayer.setVisible(visible ?? config.visible ?? true);
@@ -169,16 +172,20 @@ const visibleLayer = (id: string, bol: boolean) => {
   // getLayerByClassName(map, id)?.setVisible(bol);
 }
 
-const syncLayers = (ids: string[]) => {
+const syncLayers = (ids: string[], visible?: boolean) => {
+  
   const targetIds = new Set(ids);
-  Object.values(TEMP_FRONTEND_LAYER_IDS).forEach((id) =>
-    setTempFrontendLayerVisible(id, targetIds.has(id)),
-  );
+
   Array.from(wmsLayerMap.keys()).forEach((id) => {
     if (!targetIds.has(id)) removeLayer(id);
   });
+  
+  Object.values(TEMP_FRONTEND_LAYER_IDS).forEach((id) =>
+    targetIds.has(id) && setTempFrontendLayerVisible(id, targetIds.has(id)),
+  );
+  
   ids.forEach((id) => {
-    if (!isTempFrontendLayerId(id)) addLayer(id);
+    if (!isTempFrontendLayerId(id)) addLayer(id, visible);
   });
 };
 
@@ -196,6 +203,7 @@ const setTempFrontendLayerVisible = (id: string, visible: boolean) => {
     [TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER]: jrAlarmManager,
     [TEMP_FRONTEND_LAYER_IDS.ONLINE_CAR]: carManager,
     [TEMP_FRONTEND_LAYER_IDS.INCOMING_CALL]: incomingCallManager,
+    [TEMP_FRONTEND_LAYER_IDS.SSRK]: ssrkManager,
   };
   const manager = managerMap[id];
   if (!manager) return false;
@@ -239,7 +247,7 @@ const initMap = () => {
   overviewLayer = AMAP_LAYER();
   syncBaseSourceLayer();
 
-  map = markRaw(
+  map = 
     new OLMap({
       layers: [baseLayer, GOOGLE_LAYER, VECTOR_LAYER()],
       target: props.mapId,
@@ -249,12 +257,17 @@ const initMap = () => {
         minZoom: ZOOM.MIN,
         maxZoom: ZOOM.MAX,
       }),
-    }));
+    });
+    
+    // TODO: 使用注册中心 接收源（服务|辖区围栏around|机构围栏around|客户区划围栏around）extent变化
+    // const extent = map.getView().calculateExtent(map.getSize());
+    const extent = [113.713367, 22.4543543, 114.633333, 22.8667432];  // 临时限制
+    useExtent(map, extent)
 
-  // 全量预注册wms图层
-  layersStore.layerConfigs.forEach(({ id }) => {
-      addLayer(id, false);
-  })
+  // 全量预注册wms图层（需要预处理时开启）
+  // layersStore.layerConfigs.forEach(({ id }) => {
+  //     addLayer(id, false);
+  // })
 
   genericCtrl = new GenericController(map);
   const businessCtrl = new BusinessController(genericCtrl);
@@ -338,6 +351,11 @@ const initMap = () => {
     });
   }
 
+  ssrkManager = mountSSRKFeatures({
+    map,
+    visible: layersStore.checkedIds.includes(TEMP_FRONTEND_LAYER_IDS.SSRK),
+  });
+  
   carManager = mountCarFeatures({
     map,
     popupElement: getCarPopupElement(),
@@ -400,7 +418,7 @@ const initMap = () => {
     });
   }
 
-  syncLayers(layersStore.checkedIds);
+  // syncLayers(layersStore.checkedIds);
   trafficTool = new TrafficTools(map);
   trafficTool.setVisible(baseSourceStore.trafficVisible);
 

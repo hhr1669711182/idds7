@@ -11,8 +11,8 @@ export class HeatMapTools {
   map: Map;
   markers: Array<Feature> = [];
   markersLimitNum: number = 1000;
-  idwSource: IDW;
-  idwLayer!: ImageLayer;
+  idwSource: any;
+  idwLayer!: ImageLayer<any>;
   vecLayer!: VectorLayer;
   constructor({ map }: { map: Map; markersLimitNum: number }) {
     this.map = toRaw(map);

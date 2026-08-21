@@ -1,5 +1,4 @@
 ﻿import Map from "ol/Map";
-import { markRaw, toRaw } from "vue";
 import { Coordinate } from "ol/coordinate";
 import { Type } from "ol/geom/Geometry";
 import { Point } from "ol/geom";
@@ -10,7 +9,7 @@ import { getSVGForSrcById } from "../../../../util/index.ts";
 import { LAYER_NAMES } from "../../../../baseComponent/OpenlayersMap/layers.ts";
 
 export class BaseTool {
-  map: Map;
+  map: any;
   callback: Function = () => { };
   mapEl = document.querySelector(".ol-viewport");
   uuid: string = "";
@@ -46,9 +45,7 @@ export class BaseTool {
     type: Type;
     cb: Function;
   }) {
-    // 兜底 markRaw:防止上游传进来的 map 是 Vue Proxy,
-    // 避免 OL 渲染循环被 Proxy get/set 拦截拖慢
-    this.map = markRaw(toRaw(map)) as Map;
+    this.map = map as Map;
     this.uuid = uuid;
     this.callback = cb;
     this.type = type;
@@ -159,7 +156,6 @@ export class BaseTool {
     });
     marker.setStyle(markerStyle);
     vectorLayer?.getSource().addFeature(marker);
-
     return marker;
   }
 

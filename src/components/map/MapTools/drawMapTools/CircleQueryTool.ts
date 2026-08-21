@@ -1,8 +1,8 @@
 ﻿import { markRaw, toRaw } from "vue";
 import { Draw, Modify } from "ol/interaction";
-import TileLayer from "ol/layer/Tile";
+// import TileLayer from "ol/layer/Tile";
+// import TileWMS from "ol/source/TileWMS";
 import ImageLayer from "ol/layer/Image";
-import TileWMS from "ol/source/TileWMS";
 import ImageWMS from "ol/source/ImageWMS";
 import { getDistance } from "ol/sphere";
 import { transform } from "ol/proj";
@@ -18,6 +18,7 @@ import { EventsKey } from "ol/events";
 import Overlay from "ol/Overlay";
 import { geoserverApi } from "@/service/geoserver";
 import Collection from "ol/Collection";
+import { LAYER_NAMES } from "@/baseComponent/OpenlayersMap/layers";
 
 export class CircleQueryTool extends BaseTool {
   draw!: Draw;
@@ -26,7 +27,6 @@ export class CircleQueryTool extends BaseTool {
   listeners: EventsKey[] = [];
   radiusTooltip!: Overlay;
   radiusTooltipElement!: HTMLElement;
-  // 实际只使用 ImageWMS,这里收紧类型
   wmsLayer!: ImageLayer<ImageWMS>;
   private moveendThrottle: ReturnType<typeof setTimeout> | null = null;
   private moveendLeading: boolean = false;
@@ -116,7 +116,6 @@ export class CircleQueryTool extends BaseTool {
       this.listeners.push(modifyEndKey);
 
       // 地图缩放/平移结束后,节流触发 WMS 查询
-      // 关键:节流(throttle)而非防抖(debounce),避免连续 moveend 累积
       // 第一次 moveend 立即执行,后续 300ms 内只执行最后一次
       const moveEndKey = this.map.on("moveend", () => {
         if (this.moveendLeading) {
@@ -180,6 +179,7 @@ export class CircleQueryTool extends BaseTool {
           crossOrigin: "anonymous",
           ratio: 1.5,
         })),
+        className: LAYER_NAMES.ES_WMS_LAYER,
         zIndex: 100,
       })) as ImageLayer<ImageWMS>;
       this.map.addLayer(this.wmsLayer);
@@ -207,13 +207,14 @@ export class CircleQueryTool extends BaseTool {
     if (this.modify) {
       this.map.removeInteraction(this.modify);
     }
-    if (this.wmsLayer) {
-      this.map.removeLayer(this.wmsLayer);
-    }
     if (this.radiusTooltip) {
       this.map.removeOverlay(this.radiusTooltip);
     }
     this.map.un("pointermove", this.setHelpTooltip as any);
     super.destroy();
+  }
+
+  clearES_WMSLayer() {
+    if (this.wmsLayer) this.map.removeLayer(this.wmsLayer);
   }
 }

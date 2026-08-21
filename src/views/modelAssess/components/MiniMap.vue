@@ -1,5 +1,5 @@
-﻿<script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch, markRaw } from 'vue'
+<script setup lang="ts">
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import OLMap from 'ol/Map'
 import View from 'ol/View'
 import * as olProj from 'ol/proj'
@@ -84,7 +84,7 @@ onMounted(() => {
     })
   })
 
-  map = markRaw(new OLMap({
+  map = new OLMap({
     target: props.mapId,
     layers: [baseLayer, markerLayer],
     view: new View({
@@ -95,7 +95,7 @@ onMounted(() => {
     }),
     controls: [], // 隐藏默认控件
     interactions: [] // 禁止交互
-  }));
+  })
 })
 
 onUnmounted(() => {

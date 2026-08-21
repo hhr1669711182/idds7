@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-04-16 14:00:56
- * @LastEditTime: 2026-04-21 18:27:45
+ * @LastEditTime: 2026-08-18 17:52:27
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\util\mapTool.ts
@@ -91,16 +91,16 @@ export const getImagePattern = (imgUrl: string, opacity = 1) => {
       var ctx = cnv.getContext("2d");
       cnv.width = img.width;
       cnv.height = img.height;
-      ctx.drawImage(img, 0, 0);
+      ctx?.drawImage(img, 0, 0);
 
-      var imageData = ctx.getImageData(0, 0, cnv.width, cnv.height);
+      var imageData: any = ctx?.getImageData(0, 0, cnv.width, cnv.height) || undefined;
       var data = imageData.data;
 
       for (var i = 3; i < data.length; i += 4) {
         data[i] = opacity * 255;
       }
-      ctx.putImageData(imageData, 0, 0);
-      var pattern = ctx.createPattern(cnv, "repeat");
+      ctx?.putImageData(imageData, 0, 0);
+      var pattern = ctx?.createPattern(cnv, "repeat");
       resolve(pattern);
     };
     img.onerror = function (error) {
@@ -128,7 +128,6 @@ export const getStyleFunction = ({
   scale = scale || 0.5;
   return (feature: { getGeometry: () => any }, resolution: number) => {
     const geometry = feature.getGeometry();
-    console.log("🚀 ~ return ~ resolution:", resolution);
     var styles = [
       new Style({
         stroke: new Stroke({
@@ -139,7 +138,7 @@ export const getStyleFunction = ({
     ];
     let length = geometry.getLength();
     let geo_steps = steps * resolution;
-    let num = parseInt(length / geo_steps);
+    let num = parseInt(length / geo_steps as any);
     for (let i = 1; i <= num; i++) {
       let fraction = i / (num + 1);
       let arraw_coor = geometry.getCoordinateAt(fraction);
@@ -202,7 +201,7 @@ export const calculateAngle = ({
   const crossProduct = AB.x * BC.y - AB.y * BC.x;
 
   // 如果叉积为负
-  let angle = crossProduct < 0 ? angleInDegrees - 180 : 180 - angleInDegrees;
+  let angle: any = crossProduct < 0 ? angleInDegrees - 180 : 180 - angleInDegrees;
 
   //计算的夹角是方位角
   if (azimuth) {
@@ -304,7 +303,7 @@ export const calculateAngle = ({
   };
 };
 
-function calculateAnglePoint(points) {
+function calculateAnglePoint(points: Coordinate[]) {
   const [A, B, C] = points;
   const [Ax, Ay] = A;
   const [Bx, By] = B;

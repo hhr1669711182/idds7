@@ -1,3 +1,11 @@
+/*
+ * @Author: hhr
+ * @Date: 2026-04-16 14:00:56
+ * @LastEditTime: 2026-08-17 18:45:40
+ * @LastEditors: hhr
+ * @Description: 文件描述
+ * @FilePath: \ids-gis-web\src\components\map\MapTools\ThemeTools\MaskTools.ts
+ */
 import Map from "ol/Map";
 import { GeoJSON } from "ol/format";
 import TileLayer from "ol/layer/Tile";
@@ -9,8 +17,8 @@ import geojson from "../../assets/hongshang.json";
 
 export class MaskTools {
   map: Map;
-  mask: Mask;
-  crop: Crop;
+  mask: any;
+  crop: any;
   layer: TileLayer;
   constructor({ map }: { map: Map }) {
     this.map = map;

@@ -74,7 +74,6 @@ export class SpatialController {
     try {
       const centerPoint = point([data.input.center[0], data.input.center[1]]);
       const buffered = circle(centerPoint, data.input.radius, { units: 'meters' });
-      console.log("🚀 ~ SpatialController ~ calcBuffer ~ buffered:", buffered)
       // this.map.getView().fit(buffered.geometry?.coordinates?.[0] as any, { padding: [40, 40, 40, 40], duration: 300 });
       return buffered.geometry;
     } catch (e) {

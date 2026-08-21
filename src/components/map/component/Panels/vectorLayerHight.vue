@@ -1,5 +1,5 @@
-﻿<script setup lang="ts">
-import { ref, shallowRef, onMounted, markRaw } from "vue";
+<script setup lang="ts">
+import { ref, onMounted } from "vue";
 import { Feature, Map, View } from "ol";
 import { Style, Fill, Stroke, Text } from "ol/style";
 import LayerVector from "ol/layer/Vector";
@@ -31,7 +31,7 @@ const highlightStyle = new Style({
 
 const infoRef = ref(null);
 
-const map = shallowRef(null);
+const map = ref(null);
 
 const highlight = ref(null);
 
@@ -40,15 +40,16 @@ let featureOverlay: LayerVector<SourceVector<Feature<Geometry>>, Feature<Geometr
 const displayFeatureInfo = (pixel: any) => {
   // 创建高亮图层
   if (!featureOverlay) {
-      featureOverlay = markRaw(new LayerVector({
+    featureOverlay = new LayerVector({
       source: new SourceVector(),
       map: map.value,
       style: (feature) => {
         highlightStyle.getText().setText(feature.get("name"));
         return highlightStyle;
       },
-    }));
+    });
   }
+  // 获取点击的要素
   let feature = map.value.forEachFeatureAtPixel(pixel, (feature) => feature);
   let info = infoRef.value;
   // 获取要素信息
@@ -105,14 +106,14 @@ const initMap = () => {
     },
   });
 
-  map.value = markRaw(new Map({
+  map.value = new Map({
     target: "modal_map",
     layers: [vectorLayer],
     view: new View({
       center: fromLonLat([0, 0]),
       zoom: 1,
     }),
-  }));
+  });
 
   map.value.on("pointermove", (evt) => {
     if (evt.dragging) {

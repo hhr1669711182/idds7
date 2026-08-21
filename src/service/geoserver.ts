@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-04-29 18:16:57
- * @LastEditTime: 2026-08-13 10:45:26
+ * @LastEditTime: 2026-08-20 10:55:18
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\service\geoserver.ts
@@ -35,14 +35,14 @@ export interface WMSFeatureInfoParams {
 export const geoserverApi = {
   /**
    * 获取 GeoServer WFS 要素 (GetFeature)
-   * @param workspace 工作空间名称
    * @param params WFS 查询参数
+   * @param workspace 工作空间名称
    */
-  getWFSFeature: (workspace: string, params: WFSFeatureParams) => {
+  getWFSFeatures: (params: WFSFeatureParams, workspace = 'gis') => {
     return alovaGeoInstance.Get<any>(getGeoServerServiceUrl(workspace, 'ows'), {
       params: {
         service: 'WFS',
-        version: '1.0.0',
+        version: '1.1.0',
         request: 'GetFeature',
         outputFormat: 'application/json',
         ...params,
@@ -55,14 +55,14 @@ export const geoserverApi = {
    * @param workspace 工作空间名称
    * @param typeName 图层名称 (workspace:layer)
    */
-  describeFeatureType: (workspace: string, typeName: string) => {
+  describeFeatureType: (params: { typeName: string }, workspace = 'gis') => {
     return alovaGeoInstance.Get<any>(getGeoServerServiceUrl(workspace, 'ows'), {
       params: {
         service: 'WFS',
-        version: '1.0.0',
+        version: '1.1.0',
         request: 'DescribeFeatureType',
-        typeName,
         outputFormat: 'application/json',
+        ...params, 
       },
     })
   },

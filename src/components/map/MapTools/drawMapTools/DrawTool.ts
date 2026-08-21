@@ -37,7 +37,7 @@ export class DrawTool extends BaseTool {
     this.initInteraction();
   }
 
-  draw!: Interaction;
+  draw!: any;
 
   sketch!: Feature | null;
 

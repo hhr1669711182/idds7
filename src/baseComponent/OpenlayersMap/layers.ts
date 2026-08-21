@@ -7,11 +7,12 @@ import { WATER_TEXT } from "./const.map.ts";
 import { getLayerConfig } from "@/config/layers.ts";
 
 export const LAYER_NAMES = {
-  AMAP_LAYER: "AMAP_LAYER",
-  GOOGLE_LAYER: "GOOGLE_LAYER",
-  VECTOR_LAYER: "VECTOR_LAYER",
+  AMAP_LAYER: "AMAP_LAYER", // 高德底图
+  GOOGLE_LAYER: "GOOGLE_LAYER", // 降级谷歌底图
+  VECTOR_LAYER: "VECTOR_LAYER", //矢量图层
   GRID_LAYER: "GRID_LAYER", //网格
   WATER_LAYER: "WATER_LAYER", //水印
+  ES_WMS_LAYER: "ES_WMS_LAYER", //WMS ES搜索
 };
 
 // 临时前端数据上图图层 ID。后续接入真实接口/WMS 后，优先从这里移除映射。
@@ -20,6 +21,7 @@ export const TEMP_FRONTEND_LAYER_IDS = {
   TODAY_DISASTER: "gis:disaster_info",
   ONLINE_CAR: "gis:env_car",
   INCOMING_CALL: "gis:incoming_call",
+  SSRK: "gis:ssrk",
 } as const;
 
 export const TEMP_FRONTEND_LAYER_ID_SET = new Set<string>(

@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-04-21 18:40:47
- * @LastEditTime: 2026-06-17 19:06:15
+ * @LastEditTime: 2026-08-20 14:16:55
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\hooks\useWebSocket.ts
@@ -97,7 +97,7 @@ export class WebSocketClient {
   };
 
   public sendEvent = <T = any>(eventKey: string, data?: T, extra?: Record<string, any>) => {
-    return this.send({ eventKey, data, ...(extra ?? null) })
+    return this.send({ eventKey, data, ...extra })
   }
 
   public disconnect = () => {

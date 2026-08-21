@@ -32,11 +32,16 @@ const handleClickOpIcon = (type: any) => {
     return baseSourceStore.showTrafficSource();
   }
 
-  // 点击已激活的图标，清除绘制工具并关闭菜单
-  if (active.value === type && ![TYPES.TRAFFIC, TYPES.RESET].includes(type)) {
+  // 点击已激活的框选放大图标或点击平移，清除绘制工具
+  if ((active.value === type && type == TYPES.MEASURELENGTH) || type === TYPES.MOVE) {
     return cardStore.clearDrawTool();
-    ;
   }
+
+  // 点击已激活的图标，清除绘制工具并关闭菜单
+  // if (active.value === type && ![TYPES.TRAFFIC, TYPES.RESET].includes(type)) {
+  //   return cardStore.clearDrawTool();
+  //   ;
+  // }
 
   const isDrawType = Object.values(DRAW_TYPES).includes(type);
   if (!isDrawType) {
@@ -66,7 +71,7 @@ const handleClickOpIcon = (type: any) => {
       break;
     default:
       if (isDrawType) {
-        cardStore.setMapDrawTool({ drawType: type, map: markRaw(toRaw(MapInstance.value)) as any });
+        cardStore.setMapDrawTool({ drawType: type, map: toRaw(MapInstance.value) as any });
       }
       break;
   }
@@ -74,9 +79,10 @@ const handleClickOpIcon = (type: any) => {
 
 const menuItems = [
   { text: "图源", icon: "#icon-copy", type: TYPES.BASESOURCE },
+  { text: "平移", icon: "#icon-move", type: TYPES.MOVE },
+  { text: "复位", icon: "#icon-reset", type: TYPES.RESET },
   { text: "圈选查询", icon: "#icon-compass", type: TYPES.MEASUREAREA },
   { text: "框选放大", icon: "#icon-select-extent", type: TYPES.MEASURELENGTH },
-  { text: "复位", icon: "#icon-reset", type: TYPES.RESET },
   { text: "标点", icon: "#icon-point", type: TYPES.POINT },
   { text: "标线", icon: "#icon-line", type: TYPES.LINESTRING },
   { text: "标面", icon: "#icon-polygon", type: TYPES.POLYGON },

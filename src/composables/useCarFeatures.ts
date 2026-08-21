@@ -302,7 +302,7 @@ export const mountCarFeatures = (
   }
 
   const fitToExtent = () => {
-    const extent = source.getExtent()
+    const extent: any = source.getExtent()
     if (!isValidExtent(extent)) return
     params.map.getView().fit(extent, {
       padding: [80, 80, 80, 80],

@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-04-16 14:00:56
- * @LastEditTime: 2026-04-24 18:25:01
+ * @LastEditTime: 2026-08-19 17:50:21
  * @LastEditors: hhr
  * @Description: 面板状态管理store
  * @FilePath: \ids-gis-web\src\store\usePanelStore.ts
@@ -14,6 +14,7 @@ export const usePanelStore = defineStore("PanelStore", () => {
     type: PANEL_TYPES.NULL,
     bigPanelType: PANEL_MAP_TYPE.NULL,
     configOpen: false,
+    ssrkPanelOpen: false,
   })
 
 
@@ -26,11 +27,15 @@ export const usePanelStore = defineStore("PanelStore", () => {
   const setConfigOpen = (open: boolean) => {
     state.configOpen = open;
   }
+  const setSsrkPanelOpen = (open: boolean) => {
+    state.ssrkPanelOpen = open;
+  }
 
   return {
     ...toRefs(state),
     setPanelType,
     setBigPanelType,
     setConfigOpen,
+    setSsrkPanelOpen,
   }
 });

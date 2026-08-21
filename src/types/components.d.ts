@@ -57,6 +57,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     Setting: typeof import('./../components/Modals/setting.vue')['default']
+    SsrkPanel: typeof import('./../components/map/component/ssrkPanel.vue')['default']
     SwipeControl: typeof import('./../components/map/dragPanel/swipeControl.vue')['default']
     ThreejsViewerBuilding: typeof import('./../components/BIM/ThreejsViewerBuilding.vue')['default']
     ThreejsViewerRegion: typeof import('./../components/BIM/ThreejsViewerRegion.vue')['default']

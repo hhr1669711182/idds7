@@ -1,4 +1,7 @@
 // 基本类型
+export const BASE_TYPES = {
+  MOVE: "MOVE", // 移动
+} as const;
 
 export const DRAW_TYPES = {
   POINT: "Point",
@@ -15,6 +18,7 @@ export const DRAW_TYPES = {
 }; // 绘制类型
 
 export const TYPES = {
+  ...BASE_TYPES,
   ...DRAW_TYPES,
   RESET: "RESET", // 重置
   TRAFFIC: "TRAFFIC", //实时路况

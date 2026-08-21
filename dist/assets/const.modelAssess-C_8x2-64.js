@@ -1,1 +1,0 @@
-var e=[`轻度 (Light)`,`中度 (Medium)`,`重度 (Heavy)`],t=[`东南角`,`西北角`,`东北角`,`西南角`];export{t as n,e as t};

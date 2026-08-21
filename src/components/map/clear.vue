@@ -1,5 +1,4 @@
-﻿<script setup lang="ts">
-import { markRaw, toRaw } from "vue";
+<script setup lang="ts">
 import { PANEL_MAP_TYPE } from "../../const/index.ts";
 import { LAYER_NAMES } from "../../baseComponent/OpenlayersMap/layers.ts";
 import { MODAL_SETTING } from "../../const/const.modals.ts";
@@ -19,10 +18,12 @@ const handleClear = () => {
     cardStore.clearDrawTool();
   }
 
-  const vectorLayer = MapInstance.value
+  const layers = MapInstance.value
     .getLayers()
-    .getArray()
-    .find(
+    .getArray();
+
+
+    const vectorLayer = layers.find(
       (i: { getClassName: () => string }) =>
         i.getClassName() == LAYER_NAMES.VECTOR_LAYER
     );
@@ -33,6 +34,13 @@ const handleClear = () => {
       vectorLayer.getSource().removeFeature(features[i]);
     }
   }
+
+    const esWmsLayer = layers.find((i: { getClassName: () => string }) => 
+      i.getClassName() === LAYER_NAMES.ES_WMS_LAYER
+    );
+    if (esWmsLayer) {
+      MapInstance.value.removeLayer(esWmsLayer);
+    }
 
   if (MapInstance.value.getOverlays().getArray().length > 0) {
     MapInstance.value.getOverlays().clear();
@@ -121,7 +129,7 @@ ul {
   box-shadow: 0 0 4px 2px #b1b1b180;
   position: absolute;
   right: 10px;
-  top: 560px;
+  top: 590px;
   z-index: 5;
 }
 

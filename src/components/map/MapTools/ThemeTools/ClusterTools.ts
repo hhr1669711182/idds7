@@ -16,7 +16,7 @@ import { convertToRGBA } from "../../../../util";
 export class ClusterTools {
   map: Map;
   markers: Array<Feature> = [];
-  markersLimitNum: number = 1000;
+  markersLimitNum: number;
   clusterslayer!: VectorLayer;
   clusterSource!: Cluster;
   constructor({
@@ -37,7 +37,7 @@ export class ClusterTools {
       const lat = Math.random() * (extent[3] - extent[1]) + extent[1]; // 纬度在 [-90, 90] 范围内
 
       const marker = new Feature({
-        geometry: new Point([lon, lat]),
+        geometry: new Point([lon, lat]), 
       });
 
       temp.push(marker);

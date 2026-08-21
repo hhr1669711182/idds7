@@ -1,7 +1,7 @@
 <!--
  * @Author: hhr
  * @Date: 2026-05-21 19:13:51
- * @LastEditTime: 2026-08-13 18:36:30
+ * @LastEditTime: 2026-08-20 12:22:14
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\components\map\index.vue
@@ -21,6 +21,7 @@ import routePlan from "./component/routePlan.vue";
 import bigPanel from "./component/bigPanel.vue";
 import config from "./config.vue";
 import layers from "./layers.vue";
+import ssrkPanel from "./component/ssrkPanel.vue";
 
 import OpenlayersMap from "../../baseComponent/OpenlayersMap/map.vue";
 import {
@@ -36,7 +37,7 @@ import type { LayerChangeHandler } from "./layers.vue";
 type OpenlayersMapExpose = {
   addLayer: (id: string) => boolean;
   removeLayer: (id: string) => boolean;
-  syncLayers: (ids: string[]) => void;
+  syncLayers: (ids: string[], visible?: boolean) => void;
   visibleLayer: (id: string, bol: boolean) => void;
 };
 
@@ -46,14 +47,14 @@ const tabsStore = useTabsStore();
 const layersStore = useLayersStore();
 const mapConfigStore = useMapConfigStore();
 
-const { type } = storeToRefs(PanelStore);
+const { type, ssrkPanelOpen } = storeToRefs(PanelStore);
 const openLayersMapRef = shallowRef<OpenlayersMapExpose | null>(null);
 // const mapInstanceRef = shallowRef<any>(null);
 
 const getMap = (map: any) => {
   // mapInstanceRef.value = map;
   MapStore.setMap(map);
-  openLayersMapRef.value?.syncLayers(layersStore.checkedIds);
+  openLayersMapRef.value?.syncLayers(layersStore.checkedIds, true);
 };
 
 const handleLayerChange: LayerChangeHandler = (action, id) => {
@@ -67,14 +68,14 @@ const handleLayerChange: LayerChangeHandler = (action, id) => {
     openLayersMapRef.value?.removeLayer(id);
   }
 };
-
+ 
 const handleConfigSave = () => {
-  openLayersMapRef.value?.syncLayers(layersStore.checkedIds);
+  openLayersMapRef.value?.syncLayers(layersStore.checkedIds, true);
 };
 
 onMounted(async () => {
   await mapConfigStore.loadConfig();
-  openLayersMapRef.value?.syncLayers(layersStore.checkedIds);
+  // openLayersMapRef.value?.syncLayers(layersStore.checkedIds);
 });
 
 onActivated(() => {
@@ -87,8 +88,8 @@ onActivated(() => {
 <template>
   <OpenlayersMap ref="openLayersMapRef" @setMap="getMap" />
 
-  <tlp v-if="tabsStore.activeTab === 1" />
-  <brp v-if="tabsStore.activeTab === 1" />
+  <tlp />
+  <brp />
   <trp />
 
   <routePlan v-if="type == PANEL_TYPES.ROUTE_PLAN" />
@@ -100,6 +101,8 @@ onActivated(() => {
   <bigPanel />
   <config @save="handleConfigSave" />
   <layers :onLayerChange="handleLayerChange" />
+
+  <ssrkPanel v-show="ssrkPanelOpen" />
 </template>
 
 <style scoped>

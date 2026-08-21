@@ -19,21 +19,13 @@ import { createSvgIconsPlugin } from "vite-plugin-svg-icons";
 import { fileURLToPath, URL } from "node:url";
 import { resolve } from "node:path";
 import cesium from 'vite-plugin-cesium'
-// import { resolve } from "path";
 
 export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const isDev = command === "serve";
   const isLib = process.env.BUILD_LIB === "true" || env.VITE_BUILD_LIB === "true";
 
-  const proxyServer = {
-    //  "/geoserver": {
-    //       target: env.VITE_GEOSERVER_URL,
-    //       changeOrigin: true,
-    //       secure: false,
-    //       rewrite: (path) => path.replace(/^\/geoserver/, ""),
-    //     },
-  }
+  const proxyServer = {}
 
   return {
     plugins: [

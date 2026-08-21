@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-05-06 17:11:52
- * @LastEditTime: 2026-06-12 10:54:41
+ * @LastEditTime: 2026-08-20 10:55:26
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\config\env.ts
@@ -15,8 +15,8 @@ const stripTrailingSlashes = (value: string) => value.replace(/\/+$/g, '')
 const stripSlashes = (value: string) => value.replace(/^\/+|\/+$/g, '')
 
 export const appEnv = {
-  appMode: readEnvString('VITE_APP_ENV'),
   isDev: import.meta.env.DEV === true,
+  appMode: readEnvString('VITE_APP_ENV'),
   apiBaseUrl: stripTrailingSlashes(readEnvString('VITE_API_BASE_URL')),
   useMock: readEnvString('VITE_USE_MOCK') === 'true',
   // geoserverBaseUrl: stripTrailingSlashes(readEnvString('') + 'geoserver'),

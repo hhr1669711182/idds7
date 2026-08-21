@@ -1,5 +1,4 @@
 ﻿import { Coordinate } from "ol/coordinate";
-import { markRaw } from "vue";
 import Map from "ol/Map";
 import Feature from "ol/Feature";
 import { Style, Stroke, Icon, Text, Fill } from "ol/style";
@@ -19,7 +18,7 @@ export class AzimuthTool extends BaseTool {
     uuid,
     cb,
   }: {
-    map: Map;
+    map: any;
     type: Type;
     uuid: string;
     cb: Function;
@@ -35,7 +34,7 @@ export class AzimuthTool extends BaseTool {
     }),
   });
 
-  draw!: Interaction;
+  draw!: any;
 
   listenGeometryChange: any;
 
@@ -46,11 +45,11 @@ export class AzimuthTool extends BaseTool {
   marker!: Feature;
 
   init() {
-        this.draw = markRaw(new Draw({
+    this.draw = new Draw({
       source: this.vectorLayer?.getSource(),
       type: "LineString",
       style: this.lineStyle,
-    }));
+    });
 
     this.map.addInteraction(this.draw);
 
@@ -87,7 +86,6 @@ export class AzimuthTool extends BaseTool {
     };
 
     this.map.on("pointermove", this.setHelpTooltip);
-
     this.draw.on("drawstart", this.handleMeasureLineStart.bind(this));
     this.draw.on("drawend", this.handleMeasureLineEnd.bind(this));
   }
@@ -95,7 +93,7 @@ export class AzimuthTool extends BaseTool {
   drawNorLine() {
     const [lon, lat] = this.Points[0];
 
-    const distance = 500000; //500km
+    const distance = 5000; //5km
     const norPoint = [lon, lat + distance];
 
     const lineFeature = new Feature({
@@ -137,13 +135,11 @@ export class AzimuthTool extends BaseTool {
     feature: Feature<Geometry>;
     coordinate: Coordinate;
   }) {
-    const { feature, coordinate } = evt;
+    const { feature, coordinate }: any = evt;
 
-    this.listenGeometryChange = feature.getGeometry().on("change", (evt) => {
+    this.listenGeometryChange = feature.getGeometry().on("change", (evt: any) => {
       const geom = evt.target;
-
       let startPoint = geom.getFirstCoordinate();
-
       this.addMarker({ coordinate: startPoint, symbolId: "A", anchor: [0, 0] });
       this.formatPonit(startPoint);
       if (this.Points.length == 0) {
@@ -192,23 +188,6 @@ export class AzimuthTool extends BaseTool {
     const azimuthInDegrees = turf.rhumbBearing(startP, endP);
     console.log("Azimuth (in degrees):", azimuthInDegrees);
     this.Points = [];
-    super.destroy();
-  }
-
-  destroy() {
-    if (this.listenGeometryChange) {
-      unByKey(this.listenGeometryChange);
-      this.listenGeometryChange = null;
-    }
-    if (this.draw) {
-      this.map.removeInteraction(this.draw);
-    }
-    this.map.un("pointermove", this.setHelpTooltip);
-    if (this.marker) {
-      this.vectorLayer?.getSource().removeFeature(this.marker);
-    }
-    this.Points = [];
-    super.destroy();
   }
 
   addAngleMark({
@@ -238,5 +217,25 @@ export class AzimuthTool extends BaseTool {
 
     this.marker.setStyle(markerStyle);
     vectorLayer?.getSource().addFeature(this.marker);
+  }
+
+  destroy() {
+    if (this.listenGeometryChange) {
+      unByKey(this.listenGeometryChange);
+      this.listenGeometryChange = null;
+    }
+    if (this.draw) {
+      this.map.removeInteraction(this.draw);
+      this.draw = (null as unknown) as Interaction;
+    }
+    // if (this.marker && this.vectorLayer) {
+    //   this.vectorLayer.getSource().removeFeature(this.marker);
+    //   this.marker = (null as unknown) as Feature;
+    // }
+    // if (this.setHelpTooltip) {
+    //   this.map.un("pointermove", this.setHelpTooltip);
+    // }
+    // this.Points = [];
+    super.destroy();
   }
 }

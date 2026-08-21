@@ -42,10 +42,10 @@ const handleTools = (type: string) => {
   const p = { map: markRaw(toRaw(mapStore.map)) };
   switch (type) {
     case THEMATIC_MAP_TYPES.CLUSTERL:
-      toolMap = new ClusterTools(p);
+      toolMap = new ClusterTools({ map: p.map, markersLimitNum: 50 });
       break;
     case THEMATIC_MAP_TYPES.HEATMAP:
-      toolMap = new HeatMapTools(p);
+      toolMap = new HeatMapTools({ map: p.map, markersLimitNum: 1000 });
       break;
     case THEMATIC_MAP_TYPES.MASK_MAP:
       toolMap = new MaskTools(p);

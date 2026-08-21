@@ -409,7 +409,6 @@ const jsonpRequest = <T = any>(url: string, timeoutMs = 15000): Promise<T> => {
     };
 
     (window as any)[callbackName] = (data: T) => {
-      // console.log("🚀 ~ jsonpRequest ~ data:", data)
       cleanup();
       resolve(data);
     };

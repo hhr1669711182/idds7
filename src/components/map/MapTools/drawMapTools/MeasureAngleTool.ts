@@ -1,5 +1,4 @@
 ﻿import { Coordinate } from "ol/coordinate";
-import { markRaw } from "vue";
 import Map from "ol/Map";
 import Feature from "ol/Feature";
 import { Style, Stroke, Icon } from "ol/style";
@@ -33,7 +32,7 @@ export class MeasureAngleTool extends BaseTool {
     }),
   });
 
-  draw!: Interaction;
+  draw!: any;
 
   listenGeometryChange: any;
 
@@ -44,11 +43,11 @@ export class MeasureAngleTool extends BaseTool {
   marker!: Feature;
 
   init() {
-        this.draw = markRaw(new Draw({
+    this.draw = new Draw({
       source: this.vectorLayer?.getSource(),
       type: "LineString",
       style: this.lineStyle,
-    }));
+    });
 
     this.map.addInteraction(this.draw);
 
@@ -96,9 +95,9 @@ export class MeasureAngleTool extends BaseTool {
     feature: Feature<Geometry>;
     coordinate: Coordinate;
   }) {
-    const { feature, coordinate } = evt;
+    const { feature, coordinate }: any = evt;
 
-    this.listenGeometryChange = feature.getGeometry().on("change", (evt) => {
+    this.listenGeometryChange = feature.getGeometry().on("change", (evt: any) => {
       const geom = evt.target;
 
       let startPoint = geom.getFirstCoordinate();
@@ -151,22 +150,6 @@ export class MeasureAngleTool extends BaseTool {
     super.destroy();
   }
 
-  destroy() {
-    if (this.listenGeometryChange) {
-      unByKey(this.listenGeometryChange);
-      this.listenGeometryChange = null;
-    }
-    if (this.draw) {
-      this.map.removeInteraction(this.draw);
-    }
-    this.map.un("pointermove", this.setHelpTooltip);
-    if (this.marker) {
-      this.vectorLayer?.getSource().removeFeature(this.marker);
-    }
-    this.Points = [];
-    super.destroy();
-  }
-
   addAngleMark({
     coordinate,
     Angles,
@@ -193,5 +176,21 @@ export class MeasureAngleTool extends BaseTool {
 
     this.marker.setStyle(markerStyle);
     vectorLayer?.getSource().addFeature(this.marker);
+  }
+
+  destroy() {
+    if (this.listenGeometryChange) {
+      unByKey(this.listenGeometryChange);
+      this.listenGeometryChange = null;
+    }
+    if (this.draw) {
+      this.map.removeInteraction(this.draw);
+    }
+    // this.map.un("pointermove", this.setHelpTooltip);
+    // if (this.marker) {
+    //   this.vectorLayer?.getSource().removeFeature(this.marker);
+    // }
+    // this.Points = [];
+    super.destroy();
   }
 }

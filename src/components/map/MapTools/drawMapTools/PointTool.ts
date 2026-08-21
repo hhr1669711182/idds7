@@ -53,7 +53,6 @@ export class PointTool extends BaseTool {
 
   removeListener() {
     this.map.un("click", this.handle);
-
     this.map.un("pointermove", this.setHelpTooltip);
     this.helpTooltipElement.style.display = "none";
     this.drawIng = false;

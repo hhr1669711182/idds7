@@ -17,9 +17,9 @@ import { watch } from "vue";
 
 type OpenlayersMapExpose = {
   addLayer: (id: string) => boolean;
-  removeLayer: (id: string) => boolean;
-  syncLayers: (ids: string[]) => void;
-};
+  removeLayer: (id: string) => boolean; 
+  syncLayers: (ids: string[], visible?: boolean) => void;
+};  
 
 const dispatchMapStore = useDispatchMapStore();
 const mapConfigStore = useMapConfigStore();
@@ -71,17 +71,16 @@ const layerCheckboxes = [
 ];
 
 watch(() => dispatchMapStore.checkedIds, (newIds) => {
-  dispatchMapRef.value?.syncLayers(newIds);
+  dispatchMapRef.value?.syncLayers(newIds, true);
 }, { deep: true });
 
 const getMap = (map: any) => {
   dispatchMapStore.setMap(map);
-  dispatchMapRef.value?.syncLayers(dispatchMapStore.checkedIds);
+  // dispatchMapRef.value?.syncLayers(dispatchMapStore.checkedIds);
 };
 
 onMounted(async () => {
   await mapConfigStore.loadConfig();
-  dispatchMapRef.value?.syncLayers(dispatchMapStore.checkedIds);
 });
 </script>
 

@@ -148,7 +148,7 @@ export class MeasureDistanceTool extends BaseTool {
   }
 
   destroy() {
-    this.cleanup(true);
+    this.cleanup(false);
     super.destroy();
   }
 }

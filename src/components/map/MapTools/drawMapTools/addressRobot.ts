@@ -1,4 +1,4 @@
-﻿import Map from "ol/Map";
+import Map from "ol/Map";
 import Feature from "ol/Feature";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
@@ -78,7 +78,7 @@ export class AddressRobotManager {
     };
 
     try {
-      const response = await geoserverApi.getWFSFeature(workspace, params);
+      const response = await geoserverApi.getWFSFeatures(params, workspace);
       
       let feature: Feature | undefined;
       

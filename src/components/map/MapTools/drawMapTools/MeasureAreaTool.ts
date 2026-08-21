@@ -1,5 +1,4 @@
 ﻿import { Coordinate } from "ol/coordinate";
-import { markRaw } from "vue";
 import Map from "ol/Map";
 import Feature from "ol/Feature";
 import * as olStyle from "ol/style";
@@ -40,20 +39,18 @@ export class MeasureAreaTool extends BaseTool {
     }),
   });
 
-  draw!: Interaction;
+  draw!: any;
   listener!: EventsKey;
   pointerListener!: EventsKey;
-
-  measureTooltip!: Overlay;
-
+  measureTooltip: any;
   sketch!: Feature | null;
 
   init() {
-        this.draw = markRaw(new Draw({
+        this.draw = new Draw({
       source: this.vectorLayer?.getSource(),
       type: "Polygon",
       style: this.style2,
-    }));
+    });
     this.map.addInteraction(this.draw);
 
     const setHelpTooltip: (evt: MapBrowserEvent) => void = (evt) => {
@@ -73,7 +70,7 @@ export class MeasureAreaTool extends BaseTool {
     this.draw.on(
       "drawstart",
       (evt: { feature: Feature; coordinate: Coordinate }) => {
-        const { feature } = evt;
+        const { feature }: any = evt;
         this.sketch = feature;
         this.measureTooltip = this.createOverlay({
           coordinate: [0, 0],
@@ -83,9 +80,9 @@ export class MeasureAreaTool extends BaseTool {
           insertFirst: false,
         });
 
-        this.listener = feature.getGeometry().on("change", (evt) => {
+        this.listener = feature.getGeometry().on("change", (evt: any) => {
           const geom = evt.target;
-          let output = getArea(geom, false);
+          let output: any = getArea(geom, false);
           const coordinates = geom.getCoordinates()[0];
           if (output > 0) {
             let tooltipCoord = coordinates[coordinates.length - 2];
@@ -101,7 +98,7 @@ export class MeasureAreaTool extends BaseTool {
         "ol-tooltip ol-tooltip-static";
       this.measureTooltip.setOffset([0, -7]);
       evt.feature.setStyle(this.style2);
-      let coordinates = evt.feature.getGeometry()?.getCoordinates()[0];
+      let coordinates = (evt.feature.getGeometry() as import("ol/geom/Polygon").default).getCoordinates()[0] as Coordinate[];
       for (let index = 0; index < coordinates.length; index++) {
         this.formatPonit(coordinates[index]);
       }
@@ -125,10 +122,10 @@ export class MeasureAreaTool extends BaseTool {
     if (this.draw) {
       this.map.removeInteraction(this.draw);
     }
-    if (this.measureTooltip) {
-      this.map.removeOverlay(this.measureTooltip);
-      this.measureTooltip = undefined as any;
-    }
+    // if (this.measureTooltip) {
+    //   this.map.removeOverlay(this.measureTooltip);
+    //   this.measureTooltip = undefined as any;
+    // }
     this.sketch = null;
     super.destroy();
   }

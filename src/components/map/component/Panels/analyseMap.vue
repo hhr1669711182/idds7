@@ -73,7 +73,7 @@ const callback = ({ feature }: { feature: Feature }) => {
 const drawCircle = () => {
   let uuid = uuidv4().replace(/-/g, "");
   drawTool = new DrawTool({
-    map: mapInstance,
+    map: mapInstance!,
     uuid,
     type: "Circle",
     cb: callback,

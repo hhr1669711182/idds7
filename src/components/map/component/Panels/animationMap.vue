@@ -12,9 +12,8 @@ import {
 import { easeOut, easeIn } from "ol/easing";
 import { Coordinate } from "ol/coordinate";
 
-let mapInstance: Map | null;
+let mapInstance: any;
 const initMap = () => {
-  console.log(AMAP_LAYER);
   mapInstance = markRaw(new Map({
     layers: [AMAP_LAYER("animationMap")],
     target: "animationMap",
@@ -106,7 +105,7 @@ const handleBtnClick = (type: { value: any; coordinate: any; }) => {
   }
 };
 
-const flyTo = (location: Coordinate, done = () => {}) => {
+const flyTo = (location: Coordinate, done = (d: boolean) => {}) => {
   // 飞行动画
   let view = mapInstance.getView();
   let duration = 2000;
