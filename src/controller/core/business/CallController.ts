@@ -1,11 +1,12 @@
 /*
  * @Author: hhr
  * @Date: 2026-07-01 11:11:28
- * @LastEditTime: 2026-07-10 16:56:40
+ * @LastEditTime: 2026-08-27 17:48:45
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\controller\core\business\CallController.ts
  */
+import { offset } from 'ol/sphere';
 import type { GenericController } from '../generic';
 import type { LocateCallData, LocateCallRemoveData, AoiEsQueryData, AoiEsGisZoneData } from '../protocol';
 
@@ -45,6 +46,15 @@ export class CallController {
       iconType: 'point',
       animate: 'breathe'
     });
+
+    data.Carrier_Loc && geometry.addText({
+      id: data.id,
+      lngLat: [data.longitude, data.latitude],
+      arg: {
+        offsetY: 30,
+      },
+      text: data.Carrier_Loc,
+    })
 
     view.fitBounds({
       geometry: buffer,

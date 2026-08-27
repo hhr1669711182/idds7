@@ -1,7 +1,7 @@
-/*
+﻿/*
  * @Author: hhr
  * @Date: 2026-05-06 17:11:52
- * @LastEditTime: 2026-08-20 10:55:26
+ * @LastEditTime: 2026-08-27 16:15:05
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\config\env.ts
@@ -14,8 +14,10 @@ const readEnvString = (key: string) => {
 const stripTrailingSlashes = (value: string) => value.replace(/\/+$/g, '')
 const stripSlashes = (value: string) => value.replace(/^\/+|\/+$/g, '')
 
+const isDev = import.meta.env.DEV === true;
+
 export const appEnv = {
-  isDev: import.meta.env.DEV === true,
+  isDev,
   appMode: readEnvString('VITE_APP_ENV'),
   apiBaseUrl: stripTrailingSlashes(readEnvString('VITE_API_BASE_URL')),
   useMock: readEnvString('VITE_USE_MOCK') === 'true',
@@ -25,6 +27,7 @@ export const appEnv = {
   wsUrl: readEnvString('VITE_WS_URL'),
   panel25DUrl: readEnvString('VITE_PANEL_25D_URL'),
   panel3DUrl: readEnvString('VITE_PANEL_3D_URL'),
+  amapApiBaseUrl: isDev ? '/a' : stripTrailingSlashes(readEnvString('VITE_AMAP_PROXY_API')),
 }
 
 export const joinUrl = (baseUrl: string, path: string) => {

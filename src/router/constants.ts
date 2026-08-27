@@ -9,4 +9,5 @@ export const ROUTE_NAMES = {
   THREE_BUILDING: 'ThreejsViewerBuilding',
   MODEL_ASSESS: 'modelAssess',
   DISPATCH: 'dispatch',
+  AMAP_DEMO: 'amapDemo',
 } as const

@@ -49,6 +49,14 @@ export interface MarkerAddData {
   animate?: string;
 }
 
+export interface TextData {
+  id: string;
+  lngLat: [number, number];
+  text: string;
+  subText?: string;
+  arg?: any;
+}
+
 export interface PolygonDrawData {
   id: string;
   geometry: any; // GeoJSON.Polygon

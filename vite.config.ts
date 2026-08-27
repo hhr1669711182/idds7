@@ -1,7 +1,7 @@
 /*
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-08-17 14:03:15
+ * @LastEditTime: 2026-08-27 15:53:41
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\vite.config.ts
@@ -107,6 +107,12 @@ export default defineConfig(({ mode, command }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/api/, ""),
+        },
+        "/a": {
+          target: env.VITE_AMAP_PROXY_API,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/a/, ''),
         },
       },
     },

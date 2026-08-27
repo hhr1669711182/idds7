@@ -1,7 +1,8 @@
+﻿import { offset } from 'ol/sphere';
 /*
  * @Author: hhr
  * @Date: 2026-07-01 11:09:45
- * @LastEditTime: 2026-07-10 17:51:04
+ * @LastEditTime: 2026-08-27 17:48:57
  * @LastEditors: hhr
  * @Description: 几何标绘控制器 - 支持业务ID分组清除
  * @FilePath: \ids-gis-web\src\controller\core\generic\GeometryController.ts
@@ -11,18 +12,19 @@ import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
-import { Style, Icon, Fill, Stroke } from 'ol/style';
+import { Style, Icon, Fill, Stroke, Text } from 'ol/style';
 import GeoJSON from 'ol/format/GeoJSON';
 import { fromLonLat } from 'ol/proj';
 import { getStyle, ROUTE_LINE_STROKE, StyleKey } from '@/baseComponent/amap/featureStyle';
-import type { MarkerAddData, PolygonDrawData, LineDrawData, FeatureRemoveData, FeatureVisibleData } from '../protocol';
+import type { MarkerAddData, TextData, PolygonDrawData, LineDrawData, FeatureRemoveData, FeatureVisibleData } from '../protocol';
 
 /** 要素类型前缀 - 用于区分同一业务ID下的不同要素类型 */
 export const FEATURE_TYPE_PREFIX = {
   MARKER: 'marker_',
   POLYGON: 'polygon_',
   LINE: 'line_',
-  CIRCLE: 'circle_'
+  CIRCLE: 'circle_',
+  TEXT: 'text_'
 } as const;
 
 export class GeometryController {
@@ -59,7 +61,7 @@ export class GeometryController {
    */
   private registerBusinessId(featureId: string, businessId: string): void {
     if (!businessId) return;
-    
+
     let ids = this.businessIdMap.get(businessId);
     if (!ids) {
       ids = [];
@@ -70,7 +72,7 @@ export class GeometryController {
     }
   }
 
-  /** marker 图层的 zIndex，确保 marker 显示在最顶层 */
+  /** marker / text 图层的 zIndex，确保显示在最顶层 */
   private static readonly MARKER_Z_INDEX = 10000;
 
   /**
@@ -117,9 +119,86 @@ export class GeometryController {
 
     // 注册业务ID映射
     this.registerBusinessId(featureId, data.id);
-    
+
     feature.changed();
     this.map.getView().setCenter(fromLonLat(data.lngLat));
+  }
+
+  /**
+   * [G-G06] 文本标注
+   * @description 在指定经纬度位置叠加 text + subText 两行文本标注，支持自定义样式。
+   *              通过 businessId 分组，便于按业务批量清除。
+   *
+   * @example
+   *   addText({
+   *     id: 'label_zone_1',
+   *     lngLat: [116.4, 39.9],
+   *     text: '主战消防站',
+   *     subText: '海淀区',
+   *     arg: { fontColor: '#fff', backgroundColor: 'rgba(17,24,39,0.86)' }
+   *   })
+   */
+  public addText(data: TextData) {
+    const source = this.tempVectorLayer.getSource();
+    if (!source) return;
+
+    const featureId = this.generateFeatureId(FEATURE_TYPE_PREFIX.TEXT, data.id);
+    const newGeometry = new Point(fromLonLat(data.lngLat));
+    let feature = source.getFeatureById(featureId) as Feature<Point> | undefined;
+
+    if (feature) {
+      feature.setGeometry(newGeometry);
+    } else {
+      feature = new Feature({ geometry: newGeometry });
+      feature.setId(featureId);
+      source.addFeature(feature);
+    }
+
+    feature.setStyle(this.buildTextStyle(data));
+
+    // 注册业务ID映射，与 marker / polygon 行为保持一致
+    this.registerBusinessId(featureId, data.id);
+    feature.changed();
+  }
+
+  /**
+   * 构造文本标注样式：主文本 + 副文本两行，带半透明背景框
+   * @description 所有视觉参数都允许通过 data.arg 覆盖，未传则使用默认值
+   */
+  private buildTextStyle(data: TextData): Style {
+    const arg = (data.arg ?? {}) as {
+      fontColor?: string;
+      backgroundColor?: string;
+      borderColor?: string;
+      font?: string;
+      padding?: [number, number, number, number];
+      offsetY?: number;
+      offsetX?: number;
+    };
+
+    const fontColor = arg.fontColor ?? '#FFFFFF';
+    const backgroundColor = arg.backgroundColor ?? 'rgba(17, 24, 39, 0.86)';
+    const borderColor = arg.borderColor ?? 'rgba(255,255,255,0.4)';
+    const font = arg.font ?? '600 13px sans-serif';
+    const padding = arg.padding ?? [4, 8, 4, 8];
+    const offsetY = arg.offsetY ?? 0;
+    const offsetX = arg.offsetX ?? 0;
+
+    return new Style({
+      zIndex: GeometryController.MARKER_Z_INDEX,
+      text: new Text({
+        text: data.subText
+          ? `${data.text}\n${data.subText}`
+          : data.text,
+        offsetY,
+        offsetX,
+        font,
+        fill: new Fill({ color: fontColor }),
+        backgroundFill: new Fill({ color: backgroundColor }),
+        stroke: new Stroke({ color: borderColor, width: 1 }),
+        padding,
+      }),
+    });
   }
 
   /**
@@ -132,7 +211,7 @@ export class GeometryController {
 
     // 生成带前缀的 featureId
     const featureId = this.generateFeatureId(FEATURE_TYPE_PREFIX.POLYGON, data.id);
-    
+
     const geojsonFormat = new GeoJSON();
     let newGeometry: any;
     try {
@@ -179,7 +258,7 @@ export class GeometryController {
 
     // 生成带前缀的 featureId
     const featureId = this.generateFeatureId(FEATURE_TYPE_PREFIX.LINE, data.id);
-    
+
     const geojsonFormat = new GeoJSON();
     let newGeometry: any;
     try {
@@ -256,7 +335,7 @@ export class GeometryController {
     data.featureIds.forEach(id => {
       // 1. 先尝试直接查找（兼容带前缀的 featureId）
       let feature = source.getFeatureById(id);
-      
+
       if (feature) {
         // 找到了，直接移除
         source.removeFeature(feature);
@@ -356,3 +435,7 @@ export class GeometryController {
     });
   }
 }
+
+
+
+

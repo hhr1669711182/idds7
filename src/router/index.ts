@@ -107,6 +107,14 @@ export const staticRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/amap-demo',
+    name: ROUTE_NAMES.AMAP_DEMO,
+    component: () => import('@/views/amap/AmapApiDemo.vue'),
+    meta: {
+      title: '高德接口调试',
+    },
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/map',
   },

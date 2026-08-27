@@ -43,7 +43,6 @@ declare module 'vue' {
     ElSlider: typeof import('element-plus/es')['ElSlider']
     ElSwitch: typeof import('element-plus/es')['ElSwitch']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
-    FontLoader: typeof import('./../components/three/fontLoader.vue')['default']
     GridControl: typeof import('./../components/map/dragPanel/gridControl.vue')['default']
     Icon: typeof import('./../components/Icon/src/Icon.vue')['default']
     Layers: typeof import('./../components/map/layers.vue')['default']
