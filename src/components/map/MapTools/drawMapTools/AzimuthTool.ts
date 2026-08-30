@@ -69,7 +69,7 @@ export class AzimuthTool extends BaseTool {
       } else if (length >= 2) {
         helpMsg = "移动鼠标，改变方位角大小,左键单击确认";
       }
-      if (this.Points.length >= 2) {
+      if (this.Points.length >= 2) {``
         this.Points[2] = coordinate;
       }
       this.helpTooltip.setPosition(coordinate);
@@ -161,7 +161,7 @@ export class AzimuthTool extends BaseTool {
         });
 
         this.Points[2] = coordinates[1];
-        console.log(this.Points, coordinates);
+        // console.log(this.Points, coordinates);
         this.addAngleMark({
           coordinate: coordinates[0],
           Angles: Angles,
@@ -186,7 +186,6 @@ export class AzimuthTool extends BaseTool {
     const startP = transform(this.Points[1], "EPSG:3857", "EPSG:4326");
     const endP = transform(this.Points[2], "EPSG:3857", "EPSG:4326");
     const azimuthInDegrees = turf.rhumbBearing(startP, endP);
-    console.log("Azimuth (in degrees):", azimuthInDegrees);
     this.Points = [];
   }
 

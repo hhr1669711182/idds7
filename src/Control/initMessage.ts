@@ -1,7 +1,7 @@
 /*
  * @Author: huanghuanrong
  * @Date: 2026-04-29 16:52:10
- * @LastEditTime: 2026-07-08 13:51:33
+ * @LastEditTime: 2026-08-28 10:25:26
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\Control\initMessage.ts
@@ -41,7 +41,7 @@ export const initMessage = () => {
                 heartbeatMessage: 'ping',
                 // 调试使用
                 initSend: {
-                    type: 'auth', userId: 'hhr' // 单点调试
+                    type: 'auth', userId: '123' // 单点调试
                 }
                 // initSend: {
                 //     login: 'ids-dev',

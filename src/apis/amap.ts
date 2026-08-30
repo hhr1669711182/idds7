@@ -1,35 +1,19 @@
-/*
+﻿/*
  * @Author: hhr
  * @Date: 2026-08-27 10:09:42
- * @LastEditTime: 2026-08-27 16:19:56
+ * @LastEditTime: 2026-08-28 17:15:57
  * @LastEditors: hhr
  * @Description: ids-address-query-client (高德代理) 接口客户端 - COLA 信封解包
  * @FilePath: \ids-gis-web\src\apis\amap.ts
  */
-import { createAlova } from 'alova'
-import VueHook from 'alova/vue'
-import adapterFetch from 'alova/fetch'
-import { appEnv } from '@/config/env'
+import { alovaMapProxyInstance } from '@/service/alovaMapProxy'
 import { AppError } from '@/service/error'
 
-// ============================================================================
-// 类型定义（按 mds/hhr/接口文档.md）
-// ============================================================================
-
-/** COLA 单条响应信封：data 为对象 */
-export interface SingleResponse<T> {
+export interface Response<T> {
   success: boolean
-  data: T | null
-  errCode: string | null
-  errMessage: string | null
-}
-
-/** COLA 多条响应信封：data 为数组（仅 multi-waypoint） */
-export interface MultiResponse<T> {
-  success: boolean
-  data: T[] | null
-  errCode: string | null
-  errMessage: string | null
+  data: T | T[]
+  errCode: string
+  errMessage: string
 }
 
 /** 通用坐标 */
@@ -42,7 +26,6 @@ export interface GeoJsonCrs {
 }
 
 // ----- POI -----
-
 export interface PoiProperties {
   id: string
   name: string
@@ -77,7 +60,6 @@ export interface PoiFeatureCollection {
 }
 
 // ----- 逆地理编码 -----
-
 export interface Regeocode {
   formatted_address?: string
   addressComponent?: Record<string, unknown>
@@ -94,7 +76,6 @@ export interface RegeoData {
 }
 
 // ----- 正地理编码 -----
-
 export interface GeocodeData {
   status?: string
   geocodes?: Array<{
@@ -107,14 +88,12 @@ export interface GeocodeData {
 }
 
 // ----- 地址语义分析 -----
-
 export interface AnalyzeAddressData {
   status?: string
   [key: string]: unknown
 }
 
 // ----- 路径规划 -----
-
 export interface RouteProperties {
   distance: string
   partDesc: string
@@ -139,7 +118,6 @@ export interface RouteResult {
 }
 
 // ----- 天气 -----
-
 export interface AmapWeatherLive {
   province: string
   city: string
@@ -156,7 +134,7 @@ export interface AmapWeatherData {
   lives: AmapWeatherLive[]
 }
 
-/** 文档第六章：后端业务错误码（与代理服务 ids-address-query-client 约定一致） */
+/** 后端业务错误码（与代理服务 ids-address-query-client 约定一致） */
 export const AMAP_ERROR_CODES = {
   /** 未配置 amap.key / amap.keys 环境变量 */
   KEY_NOT_CONFIGURED: 'AMAP_KEY_NOT_CONFIGURED',
@@ -176,67 +154,9 @@ export const AMAP_ERROR_CODES = {
 
 export type AmapErrorCode = typeof AMAP_ERROR_CODES[keyof typeof AMAP_ERROR_CODES]
 
-// ============================================================================
-// alova 实例（独立于全局拦截，自解 COLA 信封）
-// ============================================================================
-
-export const alovaAmapInstance = createAlova({
-  baseURL: appEnv.amapApiBaseUrl,
-  statesHook: VueHook,
-  requestAdapter: adapterFetch(),
-  cacheLogger: false,
-  async beforeRequest(method) {
-    const token = localStorage.getItem('access_token')
-    if (token) {
-      method.config.headers['Authorization'] = `Bearer ${token}`
-      method.config.headers['clientid'] = 'ids-seat-web'
-    }
-  },
-  responded: {
-    onSuccess: async (response) => {
-      if (!(response instanceof Response)) return response as any
-      if (!response.ok) {
-        throw new AppError(
-          AMAP_ERROR_CODES.NETWORK_ERROR,
-          response.status,
-          `HTTP ${response.status}`,
-        )
-      }
-      const text = await response.text()
-      if (!text.trim()) {
-        throw new AppError(AMAP_ERROR_CODES.UNKNOWN_ERROR, response.status, 'empty response body')
-      }
-
-      let body: any
-      try {
-        body = JSON.parse(text)
-      } catch {
-        throw new AppError(AMAP_ERROR_CODES.RESPONSE_PARSE_ERROR, response.status)
-      }
-
-      if (body && typeof body === 'object' && 'success' in body) {
-        if (body.success) return body.data
-        throw new AppError(
-          body.errCode || AMAP_ERROR_CODES.UNKNOWN_ERROR,
-          response.status,
-          body.errMessage || '请求失败',
-        )
-      }
-      return body
-    },
-    onError: async (err, method) => {
-      const appErr = err instanceof AppError
-        ? err
-        : new AppError(AMAP_ERROR_CODES.UNKNOWN_ERROR, undefined, (err as Error)?.message)
-      const meta = (method?.config?.meta ?? {}) as { silent?: boolean; showError?: boolean }
-      if (meta.silent || meta.showError === false) throw appErr
-      throw appErr
-    },
-  }
-})
 
 // ============================================================================
-// amapApi（13 个方法，命名按文档英文路径转 camelCase）
+// amapApi（12 个方法，命名按文档英文路径转 camelCase）
 // ============================================================================
 
 /** POI 1. 关键字模糊查询 */
@@ -247,7 +167,7 @@ export const keywordSearch = (params: {
   cityLimit?: boolean
   offset?: number
   page?: number
-}) => alovaAmapInstance.Get<SingleResponse<PoiFeatureCollection>>(
+}) => alovaMapProxyInstance.Get<PoiFeatureCollection>(
   '/api/amap/poi/keyword-search',
   { params },
 )
@@ -261,7 +181,7 @@ export const aroundSearch = (params: {
   sortrule?: 'distance' | 'weight'
   offset?: number
   page?: number
-}) => alovaAmapInstance.Get<SingleResponse<PoiFeatureCollection>>(
+}) => alovaMapProxyInstance.Get<PoiFeatureCollection>(
   '/api/amap/poi/around-search',
   { params },
 )
@@ -273,21 +193,21 @@ export const polygonSearch = (params: {
   types?: string
   offset?: number
   page?: number
-}) => alovaAmapInstance.Get<SingleResponse<PoiFeatureCollection>>(
+}) => alovaMapProxyInstance.Get<PoiFeatureCollection>(
   '/api/amap/poi/polygon-search',
   { params },
 )
 
 /** POI 4. 多边形范围详情 */
 export const polygonDetail = (params: { polygon: string }) =>
-  alovaAmapInstance.Get<SingleResponse<PoiFeatureCollection>>(
+  alovaMapProxyInstance.Get<PoiFeatureCollection>(
     '/api/amap/poi/polygon-detail',
     { params },
   )
 
 /** POI 5. POI 详情 */
 export const detail = (params: { id: string }) =>
-  alovaAmapInstance.Get<SingleResponse<PoiFeature>>(
+  alovaMapProxyInstance.Get<PoiFeature>(
     '/api/amap/poi/detail',
     { params },
   )
@@ -298,7 +218,7 @@ export const inputTips = (params: {
   type?: string
   city?: string
   location?: string
-}) => alovaAmapInstance.Get<SingleResponse<PoiFeatureCollection>>(
+}) => alovaMapProxyInstance.Get<PoiFeatureCollection>(
   '/api/amap/poi/input-tips',
   { params },
 )
@@ -310,23 +230,23 @@ export const regeo = (params: {
   poitype?: string
   radius?: number
   batch?: boolean
-}) => alovaAmapInstance.Get<SingleResponse<RegeoData>>(
+}) => alovaMapProxyInstance.Get<RegeoData>(
   '/api/amap/geo/regeo',
   { params },
 )
 
 /** Geocode 2. 正地理编码 */
-export const geocode = (params: {
-  address: string
-  city?: string
-}) => alovaAmapInstance.Get<SingleResponse<GeocodeData>>(
-  '/api/amap/geocode/geocode',
-  { params },
-)
+// export const geocode = (params: {
+//   address: string
+//   city?: string
+// }) => alovaMapProxyInstance.Get<GeocodeData>(
+//   '/api/amap/geo/geocode',
+//   { params },
+// )
 
 /** Geocode 3. 地址语义分析（保留 GCJ-02） */
 export const analyzeAddress = (params: { address: string }) =>
-  alovaAmapInstance.Get<SingleResponse<AnalyzeAddressData>>(
+  alovaMapProxyInstance.Get<AnalyzeAddressData>(
     '/api/amap/geo/analyze-address',
     { params },
   )
@@ -341,7 +261,7 @@ export const driving = (params: {
   avoidroad?: string
   ferry?: number
   cartype?: number
-}) => alovaAmapInstance.Get<SingleResponse<RouteResult>>(
+}) => alovaMapProxyInstance.Get<RouteResult>(
   '/api/amap/route/driving',
   { params },
 )
@@ -363,7 +283,7 @@ export const drivingV2 = (params: {
   truckWeight?: string
   height?: string
   width?: string
-}) => alovaAmapInstance.Get<SingleResponse<RouteResult>>(
+}) => alovaMapProxyInstance.Get<RouteResult>(
   '/api/amap/route/driving-v2',
   { params },
 )
@@ -372,18 +292,18 @@ export const drivingV2 = (params: {
 export const multiWaypoint = (params: {
   origins: string[]
   destinations: string[]
-}) => alovaAmapInstance.Get<MultiResponse<RouteResult>>(
+}) => alovaMapProxyInstance.Get<RouteResult[]>(
   '/api/amap/route/multi-waypoint',
   { params },
 )
 
 /** Weather 1. 天气查询 */
 export const weather = (params: { city: string }) =>
-  alovaAmapInstance.Get<SingleResponse<AmapWeatherData>>(
+  alovaMapProxyInstance.Get<AmapWeatherData>(
     '/api/amap/weather',
     { params },
   )
-
+ 
 export const amapApi = {
   keywordSearch,
   aroundSearch,
@@ -392,7 +312,7 @@ export const amapApi = {
   detail,
   inputTips,
   regeo,
-  geocode,
+  // geocode,
   analyzeAddress,
   driving,
   drivingV2,

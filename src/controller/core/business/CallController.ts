@@ -6,7 +6,6 @@
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\controller\core\business\CallController.ts
  */
-import { offset } from 'ol/sphere';
 import type { GenericController } from '../generic';
 import type { LocateCallData, LocateCallRemoveData, AoiEsQueryData, AoiEsGisZoneData } from '../protocol';
 

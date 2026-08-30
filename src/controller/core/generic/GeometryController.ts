@@ -2,7 +2,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-07-01 11:09:45
- * @LastEditTime: 2026-08-27 17:48:57
+ * @LastEditTime: 2026-08-27 18:33:28
  * @LastEditors: hhr
  * @Description: 几何标绘控制器 - 支持业务ID分组清除
  * @FilePath: \ids-gis-web\src\controller\core\generic\GeometryController.ts

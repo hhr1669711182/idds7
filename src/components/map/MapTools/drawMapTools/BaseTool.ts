@@ -155,7 +155,7 @@ export class BaseTool {
       }),
     });
     marker.setStyle(markerStyle);
-    vectorLayer?.getSource().addFeature(marker);
+    vectorLayer.getSource().addFeature(marker);
     return marker;
   }
 
@@ -178,7 +178,7 @@ export class BaseTool {
         }),
       })
     );
-    this.vectorLayer?.getSource().addFeature(pointFeature);
+    this.vectorLayer.getSource().addFeature(pointFeature);
   }
 
   init() { }

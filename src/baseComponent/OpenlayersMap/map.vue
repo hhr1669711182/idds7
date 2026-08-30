@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { onMounted, nextTick, onUnmounted, ref, watch, markRaw } from "vue";
+﻿<script setup lang="ts">
+import { onMounted, nextTick, onUnmounted, ref, shallowRef, watch, markRaw } from "vue";
 import OLMap from "ol/Map";
 import View from "ol/View";
 import * as olProj from "ol/proj";
@@ -55,6 +55,7 @@ import { getWMSLayerOptions } from "@/apis/layers";
 import { useLayersStore } from "@/store/useLayersStore";
 
 import NavPanel from "./NavPanel.vue";
+import WeatherPanel from "./WeatherPanel.vue";
 import { useMapPopups, carTypeLabel, carStatusLabel } from "./useMapPopups.ts";
 // import { getLayerByClassName } from "@/util/mapTool.ts";
 
@@ -64,6 +65,7 @@ const emit = defineEmits(["setMap"]);
 const { isMobile } = useResponsive();
 
 let map: OLMap | null = null;
+const mapInstanceRef = shallowRef<OLMap | null>(null);
 let nav: AmapRealtimeNav | null = null;
 let zoomLevelChangeKey: EventsKey | null = null;
 const mapZoomLevel = ref(ZOOM.INIT);
@@ -424,6 +426,7 @@ const initMap = () => {
 
   ioCtrl.input.initSubscriptions();
 
+  mapInstanceRef.value = map;
   emit("setMap", map);
 };
 
@@ -457,6 +460,7 @@ const cleanup = () => {
     wmsLayerMap.forEach((layer) => map?.removeLayer(layer));
     wmsLayerMap.clear();
     map.dispose();
+    mapInstanceRef.value = null;
     map = null;
   }
 };
@@ -488,6 +492,8 @@ onUnmounted(() => {
 <template>
   <div :id="props.mapId" :class="{ 'is-mobile': isMobile }" tabindex="2">
     <ZoomLevelControl :zoom="mapZoomLevel" />
+
+    <WeatherPanel :map="mapInstanceRef" />
 
     <div
       ref="popups.firePopupRef"

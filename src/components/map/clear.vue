@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { PANEL_MAP_TYPE } from "../../const/index.ts";
 import { LAYER_NAMES } from "../../baseComponent/OpenlayersMap/layers.ts";
 import { MODAL_SETTING } from "../../const/const.modals.ts";
@@ -14,10 +14,6 @@ const panelStore = usePanelStore();
 const cardStore: any = useCardStore();
 
 const handleClear = () => {
-  if (cardStore?.clearDrawTool) {
-    cardStore.clearDrawTool();
-  }
-
   const layers = MapInstance.value
     .getLayers()
     .getArray();
@@ -28,12 +24,7 @@ const handleClear = () => {
         i.getClassName() == LAYER_NAMES.VECTOR_LAYER
     );
 
-  if (vectorLayer) {
-    const features = vectorLayer.getSource().getFeatures();
-    for (let i = 0; i < features.length; i++) {
-      vectorLayer.getSource().removeFeature(features[i]);
-    }
-  }
+    vectorLayer && vectorLayer.getSource().clear();
 
     const esWmsLayer = layers.find((i: { getClassName: () => string }) => 
       i.getClassName() === LAYER_NAMES.ES_WMS_LAYER
@@ -44,6 +35,10 @@ const handleClear = () => {
 
   if (MapInstance.value.getOverlays().getArray().length > 0) {
     MapInstance.value.getOverlays().clear();
+  }
+
+   if (cardStore?.clearDrawTool) {
+    cardStore.clearDrawTool();
   }
 };
 

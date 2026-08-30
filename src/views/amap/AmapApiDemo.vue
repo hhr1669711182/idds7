@@ -187,9 +187,7 @@ const call = async (key: keyof typeof amapApi) => {
         break
       case "multiWaypoint": {
         // const origins = form.multiWaypoint.originsRaw.split(/[;,]/).map((s) => s.trim()).filter(Boolean)
-        const origins = form.multiWaypoint.originsRaw.split(/[;,]/).map((s) => s.trim()).filter(Boolean)
-        console.log("🚀 ~ call ~ form.multiWaypoint.originsRaw:", form.multiWaypoint.originsRaw)
-        console.log("🚀 ~ call ~ origins:", origins)
+        const origins = form.multiWaypoint.originsRaw.split(/[;,]/).map((s) => s.trim()).filter(Boolean).flat()
         const destinations = form.multiWaypoint.destinationsRaw.split(/[;,]/).map((s) => s.trim()).filter(Boolean)
         res = await amapApi.multiWaypoint({ origins, destinations })
         break
