@@ -448,6 +448,7 @@ onMounted(async () => {
   border: 0;
   background: transparent;
   cursor: pointer;
+  z-index: 5;
 }
 
 .cfg-panel {
@@ -649,7 +650,7 @@ onMounted(async () => {
 
 .cfg-footer {
   justify-content: flex-end;
-  gap: @gap;
+  // gap: @gap;
   padding-top: 12px;
 }
 </style>

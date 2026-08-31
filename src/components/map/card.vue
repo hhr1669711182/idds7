@@ -32,6 +32,8 @@ const handleClose = () => {
 
 const handleSave = () => {
   changeName(form.value.name);
+  
+  handleClose()
 };
 
 const handleDelete = () => {
@@ -196,7 +198,7 @@ const formComponent = computed(() => {
 }
 
 .editPanel {
-  padding: 20px;
+  padding: 10px;
 }
 
 .styleSet {

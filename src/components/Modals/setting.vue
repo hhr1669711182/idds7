@@ -1,10 +1,10 @@
 <!--
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-04-10 17:53:36
- * @LastEditors: huanghuanrong
+ * @LastEditTime: 2026-08-31 18:07:22
+ * @LastEditors: hhr
  * @Description: 文件描述
- * @FilePath: \OpenlayersMap\src\components\Modals\setting.vue
+ * @FilePath: \ids-gis-web\src\components\Modals\setting.vue
 -->
 <script setup lang="ts">
 import { ref, toRaw } from "vue";
@@ -23,7 +23,7 @@ const modalStore = useModalStore();
 const scaleValue = ref(SCALEPLATE_LIST[0].t);
 
 const selectScaleUnit = (unit: string) => {
-  const v: any = SCALEPLATE_LIST.filter(({ t }) => unit == t)[0].v;
+  const v: any = SCALEPLATE_LIST.filter(({ t }) => unit == t)[4].v;
   const mapInstance = toRaw(map.value) as Map;
 
   const scaleControl: ScaleLine | undefined = mapInstance

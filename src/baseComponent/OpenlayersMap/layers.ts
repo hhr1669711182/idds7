@@ -49,7 +49,7 @@ export const AMAP_LAYER = (layerName?: string) => {
     }),
     className: layerName || LAYER_NAMES.AMAP_LAYER,
     preload: 4,
-    background: '#fcf9f2'
+    // background: '#fcf9f2', 
   });
 };
 

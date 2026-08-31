@@ -13,7 +13,6 @@ const componentAliasMap: Record<string, RouteRecordRaw['component']> = {
   'test/index': () => import('@/views/test/index.vue'),
   region: () => import('@/views/region.vue'),
   building: () => import('@/views/building.vue'),
-  three_platform: () => import('@/views/three_platform.vue'),
 }
 
 const normalizeComponentPath = (component: string) =>

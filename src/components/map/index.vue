@@ -1,7 +1,7 @@
 <!--
  * @Author: hhr
  * @Date: 2026-05-21 19:13:51
- * @LastEditTime: 2026-08-20 12:22:14
+ * @LastEditTime: 2026-08-31 15:24:15
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\components\map\index.vue
@@ -60,7 +60,7 @@ const getMap = (map: any) => {
 const handleLayerChange: LayerChangeHandler = (action, id) => {
   // visible 显示隐藏
   // openLayersMapRef.value?.visibleLayer(id, action === "add");
-  
+
   // 选项注册
   if (action === "add") {
     openLayersMapRef.value?.addLayer(id);
@@ -68,7 +68,7 @@ const handleLayerChange: LayerChangeHandler = (action, id) => {
     openLayersMapRef.value?.removeLayer(id);
   }
 };
- 
+
 const handleConfigSave = () => {
   openLayersMapRef.value?.syncLayers(layersStore.checkedIds, true);
 };
@@ -86,24 +86,29 @@ onActivated(() => {
 </script>
 
 <template>
-  <OpenlayersMap ref="openLayersMapRef" @setMap="getMap" />
+  <OpenlayersMap ref="openLayersMapRef" @setMap="getMap">
 
-  <tlp />
-  <brp />
-  <trp />
+    <tlp />
+    <trp />
 
-  <routePlan v-if="type == PANEL_TYPES.ROUTE_PLAN" />
-  <topicLayerCard />
-  <baseSource />
+    <routePlan v-if="type == PANEL_TYPES.ROUTE_PLAN" />
+    <topicLayerCard />
+    <baseSource />
 
-  <clear />
-  <card />
-  <bigPanel />
-  <config @save="handleConfigSave" />
-  <layers :onLayerChange="handleLayerChange" />
+    <clear />
+    <card />
+    <bigPanel />
+    <config @save="handleConfigSave" />
+    <layers :onLayerChange="handleLayerChange" />
 
-  <ssrkPanel v-show="ssrkPanelOpen" />
+    <ssrkPanel v-show="ssrkPanelOpen" />
+
+    <WeatherPanel />
+
+  </OpenlayersMap>
+
+    <brp />
+
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

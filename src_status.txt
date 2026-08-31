@@ -1,0 +1,3 @@
+out: M src/components/Modals/setting.vue
+?? scripts/lint-tsc.mjs
+err:rc:0

@@ -58,9 +58,7 @@ const handleTools = (type: string) => {
       break;
   }
 
-  if (toolMap.create) {
-    toolMap.create();
-  }
+  toolMap?.create();
 };
 
 const MAP_THEMES = [
@@ -111,7 +109,7 @@ const handleClickSet = () => {
 
 const activeType = ref("");
 
-const handleClick = ({ callback, type }) => {
+const handleClick = ({ callback, type }: any) => {
   activeType.value = type;
   if (callback) {
     callback();

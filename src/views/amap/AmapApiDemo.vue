@@ -1,11 +1,4 @@
-<!--
- * @Author: hhr
- * @Date: 2026-08-27 10:09:42
- * @LastEditTime: 2026-08-27 16:26:03
- * @LastEditors: hhr
- * @Description: amapApi 13 接口调试面板（ids-address-query-client）
- * @FilePath: \ids-gis-web\src\views\amap\AmapApiDemo.vue
--->
+
 <template>
   <div class="amap-demo">
     <header class="header">
@@ -56,11 +49,11 @@
           </label>
           <button class="primary" @click="call('regeo')">regeo</button>
         </div>
-        <div class="form-row">
+        <!-- <div class="form-row">
           <label>address <input v-model="form.geocode.address" /></label>
           <label>city <input v-model="form.geocode.city" /></label>
           <button class="primary" @click="call('geocode')">geocode</button>
-        </div>
+        </div> -->
         <div class="form-row">
           <label>address <input v-model="form.analyzeAddress.address" style="min-width:300px" /></label>
           <button class="primary" @click="call('analyzeAddress')">analyzeAddress</button>
@@ -173,9 +166,9 @@ const call = async (key: keyof typeof amapApi) => {
       case "regeo":
         res = await amapApi.regeo({ location: form.regeo.location, extensions: form.regeo.extensions })
         break
-      case "geocode":
-        res = await amapApi.geocode({ address: form.geocode.address, city: form.geocode.city || undefined })
-        break
+      // case "geocode":
+      //   res = await amapApi.geocode({ address: form.geocode.address, city: form.geocode.city || undefined })
+      //   break
       case "analyzeAddress":
         res = await amapApi.analyzeAddress({ address: form.analyzeAddress.address })
         break

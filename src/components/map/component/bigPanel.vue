@@ -66,7 +66,7 @@ const MapComp = computed(() => {
         </ul>
       </div>
       <div class="container-right">
-        <component :is="MapComp" />
+        <component :is="MapComp" v-bind="{ hide: hideCard }" />
       </div>
     </div>
   </div>

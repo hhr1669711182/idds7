@@ -69,7 +69,7 @@ export class AzimuthTool extends BaseTool {
       } else if (length >= 2) {
         helpMsg = "移动鼠标，改变方位角大小,左键单击确认";
       }
-      if (this.Points.length >= 2) {``
+      if (this.Points.length >= 2) {
         this.Points[2] = coordinate;
       }
       this.helpTooltip.setPosition(coordinate);

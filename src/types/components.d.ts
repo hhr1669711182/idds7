@@ -65,6 +65,7 @@ declare module 'vue' {
     VectorLayerHight: typeof import('./../components/map/component/Panels/vectorLayerHight.vue')['default']
     ViewerInquiryBuilding: typeof import('./../components/BIM/viewerInquiryBuilding.vue')['default']
     WaterMarkerControl: typeof import('./../components/map/dragPanel/waterMarkerControl.vue')['default']
+    WeatherPanel: typeof import('./../components/common/WeatherPanel.vue')['default']
   }
   export interface ComponentCustomProperties {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

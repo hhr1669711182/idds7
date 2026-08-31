@@ -134,6 +134,7 @@ const onTileClick = (item: ToolbarItem) => {
 
 <style scoped lang="less">
 .lt {
+  z-index: 5;
   position: absolute;
   bottom: 20px;
   left: 50%;
