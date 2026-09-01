@@ -27,7 +27,8 @@
     "mock:server:restart": "node scripts/restart-mock-server.mjs",
     "mock:server:stop": "node scripts/restart-mock-server.mjs --stop",
     "prebuild": "node scripts/fix-js-clipper-utf8.mjs",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "lint": "vue-tsc --noEmit"
   },
   "dependencies": {
     "@alova/mock": "^2.0.20",
@@ -63,6 +64,7 @@
     "@types/node": "^25.5.2",
     "@types/ol": "^7.0.0",
     "@types/three": "^0.160.0",
+    "@vitejs/devtools": "^0.6.2",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "cross-env": "^10.1.0",

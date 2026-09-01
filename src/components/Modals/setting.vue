@@ -1,7 +1,7 @@
 <!--
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-08-31 18:07:22
+ * @LastEditTime: 2026-08-31 18:09:25
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\components\Modals\setting.vue
@@ -20,10 +20,10 @@ const mapStore = useMapStore();
 const { map } = storeToRefs(mapStore);
 const modalStore = useModalStore();
 
-const scaleValue = ref(SCALEPLATE_LIST[0].t);
+const scaleValue = ref(SCALEPLATE_LIST[4].t);
 
 const selectScaleUnit = (unit: string) => {
-  const v: any = SCALEPLATE_LIST.filter(({ t }) => unit == t)[4].v;
+  const v: any = SCALEPLATE_LIST.filter(({ t }) => unit == t)[0].v;
   const mapInstance = toRaw(map.value) as Map;
 
   const scaleControl: ScaleLine | undefined = mapInstance

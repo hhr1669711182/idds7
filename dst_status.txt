@@ -1,6 +1,0 @@
-out:?? check_output.txt
-?? dst_head.txt
-?? dst_status.txt
-?? src_head.txt
-?? src_status.txt
-err:rc:0

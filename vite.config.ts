@@ -14,7 +14,6 @@ import UnoCSS from "unocss/vite";
 import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
-// import VueDevTools from "vite-plugin-vue-devtools";
 import { createSvgIconsPlugin } from "vite-plugin-svg-icons";
 import { fileURLToPath, URL } from "node:url";
 import { resolve } from "node:path";
@@ -28,10 +27,12 @@ export default defineConfig(({ mode, command }) => {
   const proxyServer = {}
 
   return {
+    devtools: {
+      enabled: true
+    },
     plugins: [
       vue(),
       vueJsx(),
-      // VueDevTools(),
       UnoCSS(),
       cesium(),
       AutoImport({
@@ -51,7 +52,7 @@ export default defineConfig(({ mode, command }) => {
       // qiankun("vue-openlayers-app", { useDevMode: true }),
     ],
     base: isLib ? "/" : "./",
-     css: {
+    css: {
       preprocessorOptions: {
         less: {
           additionalData: '@import "./src/styles/variables.module.less";',
@@ -69,11 +70,11 @@ export default defineConfig(({ mode, command }) => {
       outDir: isLib ? "dist-lib" : "dist",
       lib: isLib
         ? {
-            entry: resolve(__dirname, "src/lib/index.ts"),
-            name: "OpenlayersMapLib",
-            fileName: (format) => `openlayers-map.${format}.js`,
-            formats: ["es"],
-          }
+          entry: resolve(__dirname, "src/lib/index.ts"),
+          name: "OpenlayersMapLib",
+          fileName: (format) => `openlayers-map.${format}.js`,
+          formats: ["es"],
+        }
         : undefined,
       rolldownOptions: {
         external: isLib ? ["vue", "pinia", "vue-router"] : [],
