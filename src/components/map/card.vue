@@ -124,7 +124,7 @@ const formComponent = computed(() => {
             <div class="styleSetTitle">样式设置</div>
             <component :is="formComponent" :formData="form" />
           </div>
-          <div class="card_body_footer">
+          <div class="card_body_footer" v-show="false">
             <el-button type="primary" @click="handleSave">保存</el-button>
             <el-button @click="handleDelete">删除</el-button>
           </div>
