@@ -228,7 +228,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     defaultVisible: false,
     noEsSearch: true,
     useWebMock: false,
-    icon: 'mdi:car-outline',
+    icon: 'svg-icon:population',
   },
    {
     ...dispatchGroup,

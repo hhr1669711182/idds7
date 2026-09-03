@@ -33,7 +33,7 @@ export default defineConfig(({ mode, command }) => {
     plugins: [
       vue(),
       vueJsx(),
-      UnoCSS(),
+      UnoCSS(),  
       cesium(),
       AutoImport({
         imports: ["vue", "vue-router", "pinia"],
