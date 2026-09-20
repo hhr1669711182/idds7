@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from "vue";
 import { computed } from "vue";
 import { storeToRefs } from "pinia";
 import { MODAL_SETTING } from "../../const/const.modals.ts";
-import setting from "./setting.vue";
+const setting = defineAsyncComponent(() => import("./setting.vue"));
 import { useModalStore } from "../../store/index.ts";
 
 const store = useModalStore();

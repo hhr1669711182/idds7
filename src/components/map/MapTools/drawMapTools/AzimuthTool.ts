@@ -4,7 +4,7 @@ import Feature from "ol/Feature";
 import { Style, Stroke, Icon, Text, Fill } from "ol/style";
 import { Draw, Interaction } from "ol/interaction";
 import { unByKey } from "ol/Observable";
-import { calculateAngle, createAngleSVG } from "../../../../util/index";
+import { calculateAngle, createAngleSVG } from "@/utils";
 import { BaseTool } from "./BaseTool";
 import Geometry, { Type } from "ol/geom/Geometry";
 import { Point, LineString } from "ol/geom";

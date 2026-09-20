@@ -3,7 +3,7 @@
  * @Date: 2026-04-21 19:55:09
  * @LastEditTime: 2026-04-21 20:00:05
  * @LastEditors: hhr
- * @Description: 文件描述
+ * @Description: 绘制插件，封装 OpenLayers Draw/Modify/Snap 交互，支持点、线、面、圆、方框等几何绘制
  * @FilePath: \ids-gis-web\src\plugins\mapPlugins\plugins\useDraw.ts
  */
 import { markRaw } from 'vue';

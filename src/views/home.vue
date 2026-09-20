@@ -1,10 +1,10 @@
 <!--
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-04-02 17:24:43
- * @LastEditors: huanghuanrong
+ * @LastEditTime: 2026-09-11 18:15:51
+ * @LastEditors: hhr
  * @Description: 文件描述
- * @FilePath: \OpenlayersMap\src\view\home.vue
+ * @FilePath: \ids-gis-web\src\views\home.vue
 -->
 <script setup>
 import { ref, reactive, watch } from "vue";
@@ -21,6 +21,8 @@ import Map from "../components/map/index.vue";
   <div class="main">
     <!-- <ThemeSwitch /> -->
     <Map />
+
+    <AddressRobotDrawer v-if="true" />
   </div>
 </template>
 <style scoped>

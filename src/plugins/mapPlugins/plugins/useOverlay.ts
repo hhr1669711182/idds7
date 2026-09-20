@@ -1,3 +1,6 @@
+/*
+ * @Description: 覆盖物插件，管理 HTML Overlay 的创建、定位、移除与销毁
+ */
 import Overlay, { type Positioning } from 'ol/Overlay';
 import type OlMap from 'ol/Map';
 import type { Coordinate } from 'ol/coordinate';

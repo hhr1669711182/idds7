@@ -13,6 +13,7 @@ import type { Geometry } from "ol/geom.js";
 import type { Coordinate } from "ol/coordinate.js";
 import type { Map } from "ol";
 import ImageTile from "ol/ImageTile.js";
+import TileState from "ol/TileState.js";
 import type { LoadFunction } from "ol/Tile.js";
 import type { StyleLike } from "ol/style/Style.js";
 
@@ -355,45 +356,31 @@ function calculateAnglePoint(points: Coordinate[]) {
 
 //暗色地图底图
 export const tileLoadFunction: LoadFunction = (imageTile, src) => {
-  const tileImage = (imageTile as ImageTile).getImage();
+  const tile = imageTile as ImageTile;
   const img = new Image();
   img.crossOrigin = "anonymous";
-  img.onload = function () {
+  const release = () => { img.onload = null; img.onerror = null; };
+  img.onload = () => {
+    release();
+    if (tile.getState() !== TileState.LOADING) return;
     const canvas = document.createElement("canvas");
-    const w = img.width;
-    const h = img.height;
-    canvas.width = w;
-    canvas.height = h;
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
     const context = canvas.getContext("2d");
-    if (!context) {
-      return;
-    }
+    if (!context) { tile.setImage(img); return; }
     try {
       context.filter =
         "grayscale(98%) invert(100%) sepia(20%) hue-rotate(180deg) saturate(1600%) brightness(80%) contrast(90%)";
-      context.drawImage(img, 0, 0, w, h, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL("image/png");
-      if (
-        tileImage instanceof HTMLImageElement ||
-        tileImage instanceof HTMLVideoElement
-      ) {
-        tileImage.src = dataUrl;
-      } else {
-        const tileCanvas = tileImage as HTMLCanvasElement;
-        const tileContext = tileCanvas.getContext("2d");
-        tileCanvas.width = w;
-        tileCanvas.height = h;
-        tileContext?.clearRect(0, 0, w, h);
-        tileContext?.drawImage(canvas, 0, 0);
-      }
+      context.drawImage(img, 0, 0);
+      // Keep the rendered bitmap directly: no PNG encoding, base64 or second decode.
+      tile.setImage(canvas);
     } catch {
-      if (
-        tileImage instanceof HTMLImageElement ||
-        tileImage instanceof HTMLVideoElement
-      ) {
-        tileImage.src = src;
-      }
+      tile.setImage(img);
     }
+  };
+  img.onerror = () => {
+    release();
+    if (tile.getState() === TileState.LOADING) tile.setState(TileState.ERROR);
   };
   img.src = src;
 };

@@ -176,13 +176,19 @@ export const mountSSRKFeatures = (
   )
   layer.set('id', TEMP_FRONTEND_LAYER_IDS.SSRK);
   params.map.addLayer(layer)
+  let destroyed = false
+  let pending: Promise<void> | null = null
   const setData = (data: SSRKFeatureCollection) => {
-    populateSSRKSource(source, data)
+    if (!destroyed) populateSSRKSource(source, data)
   }
 
-  const fetch = async (): Promise<void> => {
-    const data = await geoserverApi.getWFSFeatures({ typeName: 'gis:view_realtime_population', maxFeatures: 1000 })
-    setData(data)
+  const fetch = (): Promise<void> => {
+    if (destroyed) return Promise.resolve()
+    if (pending) return pending
+    pending = geoserverApi.getWFSFeatures({ typeName: 'gis:view_realtime_population', maxFeatures: 1000 })
+      .then((data) => { setData(data) })
+      .finally(() => { pending = null })
+    return pending
   }
 
   const fitToExtent = () => {
@@ -201,7 +207,11 @@ export const mountSSRKFeatures = (
   }
 
   const destroy = () => {
+    destroyed = true
     params.map.removeLayer(layer)
+    source.clear(true)
+    layer.dispose()
+    source.dispose()
   }
 
   return {

@@ -241,11 +241,7 @@ export const createJRAlarmStyle = ({
   });
 
 const STYLE_BUILDERS: StyleBuilderMap = {
-  alarm: (params) =>
-    createIconStyle({
-      iconSrc: params.iconSrc,
-      scale: params.scale ?? 0.9,
-    }),
+  alarm: (params = {iconSrc: MAP_ICON_SRC.alarm, scale: 0.9 }) => createIconStyle(params),
   boundary: () => createBoundaryStyle(),
   point: () => createIconStyle({ iconSrc: MAP_ICON_SRC.point, scale: 1.2 }),
   endpoint: (params) => createEndpointStyle(params.type),

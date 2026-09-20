@@ -15,6 +15,7 @@ export const DRAW_TYPES = {
   AZIMUTH: "azimuth",
   MEASUREAREA: "MEASUREAREA",
   MEASURELENGTH: "MEASURELENGTH",
+  POPULATION: "POPULATION", // 实时人口标绘
 }; // 绘制类型
 
 export const TYPES = {
@@ -22,6 +23,7 @@ export const TYPES = {
   ...DRAW_TYPES,
   RESET: "RESET", // 重置
   TRAFFIC: "TRAFFIC", //实时路况
+  POPULATION: "POPULATION", //实时人口标绘
   PATHPLAN: "PATHPLAN", //路径规划
   TOPICTYPES: "TOPICTYPES", //专题图
   BASESOURCE: "BASESOURCE", //基础图层
@@ -152,4 +154,4 @@ export const SCALEPLATE_LIST = [
     t: "公制",
     v: "metric",
   },
-];
+] as const;

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * @Author: huanghuanrong
  * @Date: 2026-05-06 16:45:28
  * @LastEditTime: 2026-07-10 10:02:50
@@ -7,6 +7,7 @@
  * @FilePath: \ids-gis-web\src\store\useLayersStore.ts
  */
 import { defineStore } from 'pinia'
+import { piniaSession } from './piniaPersist'
 import { computed, ref } from 'vue'
 import {
   DEFAULT_CHECKED_IDS,
@@ -101,7 +102,7 @@ export const useLayersStore = defineStore(
   },
   {
     persist: {
-      storage: sessionStorage,
+      storage: piniaSession,
       pick: ['checkedIds'],
     },
   },

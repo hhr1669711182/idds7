@@ -8,7 +8,7 @@
 -->
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue";
-import { EventBus } from "../../../util/mitt.ts";
+import { EventBus } from "../../../utils/mitt.ts";
 import {
   NAV_FINISHED_EVENT,
   type NavFinishedPayload,

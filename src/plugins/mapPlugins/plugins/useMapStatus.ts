@@ -3,7 +3,7 @@
  * @Date: 2026-04-21 19:55:07
  * @LastEditTime: 2026-04-21 20:01:31
  * @LastEditors: hhr
- * @Description: 文件描述
+ * @Description: 图层与要素状态插件，管理图层增删、显隐、透明度及矢量要素的添加与清空
  * @FilePath: \ids-gis-web\src\plugins\mapPlugins\plugins\useMapStatus.ts
  */
 import type OlMap from 'ol/Map';

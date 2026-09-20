@@ -1,7 +1,7 @@
 ﻿/*
  * @Author: hhr
  * @Date: 2026-08-28 16:56:11
- * @LastEditTime: 2026-08-28 17:15:32
+ * @LastEditTime: 2026-09-17 10:53:25
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\service\alovaMapProxy.ts
@@ -9,7 +9,7 @@
 import { createAlova } from 'alova'
 import VueHook from 'alova/vue'
 import adapterFetch from 'alova/fetch'
-import { AppError, ERROR_CODES } from './error'
+import { AppError } from './error'
 import { appEnv } from '@/config/env'
 import { AMAP_ERROR_CODES } from '@/apis/amap'
 
@@ -18,12 +18,7 @@ export const alovaMapProxyInstance = createAlova({
   statesHook: VueHook,
   requestAdapter: adapterFetch(),
   cacheLogger: false,
-  async beforeRequest(method) {
-    const token = localStorage.getItem('access_token')
-    // if (token) {
-    //   method.config.headers['Authorization'] = `Bearer ${token}`
-    //   method.config.headers['clientid'] = 'ids-seat-web'
-    // }
+  beforeRequest() {
   },
   responded: {
     onSuccess: async (response) => {

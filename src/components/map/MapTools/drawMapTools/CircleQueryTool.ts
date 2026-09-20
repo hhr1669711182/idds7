@@ -1,7 +1,5 @@
-﻿import { markRaw, toRaw } from "vue";
+import { markRaw } from "vue";
 import { Draw, Modify } from "ol/interaction";
-// import TileLayer from "ol/layer/Tile";
-// import TileWMS from "ol/source/TileWMS";
 import ImageLayer from "ol/layer/Image";
 import ImageWMS from "ol/source/ImageWMS";
 import { getDistance } from "ol/sphere";
@@ -19,6 +17,43 @@ import Overlay from "ol/Overlay";
 import { geoserverApi } from "@/service/geoserver";
 import Collection from "ol/Collection";
 import { LAYER_NAMES } from "@/baseComponent/OpenlayersMap/layers";
+import { EventBus } from "@/utils/mitt";
+
+export const ALL_RESOURCE_TYPES = [
+  { key: "fireHydrant", label: "消防栓", color: "#f56c6c", icon: "#icon-fire" },
+  { key: "fireWaterCrane", label: "消防水鹤", color: "#409eff", icon: "#icon-water" },
+  { key: "fireWaterPool", label: "消防水池", color: "#409eff", icon: "#icon-pool" },
+  { key: "keyUnit", label: "重点单位", color: "#e6a23c", icon: "#icon-building" },
+  { key: "personLocation", label: "人员场所", color: "#67c23a", icon: "#icon-people" },
+];
+
+export type CircleQuerySourceData = {
+  uuid: string;
+  hasGeometry: boolean;
+  center: number[] | null;
+  centerLonLat: number[] | null;
+  radiusMeters: number;
+  displayRadius: string;
+  cqlFilter: string;
+  wmsVisible: boolean;
+  wmsLayerName: string;
+  resourceTypes: string[];
+  stats: {
+    total: number;
+    perType: Record<string, number>;
+  };
+  style: {
+    strokeColor: string;
+    strokeWidth: number;
+    fillOpacity: number;
+  };
+};
+
+export type CircleQueryPatch = Partial<CircleQuerySourceData["style"]> & {
+  radiusMeters?: number;
+  wmsVisible?: boolean;
+  resourceTypes?: string[];
+};
 
 export class CircleQueryTool extends BaseTool {
   draw!: Draw;
@@ -27,26 +62,55 @@ export class CircleQueryTool extends BaseTool {
   listeners: EventsKey[] = [];
   radiusTooltip!: Overlay;
   radiusTooltipElement!: HTMLElement;
-  wmsLayer!: ImageLayer<ImageWMS>;
+  wmsLayer!: ImageLayer<ImageWMS> | null = null;
+  feature: Feature | null = null;
+  sourceData: CircleQuerySourceData;
   private moveendThrottle: ReturnType<typeof setTimeout> | null = null;
   private moveendLeading: boolean = false;
 
-  drawStyle = new Style({
-    stroke: new Stroke({
-      color: "#409eff",
-      width: 2,
-    }),
-    fill: new Fill({
-      color: "rgba(64, 158, 255, 0.1)",
-    }),
-  });
+  strokeColor = "#409eff";
+  strokeWidth = 2;
+  fillOpacity = 10; // 0~100
+  selectedResourceTypes: string[] = ALL_RESOURCE_TYPES.map((i) => i.key);
+
+  get drawStyle(): Style {
+    return new Style({
+      stroke: new Stroke({
+        color: this.strokeColor,
+        width: this.strokeWidth,
+      }),
+      fill: new Fill({
+        color: `rgba(64, 158, 255, ${(this.fillOpacity / 100).toFixed(2)})`,
+      }),
+    });
+  }
 
   constructor(options: { map: Map; type: Type; uuid: string; cb: Function }) {
     super(options);
+    this.sourceData = {
+      uuid: this.uuid,
+      hasGeometry: false,
+      center: null,
+      centerLonLat: null,
+      radiusMeters: 0,
+      displayRadius: "",
+      cqlFilter: "",
+      wmsVisible: false,
+      wmsLayerName: LAYER_NAMES.ES_WMS_LAYER,
+      resourceTypes: [...this.selectedResourceTypes],
+      stats: { total: 0, perType: {} },
+      style: {
+        strokeColor: this.strokeColor,
+        strokeWidth: this.strokeWidth,
+        fillOpacity: this.fillOpacity,
+      },
+    };
   }
 
   init() {
     super.init();
+
+    EventBus.emit("circle-query:update", this.getSourceData());
 
     this.radiusTooltipElement = document.createElement("div");
     this.radiusTooltipElement.className = "ol-tooltip ol-tooltip-measure";
@@ -73,7 +137,9 @@ export class CircleQueryTool extends BaseTool {
     this.map.addInteraction(this.draw);
 
     this.setHelpTooltip = (evt: { coordinate: Coordinate }) => {
-      let helpMsg = this.sketch ? "松开鼠标结束圈选" : "点击并拖动鼠标进行圈选查询";
+      const helpMsg = this.sketch
+        ? "松开鼠标结束圈选"
+        : "点击并拖动鼠标进行圈选查询";
       this.helpTooltipElement.innerHTML = helpMsg;
       this.helpTooltipElement.style.display = "block";
       this.helpTooltip.setPosition(evt.coordinate);
@@ -91,11 +157,12 @@ export class CircleQueryTool extends BaseTool {
       this.sketch = null;
 
       const feature = evt.feature;
+      this.feature = feature;
       feature.setId(this.uuid);
       feature.setStyle(this.drawStyle);
 
-      // 绘制结束,触发一次 WMS 查询
       this.updateRadiusAndWMS(feature.getGeometry() as Circle, true);
+      EventBus.emit("circle-query:update", this.getSourceData());
 
       this.map.removeInteraction(this.draw);
 
@@ -105,23 +172,18 @@ export class CircleQueryTool extends BaseTool {
       }));
       this.map.addInteraction(this.modify);
 
-      // Modify 拖拽结束,触发 WMS 查询
       const modifyEndKey = this.modify.on("modifyend", (e: any) => {
         const features = e.features.getArray();
         if (features.length > 0) {
           const modifiedGeom = features[0].getGeometry() as Circle;
           this.updateRadiusAndWMS(modifiedGeom, true);
+          EventBus.emit("circle-query:update", this.getSourceData());
         }
       });
       this.listeners.push(modifyEndKey);
 
-      // 地图缩放/平移结束后,节流触发 WMS 查询
-      // 第一次 moveend 立即执行,后续 300ms 内只执行最后一次
       const moveEndKey = this.map.on("moveend", () => {
-        if (this.moveendLeading) {
-          // 已经有定时器在等,跳过
-          return;
-        }
+        if (this.moveendLeading) return;
         this.moveendLeading = true;
         this.moveendThrottle = setTimeout(() => {
           this.moveendLeading = false;
@@ -129,6 +191,7 @@ export class CircleQueryTool extends BaseTool {
           if (this.wmsLayer) {
             const geom = feature.getGeometry() as Circle;
             this.updateRadiusAndWMS(geom, true);
+            EventBus.emit("circle-query:update", this.getSourceData());
           }
         }, 300);
       });
@@ -145,18 +208,25 @@ export class CircleQueryTool extends BaseTool {
     const edgeLonLat = transform(edgeCoordinate, "EPSG:3857", "EPSG:4326");
     const distanceInMeters = getDistance(centerLonLat, edgeLonLat);
 
-    let displayRadius = "";
-    if (distanceInMeters > 1000) {
-      displayRadius = (distanceInMeters / 1000).toFixed(1) + "千米";
-    } else {
-      displayRadius = distanceInMeters.toFixed(1) + "米";
-    }
+    const displayRadius =
+      distanceInMeters > 1000
+        ? (distanceInMeters / 1000).toFixed(1) + "千米"
+        : distanceInMeters.toFixed(1) + "米";
 
     this.radiusTooltipElement.innerHTML = displayRadius;
     this.radiusTooltip.setPosition(edgeCoordinate);
 
+    this.sourceData.hasGeometry = true;
+    this.sourceData.center = center;
+    this.sourceData.centerLonLat = centerLonLat;
+    this.sourceData.radiusMeters = distanceInMeters;
+    this.sourceData.displayRadius = displayRadius;
+
     if (triggerWms) {
       this.updateWMSLayer(centerLonLat, distanceInMeters);
+      this.sourceData.wmsVisible = true;
+      this.sourceData.cqlFilter =
+        `1=1 and DWITHIN(geom,Point(${centerLonLat[0]} ${centerLonLat[1]}), ${distanceInMeters},meters)`;
     }
   }
 
@@ -164,7 +234,6 @@ export class CircleQueryTool extends BaseTool {
     const cqlFilter = `1=1 and DWITHIN(geom,Point(${centerLonLat[0]} ${centerLonLat[1]}), ${radiusInMeters},meters)`;
 
     if (!this.wmsLayer) {
-      // 关键:source 必须 markRaw,否则 OL 内部状态写入会被 Vue 代理放大
       this.wmsLayer = markRaw(new ImageLayer({
         source: markRaw(new ImageWMS({
           url: geoserverApi.getWMSServiceUrl("gis"),
@@ -191,30 +260,92 @@ export class CircleQueryTool extends BaseTool {
     }
   }
 
+  getSourceData(): CircleQuerySourceData {
+    this.sourceData.style = {
+      strokeColor: this.strokeColor,
+      strokeWidth: this.strokeWidth,
+      fillOpacity: this.fillOpacity,
+    };
+    this.sourceData.resourceTypes = [...this.selectedResourceTypes];
+    this.sourceData.stats = this.computeStats();
+    return {
+      ...this.sourceData,
+      style: { ...this.sourceData.style },
+      stats: {
+        ...this.sourceData.stats,
+        perType: { ...this.sourceData.stats.perType },
+      },
+    };
+  }
+
+  applyPatch(patch: CircleQueryPatch) {
+    if (typeof patch.strokeColor === "string") this.strokeColor = patch.strokeColor;
+    if (typeof patch.strokeWidth === "number") this.strokeWidth = patch.strokeWidth;
+    if (typeof patch.fillOpacity === "number") this.fillOpacity = patch.fillOpacity;
+    if (this.feature) this.feature.setStyle(this.drawStyle);
+
+    if (typeof patch.radiusMeters === "number" && this.feature) {
+      const geom = this.feature.getGeometry() as Circle | undefined;
+      if (geom) {
+        geom.setRadius(patch.radiusMeters);
+        this.updateRadiusAndWMS(geom, true);
+      }
+    }
+
+    if (typeof patch.wmsVisible === "boolean") {
+      if (!patch.wmsVisible) {
+        this.clearES_WMSLayer();
+        this.sourceData.wmsVisible = false;
+      } else if (this.sourceData.centerLonLat && this.sourceData.radiusMeters) {
+        this.updateWMSLayer(this.sourceData.centerLonLat, this.sourceData.radiusMeters);
+        this.sourceData.wmsVisible = true;
+      }
+    }
+
+    if (Array.isArray(patch.resourceTypes)) {
+      this.selectedResourceTypes = [...patch.resourceTypes];
+    }
+
+    EventBus.emit("circle-query:update", this.getSourceData());
+  }
+
+  /**
+   * 基于半径/类型估算资源数(前端演示);后续接入真实接口可替换此处
+   */
+  private computeStats(): CircleQuerySourceData["stats"] {
+    const radiusKm = Math.max(this.sourceData.radiusMeters / 1000, 0);
+    const base = Math.max(0, Math.round(radiusKm * 12));
+    const perType: Record<string, number> = {};
+    let total = 0;
+    for (const t of ALL_RESOURCE_TYPES) {
+      const seed = (this.uuid.charCodeAt(0) + t.key.length) % 7;
+      const count = this.selectedResourceTypes.includes(t.key)
+        ? Math.max(0, Math.round(base * (0.6 + seed * 0.07)))
+        : 0;
+      perType[t.key] = count;
+      total += count;
+    }
+    return { total, perType };
+  }
+
   destroy() {
-    // 清除节流定时器
     if (this.moveendThrottle) {
       clearTimeout(this.moveendThrottle);
       this.moveendThrottle = null;
     }
     this.moveendLeading = false;
-    // 断开所有事件监听
     this.listeners.forEach((key) => unByKey(key));
     this.listeners = [];
-    if (this.draw) {
-      this.map.removeInteraction(this.draw);
-    }
-    if (this.modify) {
-      this.map.removeInteraction(this.modify);
-    }
-    if (this.radiusTooltip) {
-      this.map.removeOverlay(this.radiusTooltip);
-    }
+    if (this.draw) this.map.removeInteraction(this.draw);
+    if (this.modify) this.map.removeInteraction(this.modify);
+    if (this.radiusTooltip) this.map.removeOverlay(this.radiusTooltip);
     this.map.un("pointermove", this.setHelpTooltip as any);
+    EventBus.emit("circle-query:close", { uuid: this.uuid });
     super.destroy();
   }
 
   clearES_WMSLayer() {
     if (this.wmsLayer) this.map.removeLayer(this.wmsLayer);
+    this.wmsLayer = null;
   }
 }

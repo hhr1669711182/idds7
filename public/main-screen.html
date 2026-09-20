@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>消防接处警主屏状态控制台</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
+      background: #07111f;
+      color: #e7f3ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 32px;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(24, 144, 255, .24), transparent 32%),
+        radial-gradient(circle at 88% 92%, rgba(255, 91, 71, .18), transparent 30%),
+        #07111f;
+    }
+    main {
+      width: min(960px, 100%);
+      padding: 36px;
+      border: 1px solid rgba(118, 184, 255, .24);
+      border-radius: 20px;
+      background: rgba(11, 27, 47, .9);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .38);
+    }
+    .eyebrow { color: #66b9ff; font-weight: 700; letter-spacing: .16em; }
+    h1 { margin: 10px 0 8px; font-size: clamp(28px, 5vw, 46px); }
+    .description { margin: 0; color: #9db2c8; line-height: 1.7; }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 30px 0 22px;
+      padding: 18px 20px;
+      border-radius: 12px;
+      background: rgba(3, 13, 25, .62);
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #6d7c8c;
+      box-shadow: 0 0 18px currentColor;
+    }
+    .status strong { display: block; font-size: 18px; }
+    .status small { display: block; margin-top: 4px; color: #8096ad; }
+    .actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+    button {
+      min-height: 150px;
+      padding: 24px;
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: 15px;
+      color: #fff;
+      text-align: left;
+      cursor: pointer;
+      transition: transform .18s ease, border-color .18s ease, filter .18s ease;
+    }
+    button:hover { transform: translateY(-3px); filter: brightness(1.08); }
+    button:active { transform: translateY(0); }
+    button span { display: block; font-size: 25px; font-weight: 800; }
+    button small { display: block; margin-top: 12px; font-size: 14px; opacity: .8; }
+    .request { background: linear-gradient(145deg, #0878d1, #094f99); }
+    .dispatch { background: linear-gradient(145deg, #d84b36, #932a2a); }
+    footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 24px;
+      color: #7890aa;
+      font-size: 13px;
+    }
+    footer a { color: #79c4ff; }
+    code { color: #b7dfff; }
+    .mock-zone { margin-top: 18px; }
+    .mock-zone .row {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .mock-zone label { font-size: 13px; color: #9db2c8; }
+    .mock-zone input {
+      width: 110px;
+      margin-left: 6px;
+      padding: 8px 10px;
+      border: 1px solid rgba(118, 184, 255, .3);
+      border-radius: 8px;
+      background: rgba(3, 13, 25, .8);
+      color: #e7f3ff;
+      font-size: 14px;
+    }
+    .mock-zone button {
+      min-height: auto;
+      padding: 10px 18px;
+      font-size: 14px;
+      text-align: center;
+    }
+    @media (max-width: 660px) {
+      body { padding: 16px; }
+      main { padding: 24px; }
+      .actions { grid-template-columns: 1fr; }
+      button { min-height: 125px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">IDS · MAIN SCREEN</div>
+    <h1>接处警主屏状态控制台</h1>
+    <p class="description">
+      本页模拟受理席主窗口（唯一写者），按 V1 契约写入 seat-shared-state；地图屏只读。
+      请在同协议、同 host、同端口的两个标签页中测试。请勿与真实受理席主窗口同时使用，测试写入会替换当前共享状态。
+    </p>
+
+    <section class="status" aria-live="polite">
+      <i id="statusDot" class="dot"></i>
+      <div>
+        <strong id="statusText">尚未设置状态</strong>
+        <small id="statusTime">等待操作</small>
+      </div>
+    </section>
+
+    <section class="actions">
+      <button id="dutyButton" class="request" type="button">
+        <span>登录后值守</span>
+        <small>phase=onDuty，currentAlarm=null → /map</small>
+      </button>
+      <button id="popupButton" class="request" type="button">
+        <span>来电</span>
+        <small>phase=popup，保留当前警情 → /map</small>
+      </button>
+      <button id="requestButton" class="request" type="button">
+        <span>问询状态</span>
+        <small>phase=inquiry，currentAlarm=null → /map</small>
+      </button>
+      <button id="dispatchButton" class="dispatch" type="button">
+        <span>调派状态</span>
+        <small>phase=inquiry，currentAlarm 非空 → /dispatch1</small>
+      </button>
+      <button id="trackButton" class="dispatch" type="button">
+        <span>跟踪调派</span>
+        <small>phase=dispatchTrack（当前无独立路由，地图保持原页面）</small>
+      </button>
+      <button id="logoutButton" class="request" type="button">
+        <span>登出 / 空态</span>
+        <small>保留 key，各业务组写 null → /map</small>
+      </button>
+    </section>
+    <p class="description">使用虚拟测试身份，不代表真实登录。默认仅测试状态；连接本地模拟后，状态按钮同时触发对应消息，地图等待状态稳定 500 毫秒后处理。仅通知本机模拟服务，不发送令牌。</p>
+    <button id="mockConnect" type="button" style="min-height:auto;margin:12px 0">连接本地消息模拟</button>
+    <p id="mockStatus" class="description">未连接本地模拟（localhost:18080）</p>
+
+    <section class="mock-zone">
+      <div class="eyebrow">MOCK PATCH · seat-shared-state-mock</div>
+      <p class="description" style="margin-top:8px">
+        模拟来电定位补丁通道（契约 §7，独立 key / 独立版本 v=1）。演示流程：先点上方「来电」进入振铃相位（phase=popup），
+        再写入模拟定位，地图屏收到 storage 事件后按真实来电定位链路绘制缓冲区与点位；清除（removeItem）后地图移除绘标。
+      </p>
+      <div class="row">
+        <label>经度<input id="mockLng" type="number" step="0.000001" value="113.920000"></label>
+        <label>纬度<input id="mockLat" type="number" step="0.000001" value="22.550000"></label>
+        <button id="mockLocationWrite" class="request" type="button">写入模拟来电定位</button>
+        <button id="mockLocationClear" class="dispatch" type="button">清除模拟定位</button>
+      </div>
+      <p id="mockLocationStatus" class="description">尚未写入 mock 补丁。</p>
+    </section>
+
+    <pre id="statePreview" style="white-space:pre-wrap;overflow-wrap:anywhere" aria-label="共享状态预览"></pre>
+
+    <footer>
+      <span>存储键：<code>seat-shared-state</code> · V1 ｜ 补丁键：<code>seat-shared-state-mock</code> · V1</span>
+      <a href="./#/map" target="ids-gis-map">打开 GIS 地图屏</a>
+    </footer>
+  </main>
+
+  <script>
+    const STORAGE_KEY = 'seat-shared-state';
+    const statusText = document.getElementById('statusText');
+    const statusTime = document.getElementById('statusTime');
+    const statusDot = document.getElementById('statusDot');
+    let mockSocket = null;
+    const mockStatus = document.getElementById('mockStatus');
+    document.getElementById('mockConnect').addEventListener('click', () => {
+      if (mockSocket && mockSocket.readyState < 2) { mockSocket.close(); return; }
+      const socket = new WebSocket('ws://localhost:18080/mock-control');
+      mockSocket = socket;
+      mockStatus.textContent = '正在连接本地模拟...';
+      socket.onopen = () => {
+        mockStatus.textContent = '已连接。请点击状态按钮触发对应消息（所有已连接的本地模拟地图均会接收）。';
+        document.getElementById('mockConnect').textContent = '断开本地消息模拟';
+      };
+      socket.onmessage = event => {
+        try {
+          const result = JSON.parse(event.data);
+          mockStatus.textContent = result.error || `已通知模拟服务：${result.stage}，地图连接数：${result.clients}`;
+        } catch { mockStatus.textContent = '模拟服务返回格式异常'; }
+      };
+      socket.onerror = () => { mockStatus.textContent = '本地模拟连接失败，请先运行 node mock-ws.js'; };
+      socket.onclose = () => {
+        mockStatus.textContent = '本地模拟已断开，请重新连接';
+        document.getElementById('mockConnect').textContent = '连接本地消息模拟';
+      };
+    });
+
+    const parseState = (raw) => {
+      if (!raw) return null;
+      try {
+        const value = JSON.parse(raw);
+        return value?.v === 1 && Number.isFinite(value.updatedAt) ? value : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const render = (state) => {
+      const labels = { onDuty: '值守', popup: '来电', inquiry: '问询', dispatchTrack: '跟踪调派' };
+      const isDispatch = state?.phase === 'inquiry' && state.currentAlarm != null;
+      const label = !state ? '无有效 V1 状态' : state.auth === null ? '未登录 / 已登出'
+        : isDispatch ? '调派' : labels[state.phase] || '未知状态';
+      statusText.textContent = `当前状态：${label}`;
+      statusTime.textContent = state?.updatedAt
+        ? `最后更新：${new Date(state.updatedAt).toLocaleString()}`
+        : '等待操作';
+      statusDot.style.background = isDispatch ? '#ff624d' : state?.auth ? '#27b2ff' : '#6d7c8c';
+      statusDot.style.color = statusDot.style.background;
+      // 不把真实主屏留下的令牌或会话标识显示到页面。
+      const preview = state ? { ...state, auth: state.auth ? { accessToken: '[已隐藏]', sessionId: '[已隐藏]' } : null } : null;
+      document.getElementById('statePreview').textContent = JSON.stringify(preview, null, 2);
+    };
+
+    const makeAlarm = () => ({
+      incidentId: `TEST-INC-${Date.now()}`,
+      address: '共享状态联调测试地址（无坐标）',
+      stage: 'filed', stageName: '立案',
+      source: 'inquiry_filed', filedAt: Date.now(), updatedAt: Date.now()
+    });
+
+    const setScenario = (scenario) => {
+      const previous = parseState(localStorage.getItem(STORAGE_KEY));
+      const loggedOut = scenario === 'logout';
+      const currentAlarm = scenario === 'popup' ? previous?.currentAlarm ?? null
+        : scenario === 'dispatch' || scenario === 'dispatchTrack' ? previous?.currentAlarm ?? makeAlarm() : null;
+      const payload = {
+        v: 1,
+        updatedAt: Date.now(),
+        auth: loggedOut ? null : { accessToken: 'TEST_ONLY_NOT_A_TOKEN', sessionId: 'shared-state-test-session' },
+        user: loggedOut ? null : { userId: 'shared-state-test-user', username: 'test-seat', displayName: '共享状态测试员', roles: ['dispatch'] },
+        seat: loggedOut ? null : { seatNumber: '8001' },
+        phase: loggedOut ? null : scenario === 'dispatch' ? 'inquiry' : scenario,
+        currentAlarm: loggedOut ? null : currentAlarm
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        render(payload); // storage 事件不会发送给写入它的本窗口。
+        if (mockSocket?.readyState === 1) {
+          mockSocket.send(JSON.stringify({ action: 'mock-stage', stage: scenario, incidentId: currentAlarm?.incidentId }));
+        }
+      } catch {
+        statusText.textContent = '写入失败，请检查浏览器存储权限';
+      }
+    };
+
+    const scenarios = { dutyButton: 'onDuty', popupButton: 'popup', requestButton: 'inquiry', dispatchButton: 'dispatch', trackButton: 'dispatchTrack', logoutButton: 'logout' };
+    Object.entries(scenarios).forEach(([id, scenario]) => {
+      document.getElementById(id).addEventListener('click', () => setScenario(scenario));
+    });
+
+    window.addEventListener('storage', (event) => {
+      if (event.key !== STORAGE_KEY) return;
+      render(parseState(event.newValue));
+    });
+
+    // §7 mock 补丁通道写侧：仅模拟来电振铃时写入固定演示坐标，可随时清场。
+    const MOCK_KEY = 'seat-shared-state-mock';
+    const mockLngInput = document.getElementById('mockLng');
+    const mockLatInput = document.getElementById('mockLat');
+    const mockLocationStatus = document.getElementById('mockLocationStatus');
+
+    const renderMockStatus = (text) => { mockLocationStatus.textContent = text; };
+
+    document.getElementById('mockLocationWrite').addEventListener('click', () => {
+      const lng = Number(mockLngInput.value);
+      const lat = Number(mockLatInput.value);
+      if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
+        renderMockStatus('坐标无效，请输入合法经纬度');
+        return;
+      }
+      const payload = { v: 1, updatedAt: Date.now(), callLocation: { lng, lat } };
+      localStorage.setItem(MOCK_KEY, JSON.stringify(payload));
+      renderMockStatus(`已写入模拟来电定位（${lng}, ${lat}），updatedAt=${payload.updatedAt}；地图屏处于「来电」相位时落地绘标。`);
+    });
+
+    document.getElementById('mockLocationClear').addEventListener('click', () => {
+      localStorage.removeItem(MOCK_KEY);
+      renderMockStatus('已清除 mock 补丁（removeItem），地图屏移除模拟来电绘标。');
+    });
+
+    render(parseState(localStorage.getItem(STORAGE_KEY)));
+  </script>
+</body>
+</html>

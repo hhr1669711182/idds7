@@ -1,4 +1,12 @@
-﻿<script setup>
+﻿<!--
+ * @Author: hhr
+ * @Date: 2026-08-18 19:38:38
+ * @LastEditTime: 2026-09-17 11:19:01
+ * @LastEditors: hhr
+ * @Description: 文件描述
+ * @FilePath: \ids-gis-web\src\components\map\dragPanel\swipeControl.vue
+-->
+<script setup>
 import { toRaw, markRaw } from "vue";
 import { storeToRefs } from "pinia";
 import { Graticule } from "ol/layer";
@@ -7,7 +15,7 @@ import {
   GRID_LAYER,
   LAYER_NAMES,
 } from "../../../baseComponent/OpenlayersMap/layers";
-import SwipeControl from "../../../Control/Swiper";
+import SwipeControl from "@/composables/Swiper/Swiper";
 
 const mapStore = useMapStore();
 

@@ -1,7 +1,58 @@
 :root[data-theme="NIGHT"] {
-  --primary-color: #000;
-  --primary-text-color: #fff;
-  --primary-svg-color: #fff;
-  --primary-svg-hover-color: #666;
-  --primary-li-bottom-color: #555;
+  --primary-color: rgba(26, 31, 46, 0.8);
+  --primary-text-color: #e6e8eb;
+  --primary-svg-color: #c9cdd4;
+  --primary-svg-hover-color: rgba(58, 74, 96, 0.8);
+  --primary-li-bottom-color: #2a2f3d;
+
+  /* 面板容器 - 深靛蓝灰 0.8 半透明 */
+  --panel-bg: rgba(26, 31, 46, 0.8);
+  --panel-border: #364050;
+  --panel-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  /* 头部 */
+  --header-bg: rgba(26, 31, 46, 0.8);
+  --header-text: #e6e8eb;
+  --header-border: #364050;
+
+  /* 卡片 / 元素 */
+  --card-bg: rgba(42, 47, 61, 0.85);
+  --card-border: #364050;
+  --card-shadow: none;
+
+  /* el-card 子卡片专用 */
+  --card-box-bg: #3B82f614;
+  --card-box-border: #3B82f640;
+
+  /* 元素 hover / active */
+  --hover-bg: rgba(58, 74, 96, 0.8);
+  --hover-border: #4a5a78;
+  --active-bg: rgba(58, 74, 96, 0.9);
+  --active-border: #3385ff;
+  --active-text: #ffffff;
+
+  /* 文本 */
+  --text-primary: #e6e8eb;
+  --text-secondary: #c9cdd4;
+  --text-muted: #6b7280;
+
+  /* 强调色 - 低调蓝 */
+  --accent-cyan: #5a7898;
+  --accent-cyan-soft: rgba(90, 120, 152, 0.25);
+  --accent-gold: #5a7898;
+  --accent-gold-soft: #4a5a78;
+
+  /* 小部件 */
+  --widget-bg: rgba(26, 31, 46, 0.8);
+  --widget-border: #364050;
+  --widget-text: #c9cdd4;
 }
+
+/* ============ Element Plus 组件全局覆盖 ============ */
+:root[data-theme="NIGHT"] {
+  .el-card {
+    background-color: var(--card-box-bg) !important;
+    border-color: var(--card-box-border) !important;
+  }
+}
+

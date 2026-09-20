@@ -1,6 +1,7 @@
 import { createApp, App } from "vue";
 import Map from "ol/Map";
 import Overlay from "ol/Overlay";
+import VectorLayer from "ol/layer/Vector";
 import TileWMS from "ol/source/TileWMS";
 import AlarmDetailPopup from "./AlarmDetailPopup.vue";
 import { geoserverApi } from "@/service/geoserver";
@@ -45,6 +46,18 @@ export class FeatureClickQuery {
   }
 
   private async handleMapClick(evt: any) {
+    // 点击命中矢量标注图层（警情/队站/车辆等前端要素层）时，
+    // 本次点击交由对应矢量图层自己的点击处理，不再发起 WMS 要素查询，
+    // 避免点位下方的 WMS 要素（如重点单位）弹窗叠加弹出。
+    const hitVector = this.map.hasFeatureAtPixel(evt.pixel, {
+      hitTolerance: 6,
+      layerFilter: (layer) => layer instanceof VectorLayer,
+    });
+    if (hitVector) {
+      this.closePopup();
+      return;
+    }
+
     const view = this.map.getView();
     const resolution: number = view.getResolution() ?? 0;
     const projection = view.getProjection();

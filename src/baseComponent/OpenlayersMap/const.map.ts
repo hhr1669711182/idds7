@@ -1,7 +1,7 @@
 ﻿/*
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-06-03 18:38:46
+ * @LastEditTime: 2026-09-20 10:52:53
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\baseComponent\OpenlayersMap\const.map.ts
@@ -17,7 +17,10 @@ export const ZOOM = { MAX: 20, MIN: 0, INIT: 15 };
 // export const CENTER = [114.3005, 30.5928];
 // export const CENTER = [116.4074, 39.9042];
 // export const CENTER = [113.5437, 22.2657];
-export const CENTER = [113.9354071, 22.54831];
+export const CENTER = [113.9354071, 22.54831]; // 深圳
+// 北京的位置坐标
+// export const CENTER = [116.4074, 39.9042];
+
 
 
 //水印文字

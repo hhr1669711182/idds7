@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-07-01 11:10:53
- * @LastEditTime: 2026-07-06 16:47:16
+ * @LastEditTime: 2026-09-17 20:05:36
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\controller\core\business\AlarmController.ts
@@ -16,6 +16,7 @@ export class AlarmController {
    * [EC-05-2] 警情精确上图控制 / 警情画像状态更新
    */
   public syncAlarmProfile(data: AlarmProfileSyncData) {
+    console.log("🚀 ~ AlarmController ~ syncAlarmProfile ~ data:", data)
     const { view, geometry } = this.genericController;
 
     if (data.longitude && data.latitude) {
@@ -35,6 +36,12 @@ export class AlarmController {
         },
         animate: 'breathe'
       });
+
+      // 3条 机构id
+
+      // 高亮围栏
+
+
     }
   }
 }

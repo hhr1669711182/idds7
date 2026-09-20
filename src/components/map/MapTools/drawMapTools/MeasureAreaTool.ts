@@ -6,7 +6,7 @@ import Overlay from "ol/Overlay";
 import { Draw, Interaction } from "ol/interaction";
 import { Type } from "ol/geom/Geometry";
 import { unByKey } from "ol/Observable";
-import { getArea } from "../../../../util/index";
+import { getArea } from "@/utils";
 import { BaseTool } from "./BaseTool";
 import { EventsKey } from "ol/events";
 import type MapBrowserEvent from "ol/MapBrowserEvent";

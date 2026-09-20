@@ -142,48 +142,52 @@ const onTileClick = (item: ToolbarItem) => {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 6px;
-  border-radius: 10px;
-  border: 1px solid rgba(51, 220, 255, 0.35);
-  background: linear-gradient(180deg, rgba(10, 98, 120, 0.92) 0%, rgba(6, 42, 60, 0.92) 100%);
-  box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(0, 0, 0, 0.25) inset,
-    0 0 16px rgba(51, 220, 255, 0.14) inset;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid #364050;
+  /* 完全不透明 —— 半透明父容器会让子元素 1px 边框做亚像素 alpha 混合导致发虚 */
+  background: #1a1f2e;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .tile {
   position: relative;
   width: 62px;
   height: 54px;
-  border-radius: 8px;
-  border: 1px solid rgba(51, 220, 255, 0.28);
-  background: linear-gradient(180deg, rgba(10, 98, 120, 0.9) 0%, rgba(6, 42, 60, 0.9) 100%);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset;
-  color: rgba(255, 255, 255, 0.92);
+  border-radius: 6px;
+  border: 1px solid #364050;
+  background: #2a3040;
+  color: #ffffff;
   cursor: pointer;
+  /* 强制 button 不使用浏览器默认样式 */
+  appearance: none;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  /* 提升独立 GPU layer，避免半透明叠加导致 subpixel 模糊 */
+  transform: translateZ(0);
   display: grid;
   place-content: center;
   justify-items: center;
   gap: 6px;
   user-select: none;
+  transition: border-color 0.2s, background 0.2s;
 
   &:hover {
-    border-color: rgba(51, 220, 255, 0.45);
+    border-color: #4a5a78;
+    background: #3a4658;
   }
 
   &:focus-visible {
-    outline: 2px solid rgba(255, 205, 110, 0.75);
+    outline: 2px solid var(--active-border);
     outline-offset: 2px;
   }
 
   &.checked {
     font-weight: 600;
-    border-color: rgba(255, 205, 110, 0.55);
-    background: linear-gradient(180deg, rgba(160, 100, 40, 0.92) 0%, rgba(90, 55, 20, 0.92) 100%);
-    box-shadow:
-      0 0 0 1px rgba(255, 205, 110, 0.25) inset,
-      0 0 16px rgba(255, 185, 85, 0.14) inset;
+    border-color: var(--active-border);
+    background: #3a4a60;
+    color: #ffffff;
   }
 
   &.disabled {
@@ -199,6 +203,8 @@ const onTileClick = (item: ToolbarItem) => {
 .label {
   font-size: 12px;
   line-height: 1;
+  color: #ffffff;
+  /* text-shadow 让白字在暗背景上更锐利，避免 subpixel 渲染发虚 */
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
@@ -209,12 +215,10 @@ const onTileClick = (item: ToolbarItem) => {
   width: 12px;
   height: 12px;
   border-radius: 999px;
-  background: rgba(255, 165, 35, 0.95);
-  box-shadow:
-    0 6px 14px rgba(0, 0, 0, 0.11),
-    0 0 0 2px rgba(5, 20, 30, 0.24);
+  background: var(--active-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   display: grid;
   place-items: center;
-  color: rgba(255, 255, 255, 0.95);
+  color: #ffffff;
 }
 </style>

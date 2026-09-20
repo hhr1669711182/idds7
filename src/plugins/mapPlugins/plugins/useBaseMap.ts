@@ -1,3 +1,6 @@
+/*
+ * @Description: 底图插件，管理多套底图（XYZ/自定义图层）的注册、切换与显隐
+ */
 import TileLayer from 'ol/layer/Tile';
 import type BaseLayer from 'ol/layer/Base';
 import XYZ from 'ol/source/XYZ';

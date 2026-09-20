@@ -15,21 +15,28 @@ const { isMobile } = useResponsive();
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="less">
 .drag-panel {
   position: absolute;
-  background: #ffffff;
+  background: var(--widget-bg);
+  border: 1px solid var(--widget-border);
+  border-radius: 4px;
   top: 5px;
   right: 80px;
-  color: #000000;
+  color: var(--widget-text);
   padding: 2px 6px;
-  border-radius: 2px;
   font-size: 12px;
   line-height: 20px;
   z-index: 5;
   display: flex;
   > div {
     margin-right: 20px;
+  }
+}
+
+html[data-theme="NIGHT"] {
+  .drag-panel {
+    backdrop-filter: blur(4px);
   }
 }
 

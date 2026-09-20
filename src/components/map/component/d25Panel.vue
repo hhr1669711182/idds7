@@ -1,14 +1,14 @@
 <!--
  * @Author: huanghuanrong
  * @Date: 2026-04-02 18:40:02
- * @LastEditTime: 2026-04-07 17:59:08
- * @LastEditors: huanghuanrong
+ * @LastEditTime: 2026-09-17 10:49:54
+ * @LastEditors: hhr
  * @Description: 文件描述
- * @FilePath: \OpenlayersMap\src\components\map\component\2.5DPanel.vue
+ * @FilePath: \ids-gis-web\src\components\map\component\d25Panel.vue
 -->
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue";
-import { EventBus } from "../../../util/mitt.ts";
+import { EventBus } from "@/utils";
 import {
   NAV_FINISHED_EVENT,
   type NavFinishedPayload,

@@ -60,6 +60,7 @@ export type AlarmListResult = {
   size: number
 }
 
+//应该使用VITE_ALARM_SERVICE_BASE_URL
 export const listAlarmMethod = (params: AlarmListParams) =>
   alovaInstance.Get<AlarmListResult, AlarmListParams>(
     'alarm-client/api/alarm-incidents',

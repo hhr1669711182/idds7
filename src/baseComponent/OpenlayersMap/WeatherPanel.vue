@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed } from "vue";
 import { weather as weatherApi, type AmapWeatherLive } from "@/apis/amap";
 import dataJson from "@/baseComponent/amap/data.json";
@@ -120,4 +120,24 @@ onBeforeUnmount(() => {
 .weather_panel_unit { font-size: 12px; font-weight: 500; margin-left: 2px; color: rgba(17, 24, 39, 0.7); }
 .weather_panel_meta { font-size: 12px; color: rgba(17, 24, 39, 0.65); display: flex; align-items: center; gap: 6px; }
 .weather_panel_dot { color: rgba(17, 24, 39, 0.35); }
+
+html[data-theme="NIGHT"] {
+  .weather_panel {
+    background: var(--panel-bg);
+    border-color: var(--panel-border);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(6px);
+  }
+  .weather_panel_city_text,
+  .weather_panel_temp {
+    color: var(--text-primary);
+  }
+  .weather_panel_unit,
+  .weather_panel_meta {
+    color: var(--text-muted);
+  }
+  .weather_panel_loading {
+    color: var(--text-muted);
+  }
+}
 </style>

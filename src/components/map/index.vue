@@ -1,13 +1,14 @@
 <!--
  * @Author: hhr
  * @Date: 2026-05-21 19:13:51
- * @LastEditTime: 2026-08-31 15:24:15
+ * @LastEditTime: 2026-09-20 16:32:29
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\components\map\index.vue
 -->
 <script setup lang="ts">
-import { onMounted, shallowRef, onActivated } from "vue";
+import { defineAsyncComponent } from "vue";
+import { nextTick, onActivated, onMounted, onUnmounted, shallowRef } from "vue";
 import { storeToRefs } from "pinia";
 
 import tlp from "./compass.vue";
@@ -17,7 +18,8 @@ import clear from "./clear.vue";
 import brp from "./brp.vue";
 import topicLayerCard from "./component/topicLayerCard.vue";
 import baseSource from "./component/baseSource.vue";
-import routePlan from "./component/routePlan.vue";
+const routePlan = defineAsyncComponent(() => import("./component/routePlan.vue"));
+const circleQueryPanel = defineAsyncComponent(() => import("./component/circleQueryPanel.vue"));
 import bigPanel from "./component/bigPanel.vue";
 import config from "./config.vue";
 import layers from "./layers.vue";
@@ -49,12 +51,27 @@ const mapConfigStore = useMapConfigStore();
 
 const { type, ssrkPanelOpen } = storeToRefs(PanelStore);
 const openLayersMapRef = shallowRef<OpenlayersMapExpose | null>(null);
-// const mapInstanceRef = shallowRef<any>(null);
+let viewportRefreshFrame: number | null = null;
+
+const refreshMapViewport = () => {
+  if (viewportRefreshFrame !== null) {
+    cancelAnimationFrame(viewportRefreshFrame);
+  }
+  viewportRefreshFrame = requestAnimationFrame(() => {
+    viewportRefreshFrame = requestAnimationFrame(() => {
+      viewportRefreshFrame = null;
+      const map = MapStore.map;
+      if (!map?.updateSize) return;
+      map.updateSize();
+      map.renderSync();
+    });
+  });
+};
 
 const getMap = (map: any) => {
-  // mapInstanceRef.value = map;
   MapStore.setMap(map);
   openLayersMapRef.value?.syncLayers(layersStore.checkedIds, true);
+  refreshMapViewport();
 };
 
 const handleLayerChange: LayerChangeHandler = (action, id) => {
@@ -78,10 +95,13 @@ onMounted(async () => {
   // openLayersMapRef.value?.syncLayers(layersStore.checkedIds);
 });
 
-onActivated(() => {
-  // if (mapInstanceRef.value) {
-  //   MapStore.setMap(mapInstanceRef.value);
-  // }
+onActivated(() => nextTick(refreshMapViewport));
+
+onUnmounted(() => {
+  if (viewportRefreshFrame !== null) {
+    cancelAnimationFrame(viewportRefreshFrame);
+    viewportRefreshFrame = null;
+  }
 });
 </script>
 
@@ -92,6 +112,7 @@ onActivated(() => {
     <trp />
 
     <routePlan v-if="type == PANEL_TYPES.ROUTE_PLAN" />
+    <circleQueryPanel v-if="type == PANEL_TYPES.CIRCLE_QUERY" />
     <topicLayerCard />
     <baseSource />
 
@@ -102,13 +123,16 @@ onActivated(() => {
     <layers :onLayerChange="handleLayerChange" />
 
     <ssrkPanel v-show="ssrkPanelOpen" />
-
-    <WeatherPanel />
-
   </OpenlayersMap>
 
     <brp />
 
 </template>
 
-<style scoped></style>
+<style scoped>
+:global(#map .ol-scale-line) {
+  left: 0.5em !important;
+  bottom: 0 !important;
+  z-index: 2;
+}
+</style>

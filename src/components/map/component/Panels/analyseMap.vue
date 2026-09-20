@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { onMounted, ref, markRaw } from "vue";
 import Map from "ol/Map";
 import View from "ol/View";
@@ -219,8 +219,12 @@ const handleClick = (item: { type: string }) => {
   right: 20px;
   display: flex;
   flex-direction: column;
-  background-color: #fff;
+  background-color: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 4px;
 }
+
 ul {
   list-style: none;
   padding: 10px 20px;

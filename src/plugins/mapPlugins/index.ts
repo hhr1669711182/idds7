@@ -1,3 +1,6 @@
+/*
+ * @Description: mapPlugins 模块统一出口，聚合导出核心类型、MapCore 及各功能插件
+ */
 export * from './core/types';
 export * from './core/MapCore';
 

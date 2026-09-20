@@ -6,11 +6,9 @@
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\router\index.ts
  */
-import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHashHistory, START_LOCATION, type RouteRecordRaw } from 'vue-router'
 import type { App } from 'vue'
 import MainLayout from '@/layout/MainLayout.vue'
-import ThreejsViewerRegion from '@/views/region.vue'
-import ThreejsViewerBuilding from '@/views/building.vue'
 import { setupRouterGuard } from './guard'
 import { unregisterDynamicRoutes } from './dynamic'
 import { ROUTE_NAMES } from './constants'
@@ -41,7 +39,7 @@ export const staticRoutes: RouteRecordRaw[] = [
       {
         path: 'ThreejsViewerRegion',
         name: ROUTE_NAMES.THREE_REGION,
-        component: ThreejsViewerRegion,
+        component: () => import('@/views/region.vue'),
         meta: {
           title: '区域三维',
         },
@@ -49,7 +47,7 @@ export const staticRoutes: RouteRecordRaw[] = [
       {
         path: 'ThreejsViewerBuilding',
         name: ROUTE_NAMES.THREE_BUILDING,
-        component: ThreejsViewerBuilding,
+        component: () => import('@/views/building.vue'),
         meta: {
           title: '建筑三维',
         },
@@ -79,6 +77,14 @@ export const staticRoutes: RouteRecordRaw[] = [
     meta: {
       title: '调派页面',
     },
+  },
+  {
+    path: '/dispatch1',
+    name: ROUTE_NAMES.DISPATCH1,
+    component: () => import('@/views/dispatch1/index.vue'),
+    meta: {
+      title: '调派页面1',
+    },//添加T1调派路由
   },
   {
     path: '/viewerInquiryBuilding',
@@ -131,6 +137,13 @@ const staticRouteNames = new Set(
 const router = createRouter({
   history: createWebHashHistory(),
   routes: staticRoutes,
+})
+
+// 首次打开或刷新调派页时先回到地图；运行期间的新调派消息仍可正常进入 dispatch1。
+router.beforeEach((to, from) => {
+  if (from === START_LOCATION && to.name === ROUTE_NAMES.DISPATCH1) {
+    return { name: ROUTE_NAMES.MAP, replace: true }
+  }
 })
 
 setupRouterGuard(router)

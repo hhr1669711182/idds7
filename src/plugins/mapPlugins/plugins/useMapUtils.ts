@@ -3,7 +3,7 @@
  * @Date: 2026-04-21 19:55:16
  * @LastEditTime: 2026-04-21 20:02:29
  * @LastEditors: hhr
- * @Description: 文件描述
+ * @Description: 地图工具插件，提供飞行动画、地理/逆地理编码等通用能力
  * @FilePath: \ids-gis-web\src\plugins\mapPlugins\plugins\useMapUtils.ts
  */
 import type OlMap from 'ol/Map';

@@ -1,4 +1,4 @@
-import { createAlova } from 'alova'
+﻿import { createAlova } from 'alova'
 import VueHook from 'alova/vue'
 import adapterFetch from 'alova/fetch'
 import { createAlovaMockAdapter } from '@alova/mock'
@@ -6,6 +6,7 @@ import router from '@/router'
 import { ElMessage } from 'element-plus'
 import { appEnv } from '@/config/env'
 import { AppError, DEFAULT_MESSAGES, ERROR_CODES, toAppError, type AppErrorMeta } from './error'
+import { useUserStore } from '@/store/useUserStore'
 
 const baseURL = appEnv.apiBaseUrl
 
@@ -41,7 +42,6 @@ const getMethodMeta = (method: any): AppErrorMeta =>
 const handleUnauthorized = () => {
   // dev 环境下，不处理未授权错误
   if (import.meta.env.DEV) return
-  localStorage.removeItem('access_token')
   // router.push('/login')
   const currentProtocol = window.location.protocol
   const currentHost = window.location.host
@@ -68,7 +68,7 @@ export const alovaInstance = createAlova({
   requestAdapter,
   cacheLogger: false,
   async beforeRequest(method) {
-    const token = localStorage.getItem('access_token') ?? 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJXeHdlX1BaMEhkdHdpNnNHUDNZQlIyT3JFN0FxZnNHcGFhRFZZcURNX3VBIn0.eyJleHAiOjE3ODM3NjczMzYsImlhdCI6MTc4MTE3NTMzNiwianRpIjoiNzUwZWZlYjMtYzk2Zi00YmI3LWExNDUtYTExNjVjMjAyZGQ2IiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLWlkcy1kZXYudGVsZXdhdmUudGVjaC9hdXRoL3JlYWxtcy9pZHMiLCJzdWIiOiJmZmQ3YTYyMi00NTgxLTQ0M2UtYmNjNi1jMmI0OTIwNGE0MWEiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJpZHMtc2VhdC13ZWIiLCJzZXNzaW9uX3N0YXRlIjoiZDJiN2QzZGUtMzI4My00OTg4LWExZTAtN2E4N2MxN2RjMWY5IiwiYWNyIjoiMSIsInNjb3BlIjoicHJvZmlsZSBlbWFpbCIsInNpZCI6ImQyYjdkM2RlLTMyODMtNDk4OC1hMWUwLTdhODdjMTdkYzFmOSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwicHJlZmVycmVkX3VzZXJuYW1lIjoiY2Fvd2VudGFpMSIsImVtYWlsIjoiMTM4MDAyMzgwMDFAcXEuY29tIn0.qV35Pe4cczN0DJ7pJGN39heFNrr5XCAWo0HS4LzXodOiE5oZRtN3nLik08wCR-Atu1LH0uB7ssVVyLRVYK2n8fq2yQqFHAVzNPx-SgEFhNcQ4zCgoemwaxOdZq_sBAMdBjT7gudqiELDzKZfui2VgUKgdX1Av469SRy8ZVysIFETZyRHS5lgmy-KCiictGkn3gfoSBmiWoB2ueOlcbcEMhW7H4aYg_ai6oMgpRQ0HZ3PgrNMaQdCHFTWSL6sebZFFX1lQa6JpxX0Q9t2sU98y2msB-Kkgssz2pB4JGB6xvuqK3ySio-dUvI_oHKYOMyshlbA8LbcDcEh790me9VD1w'
+    const token = useUserStore().accessToken
     if (token) {
       method.config.headers['Authorization'] = `Bearer ${token}`
       method.config.headers['clientid'] = 'ids-seat-web'

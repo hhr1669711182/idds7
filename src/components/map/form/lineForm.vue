@@ -4,7 +4,7 @@ import { storeToRefs } from "pinia";
 import { Style, Stroke } from "ol/style";
 import { useCardStore } from "../../../store/index.ts";
 import rightImg from "../../../assets/right.png";
-import { getSVGForSrcById, getStyleFunction } from "../../../util/index.ts";
+import { getSVGForSrcById, getStyleFunction } from "../../../utils/index.ts";
 import { LINE_FORM_LINE_STYLES } from "../../../const/const.map.ts";
 import Slider from "../../../baseComponent/Slider.vue";
 import { Feature } from "ol";
@@ -249,5 +249,11 @@ const currentLine = computed(() => {
   background: url(../../../assets/lineOption.png) no-repeat;
   height: 8px;
   width: 180px;
+}
+
+html[data-theme="NIGHT"] {
+  :deep(.el-form-item__label) {
+    color: var(--text-secondary);
+  }
 }
 </style>

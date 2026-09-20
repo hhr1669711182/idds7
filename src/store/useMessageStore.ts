@@ -1,18 +1,18 @@
-import { defineStore } from 'pinia'
+﻿import { defineStore } from 'pinia'
+import { piniaSession } from './piniaPersist'
 import { reactive, toRefs } from 'vue'
 import {
-  // LEGACY_MESSAGE_TYPE_MAP,
   MESSAGE_CHANNEL,
   MESSAGE_EVENT_KEY,
   MESSAGE_PROTOCOL_VERSION,
   MESSAGE_SYSTEM,
-  // type LegacyMessageType,
   type MessageChannel,
   type MessageEventKey,
   type MessageSystem,
 } from '@/const/const.message.type'
 import type { MessageEnvelope } from '@/types/message'
 import { WebSocketClient, type WebSocketOptions } from '@/hooks/useWebSocket'
+import { interceptorRegistry, installDefaultInterceptors } from '@/interceptor'
 
 type AnyRecord = Record<string, any>
 
@@ -48,7 +48,6 @@ const normalizeLegacy = (raw: any): { eventKey?: MessageEventKey; data?: any } =
   if (!raw || typeof raw !== 'object') return {}
   if (typeof raw.eventKey === 'string') return { eventKey: raw.eventKey, data: raw.data }
   if (typeof raw.type === 'string') {
-    // const mapped = (LEGACY_MESSAGE_TYPE_MAP as AnyRecord)[raw.type as LegacyMessageType] as MessageEventKey | undefined
     const mapped = (MESSAGE_EVENT_KEY as AnyRecord)[raw.type as string] as MessageEventKey | undefined
     return { eventKey: mapped ?? raw.type, data: raw.payload ?? raw.data }
   }
@@ -73,6 +72,13 @@ export type PublishOptions = {
   meta?: Record<string, any>
   targetOrigin?: string
   iframe?: () => HTMLIFrameElement | null | undefined
+}
+
+let interceptorsInstalled = false
+const ensureInterceptors = () => {
+  if (interceptorsInstalled) return
+  interceptorsInstalled = true
+  installDefaultInterceptors()
 }
 
 export const useMessageStore = defineStore(
@@ -128,6 +134,21 @@ export const useMessageStore = defineStore(
       push(persisted.outbox, system, msg)
     }
 
+    const triggerSubscriptions = (eventKey: string, system: MessageSystem, envelope: MessageEnvelope) => {
+      const list = subscriptions.get(eventKey) ?? []
+      list.forEach(sub => {
+        if (!sub.system || sub.system === system) {
+          try { sub.callback(envelope) } catch { /* 不阻塞其他订阅者 */ }
+        }
+      })
+    }
+
+    const dispatch = (eventKey: MessageEventKey, data: any, system: MessageSystem, channel: MessageChannel, meta?: AnyRecord) => {
+      const envelope = createEnvelope(system, channel, eventKey, data, { meta })
+      recordInbox(system, envelope)
+      triggerSubscriptions(eventKey, system, envelope)
+    }
+
     const subscribe = (
       eventKey: string,
       callback: (envelope: MessageEnvelope) => void,
@@ -146,28 +167,36 @@ export const useMessageStore = defineStore(
       subscriptions.set(eventKey, list.filter(s => s.id !== id))
     }
 
+    /**
+     * 入口：拦截器链 -> 多结果分发
+     * 拦截器未命中时按 Envelope / Legacy 兼容路径回退。
+     */
     const ingest = (raw: any, channel: MessageChannel, system: MessageSystem, meta?: AnyRecord) => {
+      ensureInterceptors()
+
       if (isEnvelope(raw)) {
-        recordInbox(system, { ...raw, channel, system, ...(meta ? { meta: { ...(raw.meta ?? {}), ...meta } } : null) })
-        triggerSubscriptions(raw.eventKey ?? '', system, raw)
+        const enriched: MessageEnvelope<any> = {
+          ...raw,
+          channel,
+          system,
+          ...(meta ? { meta: { ...(raw.meta ?? {}), ...meta } } : null),
+        }
+        recordInbox(system, enriched)
+        triggerSubscriptions(raw.eventKey ?? '', system, enriched)
+        return
+      }
+
+      const normalized = interceptorRegistry.run(raw, channel, system)
+      if (normalized.length) {
+        normalized.forEach(item => {
+          dispatch(item.eventKey, item.data, system, channel, { ...meta, ...(item.meta ?? {}) })
+        })
         return
       }
 
       const legacy = normalizeLegacy(raw)
       if (!legacy.eventKey) return
-
-      const envelope = createEnvelope(system, channel, legacy.eventKey, legacy.data, { meta })
-      recordInbox(system, envelope)
-      triggerSubscriptions(legacy.eventKey, system, envelope)
-    }
-
-    const triggerSubscriptions = (eventKey: string, system: MessageSystem, envelope: MessageEnvelope) => {
-      const list = subscriptions.get(eventKey) ?? []
-      list.forEach(sub => {
-        if (!sub.system || sub.system === system) {
-          try { sub.callback(envelope) } catch { /* 不阻塞其他订阅者 */ }
-        }
-      })
+      dispatch(legacy.eventKey, legacy.data, system, channel, meta)
     }
 
     const bindParent = (options: BindPostMessageOptions) => {
@@ -199,13 +228,9 @@ export const useMessageStore = defineStore(
           options.socketOptions?.onOpen?.(e)
         },
         onMessage: (d, e) => {
-          const { payload } = d;
-          if (!payload) return
-          let data = { ...payload, eventKey: payload.eventType ?? '' }
-          console.log('2233', data, e)
-
-          ingest(data, MESSAGE_CHANNEL.WS, system, { readyState: (client.ws as any)?.readyState })
-          options.socketOptions?.onMessage?.(data, e)
+          if (d === undefined || d === null) return
+          ingest(d, MESSAGE_CHANNEL.WS, system, { readyState: client.ws?.readyState })
+          options.socketOptions?.onMessage?.(d, e)
         },
         onError: (e) => {
           runtime.wsError[system] = 'ws error'
@@ -270,7 +295,7 @@ export const useMessageStore = defineStore(
     return {
       ...toRefs(persisted),
       ...toRefs(runtime),
-
+      wsClients,
       createEnvelope,
       ingest,
       bindParent,
@@ -284,7 +309,7 @@ export const useMessageStore = defineStore(
   },
   {
     persist: {
-      storage: sessionStorage,
+      storage: piniaSession,
       pick: ['inbox', 'outbox', 'lastBySystem'],
     },
   },

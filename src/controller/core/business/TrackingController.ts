@@ -1,3 +1,11 @@
+/*
+ * @Author: hhr
+ * @Date: 2026-07-08 14:35:45
+ * @LastEditTime: 2026-09-18 10:05:21
+ * @LastEditors: hhr
+ * @Description: 文件描述
+ * @FilePath: \ids-gis-web\src\controller\core\business\TrackingController.ts
+ */
 import type { GenericController } from '../generic';
 import type { TrackingVehicleGpsUpdateData } from '../protocol';
 

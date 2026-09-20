@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-04-21 18:40:47
- * @LastEditTime: 2026-09-04 13:44:02
+ * @LastEditTime: 2026-08-20 14:16:55
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\hooks\useWebSocket.ts
@@ -17,7 +17,7 @@ export interface WebSocketOptions {
   onMessage?: (data: any, event: MessageEvent) => void;
   onError?: (event: Event) => void;
   onClose?: (event: CloseEvent) => void;
-  initSend?: object;
+  initSend?: string | object | Array<string | object>;
 }
 
 /**
@@ -27,7 +27,9 @@ export interface WebSocketOptions {
 export class WebSocketClient {
   public ws: WebSocket | null = null;
   private url: string;
-  private options: Required<Omit<WebSocketOptions, 'onOpen' | 'onMessage' | 'onError' | 'onClose'>> & WebSocketOptions;
+  private options: WebSocketOptions & Required<Pick<WebSocketOptions,
+    'reconnect' | 'reconnectAttempts' | 'reconnectInterval' |
+    'heartbeat' | 'heartbeatInterval' | 'heartbeatMessage'>>;
   private attempts = 0;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private heartbeatTimer?: ReturnType<typeof setInterval>;
@@ -41,11 +43,6 @@ export class WebSocketClient {
       heartbeat: false,
       heartbeatInterval: 30000,
       heartbeatMessage: 'ping',
-      initSend: {
-        login: 'ids-dev',
-        passcode: 'Q7mN4pL2xR8k',
-        host: 'ids'
-      },
       ...options,
     };
     this.connect();
@@ -60,15 +57,27 @@ export class WebSocketClient {
       this.attempts = 0;
       this.startHeartbeat();
       
-      // 发送首次连接认证数据
-      if (this.options.initSend && Object.keys(this.options.initSend).length > 0) {
-        this.send(this.options.initSend);
-      }
+      // 发送连接初始化消息（例如 Topic 订阅）；重连成功后也会再次发送。
+      const initialMessages = Array.isArray(this.options.initSend)
+        ? this.options.initSend
+        : [this.options.initSend];
+      initialMessages.forEach((message) => {
+        if (
+          message
+          && (
+            typeof message === 'string'
+            || Object.keys(message).length > 0
+          )
+        ) {
+          this.send(message);
+        }
+      });
       
       this.options.onOpen?.(e);
     };
 
     this.ws.onmessage = (e) => {
+      console.log('[ws-handler] 收到消息', e.data)
       try {
         this.options.onMessage?.(JSON.parse(e.data), e);
       } catch {
@@ -101,9 +110,16 @@ export class WebSocketClient {
   }
 
   public disconnect = () => {
+    this.options.reconnect = false;
     clearTimeout(this.reconnectTimer);
     this.stopHeartbeat();
-    this.ws?.close();
+    if (this.ws) {
+      this.ws.onopen = null;
+      this.ws.onmessage = null;
+      this.ws.onerror = null;
+      this.ws.onclose = null;
+      this.ws.close();
+    }
     this.ws = null;
   };
 

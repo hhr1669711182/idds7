@@ -11,10 +11,10 @@ export interface LayerToggleData {
   visible: boolean;
 }
 
-export interface LayerRefreshData {
-  layerNames: string[];
-  timestamp?: number;
-}
+// export interface LayerRefreshData {
+//   layerNames: string[];
+//   timestamp?: number;
+// }
 
 export interface ClickData {
   lngLat: [number, number];

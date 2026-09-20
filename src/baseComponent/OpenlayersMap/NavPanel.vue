@@ -2,11 +2,10 @@
 import { ref, computed } from "vue";
 import { ElMessage } from "element-plus";
 import { fetchInputTips } from "../amap/useAmapTools.ts";
-import { zhxfdzXYList } from "../amap/mapData.ts";
 import amapData from "../amap/data.json";
-import { getDistance } from "ol/sphere";
+import { useFireStations } from "@/composables/useFireStations";
 import { addrCtrl } from "@/controller/map";
-import { EventBus } from "../../util/mitt.ts";
+import { EventBus } from "@/utils";
 
 const props = defineProps<{
   nav: any;
@@ -116,19 +115,7 @@ const onDisasterSelect = (item: any) => {
   }
 };
 
-const getNearestFireStation = (target: [number, number]) => {
-  let best: any = null;
-  let bestDist = Infinity;
-  for (const s of zhxfdzXYList as any[]) {
-    if (!Number.isFinite(s?.lng) || !Number.isFinite(s?.lat)) continue;
-    const d = getDistance(target, [s.lng, s.lat]);
-    if (d < bestDist) {
-      bestDist = d;
-      best = s;
-    }
-  }
-  return best ? { station: best, distanceMeters: bestDist } : null;
-};
+const { getNearestFireStation } = useFireStations();
 
 const pickOnMap = async (type: "start" | "end") => {
   if (!props.nav) return;
@@ -164,7 +151,7 @@ const startSimulate = async (orgs?: any[], d?: any) => {
     if (orgs && orgs.length) {
       nearests = orgs;
     } else {
-      nearest = getNearestFireStation(endCoord.value);
+      nearest = await getNearestFireStation(endCoord.value);
     }
 
     const starts: [number, number][] = nearests.length

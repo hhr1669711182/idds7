@@ -11,7 +11,7 @@ import {
 import { Point } from "ol/geom";
 import { Cluster, Vector as VectorSource } from "ol/source";
 import { Vector as VectorLayer } from "ol/layer";
-import { convertToRGBA } from "../../../../util";
+import { convertToRGBA } from "@/utils";
 
 export class ClusterTools {
   map: Map;

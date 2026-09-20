@@ -23,8 +23,11 @@ export const appEnv = {
   useMock: readEnvString('VITE_USE_MOCK') === 'true',
   // geoserverBaseUrl: stripTrailingSlashes(readEnvString('') + 'geoserver'),
   geoserverBaseUrl: stripTrailingSlashes(readEnvString('VITE_GEOSERVER_URL')),
+  
+  //wsUrl: readEnvString('VITE_WS_URL'),//当前WebSocket 地址现在由initMessage.ts直接处理，不再通过 appEnv.wsUrl 获取。
+
+
   geoserverWmsUrl: stripTrailingSlashes(readEnvString('VITE_GEOSERVER_WMS_URL')),
-  wsUrl: readEnvString('VITE_WS_URL'),
   panel25DUrl: readEnvString('VITE_PANEL_25D_URL'),
   panel3DUrl: readEnvString('VITE_PANEL_3D_URL'),
   amapApiBaseUrl: isDev ? '/a' : stripTrailingSlashes(readEnvString('VITE_AMAP_PROXY_API')),

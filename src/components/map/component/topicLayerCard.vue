@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, toRaw, markRaw } from "vue";
 import { storeToRefs } from "pinia";
 import { PANEL_MAP_TYPE, THEMATIC_MAP_TYPES } from "../../../const/index";
@@ -178,22 +178,24 @@ const resetMap = () => {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="less">
 .topic_card_panel {
-  background: #fff;
-  border-radius: 3px;
-  box-shadow: 0 2px 4px #0000004d;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  box-shadow: var(--panel-shadow);
   min-height: 200px;
   position: absolute;
   right: 70px;
   top: 100px;
   width: 500px;
   z-index: 5;
+  color: var(--text-primary);
 }
 
 .card_header {
-  background-color: #3385ff;
-  color: #fff;
+  background: var(--header-bg);
+  color: var(--header-text);
   font-size: 16px;
   justify-content: space-between;
   line-height: 45px;
@@ -236,6 +238,7 @@ const resetMap = () => {
 
 .Head_close__0vFMi {
   cursor: pointer;
+  color: var(--header-text);
 }
 .card-topic-body {
   display: flex;
@@ -270,12 +273,35 @@ const resetMap = () => {
   width: 200px;
   margin: 10px 14px;
 }
+
+html[data-theme="NIGHT"] {
+  .topic_card {
+    :deep(.el-card) {
+      background: var(--card-box-bg);
+      border-color: var(--card-box-border);
+      color: var(--text-primary);
+    }
+    :deep(.el-card__header) {
+      border-bottom-color: var(--card-border);
+      color: var(--text-secondary);
+      background: var(--card-bg);
+    }
+    :deep(.el-card__body) {
+      background: var(--card-bg);
+    }
+  }
+  .topic_card.active {
+    :deep(.el-card) {
+      border-color: var(--active-border);
+    }
+  }
+}
+
 .topic_card.active {
-  color: #3385ff;
-  border-color: #3385ff;
-  box-shadow: 0px 0px 12px rgba(0, 0, 0, 0.12);
+  color: var(--active-text);
+  border-color: var(--active-border);
 }
 :deep(.topic_card.active .el-card__header) {
-  border-color: #3385ff;
+  border-color: var(--active-border);
 }
 </style>

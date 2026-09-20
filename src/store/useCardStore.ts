@@ -17,6 +17,7 @@ import {
   AzimuthTool,
   SelectExtentTool,
   CircleQueryTool,
+  PopulationTool,
   BaseTool,
 } from "../components/map/MapTools/index.ts";
 import { Type } from "ol/geom/Geometry";
@@ -64,10 +65,12 @@ export const useCardStore = defineStore("cardStore", {
       this.drawTool = null;
       this.drawToolType = "";
       this.active = "";
+      this.showUuid = "";
     },
     setMapDrawTool({ drawType, map }: { drawType: Type; map: Map }) {
       if (this.drawTool instanceof BaseTool) {
         this.drawTool.destroy();
+        this.showUuid = "";
       }
       this.drawToolType = drawType;
       let uuid = uuidv4().replace(/-/g, "");
@@ -104,6 +107,9 @@ export const useCardStore = defineStore("cardStore", {
           break;
         case DRAW_TYPES.MEASUREAREA:
           this.drawTool = new CircleQueryTool(p);
+          break;
+        case DRAW_TYPES.POPULATION:
+          this.drawTool = new PopulationTool(p);
           break;
         default:
           this.drawTool = new BaseTool(p);

@@ -8,7 +8,7 @@ import { Draw } from "ol/interaction";
 import { getDistance } from "ol/sphere";
 import { transform } from "ol/proj";
 import { unByKey } from "ol/Observable";
-import { formatLength, formatDistance } from "../../../../util";
+import { formatLength, formatDistance } from "@/utils";
 import { BaseTool } from "./BaseTool";
 import Geometry, { Type } from "ol/geom/Geometry";
 

@@ -1,5 +1,6 @@
 ﻿import { markRaw } from 'vue'
-import type Map from 'ol/Map'
+import type OlMap from 'ol/Map'//地图冲突修改
+// import type Map from 'ol/Map
 import Overlay from 'ol/Overlay'
 import Feature from 'ol/Feature'
 import Point from 'ol/geom/Point'
@@ -31,6 +32,7 @@ export type IncomingCallData = {
   accuracyRadius: number
   status: IncomingCallStatus
   updatedAt: string
+  address?: string//地址字段添加
 }
 
 export type IncomingCallEnvelope = {
@@ -43,6 +45,7 @@ export type IncomingCallEnvelope = {
   accuracyRadius?: number
   status?: IncomingCallStatus
   updatedAt?: string
+  address?: string//地址字段添加
 }
 
 const LOCATION_TYPE_LABELS: Record<IncomingCallLocationType, string> = {
@@ -238,6 +241,13 @@ const buildPopupHtml = (data: IncomingCallData): string => {
     '<div class="' + POPUP_CLASS + '_body">' +
     '<div class="' + POPUP_CLASS + '_row"><span class="k">设备号码 (MSISDN)</span><span class="v">' + escapeHtml(data.phone || '—') + '</span></div>' +
     '<div class="' + POPUP_CLASS + '_row"><span class="k">主叫号码</span><span class="v">' + escapeHtml(data.caller || '—') + '</span></div>' +
+   
+    /*来电定位、接警问询T1消息订阅修改*/
+    (data.address
+      ? '<div class="' + POPUP_CLASS + '_row"><span class="k">定位地址</span><span class="v">' + escapeHtml(data.address) + '</span></div>'
+      : '') +
+       /*来电定位、接警问询T1消息订阅修改*/
+
     '<div class="' + POPUP_CLASS + '_row"><span class="k">经度 (Longitude)</span><span class="v">' + escapeHtml(formatLng(data.lng)) + '</span></div>' +
     '<div class="' + POPUP_CLASS + '_row"><span class="k">纬度 (Latitude)</span><span class="v">' + escapeHtml(formatLat(data.lat)) + '</span></div>' +
     '<div class="' + POPUP_CLASS + '_row"><span class="k">定位类型</span><span class="v">' + escapeHtml(locationTypeLabel) + '</span></div>' +
@@ -312,11 +322,13 @@ const normalizeEnvelope = (raw: unknown): IncomingCallData | null => {
       : DEFAULT_ACCURACY_RADIUS_METER,
     status,
     updatedAt: env.updatedAt ?? env.updated_at ?? dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    address: env.address == null ? undefined : String(env.address),//地址字段添加
   }
 }
 
 export type MountIncomingCallFeaturesParams = {
-  map?: Map
+  // map?: Map
+  map?: OlMap//地图冲突修改
   visible?: boolean
   onError?: (error: unknown) => void
 }

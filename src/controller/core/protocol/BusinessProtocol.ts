@@ -1,4 +1,4 @@
-export interface ConfigLayersData {
+﻿export interface ConfigLayersData {
   layers: Array<{ id: string; visible: boolean }>;
 }
 
@@ -182,3 +182,47 @@ export interface TrackingVehicleRouteRealtimeData {
   eta: number;
   distance: number;
 }
+
+/* ============ (Address Robot) ============ */
+
+export interface AddressRobotGisSearchData {
+  raw_text?: string;
+  confidence?: number;
+  highlight_entities?: Array<{
+    anchor_id: string;
+    name: string;
+    anchor_type?: string;
+    anchor_level?: string;
+    highlight_role?: string;
+    lon?: number;
+    lat?: number;
+    geojson?: any;
+    [k: string]: any;
+  }>;
+  spatial_relations?: Array<{
+    relation_type: string;
+    direction?: string;
+    distance?: number;
+    anchor_ids?: string[];
+    [k: string]: any;
+  }>;
+  target_anchor_id?: string | null;
+  radius?: [number, number];
+  status?: string;
+  need_ask?: string | null;
+  highlight_shape?: string;
+  candidates?: any[];
+  [k: string]: any;
+}
+
+export interface AddressRobotGisCandidatesData {
+  source?: string;
+  status?: string;
+  candidates?: any[];
+  [k: string]: any;
+}
+
+export interface AddressRobotClearData {
+  businessId?: string;
+}
+

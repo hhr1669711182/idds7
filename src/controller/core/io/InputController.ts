@@ -1,7 +1,9 @@
-import { useMessageStore } from '@/store/useMessageStore';
+﻿import { useMessageStore } from '@/store/useMessageStore';
 import { MESSAGE_EVENT_KEY } from '@/const/const.message.type';
 import type { BusinessController } from '../business';
 import type { GenericController } from '../generic';
+import { usePendingCallLocationStore } from '@/store/usePendingCallLocationStore';
+import type { AddressRobotGisSearchData, AddressRobotGisCandidatesData, AddressRobotClearData } from '../protocol';
 
 export class InputController {
   private unsubscribers: Array<() => void> = [];
@@ -9,13 +11,14 @@ export class InputController {
   constructor(
     private genericController: GenericController,
     private businessController: BusinessController
-  ) {}
+  ) { }
 
   /**
    * 初始化所有地图控制协议的订阅监听
    */
   public initSubscriptions() {
     const store = useMessageStore();
+    const pendingCallLocation = usePendingCallLocationStore();
 
     // =========================================================
     // 1. 通用控制层 (Generic Base Controls)
@@ -28,14 +31,12 @@ export class InputController {
       store.subscribe(MESSAGE_EVENT_KEY.MAP_BASE_3D_OVERLAY, (envelope) => this.genericController.view.overlay3D(envelope.data)),
       store.subscribe(MESSAGE_EVENT_KEY.MAP_BASE_FIT_BOUNDS, (envelope) => this.genericController.view.fitBounds(envelope.data)),
       store.subscribe(MESSAGE_EVENT_KEY.MAP_BASE_POI_LOCATION, (envelope) => this.genericController.view.poiLocation(envelope.data)),
-      
+
       store.subscribe(MESSAGE_EVENT_KEY.MAP_BASE_MARKER_ADD, (envelope) => this.genericController.geometry.addMarker(envelope.data)),
       store.subscribe(MESSAGE_EVENT_KEY.MAP_BASE_POLYGON_DRAW, (envelope) => this.genericController.geometry.drawPolygon(envelope.data)),
       store.subscribe(MESSAGE_EVENT_KEY.MAP_BASE_FEATURE_REMOVE, (envelope) => this.genericController.geometry.removeFeature(envelope.data)),
 
-      store.subscribe(MESSAGE_EVENT_KEY.MAP_BASE_ES_QUERY, async (envelope) => {
-        const result = await this.genericController.spatial.esQuery(envelope.data);
-      }),
+      store.subscribe(MESSAGE_EVENT_KEY.MAP_BASE_ES_QUERY, async (envelope) => await this.genericController.spatial.esQuery(envelope.data)),
       store.subscribe(MESSAGE_EVENT_KEY.MAP_BASE_BUFFER_CALC, (envelope) => this.genericController.spatial.calcBuffer(envelope.data)),
       store.subscribe(MESSAGE_EVENT_KEY.MAP_BASE_ROUTE_CALC, async (envelope) => {
         await this.genericController.spatial.calcRoute(envelope.data);
@@ -70,11 +71,22 @@ export class InputController {
 
     // 3.4 来电阶段 / 问询阶段
     this.unsubscribers.push(
-      store.subscribe(MESSAGE_EVENT_KEY.MAP_LOCATE_CALL, (envelope) => this.businessController.call.locateCall(envelope.data)),
-      store.subscribe(MESSAGE_EVENT_KEY.MAP_LOCATE_CALL_REMOVE, (envelope) => this.businessController.call.locateCallRemove(envelope.data)),
+      store.subscribe(MESSAGE_EVENT_KEY.MAP_LOCATE_CALL, (envelope) => {
+        this.businessController.call.locateCall(envelope.data);
+        pendingCallLocation.consume(envelope.data?.id);
+      }),
+      store.subscribe(MESSAGE_EVENT_KEY.MAP_LOCATE_CALL_REMOVE, (envelope) => {
+        pendingCallLocation.consume(envelope.data?.id);
+        this.businessController.call.locateCallRemove(envelope.data);
+      }),
       store.subscribe(MESSAGE_EVENT_KEY.AOI_ES_QUERY, (envelope) => this.businessController.call.aoiEsQuery(envelope.data)),
       store.subscribe(MESSAGE_EVENT_KEY.AOI_ES_GISZONE, (envelope) => this.businessController.call.aoiEsGisZone(envelope.data))
     );
+
+    const queuedCallLocation = pendingCallLocation.consume();
+    if (queuedCallLocation) {
+      this.businessController.call.locateCall(queuedCallLocation);
+    }
 
     // 3.5 调派阶段
     this.unsubscribers.push(
@@ -105,6 +117,11 @@ export class InputController {
           this.businessController.config.configLayers({ layers: envelope.data.layerNames });
         }
       })
+    );
+
+    // 3.7 AddressRobot地址机器人
+    this.unsubscribers.push(
+      store.subscribe(MESSAGE_EVENT_KEY.ADDRESS_ROBOT_GIS_SEARCH, (envelope) => this.businessController.addressRobot.addressRobotGisSearch(envelope.data)),
     );
   }
 

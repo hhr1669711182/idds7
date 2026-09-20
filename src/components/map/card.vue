@@ -124,7 +124,7 @@ const formComponent = computed(() => {
             <div class="styleSetTitle">样式设置</div>
             <component :is="formComponent" :formData="form" />
           </div>
-          <div class="card_body_footer" v-show="false">
+          <div class="card_body_footer" style="display: none;">
             <el-button type="primary" @click="handleSave">保存</el-button>
             <el-button @click="handleDelete">删除</el-button>
           </div>
@@ -135,7 +135,7 @@ const formComponent = computed(() => {
   <div id="helpTxt"></div>
 </template>
 
-<style scoped>
+<style scoped lang="less">
 #helpTxt {
   position: relative;
   background: rgba(0, 0, 0, 0.5);
@@ -150,9 +150,10 @@ const formComponent = computed(() => {
   display: none;
 }
 .card_panel {
-  background: #fff;
-  border-radius: 3px;
-  box-shadow: 0 2px 4px #0000004d;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  box-shadow: var(--panel-shadow);
   min-height: 200px;
   position: absolute;
   right: 70px;
@@ -162,8 +163,9 @@ const formComponent = computed(() => {
 }
 
 .card_header {
-  background-color: #3385ff;
-  color: #fff;
+  background-color: var(--header-bg);
+  background: var(--header-bg);
+  color: var(--header-text);
   font-size: 16px;
   justify-content: space-between;
   line-height: 45px;
@@ -199,6 +201,7 @@ const formComponent = computed(() => {
 
 .editPanel {
   padding: 10px;
+  color: var(--text-primary);
 }
 
 .styleSet {
@@ -206,13 +209,40 @@ const formComponent = computed(() => {
 }
 
 .styleSetTitle {
-  background-color: #f2f2f2;
-  border-left: 4px solid #3385ff;
+  background-color: var(--card-bg);
+  border-left: 4px solid var(--accent-cyan);
+  color: var(--text-secondary);
   margin-bottom: 24px;
   padding: 6px 10px;
 }
 
 .Head_close__0vFMi {
   cursor: pointer;
+  color: var(--header-text);
+}
+
+html[data-theme="NIGHT"] {
+  .card_panel {
+    color: var(--text-primary);
+  }
+  /* :global 穿透 scoped hash，:global 内部选择器能直接匹配 EP 渲染出来的 DOM */
+  :global(.editPanel .el-form-item__label) {
+    color: var(--text-secondary);
+  }
+  :deep(.el-input__wrapper),
+  :deep(.el-textarea__inner) {
+    background: var(--card-bg);
+    box-shadow: 0 0 0 1px var(--card-border) inset;
+  }
+  :deep(.el-input__inner),
+  :deep(.el-textarea__inner) {
+    color: var(--text-primary);
+  }
+  :deep(.el-button--primary) {
+    --el-button-bg-color: var(--active-border);
+    --el-button-border-color: var(--active-border);
+    --el-button-hover-bg-color: #5a88c4;
+    --el-button-hover-border-color: #5a88c4;
+  }
 }
 </style>

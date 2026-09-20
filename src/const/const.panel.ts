@@ -1,6 +1,7 @@
-export const PANEL_TYPES = {
+﻿export const PANEL_TYPES = {
   NULL: "NULL",
   ROUTE_PLAN: "ROUTE_PLAN",
+  CIRCLE_QUERY: "CIRCLE_QUERY",
 };
 
 export const PANEL_MAP_TYPE = {

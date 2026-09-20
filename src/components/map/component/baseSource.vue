@@ -85,20 +85,22 @@ const selectSource = (id: string) => {
 
 <style lang="less" scoped>
 .base_source_panel {
-  background: #fff;
-  border-radius: 3px;
-  box-shadow: 0 2px 4px #0000004d;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  box-shadow: var(--panel-shadow);
   min-height: 200px;
   position: absolute;
   right: 70px;
   top: 100px;
   width: 660px;
   z-index: 6;
+  color: var(--text-primary);
 }
 
 .card_header {
-  background-color: #3385ff;
-  color: #fff;
+  background: var(--header-bg);
+  color: var(--header-text);
   font-size: 16px;
   justify-content: space-between;
   line-height: 45px;
@@ -166,8 +168,8 @@ const selectSource = (id: string) => {
   gap: 8px;
   padding: 8px;
   border-radius: 6px;
-  border: 1px solid #dbe5f3;
-  background: #fff;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   cursor: pointer;
   text-align: left;
   transition:
@@ -177,14 +179,14 @@ const selectSource = (id: string) => {
 }
 
 .source_variant:hover {
-  border-color: #91b8ff;
+  border-color: var(--hover-border);
   box-shadow: 0 4px 12px rgba(51, 133, 255, 0.12);
   transform: translateY(-1px);
 }
 
 .source_variant.active {
-  border-color: #3385ff;
-  box-shadow: 0 0 0 1px rgba(51, 133, 255, 0.28);
+  border-color: var(--active-border);
+  box-shadow: 0 0 0 1px var(--active-border);
 }
 
 .variant_preview {
@@ -288,17 +290,18 @@ const selectSource = (id: string) => {
 .variant_name {
   font-size: 12px;
   line-height: 1.2;
-  color: #334155;
+  color: var(--text-secondary);
   text-align: center;
 }
 
 .source_variant.active .variant_name {
-  color: #3385ff;
+  color: var(--accent-gold);
   font-weight: 600;
 }
 
 .Head_close__0vFMi {
   cursor: pointer;
+  color: var(--header-text);
 }
 
 :deep(.el-card__body) {
@@ -310,9 +313,46 @@ const selectSource = (id: string) => {
 }
 
 .source_card.active {
-  color: #3385ff;
-  border-color: #3385ff;
-  box-shadow: 0px 0px 12px rgba(0, 0, 0, 0.12);
+  color: var(--active-border);
+  border-color: var(--active-border);
+}
+
+html[data-theme="NIGHT"] {
+  .source_card {
+    :deep(.el-card) {
+      background: var(--card-box-bg);
+      border-color: var(--card-box-border);
+      color: var(--text-primary);
+    }
+    :deep(.el-card__header) {
+      border-bottom-color: var(--card-border);
+      color: var(--text-secondary);
+      background: var(--card-bg);
+    }
+    :deep(.el-card__body) {
+      background: var(--card-bg);
+      padding: 10px;
+    }
+  }
+  .source_card.active {
+    :deep(.el-card) {
+      border-color: var(--active-border);
+    }
+  }
+  .variant_preview--road {
+    background:
+      linear-gradient(180deg, #1a1f2e 0%, #2d3548 100%),
+      repeating-linear-gradient(
+        90deg,
+        rgba(120, 160, 220, 0.18) 0 2px,
+        transparent 2px 20px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        rgba(148, 163, 184, 0.22) 0 1px,
+        transparent 1px 16px
+      );
+  }
 }
 
 @media (max-width: 980px) {

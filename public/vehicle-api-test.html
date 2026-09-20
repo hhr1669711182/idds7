@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>车辆接口联调</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px 16px; background: #f3f6f9; color: #172033; font-family: system-ui, "Microsoft YaHei", sans-serif; }
+    main { width: min(920px, 100%); margin: auto; padding: 28px; border-radius: 16px; background: #fff; box-shadow: 0 12px 36px rgba(15, 23, 42, .1); }
+    h1 { margin: 0 0 8px; font-size: 25px; }
+    .hint { margin: 0 0 24px; color: #64748b; line-height: 1.7; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    label { display: grid; gap: 7px; font-weight: 700; }
+    label.full { grid-column: 1 / -1; }
+    input { width: 100%; padding: 11px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font: inherit; }
+    input:focus { border-color: #2563eb; outline: 3px solid #dbeafe; }
+    .actions { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
+    button { padding: 10px 20px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+    button:disabled { background: #94a3b8; cursor: wait; }
+    #status { font-weight: 700; }
+    #status.success { color: #15803d; }
+    #status.error { color: #dc2626; }
+    dl { display: grid; grid-template-columns: 120px 1fr; gap: 8px 12px; margin: 24px 0 12px; }
+    dt { color: #64748b; }
+    dd { margin: 0; overflow-wrap: anywhere; }
+    pre { min-height: 190px; margin: 0; padding: 16px; overflow: auto; border-radius: 10px; background: #0f172a; color: #dbeafe; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+    @media (max-width: 650px) { .grid { grid-template-columns: 1fr; } .full { grid-column: auto; } dl { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>主管队站车辆接口测试</h1>
+    <p class="hint">请求通过当前前端服务的 <code>/bff-client</code> 代理发送。请只填原始 access_token，页面不会保存或显示 Token。</p>
+
+    <form id="testForm">
+      <div class="grid">
+        <label>
+          警情 ID
+          <input id="incidentId" required maxlength="128" placeholder="INC-20260901-001" autocomplete="off">
+        </label>
+        <label>
+          主管队站 ID
+          <input id="leadStationId" required maxlength="128" placeholder="f7742190d975473790fb816861846b2e" autocomplete="off">
+        </label>
+        <label class="full">
+          Access Token
+          <input id="accessToken" type="password" required placeholder="登录接口返回的 access_token" autocomplete="off">
+        </label>
+      </div>
+      <div class="actions">
+        <button id="submitButton" type="submit">发送 GET 请求</button>
+        <span id="status">等待测试</span>
+      </div>
+    </form>
+
+    <dl>
+      <dt>请求地址</dt><dd id="requestUrl">-</dd>
+      <dt>HTTP 状态</dt><dd id="httpStatus">-</dd>
+      <dt>Content-Type</dt><dd id="contentType">-</dd>
+      <dt>耗时</dt><dd id="duration">-</dd>
+    </dl>
+    <pre id="responseBody">尚未发送请求</pre>
+  </main>
+
+  <script>
+    const byId = id => document.getElementById(id);
+    const form = byId('testForm');
+    const button = byId('submitButton');
+    const status = byId('status');
+    const output = byId('responseBody');
+
+    const setStatus = (text, type = '') => {
+      status.textContent = text;
+      status.className = type;
+    };
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const incidentId = byId('incidentId').value.trim();
+      const leadStationId = byId('leadStationId').value.trim();
+      const rawToken = byId('accessToken').value.trim();
+      const token = rawToken.replace(/^Bearer\s+/i, '');
+      const path = `/bff-client/api/v1/gis/incidents/${encodeURIComponent(incidentId)}/vehicles?leadStationId=${encodeURIComponent(leadStationId)}`;
+
+      byId('requestUrl').textContent = new URL(path, location.href).href;
+      byId('httpStatus').textContent = '-';
+      byId('contentType').textContent = '-';
+      byId('duration').textContent = '-';
+      output.textContent = '请求中...';
+      button.disabled = true;
+      setStatus('请求中...');
+      const startedAt = performance.now();
+
+      try {
+        const response = await fetch(path, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+            'X-Request-Id': `req-vehicle-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          },
+          cache: 'no-store',
+        });
+        const contentType = response.headers.get('content-type') || '(未提供)';
+        const text = await response.text();
+        let display = text || '(空响应体)';
+        if (contentType.toLowerCase().includes('json') && text) {
+          try { display = JSON.stringify(JSON.parse(text), null, 2); } catch { /* 保留原文 */ }
+        }
+        byId('httpStatus').textContent = `${response.status} ${response.statusText}`;
+        byId('contentType').textContent = contentType;
+        output.textContent = display;
+        setStatus(response.ok ? 'HTTP 请求成功' : 'HTTP 请求失败', response.ok ? 'success' : 'error');
+      } catch (error) {
+        output.textContent = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+        setStatus('请求未完成', 'error');
+      } finally {
+        byId('duration').textContent = `${Math.round(performance.now() - startedAt)} ms`;
+        button.disabled = false;
+        // 尽量缩短凭证停留时间；浏览器仍会在本次 Network 请求头中显示它。
+        byId('accessToken').value = '';
+      }
+    });
+  </script>
+</body>
+</html>

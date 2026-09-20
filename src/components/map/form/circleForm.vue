@@ -6,7 +6,7 @@ import Overlay from 'ol/Overlay'
 import { useCardStore, useMapStore } from '../../../store/index.ts';
 import locImgSrc from "../../../assets/loc.png";
 import Slider from '../../../baseComponent/Slider.vue';
-import { getSVGForSrcById, convertToRGBA, getImagePattern } from "../../../util/index.ts";
+import { getSVGForSrcById, convertToRGBA, getImagePattern } from "@/utils";
 
 const cardstore = useCardStore()
 const { setItem, getItem: getMarkerData } = cardstore
@@ -85,4 +85,10 @@ const changeWidth = (width) => {
     </el-form>
 </template>
 
-<style scoped></style>
+<style scoped>
+html[data-theme="NIGHT"] {
+  :deep(.el-form-item__label) {
+    color: var(--text-secondary);
+  }
+}
+</style>

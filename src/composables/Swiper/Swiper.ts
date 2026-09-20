@@ -3,8 +3,8 @@ import Map from "ol/Map";
 import "./Swiper.css";
 import { EventsKey } from "ol/events";
 import { unByKey } from "ol/Observable";
-import { LAYER_NAMES } from "../baseComponent/OpenlayersMap/layers";
-import { getLayerByClassName } from "../util/mapTool";
+import { LAYER_NAMES } from "../../baseComponent/OpenlayersMap/layers";
+import { getLayerByClassName } from "@/utils/mapTool";
 
 /**
  * 地图卷帘控件，支持左右滑动比较不同图层
@@ -281,10 +281,6 @@ class SwipeControl extends Control {
 
     // 计算分割线位置
     const splitPosition = Math.round(mapSize[0] * this.swipePosition);
-    console.log(
-      "🚀 ~ SwipeControl ~ updateLayers_ ~ splitPosition:",
-      splitPosition
-    );
 
     // 获取投影范围
     const projectionExtent = this.map.getView().getProjection().getExtent();

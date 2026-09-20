@@ -5,7 +5,7 @@ import { Point } from "ol/geom";
 import Overlay, { Positioning } from "ol/Overlay";
 import Feature from "ol/Feature";
 import { Style, Icon, Circle, Stroke, Fill } from "ol/style";
-import { getSVGForSrcById } from "../../../../util/index.ts";
+import { getSVGForSrcById } from "@/utils";
 import { LAYER_NAMES } from "../../../../baseComponent/OpenlayersMap/layers.ts";
 
 export class BaseTool {

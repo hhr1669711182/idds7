@@ -3,7 +3,7 @@
  * @Date: 2026-04-21 19:55:12
  * @LastEditTime: 2026-04-21 20:02:13
  * @LastEditors: hhr
- * @Description: 文件描述
+ * @Description: WMS 图层插件，支持 TileWMS / ImageWMS 的添加、移除及 WMS 服务文本获取
  * @FilePath: \ids-gis-web\src\plugins\mapPlugins\plugins\useBusUpWMS.ts
  */
 import { markRaw } from 'vue';

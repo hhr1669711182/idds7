@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import { onMounted, nextTick, onUnmounted, ref, watch, markRaw } from "vue";
 import OLMap from "ol/Map";
+import { waitForBaseMap } from "./startup.ts";
+let cancelStartup: (() => void) | undefined;
+let disposed = false;
 import View from "ol/View";
 import * as olProj from "ol/proj";
 import { unByKey } from "ol/Observable";
 import type { EventsKey } from "ol/events";
 import TileLayer from "ol/layer/Tile";
 import { ScaleLine, OverviewMap } from "ol/control";
+import { readScaleLineUnit } from "../../config/scaleLine.ts";
 // import { KeyboardPan } from "ol/interaction";
-import PrintDialog from "ol-ext/control/PrintDialog";
-import jsPDF from "jspdf";
-import { saveAs } from "file-saver";
-import { v4 as uuidv4 } from "uuid";
 import { FeatureClickQuery } from "./FeatureClickQuery.ts";
+import {
+  JurisdictionQuery,
+  STATION_LAYER_NAME,
+} from "./JurisdictionQuery.ts";//T1调派查询
 import { useExtent } from "@/components/map/MapTools/commonTools/useExtent.ts";
 import {
   AMAP_LAYER,
@@ -35,15 +39,15 @@ import { mountIncomingCallFeatures } from "@/composables/useIncomingCallFeatures
 import amapData from "../amap/data.json";
 import carImg from "../amap/imgs/car.png";
 import fireImg from "../amap/imgs/xfz.png";
-import { zhxfdzXYList } from "../amap/mapData.ts";
-import { useAlarmHotspot } from "@/composables/useAlarmHotspot";
-import { EventBus } from "../../util/mitt.ts";
+import { useFireStations } from "@/composables/useFireStations";
+import { useUnclosedIncidents } from "@/composables/useUnclosedIncidents";
+import { EventBus } from "@/utils";
 import AlarmDetailPopup from "./AlarmDetailPopup.vue";
 import ZoomLevelControl from "./ZoomLevelControl.vue";
-import { useBaseSourceStore, useCommonStore, useTabsStore } from "@/store";
-import { THEME_COLOR } from "../../const/const.common.ts";
+import { useBaseSourceStore, useTabsStore } from "@/store"; // , useCommonStore
+// import { THEME_COLOR } from "../../const/const.common.ts";
 import { createBaseSourceSource } from "./baseSource.ts";
-import { storeToRefs } from "pinia";
+// import { storeToRefs } from "pinia";
 import { addrCtrl, onPOIRequest, onRouteRequest } from "@/controller/map";
 import {
   IOController,
@@ -56,7 +60,7 @@ import { useLayersStore } from "@/store/useLayersStore";
 
 import NavPanel from "./NavPanel.vue";
 import { useMapPopups, carTypeLabel, carStatusLabel } from "./useMapPopups.ts";
-// import { getLayerByClassName } from "@/util/mapTool.ts";
+// import { getLayerByClassName } from "@/utils/mapTool.ts";
 
 const props = withDefaults(defineProps<{ mapId?: string; }>(), { mapId: "map" });
 const emit = defineEmits(["setMap"]);
@@ -97,15 +101,19 @@ let fireManager: any = null;
 let alarmOverlayManager: any = null;
 let jrAlarmManager: any = null;
 let featureClickQuery: FeatureClickQuery | null = null;
+let jurisdictionQuery: JurisdictionQuery | null = null;//T1调派查询
 let ioCtrl: IOController | null = null;
 let genericCtrl: GenericController | null = null;
 let trafficTool: TrafficTools | null = null;
 
 const layersStore = useLayersStore();
 const baseSourceStore = useBaseSourceStore();
-const commonStore = useCommonStore();
-const { alarms: alarmHotspots, fetch: fetchAlarmHotspots } = useAlarmHotspot();
-const { themeColor } = storeToRefs(commonStore);
+// const commonStore = useCommonStore();
+const {
+  alarms: unclosedIncidents,
+  fetch: fetchUnclosedIncidents,
+} = useUnclosedIncidents();
+const { load: loadFireStations } = useFireStations();
 const wmsLayerMap = new globalThis.Map<string, TileLayer<TileWMS>>();
 let baseLayer: TileLayer | null = null;
 let overviewLayer: TileLayer | null = null;
@@ -115,24 +123,26 @@ const syncBaseSourceLayer = () => {
   const source = createBaseSourceSource(
     baseSourceStore.activeId,
     {
-      night: themeColor.value === THEME_COLOR.NIGHT,
+      // night: themeColor.value === THEME_COLOR.NIGHT,
     },
     (maxZoom: number) => nextTick(() => map?.getView().setMaxZoom(maxZoom)),
   );
 
+  const previous = baseLayer.getSource();
   baseLayer.setSource(source);
   if (overviewLayer) overviewLayer.setSource(source);
+  previous?.dispose();
 };
 
 watch(
-  [() => baseSourceStore.activeId, () => themeColor.value],
+  () => baseSourceStore.activeId,//[() => baseSourceStore.activeId, () => themeColor.value],
   syncBaseSourceLayer,
 );
 watch(
   () => baseSourceStore.trafficVisible,
   (v) => trafficTool?.setVisible(v),
 );
-watch(alarmHotspots, (next) => jrAlarmManager?.setData?.(next));
+watch(unclosedIncidents, (next) => jrAlarmManager?.setData?.(next));
 
 const addLayer = (id: string, visible?: boolean) => {
   if (!map) return;
@@ -148,6 +158,7 @@ const addLayer = (id: string, visible?: boolean) => {
       crossOrigin: options.crossOrigin,
     }),
     opacity: options.opacity,
+    minZoom: config.minZoom,
   });
   map.addLayer(wmsLayer);
   wmsLayer.set('id', id);
@@ -159,9 +170,12 @@ const addLayer = (id: string, visible?: boolean) => {
 const removeLayer = (id: string) => {
   if (!map) return false;
   if (isTempFrontendLayerId(id)) return setTempFrontendLayerVisible(id, false);
+  if (id === STATION_LAYER_NAME) jurisdictionQuery?.clear();//T1调派查询
   const layer = wmsLayerMap.get(id);
   if (!layer) return;
   map.removeLayer(layer);
+  layer.getSource()?.dispose();
+  layer.dispose();
   wmsLayerMap.delete(id);
   return true;
 };
@@ -206,12 +220,13 @@ const setTempFrontendLayerVisible = (id: string, visible: boolean) => {
     [TEMP_FRONTEND_LAYER_IDS.SSRK]: ssrkManager,
   };
   const manager = managerMap[id];
-  if (!manager) return false;
-  manager.setVisible(visible);
-  if (visible) {
-    if (id === TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER) fetchAlarmHotspots();
+  if(!manager) return false;
+
+  if (visible && id === TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER) {
+    void fetchUnclosedIncidents();
   }
-  return true;
+  manager?.setVisible(visible);
+  return !!manager;
 };
 
 const updateMapZoomLevel = () => {
@@ -242,7 +257,8 @@ const onFatherMessage = async (
   EventBus.emit("panelClose");
 };
 
-const initMap = () => {
+const initMap = async () => {
+  if (disposed) return;
   baseLayer = AMAP_LAYER();
   overviewLayer = AMAP_LAYER();
   syncBaseSourceLayer();
@@ -259,10 +275,15 @@ const initMap = () => {
       }),
     });
     
+  const startup = waitForBaseMap(map);
+  cancelStartup = startup.cancel;
+  await startup.ready;
+  if (disposed) return;
+
     // TODO: 使用注册中心 接收源（服务|辖区围栏around|机构围栏around|客户区划围栏around）extent变化
     // const extent = map.getView().calculateExtent(map.getSize());
-    const extent = [113.713367, 22.4543543, 114.633333, 22.8667432];  // 临时限制
-    useExtent(map, extent)
+    // const extent = [113.713367, 22.4543543, 114.633333, 22.8667432];  // 临时限制
+    // useExtent(map, extent)
 
   // 全量预注册wms图层（需要预处理时开启）
   // layersStore.layerConfigs.forEach(({ id }) => {
@@ -279,6 +300,8 @@ const initMap = () => {
     .on("change:resolution", updateMapZoomLevel);
   featureClickQuery = new FeatureClickQuery(map);
   featureClickQuery.activate();
+  jurisdictionQuery = new JurisdictionQuery(map);//T1调派查询
+  jurisdictionQuery.activate();//T1调派查询
 
   map.addControl(
     new OverviewMap({
@@ -287,44 +310,7 @@ const initMap = () => {
       collapsible: true,
     }),
   );
-  map.addControl(new ScaleLine());
-
-  if (!isMobile.value) {
-    const printControl = new PrintDialog({ lang: "zh" });
-    printControl.setSize("A4");
-    printControl.on(["print", "error"], (e: any) => {
-      if (e.image) {
-        const uuid = uuidv4().replace(/-/g, "");
-        if (e.pdf) {
-          const pdf = new jsPDF({
-            orientation: e.print.orientation,
-            unit: e.print.unit,
-            format: e.print.size,
-          });
-          pdf.addImage(
-            e.image,
-            "JPEG",
-            e.print.position[0],
-            e.print.position[0],
-            e.print.imageWidth,
-            e.print.imageHeight,
-          );
-          pdf.save(e.print.legend ? "legend.pdf" : `openlayers_${uuid}.pdf`);
-        } else {
-          e.canvas.toBlob(
-            (blob: any) =>
-              saveAs(
-                blob,
-                (e.print.legend ? "legend." : `map_${uuid}.`) +
-                  e.imageType.replace("image/", ""),
-              ),
-            e.imageType,
-            e.quality,
-          );
-        }
-      }
-    });
-  }
+  map.addControl(new ScaleLine({ units: readScaleLineUnit() }));
 
   nav = new AmapRealtimeNav(map, {
     amapKey: "7405ae6dde247ee87be4e7d8021056f4",
@@ -337,7 +323,7 @@ const initMap = () => {
   if (popups.firePopupRef.value) {
     fireManager = mountFireStations({
       map,
-      stations: zhxfdzXYList as any,
+      stations: [],
       iconSrc: fireImg,
       popupElement: popups.firePopupRef.value,
       visible: layersStore.checkedIds.includes(TEMP_FRONTEND_LAYER_IDS.STATION),
@@ -349,6 +335,10 @@ const initMap = () => {
         popups.closeFirePopup();
       },
     });
+    // 队站来自 WFS gis:view_res_org_dept（EPSG:4326），异步到达后填充图层
+    void loadFireStations()
+      .then((list) => fireManager?.setStations?.(list))
+      .catch(() => {});
   }
 
   ssrkManager = mountSSRKFeatures({
@@ -382,6 +372,12 @@ const initMap = () => {
       void carManager?.fetch();
     },
   );
+  // genericCtrl?.view.registerLayerRefreshCallback(
+  //   TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER,
+  //   () => {
+  //     void fetchUnclosedIncidents();
+  //   },
+  // );
 
   incomingCallManager = mountIncomingCallFeatures({
     map,
@@ -428,6 +424,8 @@ const initMap = () => {
 };
 
 const cleanup = () => {
+  disposed = true;
+  cancelStartup?.();
   if (zoomLevelChangeKey) {
     unByKey(zoomLevelChangeKey);
     zoomLevelChangeKey = null;
@@ -436,12 +434,19 @@ const cleanup = () => {
     featureClickQuery.destroy();
     featureClickQuery = null;
   }
+  if (jurisdictionQuery) {
+    jurisdictionQuery.destroy();
+    jurisdictionQuery = null;
+  }//T1调派查询
   alarmOverlayManager?.destroy();
   jrAlarmManager?.destroy();
   carManager?.destroy();
+  ssrkManager?.destroy();
+  ssrkManager = null;
   incomingCallManager?.destroy();
   fireManager?.destroy();
   if (nav) {
+    if ((window as any).nav === nav) delete (window as any).nav;
     nav.destroy();
     nav = null;
   }
@@ -454,8 +459,15 @@ const cleanup = () => {
     ioCtrl = null;
   }
   if (map) {
-    wmsLayerMap.forEach((layer) => map?.removeLayer(layer));
+    wmsLayerMap.forEach((layer) => {
+      map?.removeLayer(layer);
+      layer.getSource()?.dispose();
+      layer.dispose();
+    });
     wmsLayerMap.clear();
+    overviewLayer?.dispose();
+    baseLayer?.getSource()?.dispose();
+    baseLayer?.dispose();
     map.dispose();
     map = null;
   }
@@ -541,7 +553,11 @@ onUnmounted(() => {
       />
     </div>
 
-    <div ref="popups.jrAlarmPopupRef">
+    <div
+      :ref="(el) => {
+        popups.jrAlarmPopupRef.value = el as HTMLElement | null;
+      }"
+    >
       <AlarmDetailPopup
         :visible="popups.jrAlarmPopupVisible.value"
         :title="popups.jrAlarmPopupTitle.value"

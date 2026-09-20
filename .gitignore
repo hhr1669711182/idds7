@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 # server
 dist
+scripts
 dist-ssr
 dist-lib
 *.local 
@@ -17,6 +18,9 @@ dist-lib
 */types/components.d.ts
 
 # Editor directories and files
+.ws-console-update/*
+.ws-protocol-update/*
+.ws-test-stage/*
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -33,6 +37,7 @@ dist-lib
 *.hermes*
 mds/hhr*
 skills*
+.env.local
 
 # jenkins
 .dockerignore

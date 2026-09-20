@@ -1,9 +1,13 @@
+/*
+ * @Description: 地图控件插件，注册缩放滑块、全屏、比例尺、鹰眼、复位等常用控件
+ */
 import type OlMap from 'ol/Map';
 import type Control from 'ol/control/Control';
 import { FullScreen, OverviewMap, ScaleLine, ZoomSlider, ZoomToExtent } from 'ol/control';
 import TileLayer from 'ol/layer/Tile';
 import XYZ from 'ol/source/XYZ';
 import type { MapPlugin } from '../core/types';
+import { readScaleLineUnit } from '../../../config/scaleLine.ts';
 
 export type ControlId = string;
 
@@ -25,7 +29,7 @@ export class CoreControlPlugin implements MapPlugin {
     if (this.options.defaults !== false) {
       this.add('zoomSlider', new ZoomSlider());
       this.add('fullScreen', new FullScreen());
-      this.add('scaleLine', new ScaleLine());
+      this.add('scaleLine', new ScaleLine({ units: readScaleLineUnit() }));
       this.add('overview', new OverviewMap({
         layers: this.options.overviewLayer ? [this.options.overviewLayer] : [
           new TileLayer({

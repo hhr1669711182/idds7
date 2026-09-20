@@ -1,4 +1,5 @@
-﻿import { markRaw } from "vue";
+import { driving, multiWaypoint, type RouteResult } from "@/apis/amap";
+import { markRaw } from "vue";
 import Map from "ol/Map";
 import View from "ol/View";
 import Feature from "ol/Feature";
@@ -10,14 +11,16 @@ import type { EventsKey } from "ol/events";
 import * as olProj from "ol/proj";
 import Overlay from "ol/Overlay";
 import alarmIcon from "./imgs/alarm.png";
-// import { EventBus } from "../../util/mitt.ts";
-import { useTabsStore, useDispatchStore } from "@/store";
+// import { EventBus } from "@/utils";
+import { useDispatchStore } from "@/store"; // useTabsStore, 
 import { getStyle } from "./featureStyle";
 import type { JRAlarmData } from "./mapData";
+import { mountPointLayer } from "@/baseComponent/OpenlayersMap/mountPointLayer.ts";
 import { createRouteMetricsWorker } from "@/hooks/useRouteMetricsWorker";
 import { formatCountdownSeconds } from "./routeMetrics";
 import type { RouteMetrics } from "./routeMetrics";
 import {
+  amapGcj02ToWgs84,
   parseAmapLocation,
   parseMultiPolyline,
   parsePolyline,
@@ -82,25 +85,15 @@ export type AlarmData = {
   info?: any;
 };
 
-export const createFireStationsLayer = (
+/** 按队站数据（重新）填充矢量源，样式逻辑与初始建层保持一致 */
+export const populateFireStationSource = (
+  source: VectorSource,
   stations: FireStationPoint[],
   iconSrc: string,
-  layerName = "FIRE_STATIONS_LAYER",
-  options?: {
-    view?: View;
-    usageVisibleZoom?: number;
-    visible?: boolean;
-  },
+  view?: View,
+  usageVisibleZoom = 14,
 ) => {
-  const source = new VectorSource();
-  const layer = new VectorLayer({
-    source,
-    className: layerName,
-    zIndex: 50,
-    visible: options?.visible ?? false,
-  });
-  const usageVisibleZoom = options?.usageVisibleZoom ?? 14;
-  const view = options?.view;
+  source.clear();
   const iconOnlyStyle = getStyle("fireStation", { iconSrc, scale: 0.8 });
 
   for (const s of stations) {
@@ -124,6 +117,33 @@ export const createFireStationsLayer = (
     });
     source.addFeature(f);
   }
+};
+
+export const createFireStationsLayer = (
+  stations: FireStationPoint[],
+  iconSrc: string,
+  layerName = "FIRE_STATIONS_LAYER",
+  options?: {
+    view?: View;
+    usageVisibleZoom?: number;
+    visible?: boolean;
+  },
+) => {
+  const source = new VectorSource();
+  const layer = new VectorLayer({
+    source,
+    className: layerName,
+    zIndex: 50,
+    visible: options?.visible ?? false,
+  });
+  const usageVisibleZoom = options?.usageVisibleZoom ?? 14;
+  populateFireStationSource(
+    source,
+    stations,
+    iconSrc,
+    options?.view,
+    usageVisibleZoom,
+  );
 
   return layer;
 };
@@ -190,6 +210,16 @@ export const mountFireStations = (params: {
     if (!visible) hide();
   };
 
+  /** WFS 队站数据异步到达后，重新填充图层 */
+  const setStations = (stations: FireStationPoint[]) => {
+    populateFireStationSource(
+      layer.getSource()!,
+      stations,
+      params.iconSrc,
+      params.map.getView(),
+    );
+  };
+
   const destroy = () => {
     unByKey(clickKey);
     params.map.removeOverlay(overlay);
@@ -202,6 +232,7 @@ export const mountFireStations = (params: {
     hide,
     setVisible,
     isVisible: () => layer.getVisible(),
+    setStations,
     destroy,
   };
 };
@@ -244,73 +275,21 @@ export const mountJRAlarmLayer = (params: {
   onSelect: (data: JRAlarmData) => void;
   onClose: () => void;
 }) => {
-  const layer = createJRAlarmLayer(params.alarms, undefined, {
+  // 复用通用点位图层工厂；未结案警情按 incidentId 去重，样式用类型/状态着色的 commonAlarm。
+  return mountPointLayer<JRAlarmData>({
+    map: params.map,
+    items: params.alarms,
+    popupElement: params.popupElement,
     visible: params.visible ?? false,
+    onSelect: params.onSelect,
+    onClose: params.onClose,
+    className: "JR_ALARM_LAYER",
+    zIndex: 55,
+    keyGetter: (alarm) => alarm.incidentId,
+    coordinateGetter: (alarm) => [alarm.lng, alarm.lat],
+    styleGetter: (alarm) =>
+      getStyle("commonAlarm", { type: alarm.type, colorType: alarm.colorType }),
   });
-  params.map.addLayer(layer);
-  const source = layer.getSource() as VectorSource;
-
-  const overlay = new Overlay({
-    element: params.popupElement,
-    positioning: "bottom-center",
-    offset: [0, -28],
-    stopEvent: true,
-  });
-  params.map.addOverlay(overlay);
-
-  const close = () => {
-    params.onClose();
-    overlay.setPosition(undefined);
-  };
-
-  const clickKey: EventsKey = params.map.on("singleclick", (evt) => {
-    if (!layer.getVisible()) return;
-
-    let hit = false;
-    params.map.forEachFeatureAtPixel(
-      evt.pixel,
-      (feature, targetLayer) => {
-        if (targetLayer !== layer) return false;
-        const data = (feature as any).get("data") as JRAlarmData | undefined;
-        const geometry = feature.getGeometry() as Point | undefined;
-        if (!data || !geometry) return false;
-
-        params.onSelect(data);
-        overlay.setPosition(geometry.getCoordinates());
-        hit = true;
-        return true;
-      },
-      { hitTolerance: 6 },
-    );
-
-    if (!hit) close();
-  });
-
-  const setVisible = (visible: boolean) => {
-    layer.setVisible(visible);
-    if (!visible) close();
-  };
-
-  const setData = (next: JRAlarmData[]) => {
-    source.clear();
-    populateJRAlarmSource(source, next);
-  };
-
-  const destroy = () => {
-    unByKey(clickKey);
-    params.map.removeOverlay(overlay);
-    params.map.removeLayer(layer);
-  };
-
-  return {
-    layer,
-    overlay,
-    hide: close,
-    setVisible,
-    setData,
-    isVisible: () => layer.getVisible(),
-    destroy,
-  };
 };
 
 export type AmapDistrictQuery = {
@@ -321,7 +300,7 @@ export type AmapDistrictQuery = {
 };
 
 export type AmapDrivingQuery = {
-  key: string;
+  key?: string;
   origin: LngLat;
   destination: LngLat;
   waypoints?: LngLat[];
@@ -373,7 +352,6 @@ export type AmapRegeoQuery = {
 const AMAP_V3_DISTRICT_URL = "https://restapi.amap.com/v3/config/district";
 const AMAP_V3_INPUTTIPS_URL = "https://restapi.amap.com/v3/assistant/inputtips";
 const AMAP_V3_REGEO_URL = "https://restapi.amap.com/v3/geocode/regeo";
-const AMAP_V3_DRIVING_URL = "https://restapi.amap.com/v3/direction/driving";
 
 const buildUrl = (baseUrl: string, params: Record<string, string>) => {
   const url = new URL(baseUrl);
@@ -505,7 +483,7 @@ export const fetchDistrictBoundary = async (
 };
 
 const normalizeStatus = (status: unknown): AmapTmcStatus => {
-  const s = `${status ?? ""}`.toLowerCase();
+  const s = String(status ?? "").trim().toLowerCase();
   if (s === "畅通" || s === "smooth") return "smooth";
   if (s === "缓行" || s === "slow") return "slow";
   if (s === "拥堵" || s === "jam") return "jam";
@@ -513,53 +491,60 @@ const normalizeStatus = (status: unknown): AmapTmcStatus => {
   return "unknown";
 };
 
-export const fetchDrivingRoute = async (
-  query: AmapDrivingQuery,
-): Promise<AmapDrivingResult> => {
-  const url = buildUrl(AMAP_V3_DRIVING_URL, {
-    key: query.key,
-    origin: toAmapLngLatString(query.origin),
-    destination: toAmapLngLatString(query.destination),
-    waypoints: query.waypoints?.length
-      ? query.waypoints.map(toAmapLngLatString).join("|")
-      : "",
-    strategy: `${query.strategy ?? 0}`,
-    extensions: query.extensions ?? "all",
-    output: "JSON",
+/** 代理返回 GCJ-02 路径点，地图内部统一使用 WGS84。 */
+export const toDrivingResult = (route: RouteResult): AmapDrivingResult => {
+  const fullPath = route.features.flatMap(feature =>
+    feature.geometry.coordinates.map(point => amapGcj02ToWgs84(point)),
+  );
+  if (fullPath.length < 2) throw new Error("未获取到可用路线");
+  const tmcs: AmapTmcSegment[] = route.features.flatMap(feature => {
+    const segments: AmapTmcSegment[] = (feature.properties?.tmcs ?? []).flatMap(tmc => {
+      const polyline = parsePolyline(tmc.polyline ?? "");
+      return polyline.length >= 2 ? [{ status: normalizeStatus(tmc.status), polyline }] : [];
+    });
+    if (segments.length) return segments;
+    // 某一步没有可用 TMC 时，保留该步路线并以未知路况绘制。
+    const polyline = feature.geometry.coordinates.map(point => amapGcj02ToWgs84(point));
+    return polyline.length >= 2 ? [{ status: "unknown", polyline }] : [];
   });
-
-  const data = await jsonpRequest<any>(url);
-  if (data?.status === "0") {
-    throw new Error(`${data?.info || "AMap driving failed"}`);
-  }
-  const path = data?.route?.paths?.[0];
-  const steps = path?.steps ?? [];
-
-  const tmcs: AmapTmcSegment[] = [];
-  const fullPath: LngLat[] = [];
-
-  for (const step of steps) {
-    const stepPolyline = parsePolyline(step?.polyline ?? "");
-    for (const p of stepPolyline) fullPath.push(p);
-
-    const stepTmcs = step?.tmcs ?? [];
-    for (const tmc of stepTmcs) {
-      const seg = parsePolyline(tmc?.polyline ?? "");
-      if (!seg.length) continue;
-      tmcs.push({ status: normalizeStatus(tmc?.status), polyline: seg });
-    }
-  }
-
-  if (!tmcs.length && fullPath.length) {
-    tmcs.push({ status: "unknown", polyline: fullPath });
-  }
-
   return {
     fullPath,
     tmcs,
-    distanceMeters: Number(path?.distance) || 0,
-    durationSeconds: Number(path?.duration) || 0,
+    distanceMeters: Number(route.totalDistance) || 0,
+    durationSeconds: Number(route.totalTime) || 0,
   };
+};
+
+export const fetchDrivingRoute = async (
+  query: AmapDrivingQuery,
+): Promise<AmapDrivingResult> => toDrivingResult(await driving({
+  origin: toAmapLngLatString(query.origin),
+  destination: toAmapLngLatString(query.destination),
+  strategy: 0,
+}));
+
+/** 车辆轨迹 ETA：多起点、单终点批量查询。 */
+export const fetchVehicleArrivalTimes = async (
+  origins: LngLat[], destination: LngLat,
+): Promise<number[]> => {
+  if (!origins.length) return [];
+  const routes = await multiWaypoint({
+    origins: origins.map(toAmapLngLatString),
+    destination: toAmapLngLatString(destination),
+    strategy: 0,
+  });
+  const singleOrigin = origins.length === 1;
+  if (!Array.isArray(routes) || routes.length !== (singleOrigin ? 2 : origins.length)) {
+    throw new Error("预计到达时间返回数量与车辆数量不一致");
+  }
+  // 单起点请求重复两次，单车只使用第一条 ETA。
+  return (singleOrigin ? routes.slice(0, 1) : routes).map(route => {
+    const seconds = Number(route.totalTime);
+    if (route.totalTime == null || String(route.totalTime).trim() === "" || !Number.isFinite(seconds) || seconds < 0) {
+      throw new Error("预计到达时间无效");
+    }
+    return seconds;
+  });
 };
 
 export const buildMaskFeature = (holesLngLat: LngLat[][]): Feature<Polygon> => {
@@ -725,6 +710,8 @@ export class AmapRealtimeNav {
   private routeMetricsWorker = createRouteMetricsWorker();
   private vehicleFeatures: Feature<Point>[] = [];
   private routeProjectedCoordsMulti: number[][][] = [];
+  private routeEtaSeconds = 0;
+  private routeEtaSecondsMulti: number[] = [];
   private routeDistancesMulti: number[][] = [];
   private routeMetricsMulti: RouteMetrics[] = [];
   private currentDistances: number[] = [];
@@ -747,6 +734,7 @@ export class AmapRealtimeNav {
   private alarmData: AlarmData | null = null;
   private originLngLat: LngLat | null = null;
   private destinationLngLat: LngLat | null = null;
+  private boundRoutesplanroad: ((origins: LngLat[], destination: LngLat) => Promise<AmapDrivingResult[]>) | null = null;
 
   constructor(map: Map, options: AmapRealtimeNavOptions) {
     this.map = map;
@@ -764,6 +752,10 @@ export class AmapRealtimeNav {
       ...options,
     };
     this.ensureLayers();
+
+    // 暴露测试方法到 window，供控制台直接调用路径规划与渲染
+    this.boundRoutesplanroad = this.routesplanroad.bind(this);
+    (window as any).routesplanroad = this.boundRoutesplanroad;
   }
 
   setKey(amapKey: string) {
@@ -916,6 +908,10 @@ export class AmapRealtimeNav {
     this.routeLayer = null;
     this.maskLayer = null;
     this.pointLayer = null;
+    if (this.boundRoutesplanroad && (window as any).routesplanroad === this.boundRoutesplanroad) {
+      delete (window as any).routesplanroad;
+    }
+    this.boundRoutesplanroad = null;
   }
 
   private exitPickingMode() {
@@ -933,6 +929,9 @@ export class AmapRealtimeNav {
       this.routeLayer = markRaw(new VectorLayer({
         source: new VectorSource(),
         zIndex: 20,
+        // 路线层在交互时更新,拖拽地图不影响车辆运行
+        updateWhileInteracting: true,
+        updateWhileAnimating: true,
       }));
       this.map.addLayer(this.routeLayer);
     }
@@ -1050,28 +1049,15 @@ export class AmapRealtimeNav {
 
   async planAndStartMulti(origins: LngLat[], destination: LngLat, d?: any) {
     this.stop();
-    if (!this.options.amapKey || origins.length === 0) return;
+    if (origins.length === 0) return;
     this.pickStart = origins[0];
     this.pickEnd = destination;
     this.originLngLat = origins[0];
     this.destinationLngLat = destination;
 
     const updateRoute = async (preserveDistance: boolean) => {
-      const results = await Promise.all(
-        origins.map((origin) =>
-          fetchDrivingRoute({
-            key: this.options.amapKey!,
-            origin,
-            destination,
-            extensions: "all",
-          }),
-        ),
-      );
-      const metrics = await Promise.all(
-        results.map((result) =>
-          this.routeMetricsWorker.compute(result.fullPath),
-        ),
-      );
+      const { results, etaSeconds, metrics } = await this.fetchRoutesAndEta(origins, destination);
+      this.routeEtaSecondsMulti = etaSeconds;
 
       // 路径数据和（临时）警情位置
       useDispatchStore().setDispatch({
@@ -1098,32 +1084,127 @@ export class AmapRealtimeNav {
     }
   }
 
-  private renderRouteMulti(
-    results: AmapDrivingResult[],
-    metrics: RouteMetrics[],
-    preserveDistance: boolean,
-  ) {
+  /**
+   * 批量获取驾车路线 + ETA + 距离指标，不渲染、不写 dispatch store。
+   * 仅调用一次 multiWaypoint（多起点单终点）接口，返回路径 geometry、TMC 路况、ETA、距离指标。
+   * 供 planAndStartMulti 及警情定位路径规划共用。
+   */
+  async fetchRoutesAndEta(origins: LngLat[], destination: LngLat): Promise<{
+    results: AmapDrivingResult[]
+    etaSeconds: number[]
+    metrics: RouteMetrics[]
+  }> {
+    const routes = await multiWaypoint({
+      origins: origins.map(toAmapLngLatString),
+      destination: toAmapLngLatString(destination),
+      strategy: 0,
+    });
+
+    if (!Array.isArray(routes) || routes.length === 0) {
+      throw new Error("未获取到可用路线");
+    }
+    // 单起点场景服务端要求重复传参，返回两条，取第一条。
+    const effectiveRoutes = origins.length === 1 ? routes.slice(0, 1) : routes;
+    if (effectiveRoutes.length !== origins.length) {
+      throw new Error("路径规划返回数量与车辆数量不一致");
+    }
+
+    const results = effectiveRoutes.map(toDrivingResult);
+    const etaSeconds = effectiveRoutes.map((r) => {
+      const s = Number(r.totalTime);
+      if (!Number.isFinite(s) || s < 0) {
+        throw new Error("预计到达时间无效");
+      }
+      return s;
+    });
+    const metrics = await Promise.all(
+      results.map((r) => this.routeMetricsWorker.compute(r.fullPath)),
+    );
+    return { results, etaSeconds, metrics };
+  }
+
+  /**
+   * 仅渲染路线（TMC 路况彩线）并适配视图，不启动车辆动画。
+   * 供 renderRouteMulti 及警情定位路径渲染共用。
+   */
+  renderRoutesOnly(results: AmapDrivingResult[]) {
+    this.ensureLayers();
     const source = this.routeLayer!.getSource()!;
     source.clear();
 
-    this.routeProjectedCoordsMulti = [];
-    this.routeDistancesMulti = [];
-    this.routeMetricsMulti = metrics;
-
     let allCoords: number[][] = [];
 
-    results.forEach((result, index) => {
+    results.forEach((result) => {
       const tmcFeatures = buildTmcFeatures(result.tmcs);
       for (const f of tmcFeatures) {
         const status = (f.get("tmcStatus") ?? "unknown") as AmapTmcStatus;
         f.setStyle(getStyle("tmcLine", { status, width: 6 }));
         source.addFeature(f);
       }
+      allCoords = allCoords.concat(
+        result.fullPath.map((p) => olProj.fromLonLat(p)),
+      );
+    });
 
+    if (allCoords.length >= 2) {
+      const extent = new LineString(allCoords).getExtent();
+      this.map
+        .getView()
+        .fit(extent, { padding: [40, 40, 40, 40], duration: 300 });
+    }
+  }
+
+  /** 清空路线图层（不停止动画定时器等其它状态），供点位移除时调用 */
+  clearRoutes() {
+    this.routeLayer?.getSource()?.clear();
+  }
+
+  /**
+   * 测试用：多起点 + 单终点路径规划并渲染路线（TMC 路况彩线），不启动车辆动画、不写 dispatch store。
+   * 实例化时会挂载到 window.routesplanroad，供控制台直接调用。
+   *
+   * @param origins 多个起点坐标（WGS84 [lng, lat]）
+   * @param destination 终点坐标（WGS84 [lng, lat]）
+   * @returns 各起点到终点的路径规划结果
+   */
+  async routesplanroad(
+    origins: LngLat[],
+    destination: LngLat,
+  ): Promise<AmapDrivingResult[]> {
+    console.log("[routesplanroad] 开始执行", { origins, destination, amapKey: this.options.amapKey });
+    if (!Array.isArray(origins) || origins.length === 0) {
+      throw new Error("[routesplanroad] origins 不能为空");
+    }
+    if (!this.options.amapKey) {
+      throw new Error("[routesplanroad] amapKey 未设置");
+    }
+    const { results, etaSeconds, metrics } = await this.fetchRoutesAndEta(origins, destination);
+    console.log("[routesplanroad] 路径规划完成", {
+      routeCount: results.length,
+      etaSeconds,
+      distances: metrics.map((m) => m.distanceIndexMeters?.[m.distanceIndexMeters.length - 1]),
+    });
+    this.renderRoutesOnly(results);
+    console.log("[routesplanroad] 渲染完成");
+    return results;
+  }
+
+  private renderRouteMulti(
+    results: AmapDrivingResult[],
+    metrics: RouteMetrics[],
+    preserveDistance: boolean,
+  ) {
+    // 先渲染路线（TMC 彩线 + 视图适配），再叠加车辆动画
+    this.renderRoutesOnly(results);
+
+    this.routeProjectedCoordsMulti = [];
+    this.routeDistancesMulti = [];
+    this.routeMetricsMulti = metrics;
+
+    results.forEach((result, index) => {
       const fullProjected = result.fullPath.map((p) => olProj.fromLonLat(p));
       this.routeProjectedCoordsMulti.push(fullProjected);
       this.routeDistancesMulti.push(metrics[index]?.distanceIndexMeters ?? []);
-      allCoords = allCoords.concat(fullProjected);
     });
 
     if (!preserveDistance) {
@@ -1133,13 +1214,7 @@ export class AmapRealtimeNav {
 
     this.navFinishedEmitted = false;
 
-    if (allCoords.length >= 2) {
-      const extent = new LineString(allCoords).getExtent();
-      this.map
-        .getView()
-        .fit(extent, { padding: [40, 40, 40, 40], duration: 300 });
-    }
-
+    const source = this.routeLayer!.getSource()!;
     this.ensureVehicles(source, results.length);
     this.startVehicleAnimationMulti(preserveDistance);
   }
@@ -1213,9 +1288,7 @@ export class AmapRealtimeNav {
           this.lastVehicleRotations[index] = rotation;
           const arrived = !loop && targetDist >= total;
           const remainingMeters = Math.max(0, total - targetDist);
-          const countdownText = arrived ? "" : formatCountdownSeconds(remainingMeters / speed);
-          // csost countdownText =   // duration
-          // csost countDistance =   // distance
+          const countdownText = arrived ? "" : formatCountdownSeconds(this.routeEtaSecondsMulti[index] * remainingMeters / total);
           vehicleFeature.setStyle(
             getStyle("vehicle", {
               src: this.options.vehicleIconSrc,
@@ -1244,7 +1317,7 @@ export class AmapRealtimeNav {
           window.clearInterval(this.timerId);
           this.timerId = null;
         }
-        useTabsStore().setActiveTab(2);
+        // useTabsStore().setActiveTab(2);
       }
 
       if (allFinished) {
@@ -1258,7 +1331,6 @@ export class AmapRealtimeNav {
 
   async planAndStart(origin: LngLat, destination: LngLat, d?: any) {
     this.stop();
-    if (!this.options.amapKey) return;
     this.pickStart = origin;
     this.pickEnd = destination;
     this.originLngLat = origin;
@@ -1271,6 +1343,7 @@ export class AmapRealtimeNav {
         destination,
         extensions: "all",
       });
+      [this.routeEtaSeconds] = await fetchVehicleArrivalTimes([origin], destination);
       const metrics = await this.routeMetricsWorker.compute(result.fullPath);
       // 路径数据和（临时）警情位置
       useDispatchStore().setDispatch({
@@ -1384,7 +1457,7 @@ export class AmapRealtimeNav {
         const remainingMeters = Math.max(0, total - targetDist);
         const countdownText = arrived
           ? ""
-          : formatCountdownSeconds(remainingMeters / speed);
+          : formatCountdownSeconds(this.routeEtaSeconds * remainingMeters / total);
         this.vehicleFeature!.setStyle(
           getStyle("vehicle", {
             src: this.options.vehicleIconSrc,
@@ -1409,7 +1482,7 @@ export class AmapRealtimeNav {
           this.timerId = null;
         }
         // tabs切换地图模式
-        useTabsStore().setActiveTab(2);
+        // useTabsStore().setActiveTab(2);
       }
       if (!loop && targetDist >= total) {
         this.rafId = null;

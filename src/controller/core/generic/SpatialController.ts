@@ -86,16 +86,11 @@ export class SpatialController {
    * [G-S03] 路径规划算路（高德驾车，内联调用）
    */
   public async calcRoute(data: RouteCalcData): Promise<RouteCalcResult | null> {
-    const key =
-      localStorage.getItem('AMAP_WEBSERVICE_KEY') || '7405ae6dde247ee87be4e7d8021056f4';
-
     try {
-      const strategy = data.strategy === 'fastest' ? 0 : Number(data.strategy) || 0;
       const result = await fetchDrivingRoute({
-        key,
         origin: data.start,
         destination: data.end,
-        strategy,
+        strategy: 0,
         extensions: 'all',
       });
 

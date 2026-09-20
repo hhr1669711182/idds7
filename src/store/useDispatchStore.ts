@@ -1,4 +1,4 @@
-/*
+﻿/*
  * @Author: hhr
  * @Date: 2026-04-19 15:09:41
  * @LastEditTime: 2026-07-01 10:31:08
@@ -7,6 +7,7 @@
  * @FilePath: \ids-gis-web\src\store\useDispatchStore.ts
  */
 import { defineStore } from 'pinia';
+import { piniaLocal } from './piniaPersist'
 import { reactive, toRefs, onUnmounted } from 'vue';
 // import { WebSocketClient } from '@/hooks/useWebSocket';
 // import { createEncryptedPersistStorage } from '@/hooks/useEncryptedStorage'
@@ -93,7 +94,7 @@ export const useDispatchStore = defineStore('dispatchStore', () => {
   };
 }, {
   persist: {
-    storage: localStorage,
+    storage: piniaLocal,
   },
 });
 

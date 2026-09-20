@@ -1,4 +1,5 @@
-import { appEnv, joinUrl } from '@/config/env'
+﻿import { appEnv, joinUrl } from '@/config/env'
+import { useUserStore } from '@/store/useUserStore'
 
 export interface BackendRouteRecord {
   path: string
@@ -28,7 +29,7 @@ const normalizeRoutesResponse = (response: BackendRoutesResponse | BackendRouteR
 }
 
 export const fetchBackendRoutes = async (): Promise<BackendRouteRecord[]> => {
-  const token = localStorage.getItem('token')
+  const token = useUserStore().accessToken
   const response = await fetch(getRoutesApiUrl(), {
     headers: {
       Accept: 'application/json',

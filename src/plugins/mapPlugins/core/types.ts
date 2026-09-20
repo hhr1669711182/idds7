@@ -3,7 +3,7 @@
  * @Date: 2026-04-21 19:54:53
  * @LastEditTime: 2026-04-21 19:59:48
  * @LastEditors: hhr
- * @Description: 文件描述
+ * @Description: 地图插件核心类型定义，包含 MapPlugin 接口契约、Disposable、LngLat 及插件构造器类型
  * @FilePath: \ids-gis-web\src\plugins\mapPlugins\core\types.ts
  */
 import type OlMap from 'ol/Map';

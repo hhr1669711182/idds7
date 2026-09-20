@@ -3,7 +3,7 @@
  * @Date: 2026-04-21 19:54:55
  * @LastEditTime: 2026-04-21 20:01:14
  * @LastEditors: hhr
- * @Description: 文件描述
+ * @Description: 地图核心控制器，封装 OpenLayers Map 实例并提供插件的注册、获取、移除与销毁生命周期管理
  * @FilePath: \ids-gis-web\src\plugins\mapPlugins\core\MapCore.ts
  */
 import OlMap from 'ol/Map';

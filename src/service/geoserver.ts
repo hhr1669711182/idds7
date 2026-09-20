@@ -85,5 +85,18 @@ export const geoserverApi = {
     })
   },
 
+  /**
+   * WFS-T 事务提交 (Transaction)
+   * @param xml WFS Transaction 请求体（serialize 后的 XML 字符串）
+   * @param workspace 工作空间名称
+   */
+  transaction: (xml: string, workspace = 'gis') => {
+    return alovaGeoInstance.Post<any>(getGeoServerServiceUrl(workspace, 'ows'), xml, {
+      headers: {
+        'Content-Type': 'text/xml',
+      },
+    })
+  },
+
   getWMSServiceUrl: (workspace: string) => getGeoServerServiceUrl(workspace, 'wms'),
 }

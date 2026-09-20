@@ -9,7 +9,7 @@
 <script setup lang="ts">
 import { computed, unref } from "vue";
 // import { ElIcon } from 'element-plus'
-import { propTypes } from "@/util/propTypes";
+import { propTypes } from "@/utils/propTypes";
 import { useDesign } from "@/hooks/useDesign";
 import { Icon } from "@iconify/vue";
 import { ICON_PREFIX } from "@/const/const.common";

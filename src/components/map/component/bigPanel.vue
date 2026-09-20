@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from "vue";
 import { storeToRefs } from "pinia";
 import { usePanelStore } from "../../../store";
 import { PANEL_MAP_TYPE, PANEL_MAP_LIST } from "../../../const";
-import vectorLayerHight from "./Panels/vectorLayerHight.vue";
-import animationMap from "./Panels/animationMap.vue";
-import analyseMap from "./Panels/analyseMap.vue";
+const vectorLayerHight = defineAsyncComponent(() => import("./Panels/vectorLayerHight.vue"));
+const animationMap = defineAsyncComponent(() => import("./Panels/animationMap.vue"));
+const analyseMap = defineAsyncComponent(() => import("./Panels/analyseMap.vue"));
 import { computed } from "vue";
 
 const panelStore = usePanelStore();
@@ -72,22 +73,24 @@ const MapComp = computed(() => {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="less">
 .topic_card_panel {
-  background: #fff;
-  border-radius: 3px;
-  box-shadow: 0 2px 4px #0000004d;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  box-shadow: var(--panel-shadow);
   min-height: 600px;
   position: absolute;
   left: 70px;
   top: 100px;
   width: 1200px;
   z-index: 5;
+  color: var(--text-primary);
 }
 
 .card_header {
-  background-color: #3385ff;
-  color: #fff;
+  background: var(--header-bg);
+  color: var(--header-text);
   font-size: 16px;
   justify-content: space-between;
   line-height: 45px;
@@ -114,13 +117,24 @@ const MapComp = computed(() => {
 .container-left {
   width: 220px;
   padding: 10px 6px;
+  border-right: 1px solid var(--accent-cyan-soft);
 }
 
 li {
   cursor: pointer;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+li:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
 }
 li.active {
-  color: #438de8;
+  background: var(--active-bg);
+  color: var(--active-text);
+  border: 1px solid var(--active-border);
 }
 .container-right {
   position: relative;
@@ -130,6 +144,7 @@ li.active {
 }
 .Head_close__0vFMi {
   cursor: pointer;
+  color: var(--header-text);
 }
 .card-topic-header {
   display: flex;

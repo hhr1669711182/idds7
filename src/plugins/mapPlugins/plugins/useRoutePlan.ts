@@ -1,3 +1,6 @@
+/*
+ * @Description: 路线规划插件，对接外部路径规划器并渲染起终点与路径
+ */
 import type OlMap from 'ol/Map';
 import Feature from 'ol/Feature';
 import LineString from 'ol/geom/LineString';

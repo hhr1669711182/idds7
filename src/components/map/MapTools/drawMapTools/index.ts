@@ -16,4 +16,5 @@ export * from './SelectExtentTool.ts';
 
 export * from './CircleQueryTool.ts';
 
+export * from './PopulationTool.ts';
 

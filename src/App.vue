@@ -1,43 +1,47 @@
-<!--
+﻿<!--
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-04-29 16:59:28
+ * @LastEditTime: 2026-09-18 11:07:33
  * @LastEditors: hhr
- * @Description: 文件描述
+ * @Description: 应用入口
  * @FilePath: \ids-gis-web\src\App.vue
 -->
 <script setup lang="ts">
 import { onBeforeMount, onUnmounted } from "vue";
-// import home from "./views/home.vue";
 import IndexModal from "./components/Modals/index.vue";
-import { initMessage } from "./Control/initMessage";
+import { initMessage } from "./register/initMessage.ts";
+import { initUserStore } from "@/store/useUserStore";
+import { initPageConditionListener } from "./Control/pageCondition";
 
-const container: Element | null = document.querySelector("#svgBase");
-let cleanupMessage: (() => void) | null = null;
+const cleanups: Array<() => void> = [];
+
+const registrations: Array<() => () => void> = [
+  initUserStore,
+  initMessage,
+  initPageConditionListener,
+];
 
 const fetchSymbols = () => {
+  const container = document.querySelector("#svgBase");
   fetch("./icons.svg")
-    .then((response) => response.text())
-    .then((content) => {
-      if (container && content) {
-        container.innerHTML = content;
-      }
+    .then(response => response.text())
+    .then(content => {
+      if (container && content) container.innerHTML = content;
     });
 };
 
-onBeforeMount(() => {
+onMounted(() => {
   fetchSymbols();
-  cleanupMessage = initMessage();
+  for (const register of registrations) cleanups.push(register());
 });
 
 onUnmounted(() => {
-  cleanupMessage?.();
-  cleanupMessage = null;
+  for (const cleanup of cleanups) cleanup();
+  cleanups.length = 0;
 });
 </script>
 
 <template>
-  <!-- <home /> -->
   <index-modal />
   <router-view />
 </template>

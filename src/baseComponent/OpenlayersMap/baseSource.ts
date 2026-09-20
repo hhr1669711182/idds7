@@ -5,7 +5,7 @@ import type { ProjectionLike } from "ol/proj.js";
 
 import { createAmapSource } from "../tools/amap.ts";
 import { createBaiduSource } from "../tools/baidu.ts";
-import { tileLoadFunction } from "../../util/mapTool.ts";
+import { tileLoadFunction } from "@/utils";
 import { LAYER_NAMES } from "./layers.ts";
 
 export type BaseSourceProviderId =
@@ -63,7 +63,10 @@ const PROVIDERS: Record<BaseSourceProviderId, string> = {
   local: "局部地图",
 };
 
-export const DEFAULT_BASE_SOURCE_ID: BaseSourceId = "thunderforest-road"; // 默认底图
+export const DEFAULT_BASE_SOURCE_ID: BaseSourceId = "amap-road"; // 默认底图
+
+export const DEFAULT_OFFLINE_SOURCE: any = "beijing_offline"; // 局部地区底图
+export const DEFAULT_OFFLINE_SOURCE_MODE: any = "WebMercatorQuad"; // 3857
 
 const buildUrlSource = ({
   url,
@@ -142,7 +145,7 @@ const createKailideSource = (mode: BaseSourceMode) => {
 const createOfflineSource = (mode: BaseSourceMode) => {
   const key = mode === "image" ? "VITE_BASE_SOURCE_OFFLINE_IMAGE_URL" : "VITE_BASE_SOURCE_OFFLINE_ROAD_URL";
   return buildUrlSource({
-    url: envOr(key, `http://192.168.173.198:8080/geoserver/gwc/service/tms/1.0.0/mbtiles:mbtiles_VectorTiles@WebMercatorQuad@jpeg/{z}/{x}/{-y}.jpeg`),
+    url: envOr(key, `http://192.168.173.198:8080/geoserver/gwc/service/tms/1.0.0/mbtiles:${DEFAULT_OFFLINE_SOURCE}@WebMercatorQuad@png/{z}/{x}/{-y}.png`),
     // url: envOr(key, `/tiles/offline/${mode}/{z}/{x}/{y}.png`),
   });
 };

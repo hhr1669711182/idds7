@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { toRaw, ref, markRaw } from "vue";
 import { storeToRefs } from "pinia";
 import {
@@ -11,6 +11,7 @@ import {
 import { useCurrentMap } from "@/composables/useCurrentMap";
 import { TYPES, PANEL_TYPES, DRAW_TYPES } from "@/const";
 import { useResponsive } from "@/composables/useResponsive.ts";
+import { EventBus } from "@/utils/mitt";
 
 const { isMobile } = useResponsive();
 const { currentMap: MapInstance } = useCurrentMap();
@@ -32,16 +33,16 @@ const handleClickOpIcon = (type: any) => {
     return baseSourceStore.showTrafficSource();
   }
 
-  // 点击已激活的框选放大图标或点击平移，清除绘制工具
-  if ((active.value === type && type == TYPES.MEASURELENGTH) || type === TYPES.MOVE) {
+  // 点击已激活的图标，清除绘制工具并关闭弹窗（专题图/图源弹窗随之关闭）
+  if (active.value === type && ![TYPES.TRAFFIC, TYPES.RESET].includes(type)) {
+    topicLayerStore.setVisible(false);
+    baseSourceStore.setVisible(false);
+    if (type === TYPES.MEASUREAREA) {
+      EventBus.emit("circle-query:close", { uuid: cardStore.drawTool?.uuid });
+      panelStore.setPanelType(PANEL_TYPES.NULL);
+    }
     return cardStore.clearDrawTool();
   }
-
-  // 点击已激活的图标，清除绘制工具并关闭菜单
-  // if (active.value === type && ![TYPES.TRAFFIC, TYPES.RESET].includes(type)) {
-  //   return cardStore.clearDrawTool();
-  //   ;
-  // }
 
   const isDrawType = Object.values(DRAW_TYPES).includes(type);
   if (!isDrawType) {
@@ -72,6 +73,15 @@ const handleClickOpIcon = (type: any) => {
     default:
       if (isDrawType) {
         cardStore.setMapDrawTool({ drawType: type, map: toRaw(MapInstance.value) as any });
+        if (type === TYPES.MEASUREAREA) {
+          // 圈选查询:同步打开配置面板,并通过 EventBus 把当前工具的 uuid 广播给面板
+          const uuid = cardStore.drawTool?.uuid;
+          panelStore.setPanelType(PANEL_TYPES.CIRCLE_QUERY);
+          EventBus.emit("circle-query:open", {
+            uuid,
+            tool: markRaw(cardStore.drawTool),
+          });
+        }
       }
       break;
   }
@@ -94,7 +104,8 @@ const menuItems = [
   { text: "测面", icon: "#icon-measure-polygon", type: TYPES.MEASUREPOLYGON },
   // { text: "路径规划", icon: "#icon-route", type: TYPES.PATHPLAN },
   { text: "实时路况", icon: "#icon-traffic-rounded", type: TYPES.TRAFFIC },
-  { text: "专题图", icon: "#icon-topic-layers", type: TYPES.TOPICTYPES },
+  { text: "实时人口标绘", icon: "#icon-population", type: TYPES.POPULATION },
+  // { text: "专题图", icon: "#icon-topic-layers", type: TYPES.TOPICTYPES },
 ] as const;
 
 const mobileMenuGroups = computed(() => {
@@ -149,13 +160,12 @@ const mobileMenuGroups = computed(() => {
   <div v-else class="mobile-toolbar">
     <div class="menu-toggle" @click="mobileMenuVisible = !mobileMenuVisible">
       <span class="menu-icon">
-        <svg width="24" height="24" aria-hidden="true" focusable="false">
+        <svg width="20" height="20" aria-hidden="true" focusable="false">
           <use xlink:href="#icon-menu"></use>
         </svg>
       </span>
-      <span class="menu-text">工具</span>
+      <span class="menu-text">工具菜单</span>
     </div>
-
     <div v-if="mobileMenuVisible" class="mobile-menu-panel">
       <div class="menu-header">
         <h3>地图工具</h3>
@@ -165,20 +175,16 @@ const mobileMenuGroups = computed(() => {
           </svg>
         </span>
       </div>
-
       <div class="menu-content">
-        <div
-          v-for="group in mobileMenuGroups"
-          :key="group.title"
-          class="menu-group"
-        >
-          <h4 class="group-title">{{ group.title }}</h4>
+        <div v-for="group in mobileMenuGroups" :key="group.title" class="menu-group">
+          <p class="group-title">{{ group.title }}</p>
           <div class="group-items">
             <div
-              :class="{ active: active == item.type || (item.type === TYPES.TRAFFIC && baseSourceStore.trafficVisible) }"
               v-for="item in group.items"
-              @click="() => handleClickOpIcon(item.type)"
+              :key="item.type"
               class="menu-item"
+              :class="{ active: active == item.type }"
+              @click="() => handleClickOpIcon(item.type)"
             >
               <span class="item-icon">
                 <svg
@@ -201,8 +207,9 @@ const mobileMenuGroups = computed(() => {
 
 <style scoped>
 ul {
-  border-radius: 2px;
-  box-shadow: 0 0 4px 2px #b1b1b180;
+  border-radius: 6px;
+  box-shadow: 0 0 4px 2px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--panel-border);
   position: absolute;
   right: 10px;
   top: 65px;
@@ -211,6 +218,8 @@ ul {
 
 li {
   background-color: var(--primary-color);
+  /* 部分图标使用 fill/stroke="currentColor"，需让 color 也跟随主题，夜间变白 */
+  color: var(--primary-svg-color);
   font-size: 22px;
   height: 32px;
   transition: all 0.3s;
@@ -262,11 +271,28 @@ li:hover {
 }
 
 ul > li.active {
-  color: #3385ff;
+  color: var(--accent-cyan);
 }
 
 ul > li.active svg {
-  fill: #3385ff !important;
+  fill: var(--accent-cyan) !important;
+}
+
+html[data-theme="NIGHT"] {
+  ul {
+    background: var(--primary-color);
+    border-color: var(--widget-border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  li:hover {
+    background-color: var(--hover-bg);
+  }
+  ul > li.active {
+    color: var(--active-border);
+  }
+  ul > li.active svg {
+    fill: var(--active-border) !important;
+  }
 }
 
 .mobile-toolbar {
@@ -275,8 +301,10 @@ ul > li.active svg {
   left: 0;
   right: 0;
   z-index: 100;
-  background: white;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  background: var(--panel-bg);
+  border-top: 1px solid var(--panel-border);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.15);
+  color: var(--text-primary);
 }
 
 .menu-toggle {
@@ -285,7 +313,7 @@ ul > li.active svg {
   justify-content: center;
   padding: 12px;
   cursor: pointer;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--accent-cyan-soft);
 }
 
 .menu-icon {
@@ -295,7 +323,7 @@ ul > li.active svg {
 .menu-text {
   font-size: 16px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .mobile-menu-panel {
@@ -303,12 +331,14 @@ ul > li.active svg {
   bottom: 60px;
   left: 0;
   right: 0;
-  background: white;
+  background: var(--panel-bg);
+  border-top: 1px solid var(--panel-border);
   border-radius: 16px 16px 0 0;
-  box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.15);
   max-height: 70vh;
   overflow-y: auto;
   animation: slide-up 0.3s ease;
+  color: var(--text-primary);
 }
 
 @keyframes slide-up {
@@ -327,14 +357,14 @@ ul > li.active svg {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--accent-cyan-soft);
 }
 
 .menu-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .close-btn {
@@ -353,7 +383,7 @@ ul > li.active svg {
 .group-title {
   font-size: 14px;
   font-weight: 600;
-  color: #666;
+  color: var(--text-muted);
   margin: 0 0 12px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -376,11 +406,12 @@ ul > li.active svg {
 }
 
 .menu-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--hover-bg);
 }
 
 .menu-item.active {
-  background-color: #e6f7ff;
+  background-color: var(--active-bg);
+  border: 1px solid var(--active-border);
 }
 
 .item-icon {
@@ -388,22 +419,22 @@ ul > li.active svg {
 }
 
 .item-icon svg {
-  fill: #333;
+  fill: var(--primary-svg-color);
 }
 
 .menu-item.active .item-icon svg {
-  fill: #3385ff;
+  fill: var(--active-text);
 }
 
 .item-text {
   font-size: 12px;
-  color: #333;
+  color: var(--text-primary);
   text-align: center;
   line-height: 1.2;
 }
 
 .menu-item.active .item-text {
-  color: #3385ff;
+  color: var(--active-text);
   font-weight: 500;
 }
 

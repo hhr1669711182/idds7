@@ -1,4 +1,4 @@
-﻿/*
+/*
  * @Author: hhr
  * @Date: 2026-08-27 10:09:42
  * @LastEditTime: 2026-08-28 17:15:57
@@ -97,7 +97,14 @@ export interface AnalyzeAddressData {
 export interface RouteProperties {
   distance: string
   partDesc: string
-  roadName: string
+  roadName: string | null
+  tmcs?: Array<{
+    distance: string
+    status: string
+    /** 高德 GCJ-02 坐标串 */
+    polyline: string
+    lcode?: unknown[]
+  }>
 }
 
 export interface RouteFeature {
@@ -288,14 +295,25 @@ export const drivingV2 = (params: {
   { params },
 )
 
-/** Route 3. 多起点×多终点路径规划（MultiResponse，data 为数组） */
+/** Route 3. 多起点、单终点路径规划 */
 export const multiWaypoint = (params: {
   origins: string[]
-  destinations: string[]
-}) => alovaMapProxyInstance.Get<RouteResult[]>(
-  '/api/amap/route/multi-waypoint',
-  { params },
-)
+  destination: string
+  strategy?: number
+}) => {
+  const query = new URLSearchParams()
+  // 单起点重复传参，兼容服务端坐标列表解析。
+  const origins = params.origins.length === 1
+    ? [params.origins[0], params.origins[0]]
+    : params.origins
+  origins.forEach(origin => query.append('origins', origin))
+  query.set('destination', params.destination)
+  query.set('strategy', String(params.strategy ?? 0))
+  return alovaMapProxyInstance.Get<RouteResult[]>(
+    '/api/amap/route/multi-waypoint?' + query.toString(),
+    { cacheFor: 0 },
+  )
+}
 
 /** Weather 1. 天气查询 */
 export const weather = (params: { city: string }) =>

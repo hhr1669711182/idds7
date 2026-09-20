@@ -8,7 +8,7 @@ import locImgSrc from "../../../assets/loc.png";
 import polygon3 from "../../../assets/polygon3.png";
 import polygon4 from "../../../assets/polygon4.png";
 import polygon5 from "../../../assets/polygon5.png";
-import { getSVGForSrcById, convertToRGBA, getImagePattern } from "../../../util/index.ts";
+import { getSVGForSrcById, convertToRGBA, getImagePattern } from "@/utils";
 import Slider from '../../../baseComponent/Slider.vue';
 
 const imgsObject = {
@@ -241,5 +241,11 @@ onMounted(() => {
 
 .polygon_content li:nth-child(5) {
     background: url(../../../assets/polygon5.png) no-repeat;
+}
+
+html[data-theme="NIGHT"] {
+    :deep(.el-form-item__label) {
+        color: var(--text-secondary);
+    }
 }
 </style>

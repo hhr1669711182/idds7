@@ -1,3 +1,6 @@
+/*
+ * @Description: 要素样式插件，提供样式工厂注册、按 key 取样式及样式缓存能力
+ */
 import type { Style } from 'ol/style';
 import type OlMap from 'ol/Map';
 import type { MapPlugin } from '../core/types';

@@ -1,7 +1,7 @@
 /*
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-08-27 15:53:41
+ * @LastEditTime: 2026-09-18 11:26:46
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\vite.config.ts
@@ -9,32 +9,33 @@
 import { defineConfig, loadEnv } from "vite";
 import vue from "@vitejs/plugin-vue";
 import vueJsx from "@vitejs/plugin-vue-jsx";
-// import qiankun from "vite-plugin-qiankun";
 import UnoCSS from "unocss/vite";
 import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 import { createSvgIconsPlugin } from "vite-plugin-svg-icons";
-import { fileURLToPath, URL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import cesium from 'vite-plugin-cesium'
+
 
 export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const isDev = command === "serve";
   const isLib = process.env.BUILD_LIB === "true" || env.VITE_BUILD_LIB === "true";
+  const __dirname = fileURLToPath(new URL("./", import.meta.url));
 
   const proxyServer = {}
 
   return {
-    devtools: {
+    devtools: mode === "dev.local" ? {
       enabled: true
-    },
+    } : false,
     plugins: [
       vue(),
       vueJsx(),
-      UnoCSS(),  
-      cesium(),
+      UnoCSS(),
+      cesium({ rebuildCesium: true }),
       AutoImport({
         imports: ["vue", "vue-router", "pinia"],
         dts: "src/types/auto-imports.d.ts",
@@ -67,6 +68,7 @@ export default defineConfig(({ mode, command }) => {
       },
     },
     build: {
+      sourcemap: mode !== "production",
       outDir: isLib ? "dist-lib" : "dist",
       lib: isLib
         ? {
@@ -79,7 +81,7 @@ export default defineConfig(({ mode, command }) => {
       rolldownOptions: {
         external: isLib ? ["vue", "pinia", "vue-router"] : [],
         output: {
-          sourcemap: mode !== "production",
+          // sourcemap: mode !== "production",
           codeSplitting: !isLib,
           globals: {},
         },
@@ -90,13 +92,26 @@ export default defineConfig(({ mode, command }) => {
         exclude: ["@hhr001/openlayers-map-lib"],
         include: ["js-clipper"],
         needsInterop: ["js-clipper"],
-        force: true,
+        // Reuse Vite dependency cache across restarts.
       }
       : undefined,
     server: {
       port: 8888,
       host: "0.0.0.0",
       proxy: {
+        "/bff-client": {
+          target: 'http://ids-dev.ks.telewave.tech/',
+          changeOrigin: true,
+          secure: false,
+          // 网关需要 /bff-client/api/v1/gis/...，不能移除前缀。
+        },
+        ...(isDev && env.VITE_DISPATCH_MOCK === 'true' ? {
+          '/api/dispatch': {
+            target: 'http://127.0.0.1:18080',
+            changeOrigin: true,
+            rewrite: (path: string) => path.replace(/^\/api/, ''),
+          },
+        } : {}),// 仅在开发模式下启用本地 Mock 代理；正式环境应使用登录态动态拼接消息网关地址。
         "/geoserver": {
           target: env.VITE_GEOSERVER_URL,
           changeOrigin: true,

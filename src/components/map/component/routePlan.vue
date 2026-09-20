@@ -12,7 +12,7 @@ import { PANEL_TYPES } from "../../../const/index.ts";
 import endImg from "../assets/end.svg";
 import startImg from "../assets/start.svg";
 import rightImg from "../../../assets/right.png";
-import { getStyleFunction } from "../../../util";
+import { getStyleFunction } from "@/utils";
 import {
   VECTOR_LAYER,
   LAYER_NAMES,
@@ -324,7 +324,7 @@ const popupConfirmHandle = () => {
     </div>
   </div>
 </template>
-<style scoped>
+<style scoped lang="less">
 .path_container {
   position: absolute;
   top: 60px;
@@ -332,16 +332,17 @@ const popupConfirmHandle = () => {
   width: 104px;
   left: 40px;
   top: 64px;
-  background: rgb(242, 242, 242);
-  border-radius: 5px;
-  box-shadow: 0 0 2 rgba(0, 0, 0, 0.5);
+  background: var(--widget-bg);
+  border: 1px solid var(--widget-border);
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset;
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   font-weight: 700;
-  color: rgb(51, 51, 51);
   z-index: 5;
 
   .item {
@@ -350,16 +351,19 @@ const popupConfirmHandle = () => {
     line-height: 40px;
     height: 40px;
     cursor: pointer;
+    color: var(--text-secondary);
   }
 
   .item.active,
   .item:hover {
-    background-color: rgb(72, 105, 99);
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+    border-radius: 4px;
   }
 
   .item:nth-child(1).active,
   .item:nth-child(1):hover {
-    border-radius: 5px 5px 0 0;
+    border-radius: 8px 8px 0 0;
   }
 
   .item:nth-child(2) {
@@ -368,7 +372,7 @@ const popupConfirmHandle = () => {
 
   .item:nth-child(3).active,
   .item:nth-child(3):hover {
-    border-radius: 0px 0px 5px 5px;
+    border-radius: 0px 0px 8px 8px;
   }
 }
 .path_footer {
@@ -387,46 +391,47 @@ const popupConfirmHandle = () => {
   height: 60px;
   line-height: 60px;
   text-align: center;
-  border: 1px solid rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
   cursor: pointer;
   font-size: 21px;
   font-weight: 700;
-  color: rgb(51, 51, 51);
+  color: var(--text-primary);
 }
 .path_footer > div:nth-child(1) {
-  background: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.95),
-    rgba(230, 230, 230, 0.95)
-  );
+  background: var(--widget-bg);
 }
 .path_footer > div:nth-child(2) {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgb(84, 84, 84);
+  border: 1px solid var(--panel-border);
+  background: rgba(60, 80, 80, 0.6);
   cursor: not-allowed;
-  color: #fff;
+  color: rgba(200, 200, 200, 0.5);
 }
 
 .path_footer div.active {
-  background-color: rgb(76, 112, 105);
+  background: var(--active-bg);
+  color: var(--active-text);
   cursor: pointer;
+  border-color: var(--active-border);
 }
 
 .point_route_popup {
   height: 170px;
   width: 334px;
-  background-color: rgb(242, 242, 242);
-  border-radius: 4px;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--panel-shadow);
+  color: var(--text-primary);
 
   p.head {
-    color: rgb(51, 51, 51);
+    color: var(--text-secondary);
     font-size: 14px;
     font-weight: 700;
     line-height: 20px;
     text-align: center;
     padding: 8.5px 0 10.5px;
+    border-bottom: 1px solid var(--accent-cyan-soft);
   }
 
   div.item {
@@ -434,11 +439,12 @@ const popupConfirmHandle = () => {
     align-items: center;
     padding: 0 10px 10px;
     justify-content: space-around;
+    color: var(--text-secondary);
   }
 
   div.footer {
     display: flex;
-    border-top: 1px solid rgba(0, 0, 0, 0.3);
+    border-top: 1px solid var(--accent-cyan-soft);
     align-items: center;
     height: calc(100% - 84px - 39px);
   }
@@ -454,15 +460,31 @@ const popupConfirmHandle = () => {
     font-size: 14px;
     font-weight: 700;
     line-height: 20px;
-    color: rgb(51, 51, 51);
+    color: var(--text-primary);
   }
 
   div.footer div:first-child {
-    border-right: 1px solid rgba(0, 0, 0, 0.3);
+    border-right: 1px solid var(--accent-cyan-soft);
   }
 
   div.footer div:last-child {
-    color: rgb(74, 171, 102);
+    color: var(--accent-gold);
+  }
+}
+
+html[data-theme="NIGHT"] {
+  .path_footer > div:nth-child(2) {
+    background: var(--card-bg);
+    border-color: var(--card-border);
+  }
+  .point_route_popup {
+    :deep(.el-input__wrapper) {
+      background: var(--card-bg);
+      box-shadow: 0 0 0 1px var(--card-border) inset;
+    }
+    :deep(.el-input__inner) {
+      color: var(--text-primary);
+    }
   }
 }
 </style>

@@ -3,7 +3,7 @@ import { reactive } from "vue";
 import { storeToRefs } from "pinia";
 import { Style, Icon } from "ol/style";
 import { useCardStore } from "../../../store/index.ts";
-import { getSVGForSrcById } from "../../../util/index";
+import { getSVGForSrcById } from "@/utils";
 import { POINT_IMG_OPTIONS } from "../../../const/const.form.ts";
 import { StyleLike } from "ol/style/Style";
 
@@ -164,13 +164,15 @@ const handleClickImgOptions = ({
 
 <style scoped>
 .icon_container {
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--card-border);
   flex-wrap: wrap;
   justify-content: flex-start;
   padding: 6px 6px 6px 10px;
   width: 240px;
   align-items: center;
   display: flex;
+  background: var(--card-bg);
+  border-radius: 6px;
 }
 
 .icon_container > span {
@@ -182,14 +184,15 @@ const handleClickImgOptions = ({
   align-items: center;
   display: flex;
   justify-content: center;
+  color: var(--text-secondary);
 }
 
 .icon_container > span:hover {
-  color: #149bf0;
+  color: var(--accent-cyan);
 }
 
 .icon_container > span.active {
-  color: #149bf0;
+  color: var(--accent-gold);
 }
 
 .icon_container i {
@@ -202,5 +205,11 @@ const handleClickImgOptions = ({
 .icon_container span span {
   font-size: 12px;
   margin-top: 5px;
+}
+
+html[data-theme="NIGHT"] {
+  :deep(.el-form-item__label) {
+    color: var(--text-secondary);
+  }
 }
 </style>

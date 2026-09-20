@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { PANEL_MAP_TYPE } from "../../const/index.ts";
 import { LAYER_NAMES } from "../../baseComponent/OpenlayersMap/layers.ts";
 import { MODAL_SETTING } from "../../const/const.modals.ts";
@@ -120,8 +120,9 @@ const openBigPanel = () => {
 <style scoped>
 ul {
   background-color: var(--primary-color);
-  border-radius: 2px;
-  box-shadow: 0 0 4px 2px #b1b1b180;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  box-shadow: 0 0 4px 2px rgba(0, 0, 0, 0.2);
   position: absolute;
   right: 10px;
   top: 590px;
@@ -149,5 +150,22 @@ li:hover {
 
 ul > li:not(:last-child) {
   border-bottom: 1px solid var(--primary-li-bottom-color);
+}
+
+html[data-theme="NIGHT"] {
+  ul {
+    background: var(--primary-color);
+    border-color: var(--widget-border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  li svg {
+    fill: var(--primary-svg-color);
+  }
+  li:hover {
+    background-color: var(--hover-bg);
+  }
+  ul > li:not(:last-child) {
+    border-bottom-color: var(--primary-li-bottom-color);
+  }
 }
 </style>
