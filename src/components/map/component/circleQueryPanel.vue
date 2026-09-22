@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, computed } from "vue";
-import Slider from "@/baseComponent/Slider.vue";
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { EventBus } from "@/utils/mitt";
 import { usePanelStore } from "@/store";
 import { PANEL_TYPES } from "@/const";
@@ -19,79 +18,103 @@ const visible = ref(false);
 const data = ref<CircleQuerySourceData | null>(null);
 let currentTool: AnyTool | null = null;
 
-const RADIUS_MIN_KM = 0.2;
-const RADIUS_MAX_KM = 5;
+const RADIUS_MIN_METERS = 200;
+const RADIUS_MAX_METERS = 5000;
+const RADIUS_STEP_METERS = 100;
 
-const radiusKm = computed({
-  get: () => (data.value ? data.value.radiusMeters / 1000 : 0),
-  set: (v: number) => {
-    if (!data.value) return;
-    const meters = Math.max(50, Math.round(v * 1000));
-    emitPatch({ radiusMeters: meters });
-  },
-});
-
-const selectedTypes = computed<string[]>({
-  get: () => data.value?.resourceTypes ?? ALL_RESOURCE_TYPES.map((i) => i.key),
-  set: (list) => emitPatch({ resourceTypes: list }),
-});
+const radiusMeters = ref<number>(RADIUS_MIN_METERS);
+const selectedTypes = ref<string[]>(ALL_RESOURCE_TYPES.map((i) => i.key));
 
 const emitPatch = (patch: CircleQueryPatch) => {
   if (!currentTool) return;
-  currentTool.applyPatch(patch);
+  if (typeof currentTool.applyPatch === "function") {
+    currentTool.applyPatch(patch);
+  }
+};
+
+const onSliderChange = (val: any) => {
+  const v = Math.round(val);
+  if (!v || v < RADIUS_MIN_METERS || v > RADIUS_MAX_METERS) return;
+  // 立即更新本地显示
+  radiusMeters.value = v;
+  // 同步更新 tool 状态
+  if (currentTool) {
+    currentTool._radiusMeters = v;
+  }
+  emitPatch({ radiusMeters: v });
 };
 
 const onToggleType = (key: string, checked: boolean) => {
   const cur = new Set(selectedTypes.value);
   if (checked) cur.add(key);
   else cur.delete(key);
-  emitPatch({ resourceTypes: Array.from(cur) });
+  const next = ALL_RESOURCE_TYPES.map((t) => t.key).filter((k) => cur.has(k));
+  selectedTypes.value = next;
+  emitPatch({ resourceTypes: next });
 };
 
 const handleClose = () => {
-  if (currentTool) {
-    currentTool.destroy();
-    currentTool = null;
-  }
+  // 仅隐藏配置面板，不销毁圈选工具
+  panelStore.clearCircleQueryTool();
   visible.value = false;
   data.value = null;
   panelStore.setPanelType(PANEL_TYPES.NULL);
 };
 
+const onToolUpdate = (payload: unknown) => {
+  const next = payload as CircleQuerySourceData;
+  data.value = next;
+  if (next && typeof next.radiusMeters === "number" && next.radiusMeters > 0) {
+    radiusMeters.value = Math.round(next.radiusMeters);
+  }
+  if (next && Array.isArray(next.resourceTypes)) {
+    selectedTypes.value = [...next.resourceTypes];
+  }
+};
+
+const onToolClose = () => {
+  visible.value = false;
+  data.value = null;
+  currentTool = null;
+  panelStore.clearCircleQueryTool();
+};
+
+const bind = (tool: AnyTool | null) => {
+  currentTool = tool;
+  if (currentTool && typeof currentTool.getSourceData === "function") {
+    const snap = currentTool.getSourceData() as CircleQuerySourceData;
+    data.value = snap;
+    if (snap && typeof snap.radiusMeters === "number" && snap.radiusMeters > 0) {
+      radiusMeters.value = Math.round(snap.radiusMeters);
+    }
+    if (snap && Array.isArray(snap.resourceTypes)) {
+      selectedTypes.value = [...snap.resourceTypes];
+    }
+  } else {
+    data.value = null;
+  }
+  visible.value = !!currentTool;
+};
+
+const stopWatchTool = watch(
+  () => panelStore.circleQueryTool,
+  (tool) => bind(tool ?? null),
+  { immediate: true }
+);
+
 onMounted(() => {
-  EventBus.on(
-    "circle-query:open",
-    ((payload: unknown) => {
-      const p = payload as { uuid: string; tool: AnyTool } | undefined;
-      currentTool = p?.tool ?? null;
-      if (currentTool && typeof currentTool.getSourceData === "function") {
-        data.value = currentTool.getSourceData();
-      }
-      visible.value = true;
-    }) as any,
-  );
-
-  EventBus.on(
-    "circle-query:close",
-    (() => {
-      visible.value = false;
-      data.value = null;
-      currentTool = null;
-    }) as any,
-  );
-
-  EventBus.on(
-    "circle-query:update",
-    ((payload: unknown) => {
-      data.value = payload as CircleQuerySourceData;
-    }) as any,
-  );
+  EventBus.on("circle-query:update", onToolUpdate as any);
+  EventBus.on("circle-query:close", onToolClose as any);
+  // 兜底：若在面板挂载前工具已发过 update，主动拉取一次
+  if (currentTool && typeof currentTool.getSourceData === "function") {
+    onToolUpdate(currentTool.getSourceData());
+  }
 });
 
 onBeforeUnmount(() => {
-  EventBus.off("circle-query:open");
-  EventBus.off("circle-query:close");
+  stopWatchTool();
   EventBus.off("circle-query:update");
+  EventBus.off("circle-query:close");
 });
 </script>
 
@@ -109,18 +132,28 @@ onBeforeUnmount(() => {
 
       <div class="cq-body">
         <div class="cq-section">
-          <div class="cq-section-title">搜索半径</div>
+          <div class="cq-section-header">
+            <div class="cq-section-title">搜索半径</div>
+            <div class="cq-radius-value">{{ (radiusMeters / 1000).toFixed(2) }} 公里</div>
+          </div>
           <div class="cq-radius">
-            <Slider
-              :value="Number(radiusKm.toFixed(2))"
-              :min="RADIUS_MIN_KM"
-              :max="RADIUS_MAX_KM"
-              :step="0.1"
-              @change="(v: number) => (radiusKm = v)"
+            <el-slider
+              :model-value="radiusMeters"
+              :min="RADIUS_MIN_METERS"
+              :max="RADIUS_MAX_METERS"
+              :step="RADIUS_STEP_METERS"
+              :show-tooltip="true"
+              :format-tooltip="(v: number) => `${(v / 1000).toFixed(2)} 公里`"
+              @update:modelValue="onSliderChange"
             />
-            <div class="cq-radius-value">{{ radiusKm.toFixed(2) }} 千米</div>
+            <div class="cq-radius-labels">
+              <span>{{ (RADIUS_MIN_METERS / 1000).toFixed(1) }}km</span>
+              <span>{{ (RADIUS_MAX_METERS / 1000).toFixed(1) }}km</span>
+            </div>
           </div>
         </div>
+
+        <div class="cq-divider" />
 
         <div class="cq-section">
           <div class="cq-section-title">设施类型</div>
@@ -137,29 +170,20 @@ onBeforeUnmount(() => {
               />
               <span class="cq-type-dot" :style="{ background: t.color }" />
               <span class="cq-type-label">{{ t.label }}</span>
+              <span class="cq-type-count" :class="{ dim: !selectedTypes.includes(t.key) }">
+                {{ data?.stats.perType[t.key] ?? 0 }}
+              </span>
             </label>
           </div>
         </div>
 
+        <div class="cq-divider" />
+
         <div class="cq-section">
-          <div class="cq-section-title">圈内资源统计</div>
-          <div class="cq-stats">
-            <div class="cq-stats-total">
-              <span class="cq-stats-num">{{ data?.stats.total ?? 0 }}</span>
-              <span class="cq-stats-unit">个</span>
-            </div>
-            <div class="cq-stats-list">
-              <div
-                v-for="t in ALL_RESOURCE_TYPES"
-                :key="t.key"
-                class="cq-stats-row"
-                :class="{ dim: !selectedTypes.includes(t.key) }"
-              >
-                <span class="cq-type-dot" :style="{ background: t.color }" />
-                <span class="cq-stats-label">{{ t.label }}</span>
-                <span class="cq-stats-count">{{ data?.stats.perType[t.key] ?? 0 }}</span>
-              </div>
-            </div>
+          <div class="cq-result">
+            <span class="cq-result-label">查询结果</span>
+            <span class="cq-result-num">{{ data?.stats.total ?? 0 }}</span>
+            <span class="cq-result-unit">个</span>
           </div>
         </div>
       </div>
@@ -172,7 +196,7 @@ onBeforeUnmount(() => {
   position: absolute;
   left: 16px;
   top: 64px;
-  width: 280px;
+  width: 360px;
   z-index: 6;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
@@ -205,32 +229,52 @@ onBeforeUnmount(() => {
   gap: 14px;
 }
 
+.cq-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 -2px;
+}
+
 .cq-section {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
+.cq-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
 .cq-section-title {
-  background: var(--card-bg);
-  border-left: 3px solid var(--accent-cyan);
-  color: var(--text-secondary);
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .cq-radius {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 0 4px;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.cq-radius-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .cq-radius-value {
-  font-size: 12px;
-  color: var(--text-secondary);
-  text-align: right;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(39, 210, 255, 0.25);
+  padding: 2px 10px;
+  border-radius: 4px;
 }
 
 .cq-types {
@@ -243,74 +287,59 @@ onBeforeUnmount(() => {
 .cq-type {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
   font-size: 13px;
   color: var(--text-primary);
-  padding: 2px 0;
 }
-
-.cq-type.active .cq-type-label { color: var(--text-primary); }
 
 .cq-type-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   display: inline-block;
-  flex-shrink: 0;
+  flex: 0 0 auto;
 }
 
 .cq-type-label {
-  color: var(--text-secondary);
+  color: var(--text-primary);
   flex: 1;
 }
 
-.cq-stats {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 4px 6px;
-}
-
-.cq-stats-total {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
+.cq-type-count {
+  font-size: 16px;
+  font-weight: 600;
   color: var(--accent-cyan);
 }
 
-.cq-stats-num {
-  font-size: 26px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.cq-stats-unit { font-size: 12px; color: var(--text-secondary); }
-
-.cq-stats-list {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.cq-stats-row {
-  display: grid;
-  grid-template-columns: 12px 1fr auto;
-  gap: 6px;
-  align-items: center;
-}
-
-.cq-stats-row.dim {
+.cq-type-count.dim {
   opacity: 0.45;
 }
 
-.cq-stats-label { color: var(--text-secondary); }
-.cq-stats-count {
-  color: var(--text-primary);
-  font-weight: 600;
+.cq-result {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(39, 210, 255, 0.08);
+  border-radius: 6px;
+}
+
+.cq-result-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.cq-result-num {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  line-height: 1;
+}
+
+.cq-result-unit {
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 html[data-theme="NIGHT"] {
@@ -332,5 +361,25 @@ html[data-theme="NIGHT"] {
 .cq-fade-leave-to {
   opacity: 0;
   transform: translateY(-6px);
+}
+
+// 滑块样式优化
+:deep(.el-slider__runway) {
+  background: rgba(255, 255, 255, 0.1);
+  height: 4px;
+}
+
+:deep(.el-slider__bar) {
+  background: var(--accent-cyan);
+  height: 4px;
+}
+
+:deep(.el-slider__button-wrapper) {
+  .el-slider__button {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--accent-cyan);
+    background: var(--panel-bg);
+  }
 }
 </style>

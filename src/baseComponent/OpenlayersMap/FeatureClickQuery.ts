@@ -7,7 +7,10 @@ import AlarmDetailPopup from "./AlarmDetailPopup.vue";
 import { geoserverApi } from "@/service/geoserver";
 import { unByKey } from "ol/Observable";
 import { EventsKey } from "ol/events";
-import { useLayersStore } from "@/store/useLayersStore";
+import { transform } from "ol/proj";
+import { useLayersStore, usePanelStore } from "@/store";
+import { ALL_RESOURCE_TYPES } from "@/components/map/MapTools";
+import { calculateDistance } from "@/utils/mapTool.ts";
 
 export class FeatureClickQuery {
   private map: Map;
@@ -55,7 +58,7 @@ export class FeatureClickQuery {
     });
     if (hitVector) {
       this.closePopup();
-      return;
+      // return;
     }
 
     const view = this.map.getView();
@@ -68,14 +71,18 @@ export class FeatureClickQuery {
       const { useWebMock, noEsSearch }: any = items.value.find(({ id }) => id === item)
       return !useWebMock && !noEsSearch
     });
+
+    const panelStore = usePanelStore()
+
     const queryLayers = [
       "gis:mapresource", //ES
       ...layerIds,
-    ].join(",");
+      ...(panelStore.circleOpen ? ALL_RESOURCE_TYPES.map(({ layerName }) => layerName) : []),
+    ];
 
     const dummySource = new TileWMS({
       url: geoserverApi.getWMSServiceUrl("gis"),
-      params: { LAYERS: queryLayers, VERSION: "1.1.0" },
+      params: { LAYERS: queryLayers.join(","), VERSION: "1.1.0" },
     });
 
     const url = dummySource.getFeatureInfoUrl(evt.coordinate, resolution, projection, {
@@ -87,15 +94,15 @@ export class FeatureClickQuery {
       try {
         const urlObj = new URL(url, window.location.origin);
         const data = await geoserverApi.getWMSFeatureInfo("gis", {
-          layers: queryLayers,
-          query_layers: queryLayers,
+          layers: queryLayers.join(","),
+          query_layers: queryLayers.join(","),
           bbox: urlObj.searchParams.get("BBOX") || urlObj.searchParams.get("bbox") || "",
           width: Number(urlObj.searchParams.get("WIDTH") || urlObj.searchParams.get("width")),
           height: Number(urlObj.searchParams.get("HEIGHT") || urlObj.searchParams.get("height")),
           x: Number(urlObj.searchParams.get("X") || urlObj.searchParams.get("x") || urlObj.searchParams.get("I") || urlObj.searchParams.get("i")),
           y: Number(urlObj.searchParams.get("Y") || urlObj.searchParams.get("y") || urlObj.searchParams.get("J") || urlObj.searchParams.get("j")),
-          cql_filter: Array(layerIds.length + 1).fill("1=1").join(";"),
-          viewparams: Array(layerIds.length + 1).fill("1=1").join(","),
+          cql_filter: Array(queryLayers.length).fill("1=1").join(";"),
+          viewparams: Array(queryLayers.length).fill("1=1").join(","),
           feature_count: Number(urlObj.searchParams.get("FEATURE_COUNT") || 20),
           transparent: true,
           format: "image/png",
@@ -121,12 +128,25 @@ export class FeatureClickQuery {
     const item = items.find(({ id }) => id.includes(fId.split(".")[0] || "")) || {}; // 存在数据不一致情况
     // const item = items.find(({ id }) => fId.includes(id.split(":")[1] || "")) || {};
 
+    const { circleOpen, circleCenter } = usePanelStore()
+    if (circleOpen && circleCenter && circleCenter.length > 1) {
+      const coord = transform(
+        feature.geometry.coordinates,
+        "EPSG:3857",
+        "EPSG:4326"
+      );
+      properties.R_distance = calculateDistance(
+        coord as any,
+        circleCenter as any,
+      ) + "米"
+    }
+
     // 临时表头集合(多图源)
     const keys = {
       // 聚合查询相关
       name: "名称",
       address: "地址",
-      
+
       // 消防栓相关
       symc: "水源名称",
       sydz: "水源地址",
@@ -142,9 +162,12 @@ export class FeatureClickQuery {
       org_desc: "机构描述",
 
       // 重点单位相关
-      dept_name: "重点单位名称",
-      branch_type: "重点单位类型",
-      address_cn: "重点单位地址",
+      dept_name: "单位名称",
+      branch_type: "单位类型",
+      dept_phone: "单位电话",
+      responsible_name: "联系人",
+      address_cn: "单位地址",
+      R_distance: "距圆心",
     } as any
 
     const rows = Object.keys(properties)

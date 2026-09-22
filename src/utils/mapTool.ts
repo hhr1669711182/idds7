@@ -1,10 +1,10 @@
 /*
  * @Author: hhr
  * @Date: 2026-04-16 14:00:56
- * @LastEditTime: 2026-08-18 17:52:27
+ * @LastEditTime: 2026-09-22 11:34:36
  * @LastEditors: hhr
  * @Description: 文件描述
- * @FilePath: \ids-gis-web\src\util\mapTool.ts
+ * @FilePath: \ids-gis-web\src\utils\mapTool.ts
  */
 import * as sphere from "ol/sphere.js";
 import { Style, Stroke, Icon } from "ol/style.js";
@@ -23,6 +23,50 @@ export const formatDistance = (dis: number) => {
   } else {
     return Math.round(dis * 100) / 100 + " " + "m";
   }
+};
+
+/**
+ * 判断是否为经纬度坐标系 (WGS84)
+ * @param coord 坐标 [经度, 纬度]
+ */
+const isWGS84 = (coord: [number, number]): boolean => {
+  const [lon, lat] = coord;
+  return lon >= -180 && lon <= 180 && lat >= -90 && lat <= 90;
+};
+
+/**
+ * 计算两个坐标之间的距离 wgs84
+ * @param coord1 起点坐标 [经度, 纬度]
+ * @param coord2 终点坐标 [经度, 纬度]
+ * @param unit 返回单位，默认 'm' (米)，可选 'km' (千米)
+ * @returns 距离值（米或千米）
+ */
+export const calculateDistance = (
+  coord1: [number, number],
+  coord2: [number, number],
+  unit: "m" | "km" = "m"
+): number => {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const [lon1, lat1] = coord1;
+  const [lon2, lat2] = coord2;
+
+  // 检测是否为经纬度坐标
+  if (!isWGS84(coord1) || !isWGS84(coord2)) {
+    console.warn('[calculateDistance] 坐标不是 WGS84 经纬度坐标系，请先转换坐标系');
+  }
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  const d = unit === "km" ? distance / 1000 : distance;
+  return Number(d.toFixed(2));
 };
 
 export const formatLength = (line: Geometry) => {

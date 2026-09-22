@@ -11,4 +11,5 @@ export const ROUTE_NAMES = {
   DISPATCH: 'dispatch',
   DISPATCH1: 'dispatch1',// dispatch1: 消防调派流程控制器
   AMAP_DEMO: 'amapDemo',
-} as const
+  MARK_DRAW: 'markDraw',
+ } as const

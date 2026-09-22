@@ -1,5 +1,7 @@
-﻿import { markRaw } from "vue";
+﻿import { markRaw, toRaw } from "vue";
 import { Draw, Modify } from "ol/interaction";
+// import TileLayer from "ol/layer/Tile";
+// import TileWMS from "ol/source/TileWMS";
 import ImageLayer from "ol/layer/Image";
 import ImageWMS from "ol/source/ImageWMS";
 import { getDistance } from "ol/sphere";
@@ -14,35 +16,9 @@ import { Style, Stroke, Fill } from "ol/style";
 import { unByKey } from "ol/Observable";
 import { EventsKey } from "ol/events";
 import Overlay from "ol/Overlay";
-import Collection from "ol/Collection";
 import { geoserverApi } from "@/service/geoserver";
+import Collection from "ol/Collection";
 import { LAYER_NAMES } from "@/baseComponent/OpenlayersMap/layers";
-import { EventBus } from "@/utils/mitt";
-import { usePanelStore } from "@/store";
-import { debounce } from "lodash-es";
-export const ALL_RESOURCE_TYPES = [
-  // { key: "ES", label: "聚合检索", layerName: "gis:mapresource", geomField: "geom", color: "#f56c6c" },
-  { key: "fireHydrant", label: "消防栓", layerName: "gis:env_fire_water", geomField: "geom", color: "#f56c6c" },
-  // { key: "fireWaterCrane", label: "消防水鹤", layerName: "gis:fire_water_crane", geomField: "geom", color: "#409eff" },
-  // { key: "fireWaterPool", label: "消防水池", layerName: "gis:fire_water_pool", geomField: "geom", color: "#409eff" },
-  { key: "keyUnit", label: "重点单位", layerName: "gis:view_env_enterprises", geomField: "geom", color: "#e6a23c" },
-  // { key: "densePersonLocation", label: "人密场所", layerName: "gis:dense_person_location", geomField: "geom", color: "#909399" },
-] as const;
-
-export interface CircleQuerySourceData {
-  centerLonLat: [number, number];
-  radiusMeters: number;
-  resourceTypes: string[];
-  stats: {
-    total: number;
-    perType: Record<string, number>;
-  };
-}
-
-export interface CircleQueryPatch {
-  radiusMeters?: number;
-  resourceTypes?: string[];
-}
 
 export class CircleQueryTool extends BaseTool {
   draw!: Draw;
@@ -54,20 +30,6 @@ export class CircleQueryTool extends BaseTool {
   wmsLayer!: ImageLayer<ImageWMS>;
   private moveendThrottle: ReturnType<typeof setTimeout> | null = null;
   private moveendLeading: boolean = false;
-  private eventHandlers: { event: string; handler: any }[] = [];
-
-  // 防抖后的查询方法
-  private debouncedUpdateWMS = debounce(() => {
-    if (this._centerLonLat[0] !== 0 && this._radiusMeters > 0) {
-      this.updateWMSLayer(this._centerLonLat, this._radiusMeters);
-    }
-  }, 300);
-
-  // 状态
-  private _radiusMeters: number = 500;
-  private _resourceTypes: string[] = ALL_RESOURCE_TYPES.map(t => t.key);
-  private _centerLonLat: [number, number] = [0, 0];
-  private _stats = { total: 0, perType: {} as Record<string, number> };
 
   drawStyle = new Style({
     stroke: new Stroke({
@@ -83,55 +45,8 @@ export class CircleQueryTool extends BaseTool {
     super(options);
   }
 
-  getSourceData(): CircleQuerySourceData {
-    return {
-      centerLonLat: this._centerLonLat,
-      radiusMeters: this._radiusMeters,
-      resourceTypes: [...this._resourceTypes],
-      stats: { ...this._stats },
-    };
-  }
-
-  applyPatch(patch: CircleQueryPatch) {
-    if (patch.radiusMeters !== undefined) {
-      this._radiusMeters = patch.radiusMeters;
-    }
-    if (patch.resourceTypes !== undefined) {
-      this._resourceTypes = [...patch.resourceTypes];
-    }
-
-    // 立即更新 UI（圆圈半径变化）
-    if (this._centerLonLat[0] !== 0 && this._radiusMeters > 0) {
-      const source = this.vectorLayer?.getSource();
-      const feature = source?.getFeatureById(this.uuid);
-      if (feature) {
-        const geom = feature.getGeometry();
-        geom.setRadius(this._radiusMeters);
-        source.changed();
-      }
-    }
-
-    // 防抖查询
-    this.debouncedUpdateWMS();
-  }
-
-  private emitUpdate() {
-    EventBus.emit("circle-query:update", this.getSourceData());
-  }
-
-  private emitClose() {
-    EventBus.emit("circle-query:close");
-  }
-
   init() {
     super.init();
-
-    // 监听面板关闭
-    const closeHandler = () => {
-      this.destroy();
-    };
-    EventBus.on("circle-query:close", closeHandler);
-    this.eventHandlers.push({ event: "circle-query:close", handler: closeHandler });
 
     this.radiusTooltipElement = document.createElement("div");
     this.radiusTooltipElement.className = "ol-tooltip ol-tooltip-measure";
@@ -201,8 +116,12 @@ export class CircleQueryTool extends BaseTool {
       this.listeners.push(modifyEndKey);
 
       // 地图缩放/平移结束后,节流触发 WMS 查询
+      // 第一次 moveend 立即执行,后续 300ms 内只执行最后一次
       const moveEndKey = this.map.on("moveend", () => {
-        if (this.moveendLeading) return;
+        if (this.moveendLeading) {
+          // 已经有定时器在等,跳过
+          return;
+        }
         this.moveendLeading = true;
         this.moveendThrottle = setTimeout(() => {
           this.moveendLeading = false;
@@ -221,12 +140,10 @@ export class CircleQueryTool extends BaseTool {
     const center = geom.getCenter();
     const radius = geom.getRadius();
     const edgeCoordinate = [center[0] + radius, center[1]];
+
     const centerLonLat = transform(center, "EPSG:3857", "EPSG:4326");
     const edgeLonLat = transform(edgeCoordinate, "EPSG:3857", "EPSG:4326");
     const distanceInMeters = getDistance(centerLonLat, edgeLonLat);
-
-    // 更新检索中心状态
-    usePanelStore().setCircleCenter(centerLonLat);
 
     let displayRadius = "";
     if (distanceInMeters > 1000) {
@@ -238,45 +155,21 @@ export class CircleQueryTool extends BaseTool {
     this.radiusTooltipElement.innerHTML = displayRadius;
     this.radiusTooltip.setPosition(edgeCoordinate);
 
-    // 保存状态
-    this._centerLonLat = centerLonLat as [number, number];
-    this._radiusMeters = distanceInMeters;
-
     if (triggerWms) {
       this.updateWMSLayer(centerLonLat, distanceInMeters);
     }
-
-    // 发送更新事件
-    this.emitUpdate();
   }
 
   updateWMSLayer(centerLonLat: number[], radiusInMeters: number) {
-    const selectedTypes = ALL_RESOURCE_TYPES
-      .filter(t => this._resourceTypes.includes(t.key));
-
-    if (selectedTypes.length === 0) {
-      const source = this.wmsLayer?.getSource();
-      if (source) {
-        source.updateParams({ CQL_FILTER: '1=0' });
-      }
-      this._stats = { total: 0, perType: {} };
-      this.emitUpdate();
-      return this;
-    }
-
-    const layers = selectedTypes.map(t => t.layerName).join(',');
-    // 为每个图层生成单独的 filter，用分号分隔
-    const filters = selectedTypes.map(() =>
-      `DWITHIN(geom,Point(${centerLonLat[0]} ${centerLonLat[1]}),${radiusInMeters},meters)`
-    );
-    const cqlFilter = filters.join(';');
+    const cqlFilter = `1=1 and DWITHIN(geom,Point(${centerLonLat[0]} ${centerLonLat[1]}), ${radiusInMeters},meters)`;
 
     if (!this.wmsLayer) {
+      // 关键:source 必须 markRaw,否则 OL 内部状态写入会被 Vue 代理放大
       this.wmsLayer = markRaw(new ImageLayer({
         source: markRaw(new ImageWMS({
           url: geoserverApi.getWMSServiceUrl("gis"),
           params: {
-            LAYERS: layers,
+            LAYERS: "gis:mapresource",
             VERSION: "1.1.0",
             FORMAT: "image/png",
             TRANSPARENT: true,
@@ -293,63 +186,13 @@ export class CircleQueryTool extends BaseTool {
     } else {
       const source = this.wmsLayer.getSource();
       if (source) {
-        source.updateParams({ LAYERS: layers, CQL_FILTER: cqlFilter });
+        source.updateParams({ CQL_FILTER: cqlFilter });
       }
     }
-
-    this.updateStats(centerLonLat, radiusInMeters);
-    return this;
-  }
-
-  /**
-   * 更新统计数据（通过 WFS 查询每个图层的要素总数）
-   */
-  private async updateStats(centerLonLat: number[], radiusInMeters: number) {
-    const selectedTypes = ALL_RESOURCE_TYPES
-      .filter(t => this._resourceTypes.includes(t.key));
-
-    if (selectedTypes.length === 0) {
-      this._stats = { total: 0, perType: {} };
-      this.emitUpdate();
-      return;
-    }
-
-    const cqlFilter = `DWITHIN(geom,Point(${centerLonLat[0]} ${centerLonLat[1]}),${radiusInMeters},meters)`;
-    const perType: Record<string, number> = {};
-    let total = 0;
-
-    try {
-      const results = await Promise.all(
-        selectedTypes.map(async (type) => {
-          const res = await geoserverApi.getWFSFeatures({
-            typeName: type.layerName,
-            cql_filter: cqlFilter,
-          });
-          const count = res?.totalFeatures || res?.numberMatched || 0;
-          return { key: type.key, count };
-        })
-      );
-
-      // 汇总统计
-      results.forEach(({ key, count }) => {
-        perType[key] = count;
-        total += count;
-      });
-
-      this._stats = { total, perType };
-    } catch (err) {
-      console.warn('[CircleQueryTool] updateStats failed:', err);
-      this._stats = { total: 0, perType: {} };
-    }
-
-    // 统计数据更新完成后再发送事件
-    this.emitUpdate();
   }
 
   destroy() {
-    // 取消防抖
-    this.debouncedUpdateWMS.cancel();
-    // 清除 moveend 节流定时器
+    // 清除节流定时器
     if (this.moveendThrottle) {
       clearTimeout(this.moveendThrottle);
       this.moveendThrottle = null;
@@ -358,11 +201,6 @@ export class CircleQueryTool extends BaseTool {
     // 断开所有事件监听
     this.listeners.forEach((key) => unByKey(key));
     this.listeners = [];
-    // 清理 EventBus 监听
-    this.eventHandlers.forEach(({ event, handler }) => {
-      EventBus.off(event, handler);
-    });
-    this.eventHandlers = [];
     if (this.draw) {
       this.map.removeInteraction(this.draw);
     }
@@ -376,7 +214,7 @@ export class CircleQueryTool extends BaseTool {
     super.destroy();
   }
 
-  // clearES_WMSLayer() {
-  //   if (this.wmsLayer) this.map.removeLayer(this.wmsLayer);
-  // }
+  clearES_WMSLayer() {
+    if (this.wmsLayer) this.map.removeLayer(this.wmsLayer);
+  }
 }

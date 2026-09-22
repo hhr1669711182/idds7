@@ -1,30 +1,21 @@
-<!--
- * @Author: hhr
- * @Date: 2026-05-21 19:13:51
- * @LastEditTime: 2026-09-21 16:53:04
- * @LastEditors: hhr
- * @Description: 文件描述
- * @FilePath: \ids-gis-web\src\components\map\index.vue
--->
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
 import { nextTick, onActivated, onMounted, onUnmounted, shallowRef } from "vue";
 import { storeToRefs } from "pinia";
 
-import tlp from "./compass.vue";
-import trp from "./trp.vue";
-import card from "./card.vue";
-import clear from "./clear.vue";
-import brp from "./brp.vue";
-import topicLayerCard from "./component/topicLayerCard.vue";
-import baseSource from "./component/baseSource.vue";
-const routePlan = defineAsyncComponent(() => import("./component/routePlan.vue"));
-import bigPanel from "./component/bigPanel.vue";
-import config from "./config.vue";
-import layers from "./layers.vue";
-import ssrkPanel from "./component/ssrkPanel.vue";
+import tlp from "@/components/map/compass.vue";
+import trp from "@/components/map/trp.vue";
+import card from "@/components/map/card.vue";
+import clear from "@/components/map/clear.vue";
+import brp from "@/components/map/brp.vue";
+import topicLayerCard from "@/components/map/component/topicLayerCard.vue";
+import baseSource from "@/components/map/component/baseSource.vue";
+import bigPanel from "@/components/map/component/bigPanel.vue";
+import config from "@/components/map/config.vue";
+import layers from "@/components/map/layers.vue";
+import ssrkPanel from "@/components/map/component/ssrkPanel.vue";
 
-import OpenlayersMap from "../../baseComponent/OpenlayersMap/map.vue";
+import OpenlayersMap from "@/baseComponent/OpenlayersMap/drawMap.vue";
 import {
   useLayersStore,
   useMapConfigStore,
@@ -32,8 +23,8 @@ import {
   usePanelStore,
   useTabsStore,
 } from "@/store/index.ts";
-import { PANEL_TYPES } from "../../const/const.panel.ts";
-import type { LayerChangeHandler } from "./layers.vue";
+import { PANEL_TYPES } from "@/const/const.panel.ts";
+import type { LayerChangeHandler } from "@/components/map/layers.vue";
 
 type OpenlayersMapExpose = {
   addLayer: (id: string) => boolean;
@@ -110,15 +101,14 @@ onUnmounted(() => {
     <tlp />
     <trp />
 
-    <routePlan v-if="type == PANEL_TYPES.ROUTE_PLAN" />
-    <topicLayerCard />
+    <!-- <topicLayerCard /> -->
     <baseSource />
 
     <clear />
     <card />
     <bigPanel />
-    <config @save="handleConfigSave" />
-    <layers :onLayerChange="handleLayerChange" />
+    <!-- <config @save="handleConfigSave" /> -->
+    <!-- <layers :onLayerChange="handleLayerChange" /> -->
 
     <ssrkPanel v-show="ssrkPanelOpen" />
 

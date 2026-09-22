@@ -14,14 +14,11 @@ import { Style, Stroke, Fill } from "ol/style";
 import { unByKey } from "ol/Observable";
 import { EventsKey } from "ol/events";
 import Overlay from "ol/Overlay";
-import Collection from "ol/Collection";
 import { geoserverApi } from "@/service/geoserver";
+import Collection from "ol/Collection";
 import { LAYER_NAMES } from "@/baseComponent/OpenlayersMap/layers";
 import { EventBus } from "@/utils/mitt";
-import { usePanelStore } from "@/store";
-import { debounce } from "lodash-es";
 export const ALL_RESOURCE_TYPES = [
-  // { key: "ES", label: "聚合检索", layerName: "gis:mapresource", geomField: "geom", color: "#f56c6c" },
   { key: "fireHydrant", label: "消防栓", layerName: "gis:env_fire_water", geomField: "geom", color: "#f56c6c" },
   // { key: "fireWaterCrane", label: "消防水鹤", layerName: "gis:fire_water_crane", geomField: "geom", color: "#409eff" },
   // { key: "fireWaterPool", label: "消防水池", layerName: "gis:fire_water_pool", geomField: "geom", color: "#409eff" },
@@ -55,13 +52,6 @@ export class CircleQueryTool extends BaseTool {
   private moveendThrottle: ReturnType<typeof setTimeout> | null = null;
   private moveendLeading: boolean = false;
   private eventHandlers: { event: string; handler: any }[] = [];
-
-  // 防抖后的查询方法
-  private debouncedUpdateWMS = debounce(() => {
-    if (this._centerLonLat[0] !== 0 && this._radiusMeters > 0) {
-      this.updateWMSLayer(this._centerLonLat, this._radiusMeters);
-    }
-  }, 300);
 
   // 状态
   private _radiusMeters: number = 500;
@@ -99,20 +89,11 @@ export class CircleQueryTool extends BaseTool {
     if (patch.resourceTypes !== undefined) {
       this._resourceTypes = [...patch.resourceTypes];
     }
-
-    // 立即更新 UI（圆圈半径变化）
+    // 重新查询
     if (this._centerLonLat[0] !== 0 && this._radiusMeters > 0) {
-      const source = this.vectorLayer?.getSource();
-      const feature = source?.getFeatureById(this.uuid);
-      if (feature) {
-        const geom = feature.getGeometry();
-        geom.setRadius(this._radiusMeters);
-        source.changed();
-      }
+      this.updateWMSLayer(this._centerLonLat, this._radiusMeters);
+      this.emitUpdate();
     }
-
-    // 防抖查询
-    this.debouncedUpdateWMS();
   }
 
   private emitUpdate() {
@@ -161,7 +142,7 @@ export class CircleQueryTool extends BaseTool {
       let helpMsg = this.sketch ? "松开鼠标结束圈选" : "点击并拖动鼠标进行圈选查询";
       this.helpTooltipElement.innerHTML = helpMsg;
       this.helpTooltipElement.style.display = "block";
-      this.helpTooltip.setPosition(evt.coordinate);
+      this.radiusTooltip.setPosition(evt.coordinate);
     };
 
     this.map.on("pointermove", this.setHelpTooltip as any);
@@ -221,12 +202,10 @@ export class CircleQueryTool extends BaseTool {
     const center = geom.getCenter();
     const radius = geom.getRadius();
     const edgeCoordinate = [center[0] + radius, center[1]];
+
     const centerLonLat = transform(center, "EPSG:3857", "EPSG:4326");
     const edgeLonLat = transform(edgeCoordinate, "EPSG:3857", "EPSG:4326");
     const distanceInMeters = getDistance(centerLonLat, edgeLonLat);
-
-    // 更新检索中心状态
-    usePanelStore().setCircleCenter(centerLonLat);
 
     let displayRadius = "";
     if (distanceInMeters > 1000) {
@@ -251,25 +230,20 @@ export class CircleQueryTool extends BaseTool {
   }
 
   updateWMSLayer(centerLonLat: number[], radiusInMeters: number) {
-    const selectedTypes = ALL_RESOURCE_TYPES
-      .filter(t => this._resourceTypes.includes(t.key));
+    // 根据选中的资源类型构建图层列表
+    const selectedLayers = ALL_RESOURCE_TYPES
+      .filter(t => this._resourceTypes.includes(t.key))
+      .map(t => t.layerName);
 
-    if (selectedTypes.length === 0) {
-      const source = this.wmsLayer?.getSource();
-      if (source) {
-        source.updateParams({ CQL_FILTER: '1=0' });
-      }
+    if (selectedLayers.length === 0) {
+      // 清除图层
+      this.clearES_WMSLayer();
       this._stats = { total: 0, perType: {} };
-      this.emitUpdate();
-      return this;
+      return;
     }
 
-    const layers = selectedTypes.map(t => t.layerName).join(',');
-    // 为每个图层生成单独的 filter，用分号分隔
-    const filters = selectedTypes.map(() =>
-      `DWITHIN(geom,Point(${centerLonLat[0]} ${centerLonLat[1]}),${radiusInMeters},meters)`
-    );
-    const cqlFilter = filters.join(';');
+    const layers = selectedLayers.join(',');
+    const cqlFilter = `${Array(selectedLayers.length).fill("1=1").join(";")} and DWITHIN(geom,Point(${centerLonLat[0]} ${centerLonLat[1]}), ${radiusInMeters},meters)`;
 
     if (!this.wmsLayer) {
       this.wmsLayer = markRaw(new ImageLayer({
@@ -296,60 +270,10 @@ export class CircleQueryTool extends BaseTool {
         source.updateParams({ LAYERS: layers, CQL_FILTER: cqlFilter });
       }
     }
-
-    this.updateStats(centerLonLat, radiusInMeters);
-    return this;
-  }
-
-  /**
-   * 更新统计数据（通过 WFS 查询每个图层的要素总数）
-   */
-  private async updateStats(centerLonLat: number[], radiusInMeters: number) {
-    const selectedTypes = ALL_RESOURCE_TYPES
-      .filter(t => this._resourceTypes.includes(t.key));
-
-    if (selectedTypes.length === 0) {
-      this._stats = { total: 0, perType: {} };
-      this.emitUpdate();
-      return;
-    }
-
-    const cqlFilter = `DWITHIN(geom,Point(${centerLonLat[0]} ${centerLonLat[1]}),${radiusInMeters},meters)`;
-    const perType: Record<string, number> = {};
-    let total = 0;
-
-    try {
-      const results = await Promise.all(
-        selectedTypes.map(async (type) => {
-          const res = await geoserverApi.getWFSFeatures({
-            typeName: type.layerName,
-            cql_filter: cqlFilter,
-          });
-          const count = res?.totalFeatures || res?.numberMatched || 0;
-          return { key: type.key, count };
-        })
-      );
-
-      // 汇总统计
-      results.forEach(({ key, count }) => {
-        perType[key] = count;
-        total += count;
-      });
-
-      this._stats = { total, perType };
-    } catch (err) {
-      console.warn('[CircleQueryTool] updateStats failed:', err);
-      this._stats = { total: 0, perType: {} };
-    }
-
-    // 统计数据更新完成后再发送事件
-    this.emitUpdate();
   }
 
   destroy() {
-    // 取消防抖
-    this.debouncedUpdateWMS.cancel();
-    // 清除 moveend 节流定时器
+    // 清除节流定时器
     if (this.moveendThrottle) {
       clearTimeout(this.moveendThrottle);
       this.moveendThrottle = null;
@@ -376,7 +300,7 @@ export class CircleQueryTool extends BaseTool {
     super.destroy();
   }
 
-  // clearES_WMSLayer() {
-  //   if (this.wmsLayer) this.map.removeLayer(this.wmsLayer);
-  // }
+  clearES_WMSLayer() {
+    if (this.wmsLayer) this.map.removeLayer(this.wmsLayer);
+  }
 }

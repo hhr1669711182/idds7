@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRaw, ref, markRaw } from "vue";
+import { toRaw, ref } from "vue";
 import { storeToRefs } from "pinia";
 import {
   useCardStore,
@@ -11,7 +11,6 @@ import {
 import { useCurrentMap } from "@/composables/useCurrentMap";
 import { TYPES, PANEL_TYPES, DRAW_TYPES } from "@/const";
 import { useResponsive } from "@/composables/useResponsive.ts";
-import { EventBus } from "@/utils/mitt";
 
 const { isMobile } = useResponsive();
 const { currentMap: MapInstance } = useCurrentMap();
@@ -37,12 +36,14 @@ const handleClickOpIcon = (type: any) => {
   if (active.value === type && ![TYPES.TRAFFIC, TYPES.RESET].includes(type)) {
     topicLayerStore.setVisible(false);
     baseSourceStore.setVisible(false);
-    if (type === TYPES.MEASUREAREA) {
-      EventBus.emit("circle-query:close", { uuid: cardStore.drawTool?.uuid });
-      panelStore.setPanelType(PANEL_TYPES.NULL);
-    }
     return cardStore.clearDrawTool();
   }
+
+  // 点击已激活的图标，清除绘制工具并关闭菜单
+  // if (active.value === type && ![TYPES.TRAFFIC, TYPES.RESET].includes(type)) {
+  //   return cardStore.clearDrawTool();
+  //   ;
+  // }
 
   const isDrawType = Object.values(DRAW_TYPES).includes(type);
   if (!isDrawType) {
@@ -74,13 +75,8 @@ const handleClickOpIcon = (type: any) => {
       if (isDrawType) {
         cardStore.setMapDrawTool({ drawType: type, map: toRaw(MapInstance.value) as any });
         if (type === TYPES.MEASUREAREA) {
-          // 圈选查询:同步打开配置面板,并通过 EventBus 把当前工具的 uuid 广播给面板
-          const uuid = cardStore.drawTool?.uuid;
           panelStore.setPanelType(PANEL_TYPES.CIRCLE_QUERY);
-          EventBus.emit("circle-query:open", {
-            uuid,
-            tool: markRaw(cardStore.drawTool),
-          });
+          panelStore.setCircleQueryTool(cardStore.drawTool);
         }
       }
       break;
@@ -160,12 +156,13 @@ const mobileMenuGroups = computed(() => {
   <div v-else class="mobile-toolbar">
     <div class="menu-toggle" @click="mobileMenuVisible = !mobileMenuVisible">
       <span class="menu-icon">
-        <svg width="20" height="20" aria-hidden="true" focusable="false">
+        <svg width="24" height="24" aria-hidden="true" focusable="false">
           <use xlink:href="#icon-menu"></use>
         </svg>
       </span>
-      <span class="menu-text">工具菜单</span>
+      <span class="menu-text">工具</span>
     </div>
+
     <div v-if="mobileMenuVisible" class="mobile-menu-panel">
       <div class="menu-header">
         <h3>地图工具</h3>
@@ -175,16 +172,20 @@ const mobileMenuGroups = computed(() => {
           </svg>
         </span>
       </div>
+
       <div class="menu-content">
-        <div v-for="group in mobileMenuGroups" :key="group.title" class="menu-group">
-          <p class="group-title">{{ group.title }}</p>
+        <div
+          v-for="group in mobileMenuGroups"
+          :key="group.title"
+          class="menu-group"
+        >
+          <h4 class="group-title">{{ group.title }}</h4>
           <div class="group-items">
             <div
+              :class="{ active: active == item.type || (item.type === TYPES.TRAFFIC && baseSourceStore.trafficVisible) }"
               v-for="item in group.items"
-              :key="item.type"
-              class="menu-item"
-              :class="{ active: active == item.type }"
               @click="() => handleClickOpIcon(item.type)"
+              class="menu-item"
             >
               <span class="item-icon">
                 <svg

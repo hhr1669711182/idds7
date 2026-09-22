@@ -1,7 +1,7 @@
 /*
  * @Author: huanghuanrong
  * @Date: 2026-05-09 13:54:25
- * @LastEditTime: 2026-06-23 16:19:24
+ * @LastEditTime: 2026-09-22 16:10:12
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\router\index.ts
@@ -119,6 +119,14 @@ export const staticRoutes: RouteRecordRaw[] = [
     meta: {
       title: '高德接口调试',
     },
+  },
+  {
+    path: '/markDraw',
+    name: ROUTE_NAMES.MARK_DRAW,
+    component: () => import('@/views/markDraw/index.vue'),
+    meta: {
+      title: '绘制地图',
+       },
   },
   {
     path: '/:pathMatch(.*)*',

@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-04-29 18:16:57
- * @LastEditTime: 2026-08-20 10:55:18
+ * @LastEditTime: 2026-09-21 18:28:16
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\service\geoserver.ts
@@ -42,7 +42,7 @@ export const geoserverApi = {
     return alovaGeoInstance.Get<any>(getGeoServerServiceUrl(workspace, 'ows'), {
       params: {
         service: 'WFS',
-        version: '1.1.0',
+        version: '1.0.0',
         request: 'GetFeature',
         outputFormat: 'application/json',
         ...params,

@@ -30,6 +30,7 @@ declare module 'vue' {
     DispatchMap: typeof import('./../components/dispatchMap/index.vue')['default']
     DispatchMap1: typeof import('./../components/dispatchMap1/index.vue')['default']
     DragPanel: typeof import('./../components/map/dragPanel/index.vue')['default']
+    DrawMap: typeof import('./../components/DrawMap/index.vue')['default']
     ElAutocomplete: typeof import('element-plus/es')['ElAutocomplete']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']
