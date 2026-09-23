@@ -1,9 +1,6 @@
 ﻿<script setup lang="ts">
 /**
- * markDraw 路由页面：承载 MarkDraw 系统
- * - 自带一个 mock OLMap（OSM 瓦片）
- * - 挂载 <MarkDrawSurface>，把地图实例注入引擎
- * - 不依赖 useMapStore；不会影响主项目其他业务
+ * 独立 Demo 入口：自带 mock map，挂载 MarkDrawSurface
  */
 import { onMounted, onBeforeUnmount, ref, shallowRef } from "vue";
 import Map from "ol/Map";
@@ -11,7 +8,7 @@ import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
 import OSM from "ol/source/OSM";
 import { fromLonLat } from "ol/proj";
-import MarkDrawSurface from "@/components/MarkDraw/components/MarkDrawSurface.vue";
+import MarkDrawSurface from "../components/MarkDrawSurface.vue";
 
 const mapEl = ref<HTMLDivElement | null>(null);
 const olMap = shallowRef<Map | null>(null);
@@ -28,24 +25,23 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   olMap.value?.setTarget(undefined);
-  olMap.value = null;
 });
 </script>
 
 <template>
-  <div class="markdraw-view h-full w-full relative">
-    <div ref="mapEl" class="markdraw-view__map" />
+  <div class="md-demo">
+    <div ref="mapEl" class="md-demo-map" />
     <MarkDrawSurface v-if="olMap" :map="olMap" />
   </div>
 </template>
 
 <style scoped>
-.markdraw-view {
+.md-demo {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: 100vh;
 }
-.markdraw-view__map {
+.md-demo-map {
   position: absolute;
   inset: 0;
 }

@@ -1,0 +1,103 @@
+﻿/**
+ * MarkDraw 全局玻璃风格主题
+ * - 不依赖 Element Plus；独立于项目日间 / 夜间 CSS 变量
+ * - 跟随 :root[data-theme="NIGHT"] 自动切换
+ * - 入口由 MarkDrawSurface 一次性 import
+ */
+.markdraw-root {
+  /* 主题色 — cyan 蓝渐变 */
+  --md-accent-1: #00d4ff;
+  --md-accent-2: #4dabf7;
+  --md-accent-3: #6ea8ff;
+  --md-accent-soft: rgba(0, 212, 255, 0.18);
+  --md-accent-glow: rgba(0, 212, 255, 0.35);
+
+  /* 状态色 */
+  --md-success: #2ecc71;
+  --md-warning: #f5a623;
+  --md-danger: #f5365c;
+  --md-danger-2: #f56036;
+
+  /* 文字 */
+  --md-text: #e8f0fa;
+  --md-text-2: #b6c5d4;
+  --md-text-3: rgba(180, 200, 220, 0.55);
+
+  /* 边框 */
+  --md-border: rgba(120, 180, 230, 0.18);
+  --md-border-strong: rgba(0, 212, 255, 0.5);
+
+  /* 玻璃面板 */
+  --md-panel: linear-gradient(
+    135deg,
+    rgba(20, 30, 48, 0.78) 0%,
+    rgba(14, 22, 36, 0.78) 100%
+  );
+  --md-panel-solid: #141e30;
+  --md-blur: blur(10px);
+  --md-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.45),
+    0 0 18px rgba(0, 212, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  /* 间距 */
+  --md-radius: 12px;
+  --md-radius-sm: 8px;
+
+  /* 行高 / 字号 */
+  --md-font: 13px;
+  --md-font-sm: 12px;
+  --md-font-lg: 15px;
+
+  /* 字体 */
+  --md-ff: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+
+  color: var(--md-text);
+  font-family: var(--md-ff);
+  font-size: var(--md-font);
+  line-height: 1.5;
+}
+
+/* 日间主题降亮处理：玻璃面板改为亮玻璃，文字为深色 */
+:root:not([data-theme="NIGHT"]) .markdraw-root {
+  --md-accent-1: #0f7cff;
+  --md-accent-2: #3385ff;
+  --md-accent-3: #2d6dd6;
+  --md-accent-soft: rgba(15, 124, 255, 0.14);
+  --md-accent-glow: rgba(15, 124, 255, 0.28);
+
+  --md-text: #1a2a44;
+  --md-text-2: #415274;
+  --md-text-3: rgba(65, 82, 116, 0.55);
+
+  --md-border: rgba(15, 124, 255, 0.22);
+  --md-border-strong: rgba(15, 124, 255, 0.55);
+
+  --md-panel: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(245, 249, 255, 0.78) 100%
+  );
+  --md-panel-solid: #ffffff;
+  --md-shadow:
+    0 12px 36px rgba(15, 60, 120, 0.15),
+    0 0 18px rgba(15, 124, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* 滚动条美化 */
+.markdraw-root *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.markdraw-root *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.markdraw-root *::-webkit-scrollbar-thumb {
+  background: var(--md-border);
+  border-radius: 3px;
+}
+.markdraw-root *::-webkit-scrollbar-thumb:hover {
+  background: var(--md-border-strong);
+}

@@ -1,0 +1,68 @@
+﻿/**
+ * MarkDraw 全局 toast 样式
+ */
+.md-message-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.md-message {
+  padding: 9px 18px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(20, 30, 48, 0.95), rgba(14, 22, 36, 0.95));
+  border: 1px solid rgba(120, 180, 230, 0.25);
+  color: #e8f0fa;
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: md-message-in 0.22s ease forwards;
+  min-width: 160px;
+  text-align: center;
+}
+.md-message--success {
+  border-color: rgba(46, 204, 113, 0.55);
+  box-shadow: 0 8px 24px rgba(46, 204, 113, 0.25);
+}
+.md-message--warning {
+  border-color: rgba(245, 166, 35, 0.55);
+  box-shadow: 0 8px 24px rgba(245, 166, 35, 0.25);
+}
+.md-message--error {
+  border-color: rgba(255, 91, 122, 0.55);
+  box-shadow: 0 8px 24px rgba(255, 91, 122, 0.25);
+}
+.md-message--leaving {
+  animation: md-message-out 0.22s ease forwards;
+}
+@keyframes md-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes md-message-out {
+  to {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+.md-modal--mini {
+  width: 320px;
+}
+.md-modal-btn--danger {
+  background: linear-gradient(135deg, #f5365c, #f56036);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
+}
