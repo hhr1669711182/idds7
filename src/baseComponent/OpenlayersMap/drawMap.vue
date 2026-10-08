@@ -25,7 +25,7 @@ import {
   VECTOR_LAYER,
   isTempFrontendLayerId,
 } from "./layers.ts";
-import { TrafficTools } from "../../components/map/MapTools";
+import { TrafficTools } from "../../components/map/MapTools/index.ts";
 import { ZOOM, CENTER } from "./const.map.ts";
 import { useResponsive } from "../../composables/useResponsive.ts";
 import {

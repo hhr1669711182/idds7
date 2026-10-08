@@ -116,6 +116,7 @@ const emit = defineEmits<{
 }
 .md-list--layers {
   max-height: 220px;
+  overflow-y: auto;
 }
 .md-list li {
   display: flex;
