@@ -1,0 +1,55 @@
+---
+description: ids-gis-web 项目工作规范（来自 herness 工作台）
+globs:
+alwaysApply: true
+---
+
+# ids-gis-web Agent 工作规范
+
+**本项目有专门为 AI 准备的 `herness/` 工作台。开工前必须先读，不要直接动手。**
+
+## 强制流程
+
+1. 读 `herness/00-SOP.md` —— 强制第一站：工作 SOP、分层铁律、质量门禁
+2. 读 `herness/README.md` —— 目录导航
+3. 按任务类型追加读取（见路由表）
+
+未读 `herness/00-SOP.md` 就写代码 = 违规。按需读，不要一次读完整个 `herness/`。
+
+## 任务路由
+
+| 任务类型 | 追加读取 |
+|---------|---------|
+| 任何编码任务 | `herness/05-共享上下文/项目结构速查.md` + `设计规范速查.md` |
+| 需求设计 | `herness/01-产品设计/_流程规范.md` |
+| 技术方案/重构 | `herness/02-技术设计/_流程规范.md` |
+| 测试验收 | `herness/03-测试/_流程规范.md` |
+| 迭代管理 | `herness/04-迭代管理/_index.md` |
+| MR 审查 | `herness/06-PR审查/_流程规范.md` |
+| 消息/WS/控制器 | `herness/05-共享上下文/消息协议速查.md` |
+| 构建/依赖/接口 | `herness/05-共享上下文/技术栈速查.md` |
+| 业务名词 | `herness/05-共享上下文/核心概念术语.md` |
+| 了解项目进度 | `herness/05-共享上下文/当前状态摘要.md` |
+
+## 三条最易踩的坑
+
+1. **分层不可越界**
+   - `src/controller/core/generic/**` 通用图形控制，必须零业务
+   - `src/controller/core/business/**` 业务控制，只组装通用 DTO，禁止 `import 'ol/...'` 或 `'three'`
+   - 跨层数据用 `src/controller/core/protocol/**` 的 interface，禁止 `any`
+
+2. **消息收发唯一出口**：经 `useMessageStore().publish/subscribe`；禁止裸 WebSocket、禁止裸 `message` 监听处理业务。改事件键/DTO 须同步 `docs/source/07-协议事件清单.md` 与 `docs/source/协议层DTO Schema.tsd`。
+
+3. **`pnpm lint` 基线不干净**：约 193 个既有报错（多为未用变量），另有 6 个是消息事件键缺失的真实缺陷。**判定标准是「无新增报错」，不是「零报错」**——改动前后各跑一次对比。详见 `herness/05-共享上下文/当前状态摘要.md`。
+
+## 禁改文件
+`src/types/auto-imports.d.ts`、`src/types/components.d.ts`、`dist/`、`dist-lib/`、`node_modules/`。
+
+## 项目速览
+ids-gis-web — IDS 智能调度系统 GIS 前端。Vue 3.5 + TS 6 + Vite 8 + Pinia 3 + OpenLayers 10 + Three 0.169 + Cesium。应用形态 `pnpm dev`，库形态 `pnpm build:lib`。代码真相源 `src/**`，业务契约源 `docs/source/**`。无单元测试框架。
+
+## 常用命令
+`pnpm dev` / `pnpm build` / `pnpm build:lib` / `pnpm lint`
+
+## 收尾
+任务完成后在 `herness/00-SOP.md` 工作日志追加记录；新增文档更新对应 `_index.md`；代码事实变化回写 `herness/05-共享上下文/**`。

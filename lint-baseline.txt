@@ -1,0 +1,242 @@
+
+> dispatch-model-map@1.0.0 lint D:\work\telewave\ids\ids-gis-web
+> vue-tsc --noEmit
+
+src/apis/amap.ts(10,1): error TS6133: 'AppError' is declared but its value is never read.
+src/App.vue(10,10): error TS6133: 'onBeforeMount' is declared but its value is never read.
+src/baseComponent/amap/featureStyle.ts(4,1): error TS6133: 'point' is declared but its value is never read.
+src/baseComponent/amap/useAmapTools.ts(602,11): error TS6133: 'prev' is declared but its value is never read.
+src/baseComponent/amap/useAmapTools.ts(735,11): error TS6133: 'originLngLat' is declared but its value is never read.
+src/baseComponent/amap/useAmapTools.ts(736,11): error TS6133: 'destinationLngLat' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/baseSource.ts(138,7): error TS6133: 'createKailideSource' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(9,1): error TS6133: 'OSM' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(12,3): error TS6133: 'ZoomSlider' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(13,3): error TS6133: 'FullScreen' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(15,3): error TS6133: 'ZoomToExtent' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(32,10): error TS6133: 'EXTENT' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(43,8): error TS6133: 'CarFeaturesManager' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(67,1): error TS6192: All imports in import declaration are unused.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(112,7): error TS6133: 'isTouchDevice' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(122,7): error TS6133: 'navVisible' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(643,7): error TS6133: 'canStart' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(702,7): error TS6133: 'queryStartTips' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(703,7): error TS6133: 'queryEndTips' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(705,7): error TS6133: 'selectTip' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(720,7): error TS6133: 'fetchDisasterSuggestions' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(945,9): error TS6133: 'keyboardPan' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(1243,7): error TS6133: 'activeTab' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/dispatchMap.vue(1244,7): error TS6133: 'tabs' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/DispatchT1.ts(52,3): error TS6133: 'listDispatchVehicles' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/DispatchT1.vue(74,7): error TS6133: 'stationPopupRef' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/drawMap.vue(2,56): error TS6133: 'markRaw' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/drawMap.vue(20,1): error TS6133: 'useExtent' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/drawMap.vue(51,20): error TS6133: 'onPOIRequest' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/map.vue(2,56): error TS6133: 'markRaw' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/map.vue(20,1): error TS6133: 'useExtent' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/map.vue(51,20): error TS6133: 'onPOIRequest' is declared but its value is never read.
+src/baseComponent/OpenlayersMap/mountPointLayer.ts(17,22): error TS2305: Module '"ol/style"' has no exported member 'StyleLike'.
+src/baseComponent/OpenlayersMap/mountPointLayer.ts(73,32): error TS2558: Expected 0 type arguments, but got 2.
+src/baseComponent/OpenlayersMap/mountPointLayer.ts(144,18): error TS2339: Property 'clear' does not exist on type 'Map'.
+src/baseComponent/OpenlayersMap/mountPointLayer.ts(153,18): error TS2339: Property 'delete' does not exist on type 'Map'.
+src/baseComponent/OpenlayersMap/mountPolygonLayer.ts(15,15): error TS2305: Module '"ol/style"' has no exported member 'StyleLike'.
+src/baseComponent/OpenlayersMap/NavPanel.vue(8,1): error TS6133: 'EventBus' is declared but its value is never read.
+src/baseComponent/Slider.vue(23,23): error TS7006: Parameter 'val' implicitly has an 'any' type.
+src/baseComponent/ThemeSwitch.vue(25,50): error TS2322: Type '(flag: boolean) => void' is not assignable to type '(val: string | number | boolean) => any'.
+  Types of parameters 'flag' and 'val' are incompatible.
+    Type 'string | number | boolean' is not assignable to type 'boolean'.
+      Type 'string' is not assignable to type 'boolean'.
+src/components/AddressRobotDrawer/index.vue(10,10): error TS6133: 'loadGis' is declared but its value is never read.
+src/components/AddressRobotDrawer/index.vue(47,7): error TS6133: 'displayTarget' is declared but its value is never read.
+src/components/AddressRobotDrawer/index.vue(50,7): error TS6133: 'relationText' is declared but its value is never read.
+src/components/AddressRobotDrawer/index.vue(51,7): error TS6133: 'sourceText' is declared but its value is never read.
+src/components/DrawMap/index.vue(2,1): error TS6133: 'defineAsyncComponent' is declared but its value is never read.
+src/components/DrawMap/index.vue(11,1): error TS6133: 'topicLayerCard' is declared but its value is never read.
+src/components/DrawMap/index.vue(14,1): error TS6133: 'config' is declared but its value is never read.
+src/components/DrawMap/index.vue(15,1): error TS6133: 'layers' is declared but its value is never read.
+src/components/DrawMap/index.vue(38,7): error TS6133: 'tabsStore' is declared but its value is never read.
+src/components/DrawMap/index.vue(67,7): error TS6133: 'handleLayerChange' is declared but its value is never read.
+src/components/DrawMap/index.vue(79,7): error TS6133: 'handleConfigSave' is declared but its value is never read.
+src/components/map/brp.vue(10,43): error TS6133: 'markRaw' is declared but its value is never read.
+src/components/map/component/baseSource.vue(8,7): error TS6133: 'MapInstance' is declared but its value is never read.
+src/components/map/component/card-setting.vue(9,9): error TS2339: Property 'mapTool' does not exist on type '{ map: Ref<any, any>; mode: Ref<string, string>; showGrid: Ref<boolean, boolean>; showWaterMarker: Ref<boolean, boolean>; showSwipe: Ref<boolean, boolean>; model: Ref<...>; } & ToRefs<...> & _ToComputedRefs<...>'.
+src/components/map/component/d25Panel.vue(98,12): error TS2339: Property 'registerIframe' does not exist on type 'Store<"messageStore", Pick<{ wsClients: Map<MessageSystem, WebSocketClient>; createEnvelope: <T>(system: MessageSystem, channel: MessageChannel, eventKey: MessageEventKey, data: T, extras?: Pick<...> | undefined) => MessageEnvelope<...>; ... 12 more ...; lastBySystem: Ref<...>; }, "wsStatus" | ... 4 more ... | "wsCl...'.
+src/components/map/component/d25Panel.vue(106,21): error TS2339: Property 'unregisterIframe' does not exist on type 'Store<"messageStore", Pick<{ wsClients: Map<MessageSystem, WebSocketClient>; createEnvelope: <T>(system: MessageSystem, channel: MessageChannel, eventKey: MessageEventKey, data: T, extras?: Pick<...> | undefined) => MessageEnvelope<...>; ... 12 more ...; lastBySystem: Ref<...>; }, "wsStatus" | ... 4 more ... | "wsCl...'.
+src/components/map/component/Panels/analyseMap.vue(88,9): error TS2339: Property 'getCoordinates' does not exist on type 'Geometry'.
+src/components/map/component/Panels/analyseMap.vue(94,9): error TS2339: Property 'getCoordinates' does not exist on type 'Geometry'.
+src/components/map/component/Panels/analyseMap.vue(123,29): error TS2345: Argument of type 'Position[][] | Position[][][]' is not assignable to parameter of type 'number[] | Coordinate[][]'.
+  Type 'Position[][][]' is not assignable to type 'number[] | Coordinate[][]'.
+    Type 'Position[][][]' is not assignable to type 'number[]'.
+      Type 'Position[][]' is not assignable to type 'number'.
+src/components/map/component/Panels/analyseMap.vue(139,29): error TS2345: Argument of type 'Position[][] | Position[][][]' is not assignable to parameter of type 'number[] | Coordinate[][]'.
+  Type 'Position[][][]' is not assignable to type 'number[] | Coordinate[][]'.
+    Type 'Position[][][]' is not assignable to type 'number[]'.
+      Type 'Position[][]' is not assignable to type 'number'.
+src/components/map/component/Panels/analyseMap.vue(155,29): error TS2345: Argument of type 'Position[][] | Position[][][]' is not assignable to parameter of type 'number[] | Coordinate[][]'.
+  Type 'Position[][][]' is not assignable to type 'number[] | Coordinate[][]'.
+    Type 'Position[][][]' is not assignable to type 'number[]'.
+      Type 'Position[][]' is not assignable to type 'number'.
+src/components/map/component/Panels/animationMap.vue(108,46): error TS6133: 'd' is declared but its value is never read.
+src/components/map/component/Panels/vectorLayerHight.vue(45,7): error TS2322: Type 'null' is not assignable to type 'Map | undefined'.
+src/components/map/component/Panels/vectorLayerHight.vue(47,9): error TS2531: Object is possibly 'null'.
+src/components/map/component/Panels/vectorLayerHight.vue(53,17): error TS18047: 'map.value' is possibly 'null'.
+src/components/map/component/Panels/vectorLayerHight.vue(53,57): error TS7006: Parameter 'feature' implicitly has an 'any' type.
+src/components/map/component/Panels/vectorLayerHight.vue(57,5): error TS18047: 'info' is possibly 'null'.
+src/components/map/component/Panels/vectorLayerHight.vue(59,5): error TS18047: 'info' is possibly 'null'.
+src/components/map/component/Panels/vectorLayerHight.vue(64,7): error TS2531: Object is possibly 'null'.
+src/components/map/component/Panels/vectorLayerHight.vue(68,7): error TS2531: Object is possibly 'null'.
+src/components/map/component/Panels/vectorLayerHight.vue(104,7): error TS2531: Object is possibly 'null'.
+src/components/map/component/Panels/vectorLayerHight.vue(109,3): error TS2322: Type 'Map' is not assignable to type 'null'.
+src/components/map/component/Panels/vectorLayerHight.vue(118,3): error TS18047: 'map.value' is possibly 'null'.
+src/components/map/component/Panels/vectorLayerHight.vue(118,32): error TS7006: Parameter 'evt' implicitly has an 'any' type.
+src/components/map/component/Panels/vectorLayerHight.vue(122,17): error TS18047: 'map.value' is possibly 'null'.
+src/components/map/component/Panels/vectorLayerHight.vue(126,3): error TS18047: 'map.value' is possibly 'null'.
+src/components/map/component/Panels/vectorLayerHight.vue(126,26): error TS7006: Parameter 'evt' implicitly has an 'any' type.
+src/components/map/component/routePlan.vue(89,31): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ start_point: string; end_point: string; route_points: string; }'.
+  No index signature with a parameter of type 'string' was found on type '{ start_point: string; end_point: string; route_points: string; }'.
+src/components/map/component/routePlan.vue(112,25): error TS2339: Property 'getSource' does not exist on type 'BaseLayer<{ [x: string]: any; }>'.
+src/components/map/component/routePlan.vue(121,17): error TS2532: Object is possibly 'undefined'.
+src/components/map/component/routePlan.vue(121,39): error TS2339: Property 'getCoordinates' does not exist on type 'Geometry'.
+src/components/map/component/routePlan.vue(125,21): error TS2339: Property 'getSource' does not exist on type 'BaseLayer<{ [x: string]: any; }>'.
+src/components/map/component/routePlan.vue(128,7): error TS2322: Type 'Feature<Geometry, { [x: string]: any; }>' is not assignable to type 'null'.
+src/components/map/component/routePlan.vue(131,44): error TS2345: Argument of type 'Feature<Geometry, { [x: string]: any; }>' is not assignable to parameter of type 'never'.
+src/components/map/component/routePlan.vue(132,27): error TS2532: Object is possibly 'undefined'.
+src/components/map/component/routePlan.vue(132,49): error TS2339: Property 'getCoordinates' does not exist on type 'Geometry'.
+src/components/map/component/routePlan.vue(140,21): error TS2339: Property 'getSource' does not exist on type 'BaseLayer<{ [x: string]: any; }>'.
+src/components/map/component/routePlan.vue(143,7): error TS2322: Type 'Feature<Geometry, { [x: string]: any; }>' is not assignable to type 'null'.
+src/components/map/component/routePlan.vue(160,23): error TS7031: Binding element 'coordinates' implicitly has an 'any' type.
+src/components/map/component/routePlan.vue(160,36): error TS7031: Binding element 'index' implicitly has an 'any' type.
+src/components/map/component/routePlan.vue(191,5): error TS18047: 'PointFeature.value.start_point' is possibly 'null'.
+src/components/map/component/routePlan.vue(191,5): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/components/map/component/routePlan.vue(196,27): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/components/map/component/routePlan.vue(196,35): error TS2339: Property 'getGeometry' does not exist on type 'never'.
+src/components/map/component/routePlan.vue(201,5): error TS18047: 'PointFeature.value.end_point' is possibly 'null'.
+src/components/map/component/routePlan.vue(201,5): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/components/map/component/routePlan.vue(217,15): error TS2339: Property 'getSource' does not exist on type 'BaseLayer<{ [x: string]: any; }>'.
+src/components/map/component/routePlan.vue(219,3): error TS18047: 'PointFeature.value.start_point' is possibly 'null'.
+src/components/map/component/routePlan.vue(220,3): error TS18047: 'PointFeature.value.end_point' is possibly 'null'.
+src/components/map/component/routePlan.vue(249,14): error TS2345: Argument of type '{ coordinates: number[]; type: string; }' is not assignable to parameter of type '{ coordinates: any; index: any; type?: string | undefined; }'.
+  Property 'index' is missing in type '{ coordinates: number[]; type: string; }' but required in type '{ coordinates: any; index: any; type?: string | undefined; }'.
+src/components/map/component/routePlan.vue(257,15): error TS2339: Property 'getSource' does not exist on type 'BaseLayer<{ [x: string]: any; }>'.
+src/components/map/component/topicLayerCard.vue(61,12): error TS2339: Property 'create' does not exist on type 'ClusterTools | HeatMapTools | MaskTools | TimeTools | WeatherTools'.
+  Property 'create' does not exist on type 'MaskTools'.
+src/components/map/component/topicLayerCard.vue(106,7): error TS6133: 'handleClickSet' is declared but its value is never read.
+src/components/map/form/lineForm.vue(229,10): error TS2322: Type '(color: string) => void' is not assignable to type '(val: string | null) => any'.
+  Types of parameters 'color' and 'val' are incompatible.
+    Type 'string | null' is not assignable to type 'string'.
+      Type 'null' is not assignable to type 'string'.
+src/components/map/form/lineForm.vue(230,10): error TS2322: Type '(color: string) => void' is not assignable to type '(val: string | null) => any'.
+  Types of parameters 'color' and 'val' are incompatible.
+    Type 'string | null' is not assignable to type 'string'.
+      Type 'null' is not assignable to type 'string'.
+src/components/map/form/pointForm.vue(30,16): error TS2339: Property 'style' does not exist on type 'Element'.
+src/components/map/form/pointForm.vue(40,28): error TS2339: Property 'getImage' does not exist on type 'StyleLike'.
+  Property 'getImage' does not exist on type 'Style[]'.
+src/components/map/form/pointForm.vue(66,29): error TS2339: Property 'getImage' does not exist on type 'StyleLike'.
+  Property 'getImage' does not exist on type 'Style[]'.
+src/components/map/form/pointForm.vue(144,10): error TS2322: Type '(color: string) => void' is not assignable to type '(val: string | null) => any'.
+  Types of parameters 'color' and 'val' are incompatible.
+    Type 'string | null' is not assignable to type 'string'.
+      Type 'null' is not assignable to type 'string'.
+src/components/map/form/pointForm.vue(145,10): error TS2322: Type '(color: string) => void' is not assignable to type '(val: string | null) => any'.
+  Types of parameters 'color' and 'val' are incompatible.
+    Type 'string | null' is not assignable to type 'string'.
+      Type 'null' is not assignable to type 'string'.
+src/components/map/form/pointForm.vue(156,10): error TS2322: Type '(size: number) => void' is not assignable to type '(cur: number | undefined, prev: number | undefined) => any'.
+  Types of parameters 'size' and 'cur' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+src/components/map/form/pointForm.vue(160,43): error TS2322: Type '(visible: boolean) => void' is not assignable to type '(val: string | number | boolean) => any'.
+  Types of parameters 'visible' and 'val' are incompatible.
+    Type 'string | number | boolean' is not assignable to type 'boolean'.
+      Type 'string' is not assignable to type 'boolean'.
+src/components/map/index.vue(47,7): error TS6133: 'tabsStore' is declared but its value is never read.
+src/components/map/MapTools/commonTools/useExtent.ts(22,49): error TS6133: 'coordSys' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/addressRobot.ts(5,39): error TS6133: 'Icon' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/AzimuthTool.ts(2,1): error TS6133: 'Map' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/AzimuthTool.ts(138,22): error TS6133: 'coordinate' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/AzimuthTool.ts(188,11): error TS6133: 'azimuthInDegrees' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/CircleQueryTool copy 2.ts(103,11): error TS6133: 'emitClose' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/CircleQueryTool copy 3.ts(1,19): error TS6133: 'toRaw' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/CircleQueryTool.ts(122,11): error TS6133: 'emitClose' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/DrawTool.ts(5,16): error TS6133: 'Interaction' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/MeasureAngleTool.ts(5,16): error TS6133: 'Interaction' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/MeasureAngleTool.ts(98,22): error TS6133: 'coordinate' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/MeasureAreaTool.ts(5,1): error TS6133: 'Overlay' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/MeasureAreaTool.ts(6,16): error TS6133: 'Interaction' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/PopulationTool.ts(108,7): error TS6133: 'toWktPolygon' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/PopulationTool.ts(197,7): error TS6133: 'queryPopulation' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/PopulationTool.ts(299,7): error TS6133: 'insertPopulationZone' is declared but its value is never read.
+src/components/map/MapTools/drawMapTools/PopulationTool.ts(438,11): error TS6133: 'showError' is declared but its value is never read.
+src/components/map/MapTools/ThemeTools/MaskTools.ts(25,5): error TS2322: Type 'BaseLayer<{ [x: string]: any; }> | undefined' is not assignable to type 'TileLayer<TileSource<Tile>>'.
+  Type 'undefined' is not assignable to type 'TileLayer<TileSource<Tile>>'.
+src/components/map/MapTools/ThemeTools/MaskTools.ts(35,8): error TS2339: Property 'getGeometry' does not exist on type 'Feature<Geometry, { [x: string]: any; }> | Feature<Geometry, { [x: string]: any; }>[]'.
+  Property 'getGeometry' does not exist on type 'Feature<Geometry, { [x: string]: any; }>[]'.
+src/components/map/MapTools/ThemeTools/MaskTools.ts(37,13): error TS7006: Parameter 'ring' implicitly has an 'any' type.
+src/components/map/MapTools/ThemeTools/MaskTools.ts(38,19): error TS7006: Parameter 'coords' implicitly has an 'any' type.
+src/components/map/MapTools/ThemeTools/MaskTools.ts(39,23): error TS7006: Parameter 'coord' implicitly has an 'any' type.
+src/components/map/MapTools/ThemeTools/MaskTools.ts(53,7): error TS2339: Property 'getGeometry' does not exist on type 'Feature<Geometry, { [x: string]: any; }> | Feature<Geometry, { [x: string]: any; }>[]'.
+  Property 'getGeometry' does not exist on type 'Feature<Geometry, { [x: string]: any; }>[]'.
+src/components/map/MapTools/ThemeTools/MaskTools.ts(67,16): error TS2339: Property 'addFilter' does not exist on type 'TileLayer<TileSource<Tile>>'.
+src/components/map/MapTools/ThemeTools/MaskTools.ts(68,16): error TS2339: Property 'addFilter' does not exist on type 'TileLayer<TileSource<Tile>>'.
+src/components/map/MapTools/ThemeTools/MaskTools.ts(72,16): error TS2339: Property 'removeFilter' does not exist on type 'TileLayer<TileSource<Tile>>'.
+src/components/map/MapTools/ThemeTools/MaskTools.ts(73,16): error TS2339: Property 'removeFilter' does not exist on type 'TileLayer<TileSource<Tile>>'.
+src/components/map/MapTools/ThemeTools/WeatherTools.ts(12,10): error TS2709: Cannot use namespace 'AnimatedCanvas' as a type.
+src/components/map/MapTools/ThemeTools/WeatherTools.ts(74,5): error TS2532: Object is possibly 'undefined'.
+src/components/map/MapTools/ThemeTools/WeatherTools.ts(75,5): error TS2532: Object is possibly 'undefined'.
+src/composables/useIncomingCallFeatures.ts(78,7): error TS6133: 'NANSHA_FALLBACK_LNG' is declared but its value is never read.
+src/composables/useIncomingCallFeatures.ts(79,7): error TS6133: 'NANSHA_FALLBACK_LAT' is declared but its value is never read.
+src/composables/useIncomingCallFeatures.ts(379,9): error TS6133: 'styleElement' is declared but its value is never read.
+src/composables/useIncomingCallFeatures.ts(423,9): error TS6133: 'refreshFeatures' is declared but its value is never read.
+src/composables/useIncomingCallFeatures.ts(474,54): error TS7006: Parameter 'evt' implicitly has an 'any' type.
+src/composables/useIncomingCallFeatures.ts(482,8): error TS7006: Parameter 'feature' implicitly has an 'any' type.
+src/composables/useIncomingCallFeatures.ts(482,17): error TS7006: Parameter 'targetLayer' implicitly has an 'any' type.
+src/composables/useIncomingCallFeatures.ts(493,28): error TS2339: Property 'data' does not exist on type 'never'.
+src/composables/useIncomingCallFeatures.ts(493,38): error TS2339: Property 'coordinate' does not exist on type 'never'.
+src/Control/dispatchVehicleAdapter.ts(121,51): error TS2677: A type predicate's type must be assignable to its parameter's type.
+  Type 'DispatchVehicleDTO' is not assignable to type '{ leadStationId: string; plateNumber: string; vehicleName: string | null; vehicleStatus: string | null; vehicleType: string | null; vehicleId: string | null; orgId: string | null; ... 8 more ...; distanceKm: number | null; }'.
+    Types of property 'vehicleId' are incompatible.
+      Type 'string | null | undefined' is not assignable to type 'string | null'.
+        Type 'undefined' is not assignable to type 'string | null'.
+src/Control/dispatchVehicleAdapter.ts(128,3): error TS2322: Type '({ leadStationId: string; plateNumber: string; vehicleName: string | null; vehicleStatus: string | null; vehicleType: string | null; vehicleId: string | null; orgId: string | null; ... 8 more ...; distanceKm: number | null; } | null)[]' is not assignable to type 'DispatchVehicleDTO[]'.
+  Type '{ leadStationId: string; plateNumber: string; vehicleName: string | null; vehicleStatus: string | null; vehicleType: string | null; vehicleId: string | null; orgId: string | null; ... 8 more ...; distanceKm: number | null; } | null' is not assignable to type 'DispatchVehicleDTO'.
+    Type 'null' is not assignable to type 'DispatchVehicleDTO'.
+src/controller/core/business/AddressRobotController.ts(38,11): error TS6133: 'geometry' is declared but its value is never read.
+src/controller/core/business/AddressRobotController.ts(88,50): error TS6133: 'coord_sys' is declared but its value is never read.
+src/controller/core/business/AddressRobotController.ts(88,71): error TS6133: 'id' is declared but its value is never read.
+src/controller/core/business/AddressRobotController.ts(221,11): error TS6133: 'renderFeature' is declared but its value is never read.
+src/controller/core/business/AddressRobotController.ts(290,11): error TS6133: 'markerStyleFor' is declared but its value is never read.
+src/controller/core/generic/GeometryController.ts(1,1): error TS6133: 'offset' is declared but its value is never read.
+src/controller/core/generic/ViewController.ts(11,1): error TS6133: 'Collection' is declared but its value is never read.
+src/controller/core/io/InputController.ts(6,1): error TS6192: All imports in import declaration are unused.
+src/controller/map/index.ts(27,44): error TS2551: Property 'ROUTE_PLAN_REQUEST' does not exist on type '{ readonly HELLO: "hello"; readonly HEARTBEAT: "heartbeat"; readonly ERROR: "error"; readonly MAP_READY: "map.ready"; readonly MAP_VIEW_CHANGED: "map.view.changed"; readonly MAP_CLICK: "map.click"; ... 45 more ...; readonly ADDRESS_ROBOT_GIS_SEARCH: "address_robot.gis_search"; }'. Did you mean 'ROUTE_PLAN_RESULT'?
+src/controller/map/index.ts(40,44): error TS2339: Property 'ADDR_SYNC_RESULT' does not exist on type '{ readonly HELLO: "hello"; readonly HEARTBEAT: "heartbeat"; readonly ERROR: "error"; readonly MAP_READY: "map.ready"; readonly MAP_VIEW_CHANGED: "map.view.changed"; readonly MAP_CLICK: "map.click"; ... 45 more ...; readonly ADDRESS_ROBOT_GIS_SEARCH: "address_robot.gis_search"; }'.
+src/controller/map/index.ts(80,34): error TS6133: 'handler' is declared but its value is never read.
+src/controller/map/index.ts(80,64): error TS6133: 'type' is declared but its value is never read.
+src/controller/map/index.ts(100,49): error TS2339: Property 'ROUTE_PLAN_MULTIPLE' does not exist on type '{ readonly HELLO: "hello"; readonly HEARTBEAT: "heartbeat"; readonly ERROR: "error"; readonly MAP_READY: "map.ready"; readonly MAP_VIEW_CHANGED: "map.view.changed"; readonly MAP_CLICK: "map.click"; ... 45 more ...; readonly ADDRESS_ROBOT_GIS_SEARCH: "address_robot.gis_search"; }'.
+src/controller/map/index.ts(106,49): error TS2339: Property 'ROUTE_PLAN_CANCEL' does not exist on type '{ readonly HELLO: "hello"; readonly HEARTBEAT: "heartbeat"; readonly ERROR: "error"; readonly MAP_READY: "map.ready"; readonly MAP_VIEW_CHANGED: "map.view.changed"; readonly MAP_CLICK: "map.click"; ... 45 more ...; readonly ADDRESS_ROBOT_GIS_SEARCH: "address_robot.gis_search"; }'.
+src/controller/three/index.ts(10,46): error TS2339: Property 'THREE_LOAD_MODEL' does not exist on type '{ readonly HELLO: "hello"; readonly HEARTBEAT: "heartbeat"; readonly ERROR: "error"; readonly MAP_READY: "map.ready"; readonly MAP_VIEW_CHANGED: "map.view.changed"; readonly MAP_CLICK: "map.click"; ... 45 more ...; readonly ADDRESS_ROBOT_GIS_SEARCH: "address_robot.gis_search"; }'.
+src/controller/three/index.ts(21,53): error TS2339: Property 'THREE_BUILD_FORM_SEND' does not exist on type '{ readonly HELLO: "hello"; readonly HEARTBEAT: "heartbeat"; readonly ERROR: "error"; readonly MAP_READY: "map.ready"; readonly MAP_VIEW_CHANGED: "map.view.changed"; readonly MAP_CLICK: "map.click"; ... 45 more ...; readonly ADDRESS_ROBOT_GIS_SEARCH: "address_robot.gis_search"; }'.
+src/lib/index.ts(17,8): error TS2882: Cannot find module or type declarations for side-effect import of 'virtual:svg-icons-register'.
+src/main.ts(29,7): error TS6133: 'unmount' is declared but its value is never read.
+src/service/alova.ts(5,1): error TS6133: 'router' is declared but its value is never read.
+src/store/useDispatchStore.ts(82,26): error TS6133: 'data' is declared but its value is never read.
+src/views/modelAssess/components/MasterAlarmPanel.vue(12,39): error TS6133: 'saveHint' is declared but its value is never read.
+src/views/modelAssess/components/MasterAlarmPanel.vue(12,49): error TS6133: 'selectedFloor' is declared but its value is never read.
+src/views/modelAssess/components/MasterAlarmPanel.vue(12,64): error TS6133: 'modelLoaded' is declared but its value is never read.
+src/views/modelAssess/components/MasterAlarmPanel.vue(29,7): error TS6133: 'onSave' is declared but its value is never read.
+src/views/modelAssess/components/MasterAlarmPanel.vue(32,7): error TS6133: 'onLocateFireFloor' is declared but its value is never read.
+src/views/modelAssess/components/MiniMap.vue(2,34): error TS6133: 'ref' is declared but its value is never read.
+src/views/modelAssess/components/TiltMapView.vue(10,1): error TS6133: 'LAYER_TABS' is declared but its value is never read.
+src/views/modelAssess/components/TiltMapView.vue(15,1): error TS6133: 'ComponentDetailPopover' is declared but its value is never read.
+src/views/modelAssess/components/TiltMapView.vue(16,1): error TS6133: 'RouteDebugPanel' is declared but its value is never read.
+src/views/modelAssess/components/TiltMapView.vue(18,1): error TS6133: 'Compass3D' is declared but its value is never read.
+src/views/modelAssess/components/TiltMapView.vue(26,3): error TS6133: 'selectedTrappedUuid' is declared but its value is never read.
+src/views/modelAssess/components/TiltMapView.vue(28,3): error TS6133: 'modelLoaded' is declared but its value is never read.
+src/views/modelAssess/components/TiltMapView.vue(36,7): error TS6133: 'onTab' is declared but its value is never read.
+src/views/modelAssess/components/TiltMapView.vue(51,7): error TS6133: 'onSwitch3D' is declared but its value is never read.
+src/views/modelAssess/components/TiltMapView.vue(52,7): error TS6133: 'onSwitch2D' is declared but its value is never read.
+src/views/modelAssess/model3d/createBuildingByFloors.ts(11,9): error TS6133: 'cx' is declared but its value is never read.
+src/views/modelAssess/model3d/createBuildingByFloors.ts(12,9): error TS6133: 'cy' is declared but its value is never read.
+src/views/modelAssess/model3d/createBuildingByFloors.ts(77,3): error TS6133: 'buildHeight' is declared but its value is never read.
+src/views/test/index.vue(19,7): error TS6133: 'emitter' is declared but its value is never read.
+ ELIFECYCLE  Command failed with exit code 2.
