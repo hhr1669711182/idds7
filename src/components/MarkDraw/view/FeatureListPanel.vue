@@ -39,13 +39,35 @@ const truncated = ref(false);
 
 const writable = computed(() => Boolean(props.layer && isWritable(props.layer)));
 
-const columns = computed(() => {
-  const list = (props.layer?.displayFields ?? ["id", "name"]).slice(0, 4);
-  return [
-    { key: "__sel", label: "", width: "32px", type: "selection" as const },
-    ...list.map((k) => ({ key: k, label: k, width: k === "id" ? "100px" : "1fr" })),
-  ];
+/** 几何字段不入表；列宽：id 窄，其余均分 */
+const GEOM_KEYS = /^(geom|the_geom|geometry|shape|geom_(3857|4326|wkt)|wkt_geom)$/i;
+const MAX_COLUMNS = 5;
+
+/** 常见业务字段优先展示，其余按接口返回顺序补齐，最多 5 列 */
+const PRIORITY_KEYS = ["name", "code", "mark", "type", "layer"];
+
+/** 列完全跟随接口返回：取首条要素的 properties 推断字段名 */
+const dataKeys = computed(() => {
+  const first = rows.value[0];
+  if (!first) return [];
+  const keys = Object.keys(first)
+    .filter((k) => k !== "id" && k !== "__selected" && !GEOM_KEYS.test(k))
+    .filter((k) => first[k] !== null && first[k] !== undefined);
+  // 优先字段排前面，其余保持接口顺序
+  const rank = (k: string) => {
+    const i = PRIORITY_KEYS.indexOf(k.toLowerCase());
+    return i === -1 ? PRIORITY_KEYS.length : i;
+  };
+  return keys
+    .sort((a, b) => rank(a) - rank(b))
+    .slice(0, MAX_COLUMNS - 1);
 });
+
+const columns = computed(() => [
+  { key: "__sel", label: "", width: "32px", type: "selection" as const },
+  { key: "id", label: "ID", width: "100px" },
+  ...dataKeys.value.map((k) => ({ key: k, label: k, width: "1fr" })),
+]);
 
 const load = async () => {
   if (!props.layer) {
@@ -169,6 +191,12 @@ const onAdd = () => {
     MdMessage.warning("当前图层为只读，请在可写图层新增");
     return;
   }
+  // 直接驱动引擎进入标点工具，工具栏高亮与绘制链路同步生效
+  if (store.activeTool === "Point") {
+    props.engine?.setActiveTool(null);
+    return;
+  }
+  props.engine?.setActiveTool("Point");
   store.setActiveTool("Point");
 };
 
@@ -254,8 +282,10 @@ onBeforeUnmount(() => {
 .md-flp {
   display: flex;
   flex-direction: column;
-  height: 320px;
-  min-height: 320px;
+  /* 高度随内容自适应，并在抽屉内滚动，避免固定高度造成嵌套滚动 */
+  flex: 0 0 auto;
+  max-height: 46%;
+  min-height: 180px;
 }
 .md-card__head-title {
   display: flex;

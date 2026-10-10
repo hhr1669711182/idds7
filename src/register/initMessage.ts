@@ -1,7 +1,7 @@
 ﻿/*
  * @Author: huanghuanrong
  * @Date: 2026-04-29 16:52:10
- * @LastEditTime: 2026-09-20 09:44:12
+ * @LastEditTime: 2026-10-10 17:10:27
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\register\initMessage.ts
@@ -10,6 +10,7 @@
 import { useMessageStore } from '@/store/useMessageStore'
 import { MESSAGE_SUBSCRIBE_TOPIC, MESSAGE_SYSTEM } from '@/const/const.message.type'
 import { useUserStore } from '@/store/useUserStore'
+import { appEnv } from '@/config/env'
 import { watch } from 'vue'
 
 export const initMessage = () => {
@@ -20,12 +21,20 @@ export const initMessage = () => {
 
   const isUseWS = import.meta.env.VITE_USE_WS === 'true'
   const isUsePostMessage = import.meta.env.VITE_USE_POSTMESSAGE === 'true'
+  const isUseBroadcastChannel = appEnv.useBroadcastChannel
   const cleanups: Array<() => void> = []
 
   if (isUsePostMessage) {
     cleanups.push(msgStore.bindParent({
       system: MESSAGE_SYSTEM.HOST,
       acceptOrigins: [window.location.origin],
+    }))
+  }
+
+  if (isUseBroadcastChannel) {
+    cleanups.push(msgStore.bindBroadcastChannel({
+      system: MESSAGE_SYSTEM.HOST,
+      name: appEnv.broadcastChannelName || MESSAGE_SYSTEM.HOST,
     }))
   }
 
@@ -44,6 +53,7 @@ export const initMessage = () => {
               SEAT(),
               ...Object.values(args),
               // type: 'auth', userId: 'hhr' // 单点调试
+              // {"action":"connected","userId":"8a56a473-...","sessionState":"fff24f08-...","clientId":"{clientId}"}
             ],
           },
         }))
@@ -65,7 +75,8 @@ export const initMessage = () => {
   )
 
   return () => {
-    // cleanups.forEach(cleanup => cleanup())
+    cleanups.forEach(cleanup => cleanup())
+    cleanups.length = 0
     stopWatch()
     wsRefresh()
   }

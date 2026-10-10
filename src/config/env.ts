@@ -21,6 +21,9 @@ export const appEnv = {
   appMode: readEnvString('VITE_APP_ENV'),
   apiBaseUrl: stripTrailingSlashes(readEnvString('VITE_API_BASE_URL')),
   useMock: readEnvString('VITE_USE_MOCK') === 'true',
+  // 同源多标签页互通开关与通道名，由 register/initMessage.ts 统一绑定到 useMessageStore
+  useBroadcastChannel: readEnvString('VITE_USE_BROADCAST_CHANNEL') === 'true',
+  broadcastChannelName: readEnvString('VITE_BROADCAST_CHANNEL_NAME'),
   // geoserverBaseUrl: stripTrailingSlashes(readEnvString('') + 'geoserver'),
   geoserverBaseUrl: stripTrailingSlashes(readEnvString('VITE_GEOSERVER_URL')),
   

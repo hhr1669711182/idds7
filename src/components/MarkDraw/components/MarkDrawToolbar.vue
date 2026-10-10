@@ -1,7 +1,7 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 /**
  * 工具栏：玻璃风格 + 发光激活态 + 自写 tooltip
- * 自带 SVG path 图标（不依赖外部 sprite）
+ * 图标直接复用地图侧 sprite（public/icons.svg，App.vue 注入 #svgBase），不再自绘 SVG
  */
 import { ref } from "vue";
 import type { MarkDrawToolType } from "../engine/types";
@@ -9,43 +9,48 @@ import type { MarkDrawToolType } from "../engine/types";
 interface ToolItem {
   type: MarkDrawToolType;
   label: string;
-  /** SVG `d` 路径，渲染时统一 <path :d=…/> */
-  d: string;
+  /** sprite 符号 id，对应 #svgBase 内 <symbol id="icon-*"> */
+  symbolId: string;
   group: "draw" | "measure" | "select" | "military";
 }
 
 const props = defineProps<{
   activeTool: MarkDrawToolType | null;
+  /** 是否存在可清除的绘制要素 */
+  hasElements?: boolean;
 }>();
 const emit = defineEmits<{
   (e: "tool-change", tool: MarkDrawToolType | null): void;
+  (e: "clear"): void;
 }>();
 
 const tools: ToolItem[] = [
   // 标绘
-  { type: "Point", label: "标点", group: "draw", d: "M12 2a7 7 0 017 7c0 5-7 13-7 13S5 14 5 9a7 7 0 017-7zm0 9.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" },
-  { type: "LineString", label: "标线", group: "draw", d: "M3 17l5-5 4 4 4-7 5 5" },
-  { type: "Polygon", label: "标面", group: "draw", d: "M4 6l8-3 8 6-3 11H7z" },
-  { type: "Circle", label: "画圆", group: "draw", d: "M12 2a10 10 0 100 20 10 10 0 000-20zm0 4v12M2 12h20" },
-  { type: "Rect", label: "画矩形", group: "draw", d: "M3 5h18v14H3z" },
+  { type: "Point", label: "标点", group: "draw", symbolId: "icon-point" },
+  { type: "LineString", label: "标线", group: "draw", symbolId: "icon-line" },
+  { type: "Polygon", label: "标面", group: "draw", symbolId: "icon-polygon" },
+  { type: "Circle", label: "画圆", group: "draw", symbolId: "icon-circle" },
+  { type: "Rect", label: "画矩形", group: "draw", symbolId: "icon-rect" },
   // 量算
-  { type: "MEASUREDISTANCE", label: "测距", group: "measure", d: "M3 17l5-5 4 4 9-9m0 0v4m0-4h-4" },
-  { type: "MEASUREANGLE", label: "量角", group: "measure", d: "M12 22a10 10 0 100-20 10 10 0 000 20zM3 12c4-6 14-6 18 0" },
-  { type: "MEASUREPOLYGON", label: "测面", group: "measure", d: "M3 7h6v4H3zm9 0h9v4h-9zm0 6h9v4h-9zm-9 0h6v4H3z" },
-  { type: "AZIMUTH", label: "方位角", group: "measure", d: "M5 12h14m-7-7v14m-4-2l8-10" },
+  { type: "MEASUREDISTANCE", label: "测距", group: "measure", symbolId: "icon-measure-distance" },
+  { type: "MEASUREANGLE", label: "量角", group: "measure", symbolId: "icon-protractor" },
+  { type: "MEASUREPOLYGON", label: "测面", group: "measure", symbolId: "icon-measure-polygon" },
+  { type: "AZIMUTH", label: "方位角", group: "measure", symbolId: "icon-azimuth" },
   // 圈选 / 选择
-  { type: "MEASURELENGTH", label: "框选放大", group: "select", d: "M5 3l4 4M19 3l-4 4M3 5l4-4M21 5l-4-4M5 21l4-4M19 21l-4-4M3 19l4 4M21 19l-4 4" },
-  { type: "MEASUREAREA", label: "圈选查询", group: "select", d: "M12 2v6m0 8v6m-10-10h6m8 0h6" },
-  { type: "POPULATION", label: "实时人口", group: "select", d: "M9 11a4 4 0 100-8 4 4 0 000 8zm6 0a3 3 0 100-6 3 3 0 000 6zm-9 9c0-3 1-7 6-7s6 4 6 7" },
+  { type: "MEASURELENGTH", label: "框选放大", group: "select", symbolId: "icon-select-extent" },
   // 军标
-  { type: "MILITARY_ARROW", label: "军标箭头", group: "military", d: "M3 12h13l-3-3m3 3l-3 3M16 6l5 6-5 6" },
-  { type: "MILITARY_DOUBLE_LINE", label: "双线箭头", group: "military", d: "M3 17l4-10 4 10M7 17h6m2-10h6l-6 10" },
-  { type: "MILITARY_CURVE", label: "曲线箭头", group: "military", d: "M3 18c4-12 14-12 18 0m0 0l-3-3m3 3l-3 3" },
-  { type: "MILITARY_CLUSTER_ARROW", label: "聚集箭头", group: "military", d: "M3 4l7 14 2-7 7-2z" },
-  { type: "MILITARY_TACTIC", label: "战术符号", group: "military", d: "M12 3l9 5v8l-9 5-9-5V8zm0 0v18M3 5h18M12 13l-9-5m9 5l9-5" },
+  { type: "MILITARY_ARROW", label: "军标箭头", group: "military", symbolId: "icon-jiantou" },
+  { type: "MILITARY_DOUBLE_LINE", label: "双线箭头", group: "military", symbolId: "icon-transfer" },
+  { type: "MILITARY_CURVE", label: "曲线箭头", group: "military", symbolId: "icon-right-direction" },
+  { type: "MILITARY_CLUSTER_ARROW", label: "聚集箭头", group: "military", symbolId: "icon-ascending-order" },
+  { type: "MILITARY_TACTIC", label: "战术符号", group: "military", symbolId: "icon-cross" },
 ];
 
 const hoverIdx = ref<number | null>(null);
+const clearHover = ref(false);
+
+/** 上一项与当前项不同组时，在其前面画一条分隔线 */
+const needDivider = (idx: number) => idx > 0 && tools[idx].group !== tools[idx - 1].group;
 
 const onClick = (tool: MarkDrawToolType) => {
   emit("tool-change", props.activeTool === tool ? null : tool);
@@ -54,19 +59,39 @@ const onClick = (tool: MarkDrawToolType) => {
 
 <template>
   <div class="md-toolbar">
+    <div class="md-toolbar__list">
+      <template v-for="(t, idx) in tools" :key="t.type">
+        <span v-if="needDivider(idx)" class="md-toolbar__divider" />
+        <button
+          class="md-tool"
+          :class="{ active: activeTool === t.type }"
+          @click="onClick(t.type)"
+          @mouseenter="hoverIdx = idx"
+          @mouseleave="hoverIdx = null"
+        >
+          <svg class="md-tool__icon" aria-hidden="true">
+            <use :xlink:href="`#${t.symbolId}`" />
+          </svg>
+          <span v-if="hoverIdx === idx" class="md-tool__tip">{{ t.label }}</span>
+        </button>
+      </template>
+    </div>
+
+    <span class="md-toolbar__divider md-toolbar__divider--tail" />
+
+    <!-- 清除元素：只清地图上的绘制与查询图元，不动数据库 -->
     <button
-      v-for="(t, idx) in tools"
-      :key="t.type"
-      class="md-tool"
-      :class="{ active: activeTool === t.type }"
-      @click="onClick(t.type)"
-      @mouseenter="hoverIdx = idx"
-      @mouseleave="hoverIdx = null"
+      class="md-tool md-tool--clear"
+      :disabled="!hasElements"
+      title="清除元素"
+      @click="emit('clear')"
+      @mouseenter="clearHover = true"
+      @mouseleave="clearHover = false"
     >
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-        <path :d="t.d" fill="currentColor" />
+      <svg class="md-tool__icon" aria-hidden="true">
+        <use xlink:href="#icon-delete" />
       </svg>
-      <span v-if="hoverIdx === idx" class="md-tool__tip">{{ t.label }}</span>
+      <span v-if="clearHover" class="md-tool__tip md-tool__tip--tail">清除元素</span>
     </button>
   </div>
 </template>
@@ -79,7 +104,7 @@ const onClick = (tool: MarkDrawToolType) => {
   z-index: 8;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  max-height: calc(100% - 24px);
   padding: 6px;
   border-radius: var(--md-radius);
   background: var(--md-panel);
@@ -88,8 +113,35 @@ const onClick = (tool: MarkDrawToolType) => {
   backdrop-filter: var(--md-blur);
   -webkit-backdrop-filter: var(--md-blur);
 }
+/* 按钮列表可滚动，底部「清除元素」常驻可见 */
+.md-toolbar__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.md-toolbar__list::-webkit-scrollbar {
+  width: 4px;
+}
+.md-toolbar__list::-webkit-scrollbar-thumb {
+  background: var(--md-border-strong);
+  border-radius: 2px;
+}
+.md-toolbar__divider {
+  display: block;
+  flex-shrink: 0;
+  height: 1px;
+  margin: 3px 4px;
+  background: var(--md-border);
+}
+.md-toolbar__divider--tail {
+  margin: 6px 4px;
+}
 .md-tool {
   position: relative;
+  flex-shrink: 0;
   width: 36px;
   height: 36px;
   display: flex;
@@ -105,7 +157,7 @@ const onClick = (tool: MarkDrawToolType) => {
 :root:not([data-theme="NIGHT"]) .md-tool {
   background: rgba(255, 255, 255, 0.55);
 }
-.md-tool:hover {
+.md-tool:hover:not(:disabled) {
   border-color: var(--md-border-strong);
   color: var(--md-accent-1);
   transform: translateX(-2px);
@@ -116,6 +168,21 @@ const onClick = (tool: MarkDrawToolType) => {
   color: #0a1525;
   border-color: transparent;
   box-shadow: 0 4px 18px var(--md-accent-glow), inset 0 0 8px rgba(255, 255, 255, 0.18);
+}
+.md-tool:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.md-tool--clear:hover:not(:disabled) {
+  color: var(--md-danger);
+  border-color: var(--md-danger);
+  box-shadow: 0 4px 14px rgba(245, 54, 92, 0.25);
+}
+.md-tool__icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  pointer-events: none;
 }
 .md-tool__tip {
   position: absolute;
@@ -143,6 +210,14 @@ const onClick = (tool: MarkDrawToolType) => {
   border: 5px solid transparent;
   border-left-color: var(--md-border-strong);
 }
+.md-tool__tip--tail {
+  top: auto;
+  bottom: -2px;
+  transform: none;
+}
+.md-tool__tip--tail::after {
+  top: 50%;
+}
 @keyframes md-tool-tip-in {
   from {
     opacity: 0;
@@ -151,6 +226,19 @@ const onClick = (tool: MarkDrawToolType) => {
   to {
     opacity: 1;
     transform: translate(0, -50%);
+  }
+}
+.md-tool__tip--tail {
+  animation-name: md-tool-tip-in-tail;
+}
+@keyframes md-tool-tip-in-tail {
+  from {
+    opacity: 0;
+    transform: translateX(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 </style>

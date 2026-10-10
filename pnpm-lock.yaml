@@ -102,12 +102,6 @@ importers:
       '@types/js-clipper':
         specifier: ^0.0.32
         version: 0.0.32
-      '@types/lodash':
-        specifier: ^4.17.25
-        version: 4.17.25
-      '@types/lodash-es':
-        specifier: ^4.17.12
-        version: 4.17.12
       '@types/node':
         specifier: ^25.5.2
         version: 25.6.0

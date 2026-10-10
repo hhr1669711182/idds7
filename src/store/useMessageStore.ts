@@ -12,6 +12,7 @@ import {
 } from '@/const/const.message.type'
 import type { MessageEnvelope } from '@/types/message'
 import { WebSocketClient, type WebSocketOptions } from '@/hooks/useWebSocket'
+import { BroadcastChannelClient, type BroadcastChannelOptions } from '@/hooks/useBroadcastChannel'
 import { interceptorRegistry, installDefaultInterceptors } from '@/interceptor'
 
 type AnyRecord = Record<string, any>
@@ -65,6 +66,13 @@ export type BindWebSocketOptions = {
   socketOptions?: WebSocketOptions
 }
 
+export type BindBroadcastChannelOptions = {
+  system?: MessageSystem
+  /** 通道名，同源同名的标签页之间互通 */
+  name: string
+  channelOptions?: BroadcastChannelOptions
+}
+
 export type PublishOptions = {
   system: MessageSystem
   channel: MessageChannel
@@ -96,6 +104,7 @@ export const useMessageStore = defineStore(
     })
 
     const wsClients = new Map<MessageSystem, WebSocketClient>()
+    const bcClients = new Map<MessageSystem, BroadcastChannelClient>()
     const postMessageHandlers = new Map<MessageSystem, (e: MessageEvent) => void>()
     const subscriptions = new Map<string, Subscription[]>()
 
@@ -249,6 +258,28 @@ export const useMessageStore = defineStore(
       }
     }
 
+    /**
+     * 绑定 BroadcastChannel（同源多标签页互通），复用 useMessageStore 统一收发。
+     * 浏览器不会把消息回发给发送方自身，因此这里只处理接收侧。
+     */
+    const bindBroadcastChannel = (options: BindBroadcastChannelOptions) => {
+      const system = options.system ?? MESSAGE_SYSTEM.HOST
+      bcClients.get(system)?.disconnect()
+      const client = new BroadcastChannelClient(options.name, {
+        ...options.channelOptions,
+        onMessage: (d, e) => {
+          if (d === undefined || d === null) return
+          ingest(d, MESSAGE_CHANNEL.BROADCAST_CHANNEL, system, { channelName: options.name })
+          options.channelOptions?.onMessage?.(d, e)
+        },
+      })
+      bcClients.set(system, client)
+      return () => {
+        client.disconnect()
+        bcClients.delete(system)
+      }
+    }
+
     const publish = <T>(eventKey: MessageEventKey, data: T, options: PublishOptions) => {
       const msg = createEnvelope(options.system, options.channel, eventKey, data, {
         targetSystem: options.targetSystem,
@@ -272,6 +303,11 @@ export const useMessageStore = defineStore(
         return true
       }
 
+      if (options.channel === MESSAGE_CHANNEL.BROADCAST_CHANNEL) {
+        const client = bcClients.get(options.system)
+        return !!client?.send(msg)
+      }
+
       return false
     }
 
@@ -285,6 +321,8 @@ export const useMessageStore = defineStore(
       wsClients.get(system)?.disconnect()
       wsClients.delete(system)
       runtime.wsStatus[system] = false
+      bcClients.get(system)?.disconnect()
+      bcClients.delete(system)
       const handler = postMessageHandlers.get(system)
       if (handler) {
         window.removeEventListener('message', handler)
@@ -296,10 +334,12 @@ export const useMessageStore = defineStore(
       ...toRefs(persisted),
       ...toRefs(runtime),
       wsClients,
+      bcClients,
       createEnvelope,
       ingest,
       bindParent,
       connectWebSocket,
+      bindBroadcastChannel,
       publish,
       subscribe,
       unsubscribe,

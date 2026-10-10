@@ -91,8 +91,9 @@ const emit = defineEmits<{
 }
 .md-hierarchy__grid {
   display: grid;
-  grid-template-columns: 124px 1fr;
-  gap: 10px;
+  /* 窄抽屉内改为上下两段，避免左右分栏被挤压换行 */
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 .md-hierarchy__col-title {
   font-size: 11px;
@@ -108,14 +109,14 @@ const emit = defineEmits<{
   background: rgba(10, 18, 32, 0.4);
   border: 1px solid var(--md-border);
   border-radius: var(--md-radius-sm);
-  max-height: 220px;
+  max-height: 118px;
   overflow-y: auto;
 }
 :root:not([data-theme="NIGHT"]) .md-list {
   background: rgba(255, 255, 255, 0.4);
 }
 .md-list--layers {
-  max-height: 220px;
+  max-height: 148px;
   overflow-y: auto;
 }
 .md-list li {
@@ -129,6 +130,7 @@ const emit = defineEmits<{
   transition: all 0.16s ease;
   border: 1px solid transparent;
   position: relative;
+  min-width: 0;
 }
 .md-list li:hover {
   background: rgba(0, 212, 255, 0.08);
@@ -178,5 +180,7 @@ const emit = defineEmits<{
   color: var(--md-text-3);
   font-family: monospace;
   margin-left: 4px;
+  /* 窄抽屉内 id 文本会挤掉图层名，默认隐藏，hover 提示 */
+  display: none;
 }
 </style>

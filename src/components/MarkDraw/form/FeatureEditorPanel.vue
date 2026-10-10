@@ -117,7 +117,9 @@ const onSave = async () => {
     }
     feat.set("_isDirty", false);
     editor.markDirty();
+    // 同步退出工具态：engine 与 store 必须一起归位
     store.setActiveTool(null);
+    props.engine?.setActiveTool(null);
   } catch (e) {
     MdMessage.error(`保存失败：${(e as Error).message}`);
   }

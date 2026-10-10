@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 /**
  * MarkDrawSurface — 玻璃风格总容器
  * - 承载 Toolbar / Drawer / Panels / Importer / CircleQuery
@@ -12,7 +12,8 @@ import LayerHierarchyPanel from "../view/LayerHierarchyPanel.vue";
 import FeatureListPanel from "../view/FeatureListPanel.vue";
 import FeatureEditorPanel from "../form/FeatureEditorPanel.vue";
 import MarkDrawImporter from "./MarkDrawImporter.vue";
-import CircleQueryPanel from "../view/CircleQueryPanel.vue";
+import MarkDrawResultBar from "./MarkDrawResultBar.vue";
+import { MdMessage, MdMessageBox } from "../ui/MdMessage";
 import { getLayer } from "../view/layerConfig";
 import { MdTag } from "../ui";
 import { geometryToLngLat } from "../utils/proj";
@@ -20,8 +21,11 @@ import type {
   MarkDrawFeature,
   MarkDrawLayer,
   MarkDrawToolType,
+  MeasurePayload,
 } from "../engine/types";
 import type OLMap from "ol/Map";
+import type { EventsKey } from "ol/events";
+import { unByKey } from "ol/Observable";
 import "../styles/markdraw.less";
 import "../styles/toast.less";
 
@@ -32,8 +36,11 @@ const engine = shallowRef<CreateMarkDrawEngineResult | null>(null);
 const selected = ref<MarkDrawFeature | null>(null);
 const currentLayer = ref<MarkDrawLayer | null>(null);
 const activeTool = ref<MarkDrawToolType | null>(null);
+const measure = ref<MeasurePayload | null>(null);
 const drawerCollapsed = ref(false);
 const drawerSize = ref(380);
+const hasElements = ref(false);
+const sourceKeys: unknown[] = [];
 
 const writableTag = computed(() =>
   currentLayer.value
@@ -45,6 +52,10 @@ const writableTag = computed(() =>
 
 const onToolChange = (t: MarkDrawToolType | null) => {
   engine.value?.setActiveTool(t);
+  if (t !== null) {
+    // 切换到新工具时清掉上一条量算结果
+    measure.value = null;
+  }
 };
 
 const onLayerSelected = (layer: MarkDrawLayer) => {
@@ -91,9 +102,37 @@ onMounted(() => {
   const e = createMarkDrawEngine(props.map);
   engine.value = e;
   activeTool.value = e.getActiveTool();
+  // 量算 / 查询工具是直接往矢量图层加图元，不经过 feature:added，
+  // 这里同时监听数据源，保证「清除元素」按钮的可用状态始终与图上元素一致
+  const syncHasElements = () => {
+    hasElements.value = e.getAll().length > 0;
+  };
+  const src = e.vectorLayer.getSource();
+  if (src) {
+    sourceKeys.push(src.on("addfeature", syncHasElements));
+    sourceKeys.push(src.on("removefeature", syncHasElements));
+    syncHasElements();
+  }
   e.on("tool:change", (t) => {
     activeTool.value = t;
     store.setActiveTool(t);
+    if (t !== null) measure.value = null;
+  });
+  e.on("feature:added", () => {
+    hasElements.value = true;
+    if (activeTool.value) {
+      // 绘制完成回到待命态，工具栏高亮同步解除
+      activeTool.value = null;
+      store.setActiveTool(null);
+      e.setActiveTool(null);
+    }
+  });
+  e.on("feature:removed", () => {
+    hasElements.value = e.getAll().length > 0;
+  });
+  e.on("measure:result", (payload) => {
+    measure.value = payload;
+    e.setActiveTool(null);
   });
   e.on("selection:change", (f) => {
     if (!f) {
@@ -108,11 +147,32 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  sourceKeys.splice(0).forEach((k) => unByKey(k as EventsKey));
   engine.value?.destroy();
 });
 
 const onFeatureIdSelected = (id: string | number | null) => {
   selected.value = id === null ? null : buildSelected(id);
+};
+
+/** 清除元素：先退出工具态，再清空图上全部绘制 / 查询图元 */
+const onClear = async () => {
+  const e = engine.value;
+  if (!e) return;
+  const total = e.getAll().length;
+  if (!total) {
+    MdMessage.info("当前没有可清除的元素");
+    return;
+  }
+  const ok = await MdMessageBox.confirm(`确认清除地图上的 ${total} 个元素？`, "清除元素", {
+    type: "danger",
+  });
+  if (!ok) return;
+  const removed = e.clearFeatures();
+  hasElements.value = false;
+  selected.value = null;
+  measure.value = null;
+  MdMessage.success(`已清除 ${removed} 个元素`);
 };
 
 const startResize = (e: MouseEvent) => {
@@ -167,7 +227,19 @@ const startResize = (e: MouseEvent) => {
     </div>
 
     <!-- 工具栏 -->
-    <MarkDrawToolbar :active-tool="activeTool" @tool-change="onToolChange" />
+    <MarkDrawToolbar
+      :active-tool="activeTool"
+      :has-elements="hasElements"
+      @tool-change="onToolChange"
+      @clear="onClear"
+    />
+
+    <!-- 量算 / 查询结果条 -->
+    <MarkDrawResultBar
+      :active-tool="activeTool"
+      :measure="measure"
+      @close="measure = null"
+    />
 
     <!-- 右侧抽屉 -->
     <transition name="md-drawer">
@@ -185,11 +257,11 @@ const startResize = (e: MouseEvent) => {
             @feature-selected="onFeatureIdSelected"
           />
           <FeatureEditorPanel :engine="engine" :selected="selected" :layer="currentLayer" />
-          <CircleQueryPanel :engine="engine" />
           <MarkDrawImporter :engine="engine" />
         </div>
       </aside>
     </transition>
+
   </div>
 </template>
 
@@ -300,6 +372,8 @@ const startResize = (e: MouseEvent) => {
   gap: 8px;
   padding: 10px;
   overflow-y: auto;
+  /* 各卡片内部自行滚动，这里只做单列纵向排版，避免嵌套滚动条 */
+  scrollbar-gutter: stable;
 }
 
 .md-drawer-enter-active,

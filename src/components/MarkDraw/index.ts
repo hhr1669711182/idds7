@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MarkDraw 公共 barrel export
  */
 export { createMarkDrawEngine } from "./engine/createMarkDrawEngine";
@@ -11,6 +11,7 @@ export type {
   MarkDrawEngineOptions,
   MarkDrawEventMap,
   MarkDrawEventName,
+  MeasurePayload,
   StyleJson,
 } from "./engine/types";
 
@@ -44,8 +45,8 @@ export { useMarkDrawEmitter } from "./composables/useMarkDrawEmitter";
 
 export { default as MarkDrawSurface } from "./components/MarkDrawSurface.vue";
 export { default as MarkDrawToolbar } from "./components/MarkDrawToolbar.vue";
+export { default as MarkDrawResultBar } from "./components/MarkDrawResultBar.vue";
 export { default as MarkDrawImporter } from "./components/MarkDrawImporter.vue";
 export { default as LayerHierarchyPanel } from "./view/LayerHierarchyPanel.vue";
 export { default as FeatureListPanel } from "./view/FeatureListPanel.vue";
 export { default as FeatureEditorPanel } from "./form/FeatureEditorPanel.vue";
-export { default as DemoPage } from "./demo/DemoPage.vue";

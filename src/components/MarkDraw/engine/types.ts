@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MarkDraw 公共类型定义
  */
 import type { StyleLike } from "ol/style/Style";
@@ -14,8 +14,6 @@ export type MarkDrawToolType =
   | "MEASUREPOLYGON"
   | "AZIMUTH"
   | "MEASURELENGTH"
-  | "MEASUREAREA"
-  | "POPULATION"
   | "MILITARY_ARROW"
   | "MILITARY_DOUBLE_LINE"
   | "MILITARY_CURVE"
@@ -49,13 +47,6 @@ export interface MarkDrawFeature {
   isDirty?: boolean;
 }
 
-export interface CircleQueryPayload {
-  centerLngLat: [number, number];
-  radiusMeters: number;
-  layer: MarkDrawLayer | null;
-  total: number;
-  perLayer: Record<string, number>;
-}
 
 export interface StyleJson {
   stroke?: { color: string; width: number; lineDash?: number[] };
@@ -86,6 +77,19 @@ export interface MarkDrawEngineOptions {
   onToolChange?: (tool: MarkDrawToolType | null) => void;
 }
 
+/** 工具归属：绘制类落库，量算类只回结果，查询类只出统计 */
+export type MarkDrawToolKind = "draw" | "measure" | "query";
+
+/** 量算结果（不落库，仅面板展示） */
+export interface MeasurePayload {
+  /** 格式化后的主结果文案，如 "1.2 km" */
+  text: string;
+  /** 数值型结果（米 / 平方米 / 度） */
+  value: number;
+  /** 量算类型 */
+  kind: "distance" | "area" | "angle" | "azimuth";
+}
+
 export type MarkDrawEventMap = {
   "feature:added": [MarkDrawFeature];
   "feature:updated": [MarkDrawFeature];
@@ -93,10 +97,10 @@ export type MarkDrawEventMap = {
   "selection:change": [MarkDrawFeature | null];
   "feature:modified": [MarkDrawFeature];
   "tool:change": [MarkDrawToolType | null];
+  "measure:result": [MeasurePayload];
   "view:selected": [MarkDrawLayer];
   "view:loaded": [{ layer: MarkDrawLayer; count: number }];
   "view:error": [{ layer: MarkDrawLayer; error: Error }];
-  "circle-query:result": [CircleQueryPayload];
   "destroy": [];
 };
 

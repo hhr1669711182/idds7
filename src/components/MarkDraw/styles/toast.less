@@ -1,6 +1,11 @@
-﻿/**
- * MarkDraw 全局 toast 样式
+/**
+ * MarkDraw 全局 toast / 弹窗样式
+ *
+ * 这些类同时被 <MdMessage> 的命令式 API 与 <MdModal> 组件使用，
+ * 其中 MdMessageBox 是 createApp 动态挂载的，拿不到 scope 属性，
+ * 因此本文件必须是全局样式（非 scoped），不能放进组件的 <style scoped>。
  */
+
 .md-message-container {
   position: fixed;
   top: 20px;
@@ -24,7 +29,9 @@
   -webkit-backdrop-filter: blur(8px);
   animation: md-message-in 0.22s ease forwards;
   min-width: 160px;
+  max-width: min(420px, calc(100vw - 32px));
   text-align: center;
+  word-break: break-word;
 }
 .md-message--success {
   border-color: rgba(46, 204, 113, 0.55);
@@ -57,12 +64,121 @@
     transform: translateY(-12px);
   }
 }
-.md-modal--mini {
-  width: 320px;
+
+/* ------------------------------------------------------------------
+ * 确认框 / 弹窗
+ * 固定定位 + 高 z-index，确保不被地图容器或抽屉裁剪、溢出
+ * ------------------------------------------------------------------ */
+.md-confirm-host {
+  position: relative;
+  z-index: 100000;
+}
+
+.md-modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 12, 24, 0.62);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100001;
+  /* 遮罩自身不可见内容超出，避免 flex 子项溢出 */
+  overflow: hidden;
+  padding: 20px;
+}
+.md-modal {
+  background: linear-gradient(180deg, rgba(20, 30, 48, 0.97) 0%, rgba(14, 22, 36, 0.97) 100%);
+  border: 1px solid rgba(120, 180, 230, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 30px rgba(0, 212, 255, 0.1);
+  color: #e8f0fa;
+  overflow: hidden;
+  /* 宽度由内联 style 给定，这里只做安全兜底，保证任何视口下都不溢出 */
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+}
+.md-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(120, 180, 230, 0.15);
+  flex-shrink: 0;
+}
+.md-modal__title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.md-modal__close {
+  background: transparent;
+  border: none;
+  color: rgba(180, 200, 220, 0.7);
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+.md-modal__close:hover {
+  color: #ff5b7a;
+}
+.md-modal__body {
+  padding: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-y: auto;
+  min-height: 0;
+}
+.md-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(120, 180, 230, 0.15);
+  flex-shrink: 0;
+}
+.md-modal-btn {
+  height: 30px;
+  padding: 0 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(120, 180, 230, 0.25);
+  background: transparent;
+  color: #d6e1ee;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.md-modal-btn--primary {
+  background: linear-gradient(135deg, #00d4ff, #4dabf7);
+  color: #0a1525;
+  border-color: transparent;
+  font-weight: 600;
 }
 .md-modal-btn--danger {
   background: linear-gradient(135deg, #f5365c, #f56036);
   color: #fff;
   border-color: transparent;
   font-weight: 600;
+}
+.md-modal-btn:hover {
+  border-color: #00d4ff;
+}
+
+.md-confirm__text {
+  color: #d6e1ee;
+  word-break: break-word;
+}
+
+.md-modal-enter-active,
+.md-modal-leave-active {
+  transition: opacity 0.18s ease;
+}
+.md-modal-enter-from,
+.md-modal-leave-to {
+  opacity: 0;
 }

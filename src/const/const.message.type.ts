@@ -6,6 +6,7 @@ export const MESSAGE_CHANNEL = {
   WS: 'ws',
   POST_MESSAGE: 'postMessage',
   LOCAL_STORAGE: 'localStorage',
+  BROADCAST_CHANNEL: 'broadcastChannel',
 } as const
 
 /**

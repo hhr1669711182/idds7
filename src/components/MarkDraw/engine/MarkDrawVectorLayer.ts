@@ -1,15 +1,13 @@
-﻿/**
+/**
  * 矢量图层管理：
- * - 优先复用 VECTOR_LAYER（className === LAYER_NAMES.VECTOR_LAYER）
- * - 否则自建 className = "MARK_DRAW_LAYER"，engine.destroy() 时仅移除自建图层
+ * - 优先复用 VECTOR_LAYER（className === LAYER_NAMES.VECTOR_LAYER，与 map 底座一致）
+ * - 否则自建同名 className 的图层，使 map 侧工具（components/map/MapTools）也能命中同一图层
+ * - engine.destroy() 时仅移除自建图层
  */
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import type { Map as OLMap } from "ol";
-
-export const LAYER_NAMES = {
-  VECTOR_LAYER: "VECTOR_LAYER",
-};
+import { LAYER_NAMES } from "@/baseComponent/OpenlayersMap/layers";
 
 export class MarkDrawVectorLayer {
   readonly map: OLMap;
@@ -32,16 +30,12 @@ export class MarkDrawVectorLayer {
       this.layer = found;
       this.owned = false;
     } else {
-      const created = new VectorLayer({
+      // 与 map 底座使用同名 className，保证复用 map 工具时能取到同一图层
+      this.layer = new VectorLayer({
         source: new VectorSource(),
+        className: LAYER_NAMES.VECTOR_LAYER,
       });
-      // openlayers 没有直接的 setClassName，需通过 set("className") 或 properties
-      (created as unknown as { set: (k: string, v: unknown) => void }).set(
-        "className",
-        "MARK_DRAW_LAYER"
-      );
-      map.addLayer(created);
-      this.layer = created;
+      map.addLayer(this.layer);
       this.owned = true;
     }
   }

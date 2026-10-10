@@ -1,9 +1,9 @@
-﻿/**
+/**
  * MarkDraw 核心引擎（零 Vue 依赖）。
  */
 import type { Map as OLMap } from "ol";
 import type Feature from "ol/Feature";
-import { Style, Stroke, Fill, Circle as CircleStyle, Icon as IconStyle } from "ol/style";
+import { Style, Stroke, Fill, Circle as CircleStyle } from "ol/style";
 import type { StyleLike } from "ol/style/Style";
 
 import { MarkDrawVectorLayer } from "./MarkDrawVectorLayer";
@@ -20,6 +20,7 @@ import type {
   MarkDrawFeature,
   MarkDrawLayer,
   MarkDrawToolType,
+  MeasurePayload,
 } from "./types";
 
 const DEFAULT_STYLE = (tool: MarkDrawToolType): StyleLike => {
@@ -46,8 +47,6 @@ const DEFAULT_STYLE = (tool: MarkDrawToolType): StyleLike => {
   }
 };
 
-void IconStyle;
-
 export type MarkDrawEventListener<K extends MarkDrawEventName> = (
   payload: MarkDrawEventMap[K][number]
 ) => void;
@@ -55,6 +54,10 @@ export type MarkDrawEventListener<K extends MarkDrawEventName> = (
 export interface CreateMarkDrawEngineResult {
   addFeature: (feature: Feature, layer?: MarkDrawLayer) => MarkDrawFeature;
   removeFeature: (id: string | number) => void;
+  /** 批量删除：用于「清除元素」等一次性清场 */
+  removeFeatures: (ids: Array<string | number>) => number;
+  /** 清空当前全部绘制要素（含未落库草稿），返回清除数量 */
+  clearFeatures: () => number;
   updateFeature: (feature: Feature) => MarkDrawFeature | null;
   getAll: () => Feature[];
   getById: (id: string | number) => Feature | undefined;
@@ -135,6 +138,29 @@ export const createMarkDrawEngine = (
     emitter.emit("feature:removed", toPublicFeature(f));
   };
 
+  /** 批量删除：跳过 null id，避免列表/要素不同步时误删 */
+  const removeFeatures = (ids: Array<string | number>) => {
+    let count = 0;
+    ids.forEach((id) => {
+      if (id === null || id === undefined || id === "") return;
+      const f = vectorLayer.source.getFeatureById(id);
+      if (!f) return;
+      vectorLayer.source.removeFeature(f);
+      emitter.emit("feature:removed", toPublicFeature(f));
+      count += 1;
+    });
+    return count;
+  };
+
+  /** 清空全部绘制要素：仅清除内存态，数据库记录保持不变 */
+  const clearFeatures = () => {
+    // 量算 / 查询工具的图元没有业务 id，不能只按 id 删，直接清空 source
+    const removed = vectorLayer.source.getFeatures().length;
+    vectorLayer.source.clear();
+    emitter.emit("selection:change", null);
+    return removed;
+  };
+
   const updateFeature = (feature: Feature): MarkDrawFeature | null => {
     if (!vectorLayer.source.hasFeature(feature)) {
       vectorLayer.source.addFeature(feature);
@@ -154,6 +180,7 @@ export const createMarkDrawEngine = (
 
   const setActiveTool = (tool: MarkDrawToolType | null) => {
     if (toolState.name === tool) return;
+    // 先释放上一个工具
     if (toolState.destroy) {
       try {
         toolState.destroy();
@@ -166,29 +193,20 @@ export const createMarkDrawEngine = (
     toolState.destroy = undefined;
     if (tool) {
       try {
-        const instance = createTool(tool, {
+        createTool(tool, {
           map,
           vectorLayer: vectorLayer.layer as never,
           onFeature: (f) => {
             addFeature(f, activeLayer ?? undefined);
+          },
+          onMeasure: (payload: MeasurePayload) => {
+            emitter.emit("measure:result", payload);
           },
           setActiveToolInstance: (inst, destroy) => {
             toolState.instance = inst;
             toolState.destroy = destroy;
           },
         });
-        // 桥接 CircleQueryTool 的 emit 到 engine
-        const maybe = instance as unknown as {
-          setEmitter?: (
-            fn: (e: "circle-query:result", payload: unknown) => void
-          ) => void;
-          setActiveLayer?: (layer: MarkDrawLayer | null) => void;
-        };
-        maybe.setEmitter?.(
-          (e, payload) =>
-            (emitter.emit as unknown as (k: string, p: unknown) => void)(e, payload)
-        );
-        if (activeLayer) maybe.setActiveLayer?.(activeLayer);
       } catch (e) {
         console.error("[MarkDraw] createTool failed", e);
       }
@@ -234,7 +252,6 @@ export const createMarkDrawEngine = (
   const setActiveLayer = (layer: MarkDrawLayer | null) => {
     activeLayer = layer;
     if (layer) layerCache.set(layer.id, layer);
-    // 同步给活跃工具（如 CircleQueryTool）
     const inst = toolState.instance as unknown as {
       setActiveLayer?: (l: MarkDrawLayer | null) => void;
     } | null;
@@ -290,6 +307,8 @@ export const createMarkDrawEngine = (
   const engine: CreateMarkDrawEngineResult = {
     addFeature,
     removeFeature,
+    removeFeatures,
+    clearFeatures,
     updateFeature,
     getAll,
     getById,

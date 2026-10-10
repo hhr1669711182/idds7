@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MarkDraw 全局玻璃风格主题
  * - 不依赖 Element Plus；独立于项目日间 / 夜间 CSS 变量
  * - 跟随 :root[data-theme="NIGHT"] 自动切换
@@ -100,4 +100,52 @@
 }
 .markdraw-root *::-webkit-scrollbar-thumb:hover {
   background: var(--md-border-strong);
+}
+
+/* ------------------------------------------------------------------
+ * 工具运行期动态创建的 DOM（挂在地图 viewport 内，不在 .markdraw-root
+ * 子树下，scoped 样式覆盖不到），因此统一放在全局样式里
+ * ------------------------------------------------------------------ */
+
+/* 跟随鼠标的操作提示 */
+.md-help {
+  position: relative;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: default;
+  user-select: none;
+  opacity: 0.85;
+  display: none;
+}
+:root:not([data-theme="NIGHT"]) .md-help {
+  background: rgba(20, 32, 56, 0.8);
+}
+
+/* 量算过程中的实时数值 */
+.md-measure-tip {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #ffcc33;
+  border: 1px solid #fff;
+  color: #000;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.md-measure-tip--result {
+  background: rgba(0, 0, 0, 0.65);
+  border-color: rgba(122, 215, 255, 0.8);
+  color: #7ad7ff;
+}
+
+/* 框选放大拖拽矩形 */
+.md-drag-zoom {
+  border: 2px dashed #7ad7ff;
+  background: rgba(122, 215, 255, 0.12);
 }

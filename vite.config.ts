@@ -1,7 +1,7 @@
 /*
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-09-18 11:26:46
+ * @LastEditTime: 2026-10-10 15:39:03
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\vite.config.ts
@@ -29,7 +29,8 @@ export default defineConfig(({ mode, command }) => {
 
   return {
     devtools: mode === "dev.local" ? {
-      enabled: true
+      enabled: true,
+      clientAuth: false, 
     } : false,
     plugins: [
       vue(),
