@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 /**
  * 维护表单（玻璃风格自写）
  * - 展示选中要素的可编辑字段
@@ -6,15 +6,20 @@
  * - 保存走 WFS-T（insert / update）
  * - 删除走 WFS-T（Delete）
  */
-import { ref, watch, computed } from "vue";
+import { ref, shallowRef, watch, computed, onMounted, onBeforeUnmount } from "vue";
 import { useFeatureEditor } from "./useFeatureEditor";
 import { isWritable } from "../view/layerConfig";
+import { isFenceLayer } from "../utils/layerStyle";
 import { insertFeatures, updateFeatures, deleteFeatures } from "./wfst/transaction";
 import { useMarkDrawStore } from "../store/useMarkDrawStore";
 import { MdInput, MdTag } from "../ui";
 import { MdMessage, MdMessageBox } from "../ui/MdMessage";
+import { geometryToLngLat, toMercator } from "../utils/proj";
 import type { MarkDrawFeature, MarkDrawLayer, StyleJson } from "../engine/types";
 import type Feature from "ol/Feature";
+import type AbstractGeometry from "ol/geom/Geometry";
+import type { CoordArray } from "../engine/types";
+import { LineString, MultiLineString, MultiPoint, MultiPolygon, Point, Polygon } from "ol/geom";
 
 const props = defineProps<{
   engine: import("../engine/createMarkDrawEngine").CreateMarkDrawEngineResult | null;
@@ -32,8 +37,56 @@ const colorText = ref("#ff0000");
 const widthNum = ref(2);
 const opacityNum = ref(0.6);
 const geometryPreview = ref("");
+/** 几何编辑模式：readonly=纯预览，lnglat=直接改经纬度文本，raw=改 3857 原始坐标 */
+const geomMode = ref<"readonly" | "lnglat" | "raw">("readonly");
+const geomDirty = ref(false);
+/** 用户是否手动改过几何文本：手动改后地图拖拽不再覆盖文本，只更新提示 */
+const geomTouched = ref(false);
+/** 表单改动前的原几何：校验不过时原样退回 */
+const geomOrigin = shallowRef<AbstractGeometry | null>(null);
+/**
+ * 打开表单时的基线快照：几何坐标 + 名称/类型/备注/样式。
+ * 保存按钮据此判断「有没有变更」——没有变更就置灰，避免空事务打服务端。
+ */
+const baseline = ref<string>("");
+
+/** 安全 JSON 解析：GeoServer 字段可能是任意字符串 */
+const safeParseJson = <T,>(text: string): T | null => {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+};
 
 const writable = computed(() => Boolean(props.layer && isWritable(props.layer)));
+
+/** 当前表单 + 地图几何的完整指纹（字符串化后比较，避免深层 watch） */
+const currentSnapshot = (): string => {
+  const feat = props.selected?.feature as Feature | undefined;
+  const coords = feat?.getGeometry()
+    ? JSON.stringify((feat.getGeometry() as unknown as { getCoordinates(): CoordArray }).getCoordinates())
+    : "";
+  return JSON.stringify({
+    geom: coords,
+    name: nameText.value,
+    type: typeText.value,
+    mark: markText.value,
+    color: colorText.value,
+    width: widthNum.value,
+    opacity: opacityNum.value,
+  });
+};
+
+/**
+ * 是否有未保存的变更：没有变更时保存按钮直接置灰。
+ * 几何比对的是地图上要素的真实坐标，所以地图拖拽 Modify 也会被识别为变更。
+ */
+const canSave = computed(() => {
+  if (!props.layer || !props.selected?.feature) return false;
+  if (!baseline.value) return false;
+  return baseline.value !== currentSnapshot();
+});
 
 watch(
   () => props.selected,
@@ -47,28 +100,40 @@ watch(
       typeText.value = String(fp.type ?? "");
       idText.value = String(sel.id ?? "");
       const style = (fp.style ?? {}) as StyleJson;
-      if (style.stroke) {
-        const c = style.stroke.color || "#ff0000";
+      // style 可能是 GeoServer 里的字符串 / 脏数据，先归一成对象再取值
+      const safeStyle: StyleJson =
+        typeof style === "string" ? safeParseJson<StyleJson>(style) ?? {} : style ?? {};
+      if (safeStyle.stroke) {
+        const c = typeof safeStyle.stroke.color === "string" ? safeStyle.stroke.color : "#ff0000";
         colorText.value = c.startsWith("#") ? c : "#ff0000";
-        widthNum.value = style.stroke.width ?? 2;
-        if (style.stroke.color.startsWith("rgba")) {
-          const m = style.stroke.color.match(/rgba\(([^)]+)\)/);
-          if (m) {
-            const parts = m[1].split(",").map((s) => s.trim());
-            opacityNum.value = Number(parts[3] ?? "1");
-          }
-        }
-      }
-      if (style.fill?.color?.startsWith("rgba")) {
-        const m = style.fill.color.match(/rgba\(([^)]+)\)/);
+        widthNum.value = typeof safeStyle.stroke.width === "number" ? safeStyle.stroke.width : 2;
+        const m = c.match(/rgba\(([^)]+)\)/);
         if (m) {
           const parts = m[1].split(",").map((s) => s.trim());
           opacityNum.value = Number(parts[3] ?? "1");
         }
       }
-      geometryPreview.value = JSON.stringify(sel.geometryLngLat).slice(0, 220);
+      if (typeof safeStyle.fill?.color === "string") {
+        const m = safeStyle.fill.color.match(/rgba\(([^)]+)\)/);
+        if (m) {
+          const parts = m[1].split(",").map((s) => s.trim());
+          opacityNum.value = Number(parts[3] ?? "1");
+        }
+      }
+      geometryPreview.value = JSON.stringify(sel.geometryLngLat);
+      geomMode.value = "readonly";
+      geomDirty.value = false;
+      geomTouched.value = false;
+      geomOrigin.value = null;
+      // 基线要在表单值全部就位后再取，否则会把上一次的残留值算进基线
+      baseline.value = currentSnapshot();
     } else {
       editor.reset();
+      geomMode.value = "readonly";
+      geomDirty.value = false;
+      geomTouched.value = false;
+      geomOrigin.value = null;
+      baseline.value = "";
       nameText.value = "";
       markText.value = "";
       typeText.value = "";
@@ -82,6 +147,118 @@ watch(
   { immediate: true }
 );
 
+/* ------------------------------------------------------------------ *
+ * 几何联动：地图 <-> 表单
+ * ------------------------------------------------------------------ */
+
+/** 从 OL Geometry 反推几何类型名（决定用哪种 Geometry 构造） */
+const geomTypeOf = (feat: Feature): string => feat.getGeometry()?.getType() ?? "Polygon";
+
+/** 依据几何类型重建 Geometry（输入 3857 坐标） */
+const buildGeometry = (type: string, coords: unknown) => {
+  switch (type) {
+    case "Point":
+      return new Point(coords as number[]);
+    case "MultiPoint":
+      return new MultiPoint(coords as number[][]);
+    case "LineString":
+      return new LineString(coords as number[][]);
+    case "MultiLineString":
+      return new MultiLineString(coords as number[][][]);
+    case "MultiPolygon":
+      return new MultiPolygon(coords as number[][][][]);
+    default:
+      return new Polygon(coords as number[][][]);
+  }
+};
+
+/** 校验文本是否为合法 JSON 数字数组 */
+const parseCoordJson = (text: string): unknown | null => {
+  try {
+    const v = JSON.parse(text);
+    return v ?? null;
+  } catch {
+    return null;
+  }
+};
+
+/** 表单文本（4326 经纬度）→ 地图内部 3857 坐标，递归转换任意嵌套层级 */
+const lngLatNodeToMercator = (node: unknown): unknown => {
+  if (Array.isArray(node) && node.length >= 2 && typeof node[0] === "number" && typeof node[1] === "number") {
+    return toMercator([node[0], node[1]]);
+  }
+  if (Array.isArray(node)) return node.map(lngLatNodeToMercator);
+  return node;
+};
+
+/**
+ * 几何文本变更 → 回写地图要素。
+ *
+ * 只改内存态几何，不发 engine.updateFeature：
+ * updateFeature 会触发 feature:modified，要素列表面板会据此自动 WFS-T 落库，
+ * 表单里打字就变成直接写库了，绕过了围栏校验和「保存」按钮，属于越权写库。
+ * 真正落库只发生在点「保存（WFS-T）」时。
+ */
+const applyGeomFromText = (): boolean => {
+  const feat = props.selected?.feature as Feature | undefined;
+  if (!feat || geomMode.value === "readonly") return false;
+  const parsed = parseCoordJson(geometryPreview.value);
+  if (parsed === null) {
+    MdMessage.warning("几何文本不是合法 JSON");
+    return false;
+  }
+  const type = geomTypeOf(feat);
+  try {
+    const coords3857 =
+      geomMode.value === "lnglat"
+        ? (lngLatNodeToMercator(parsed) as CoordArray)
+        : (parsed as CoordArray);
+    // 首次改动前留一份原几何：围栏校验不过时要原样退回
+    if (!geomOrigin.value) {
+      const g = feat.getGeometry();
+      geomOrigin.value = g ? (g.clone() as AbstractGeometry) : null;
+    }
+    feat.setGeometry(buildGeometry(type, coords3857));
+    geomDirty.value = true;
+    geomTouched.value = true;
+    return true;
+  } catch (e) {
+    MdMessage.error(`几何解析失败：${(e as Error).message}`);
+    return false;
+  }
+};
+
+/** 放弃表单里未保存的几何改动，回到改动前的几何 */
+const revertGeomFromText = () => {
+  const feat = props.selected?.feature as Feature | undefined;
+  if (feat && geomOrigin.value) feat.setGeometry(geomOrigin.value);
+  geomOrigin.value = null;
+  geomDirty.value = false;
+  geomTouched.value = false;
+  syncGeomFromMap();
+  baseline.value = currentSnapshot();
+};
+
+/** 地图要素几何变化 → 刷新表单文本（拖拽 / 撤销 / 右键定位都会走这里） */
+const syncGeomFromMap = () => {
+  const sel = props.selected;
+  if (!sel?.feature) return;
+  const feat = sel.feature as Feature;
+  const g = feat.getGeometry();
+  if (!g) return;
+  if (geomTouched.value && geomDirty.value) {
+    // 用户手动编辑过几何：不覆盖文本，避免打架；但记录当前地图坐标供保存
+    editor.state.geometry3857 = (g as unknown as { getCoordinates(): CoordArray }).getCoordinates();
+    editor.state.geometryLngLat = geometryToLngLat(editor.state.geometry3857);
+    return;
+  }
+  const coords = (g as unknown as { getCoordinates(): CoordArray }).getCoordinates();
+  editor.state.geometry3857 = coords;
+  editor.state.geometryLngLat = geometryToLngLat(coords);
+  if (geomMode.value === "raw") geometryPreview.value = JSON.stringify(coords);
+  else geometryPreview.value = JSON.stringify(editor.state.geometryLngLat);
+};
+
 const applyStyle = (feat: Feature) => {
   const op = opacityNum.value;
   const c = colorText.value;
@@ -94,12 +271,36 @@ const applyStyle = (feat: Feature) => {
 };
 
 const onSave = async () => {
-  if (!props.layer || !isWritable(props.layer)) {
-    MdMessage.warning("当前图层为只读，无法保存");
+  if (!props.layer) {
+    MdMessage.warning("请先选择图层");
     return;
   }
   if (!props.selected?.feature) return;
   const feat = props.selected.feature as Feature;
+
+  // 表单里改过的几何先落到要素上，保证存进库与校验用的都是最新 geom
+  if (geomDirty.value && geomMode.value !== "readonly") {
+    applyGeomFromText();
+    geomDirty.value = false;
+  }
+
+  // 围栏约束：不论能否落库都要校验，避免把非法几何留在图上
+  if (isFenceLayer(props.layer)) {
+    const violations = props.engine?.validateFenceOf(feat) ?? [];
+    if (violations.length) {
+      const detail = violations.map((v) => v.message).join("；");
+      MdMessage.warning(`围栏交叠，已拦截：${detail}`);
+      // 校验不过：撤回本次表单改动，地图与文本都回到改动前
+      revertGeomFromText();
+      return;
+    }
+  }
+
+  if (!writable.value) {
+    MdMessage.warning("当前图层为只读，几何改动已在地图生效，但无法写入数据库。");
+    return;
+  }
+
   feat.set("name", nameText.value);
   feat.set("mark", markText.value);
   if (typeText.value) feat.set("type", typeText.value);
@@ -117,6 +318,12 @@ const onSave = async () => {
     }
     feat.set("_isDirty", false);
     editor.markDirty();
+    geomDirty.value = false;
+    geomTouched.value = false;
+    geomOrigin.value = null;
+    syncGeomFromMap();
+    // 保存成功 = 新基线，按钮随即置灰，避免重复提交同一份数据
+    baseline.value = currentSnapshot();
     // 同步退出工具态：engine 与 store 必须一起归位
     store.setActiveTool(null);
     props.engine?.setActiveTool(null);
@@ -124,6 +331,20 @@ const onSave = async () => {
     MdMessage.error(`保存失败：${(e as Error).message}`);
   }
 };
+
+/** 地图侧几何变化（拖拽 Modify / 撤销重做 / 右键贴边）实时刷新表单几何 */
+const onEngineModified = (payload: MarkDrawFeature) => {
+  if (!props.selected || payload.id !== props.selected.id) return;
+  syncGeomFromMap();
+};
+
+onMounted(() => {
+  props.engine?.on("feature:modified", onEngineModified as never);
+});
+
+onBeforeUnmount(() => {
+  props.engine?.off("feature:modified", onEngineModified as never);
+});
 
 const onDelete = async () => {
   if (!props.layer || !isWritable(props.layer)) {
@@ -205,12 +426,57 @@ const onDelete = async () => {
           :disabled="!writable"
         />
       </div>
-      <div class="md-editor__row md-editor__row--col">
-        <label class="md-editor__label">几何（lng/lat）</label>
-        <MdInput v-model="geometryPreview" type="textarea" :rows="3" readonly />
+      <div class="md-editor__geom">
+        <div class="md-editor__geom-head">
+          <span class="md-editor__label">几何</span>
+          <div class="md-editor__geom-modes">
+            <button
+              class="md-editor__mode"
+              :class="{ active: geomMode === 'readonly' }"
+              @click="geomMode = 'readonly'"
+            >
+              经纬度预览
+            </button>
+            <button
+              class="md-editor__mode"
+              :class="{ active: geomMode === 'lnglat' }"
+              @click="geomMode = 'lnglat'"
+            >
+              编辑经纬度
+            </button>
+            <button
+              class="md-editor__mode"
+              :class="{ active: geomMode === 'raw' }"
+              @click="geomMode = 'raw'"
+            >
+              编辑 3857
+            </button>
+          </div>
+        </div>
+        <MdInput
+          v-model="geometryPreview"
+          type="textarea"
+          :rows="4"
+          :readonly="geomMode === 'readonly'"
+          :placeholder="geomMode === 'raw' ? '3857 坐标数组 JSON' : '4326 经纬度数组 JSON'"
+          @blur="applyGeomFromText"
+        />
+        <div v-if="geomMode !== 'readonly'" class="md-editor__geom-tip">
+          修改后失焦即同步到地图（仅内存态，不落库）；点「保存（WFS-T）」才写入数据库 geom 字段。
+        </div>
+        <button
+          v-if="geomMode !== 'readonly' && geomDirty"
+          class="md-editor__geom-revert"
+          @click="revertGeomFromText"
+        >
+          放弃几何改动
+        </button>
+        <div v-else-if="isFenceLayer(layer)" class="md-editor__geom-tip md-editor__geom-tip--fence">
+          围栏约束：不可与同层其它围栏交叠，靠近时自动贴边；保存前会校验拦截。
+        </div>
       </div>
       <div class="md-editor__actions">
-        <button class="md-pbtn md-pbtn--primary" @click="onSave" :disabled="!writable">
+        <button class="md-pbtn md-pbtn--primary" @click="onSave" :disabled="!canSave">
           <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zM12 19a3 3 0 110-6 3 3 0 010 6zm3-10H5V5h10v4z"/></svg>
           保存（WFS-T）
         </button>
@@ -328,6 +594,74 @@ const onDelete = async () => {
 }
 .md-pbtn--danger:hover:not(:disabled) {
   box-shadow: 0 4px 14px rgba(245, 54, 92, 0.35);
+}
+.md-editor__geom {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.md-editor__geom-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.md-editor__geom-modes {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.md-editor__mode {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 5px;
+  border: 1px solid var(--md-border);
+  background: transparent;
+  color: var(--md-text-2);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+.md-editor__mode:hover:not(:disabled) {
+  border-color: var(--md-border-strong);
+  color: var(--md-accent-1);
+}
+.md-editor__mode.active {
+  background: linear-gradient(135deg, var(--md-accent-1), var(--md-accent-2));
+  color: #0a1525;
+  border-color: transparent;
+  font-weight: 600;
+}
+.md-editor__mode:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.md-editor__geom-tip {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--md-text-3);
+}
+.md-editor__geom-revert {
+  align-self: flex-start;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 5px;
+  border: 1px solid var(--md-border);
+  background: transparent;
+  color: var(--md-text-2);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+.md-editor__geom-revert:hover {
+  border-color: var(--md-danger);
+  color: var(--md-danger);
+}
+.md-editor__geom-tip--fence {
+  color: var(--md-warning);
+  padding: 4px 8px;
+  border-radius: 5px;
+  background: rgba(245, 166, 35, 0.1);
+  border: 1px solid rgba(245, 166, 35, 0.28);
 }
 .md-editor__empty {
   padding: 18px 0;

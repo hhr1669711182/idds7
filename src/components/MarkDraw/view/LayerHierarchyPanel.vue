@@ -34,6 +34,11 @@ const pickLayer = (layer: MarkDrawLayer) => {
   emit("layer-selected", layer);
 };
 
+/** 持久化的 activeGroupId 可能是失效值，渲染前回退到真实存在的分组 */
+const safeGroupId = computed(() =>
+  layersOf(activeGroup.value).length ? activeGroup.value : groups[0]?.groupId ?? ""
+);
+
 const emit = defineEmits<{
   (e: "layer-selected", layer: MarkDrawLayer): void;
 }>();
@@ -66,7 +71,7 @@ const emit = defineEmits<{
         <div class="md-hierarchy__col-title">图层</div>
         <ul class="md-list md-list--layers">
           <li
-            v-for="l in layersOf(activeGroup)"
+            v-for="l in layersOf(safeGroupId)"
             :key="l.id"
             :class="{ active: activeLayer === l.id }"
             @click="pickLayer(l)"

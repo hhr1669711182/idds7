@@ -1,4 +1,12 @@
-﻿/**
+/*
+ * @Author: hhr
+ * @Date: 2026-09-22 18:23:54
+ * @LastEditTime: 2026-10-12 14:45:52
+ * @LastEditors: hhr
+ * @Description: 文件描述
+ * @FilePath: \ids-gis-web\src\components\MarkDraw\view\layerConfig.ts
+ */
+/**
  * 三级关系数据源：
  * - group / layer 从 @/config/layers 派生
  * - 新增 mark:mark_features 作为内置可写层（标绘专题组置顶）
@@ -24,8 +32,15 @@ export const MARKDRAW_LAYER: MarkDrawLayer = {
   displayFields: ["id", "name", "mark"],
 };
 
+/**
+ * 显式放开可写的业务图层。
+ *
+ * 队站辖区（gis:view_juris_zone）：GeoServer 与数据库侧均已具备写权限，
+ * 编辑后的围栏几何通过 WFS-T 写入 zone_geom 字段，可正常落库。
+ * 围栏的贴边吸附、交叠校验、撤销重做同样在本地可用。
+ */
 export const LAYER_WRITABLE_OVERRIDES: Record<string, boolean> = {
-  // 例如：'gis:view_env_enterprises': true,
+  "gis:view_juris_zone": true,
 };
 
 const toMarkDrawLayer = (cfg: LayerSourceConfig): MarkDrawLayer => ({

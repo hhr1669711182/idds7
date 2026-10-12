@@ -439,8 +439,8 @@ onMounted(async () => {
 .cfg-toggle {
   .flex-center();
   position: fixed;
-  top: 20px;
-  left: 30px;
+  top: 15px;
+  right: 300px;
   justify-content: center;
   width: 30px;
   height: 30px;
@@ -455,7 +455,7 @@ onMounted(async () => {
   position: absolute;
   z-index: 11;
   top: 50px;
-  left: 20px;
+  right: 20px;
   width: 520px;
   max-width: 90vw;
   padding: 12px;

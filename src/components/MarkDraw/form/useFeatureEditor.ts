@@ -4,7 +4,7 @@
  */
 import { reactive, computed } from "vue";
 import { toLngLat, geometryToLngLat } from "../utils/proj";
-import type { MarkDrawLayer } from "../engine/types";
+import type { CoordArray, MarkDrawLayer } from "../engine/types";
 import type { StyleJson } from "../engine/types";
 import { isWritable } from "../view/layerConfig";
 import type Feature from "ol/Feature";
@@ -13,8 +13,8 @@ export type EditMode = "create" | "edit";
 
 export interface EditorState {
   featureId: string | number | null;
-  geometry3857: number[][] | number[][][];
-  geometryLngLat: number[][] | number[][][];
+  geometry3857: CoordArray;
+  geometryLngLat: CoordArray;
   properties: Record<string, unknown>;
   style: StyleJson | null;
   isDirty: boolean;
@@ -49,7 +49,7 @@ export const useFeatureEditor = () => {
     const geom = feature.getGeometry();
     if (geom) {
       const coords = (geom as unknown as { getCoordinates(): unknown }).getCoordinates();
-      state.geometry3857 = coords as number[][] | number[][][];
+      state.geometry3857 = coords as CoordArray;
       state.geometryLngLat = geometryToLngLat(state.geometry3857);
     }
     state.featureId = (feature.getId() as string | number) ?? null;

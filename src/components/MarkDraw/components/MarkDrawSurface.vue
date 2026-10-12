@@ -14,6 +14,7 @@ import FeatureEditorPanel from "../form/FeatureEditorPanel.vue";
 import MarkDrawImporter from "./MarkDrawImporter.vue";
 import MarkDrawResultBar from "./MarkDrawResultBar.vue";
 import { MdMessage, MdMessageBox } from "../ui/MdMessage";
+import { openContextMenu, type MdContextMenuHandle, type MdContextMenuItem } from "../ui/MdContextMenu";
 import { getLayer } from "../view/layerConfig";
 import { MdTag } from "../ui";
 import { geometryToLngLat } from "../utils/proj";
@@ -21,6 +22,8 @@ import type {
   MarkDrawFeature,
   MarkDrawLayer,
   MarkDrawToolType,
+  MarkDrawHistoryState,
+  MarkDrawContextMenuPayload,
   MeasurePayload,
 } from "../engine/types";
 import type OLMap from "ol/Map";
@@ -41,6 +44,15 @@ const drawerCollapsed = ref(false);
 const drawerSize = ref(380);
 const hasElements = ref(false);
 const sourceKeys: unknown[] = [];
+const historyState = ref<MarkDrawHistoryState>({
+  canUndo: false,
+  canRedo: false,
+  undoLabel: "",
+  redoLabel: "",
+  size: 0,
+});
+/** 右键菜单句柄：同一时刻只允许一个 */
+let ctxMenu: MdContextMenuHandle | null = null;
 
 const writableTag = computed(() =>
   currentLayer.value
@@ -51,6 +63,7 @@ const writableTag = computed(() =>
 );
 
 const onToolChange = (t: MarkDrawToolType | null) => {
+  closeCtxMenu();
   engine.value?.setActiveTool(t);
   if (t !== null) {
     // 切换到新工具时清掉上一条量算结果
@@ -144,9 +157,189 @@ onMounted(() => {
     }
     selected.value = buildSelected(f.id) ?? f;
   });
+  e.on("history:change", (s) => {
+    historyState.value = s;
+  });
+  e.on("contextmenu:open", (payload) => openFeatureMenu(payload));
 });
 
+/** 撤销 / 重做：引擎负责回滚几何，这里只补一句提示（引擎已发提示，避免双弹） */
+const onUndo = () => {
+  engine.value?.undo();
+};
+const onRedo = () => {
+  engine.value?.redo();
+};
+
+/* ------------------------------------------------------------------ *
+ * 右键操作菜单
+ * ------------------------------------------------------------------ */
+
+/** 通用 SVG path（viewBox 24x24），菜单项图标 */
+const ICON = {
+  zoom: "M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z",
+  select: "M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7l3-7z",
+  undo: "M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z",
+  redo: "M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z",
+  copy: "M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z",
+  coord: "M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z",
+  save: "M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 3-3 3 3 0 0 1-3 3zm3-10H5V5h10v4z",
+  delete: "M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z",
+  target: "M12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4zm0 6a2 2 0 1 1 2-2 2 2 0 0 1-2 2zm9-2a9 9 0 0 0-13.6-7.7L5.7 6v3H2V5.3l2.4-2.4A11 11 0 0 1 23 12zM3.4 12A9 9 0 0 0 17 19.7l1.7-1.7V15h3.6v3.7l-2.4 2.4A11 11 0 0 1 1 12z",
+} as const;
+
+/** 取要素几何类型对应的展示名 */
+const geomTypeLabel = (f: MarkDrawFeature | null): string => {
+  if (!f) return "";
+  const depth = (() => {
+    const g: unknown = f.geometry3857;
+    let d = 0;
+    let node: unknown = g;
+    while (Array.isArray(node)) {
+      d += 1;
+      if (typeof node[0] === "number") break;
+      node = node[0];
+    }
+    return d;
+  })();
+  return depth === 1 ? "点" : depth === 2 ? "线" : depth === 3 ? "面" : "复合面";
+};
+
+const copyText = async (text: string, okMsg: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    MdMessage.success(okMsg);
+  } catch {
+    MdMessage.warning("浏览器拒绝了剪贴板访问");
+  }
+};
+
+/** 右键菜单文案 */
+const ctxMenuItemLabel = (f: MarkDrawFeature | null): string => {
+  if (!f) return "要素";
+  const name = String(f.properties.name ?? f.properties.zone_name ?? "");
+  return name ? `要素「${name}」` : `要素 ${f.id}`;
+};
+
+const closeCtxMenu = () => {
+  ctxMenu?.close();
+  ctxMenu = null;
+};
+
+const openFeatureMenu = (payload: MarkDrawContextMenuPayload) => {
+  closeCtxMenu();
+  const e = engine.value;
+  if (!e) return;
+  const feat = e.getById(payload.featureId);
+  if (!feat) return;
+  const pub = buildSelected(payload.featureId);
+  selected.value = pub;
+  const kindLabel = geomTypeLabel(pub);
+  const hs = payload.history;
+
+  const items: MdContextMenuItem[] = [
+    {
+      key: "zoom",
+      label: "缩放至要素",
+      icon: ICON.zoom,
+    },
+    {
+      key: "select",
+      label: "设为当前编辑目标",
+      icon: ICON.select,
+    },
+    { key: "d1", label: "", divider: true },
+    {
+      key: "undo",
+      label: `撤销：${hs.undoLabel || "上一步"}`,
+      icon: ICON.undo,
+      disabled: !hs.canUndo,
+    },
+    {
+      key: "redo",
+      label: `重做：${hs.redoLabel || "下一步"}`,
+      icon: ICON.redo,
+      disabled: !hs.canRedo,
+    },
+    { key: "d2", label: "", divider: true },
+    {
+      key: "copyGeom",
+      label: `复制几何（${kindLabel}）`,
+      icon: ICON.copy,
+    },
+    {
+      key: "copyCoord",
+      label: "复制中心经纬度",
+      icon: ICON.coord,
+    },
+    { key: "d3", label: "", divider: true },
+    {
+      key: "remove",
+      label: "清除这个上图元素",
+      icon: ICON.delete,
+      danger: true,
+    },
+  ];
+
+  ctxMenu = openContextMenu({
+    x: payload.x,
+    y: payload.y,
+    items,
+    onSelect: async (key) => {
+      const f0 = engine.value?.getById(payload.featureId);
+      if (!f0) return;
+      if (key === "zoom") {
+        engine.value?.flyTo(f0);
+        return;
+      }
+      if (key === "select") {
+        engine.value?.selectById(payload.featureId);
+        return;
+      }
+      if (key === "undo") {
+        onUndo();
+        return;
+      }
+      if (key === "redo") {
+        onRedo();
+        return;
+      }
+      if (key === "copyGeom") {
+        const g = f0.getGeometry();
+        if (!g) return;
+        const coords = (g as unknown as { getCoordinates?: () => unknown }).getCoordinates?.();
+        await copyText(JSON.stringify(coords ?? null), "已复制几何坐标（EPSG:3857）");
+        return;
+      }
+      if (key === "copyCoord") {
+        const g = f0.getGeometry();
+        const c =
+          g && typeof (g as unknown as { getInteriorPoint?: () => { getCoordinates(): number[] } }).getInteriorPoint === "function"
+            ? (g as unknown as { getInteriorPoint(): { getCoordinates(): number[] } }).getInteriorPoint().getCoordinates()
+            : (g as unknown as { getFirstCoordinate?: () => number[] })?.getFirstCoordinate?.();
+        if (!c) return;
+        const [lon, lat] = geometryToLngLat(c as number[] as never) as number[];
+        await copyText(`${lon.toFixed(6)},${lat.toFixed(6)}`, "已复制中心经纬度");
+        return;
+      }
+      if (key === "remove") {
+        const ok = await MdMessageBox.confirm(
+          `确认清除${ctxMenuItemLabel(pub)}？该操作不删除数据库记录。`,
+          "清除上图元素",
+          { type: "danger" }
+        );
+        if (!ok) return;
+        const removedId = payload.featureId;
+        e.removeFeature(removedId);
+        selected.value = null;
+        MdMessage.success("已清除该上图元素");
+      }
+    },
+  });
+};
+
 onBeforeUnmount(() => {
+  closeCtxMenu();
   sourceKeys.splice(0).forEach((k) => unByKey(k as EventsKey));
   engine.value?.destroy();
 });
@@ -230,8 +423,14 @@ const startResize = (e: MouseEvent) => {
     <MarkDrawToolbar
       :active-tool="activeTool"
       :has-elements="hasElements"
+      :can-undo="historyState.canUndo"
+      :can-redo="historyState.canRedo"
+      :undo-label="historyState.undoLabel"
+      :redo-label="historyState.redoLabel"
       @tool-change="onToolChange"
       @clear="onClear"
+      @undo="onUndo"
+      @redo="onRedo"
     />
 
     <!-- 量算 / 查询结果条 -->

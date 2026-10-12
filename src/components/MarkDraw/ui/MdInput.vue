@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 /**
  * 自写输入框：支持 v-model + textarea + readonly + disabled
  */
@@ -12,6 +12,10 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
   (e: "update:modelValue", v: string): void;
+  /** 原生事件透传：调用方需要 blur / focus / keydown 等时用 */
+  (e: "blur", ev: FocusEvent): void;
+  (e: "focus", ev: FocusEvent): void;
+  (e: "keydown", ev: KeyboardEvent): void;
 }>();
 
 const onInput = (e: Event) => {
@@ -31,6 +35,9 @@ void props;
       :disabled="disabled"
       :rows="rows ?? 2"
       @input="onInput"
+      @blur="emit('blur', $event)"
+      @focus="emit('focus', $event)"
+      @keydown="emit('keydown', $event)"
     />
     <input
       v-else
@@ -41,6 +48,9 @@ void props;
       :disabled="disabled"
       type="text"
       @input="onInput"
+      @blur="emit('blur', $event)"
+      @focus="emit('focus', $event)"
+      @keydown="emit('keydown', $event)"
     />
   </div>
 </template>

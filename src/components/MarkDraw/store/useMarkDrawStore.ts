@@ -30,8 +30,6 @@ export const useMarkDrawStore = defineStore("markDraw", {
     },
     setActiveLayer(layerId: string) {
       this.activeLayerId = layerId;
-      const layer = layerId.split(":")[0];
-      this.activeGroupId = layer === "mark" ? "markdraw" : layer;
     },
     toggleDrawer() {
       this.drawerOpen = !this.drawerOpen;

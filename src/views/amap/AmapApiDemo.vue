@@ -70,7 +70,7 @@
         </div>
         <div class="form-row">
           <label>origins(分号分隔) <input v-model="form.multiWaypoint.originsRaw" style="min-width:260px" /></label>
-          <label>destination <input v-model="form.multiWaypoint.destinationRaw" style="min-width:260px" /></label>
+          <label>destinations(分号分隔) <input v-model="form.multiWaypoint.destinationsRaw" style="min-width:260px" /></label>
           <button class="primary" @click="call('multiWaypoint')">multiWaypoint</button>
         </div>
       </section>
@@ -113,7 +113,7 @@ interface FormState {
   geocode: { address: string; city: string }
   analyzeAddress: { address: string }
   driving: { origin: string; destination: string }
-  multiWaypoint: { originsRaw: string; destinationRaw: string }
+  multiWaypoint: { originsRaw: string; destinationsRaw: string }
   weather: { city: string }
 }
 
@@ -127,7 +127,7 @@ const form = reactive<FormState>({
   geocode: { address: "", city: "" },
   analyzeAddress: { address: "" },
   driving: { origin: "116.481028,39.989643", destination: "116.434446,39.90816" },
-  multiWaypoint: { originsRaw: "116.481028,39.989643;116.5,40.0", destinationRaw: "116.434446,39.90816" },
+  multiWaypoint: { originsRaw: "116.481028,39.989643;116.5,40.0", destinationsRaw: "116.434446,39.90816" },
   weather: { city: "110101" },
 })
 
@@ -180,10 +180,9 @@ const call = async (key: keyof typeof amapApi) => {
         res = await amapApi.drivingV2({ origin: form.driving.origin, destination: form.driving.destination })
         break
       case "multiWaypoint": {
-        // const origins = form.multiWaypoint.originsRaw.split(/;/).map((s) => s.trim()).filter(Boolean)
-        const origins = form.multiWaypoint.originsRaw.split(/;/).map((s) => s.trim()).filter(Boolean).flat()
-        const destination = form.multiWaypoint.destinationRaw.trim()
-        res = await amapApi.multiWaypoint({ origins, destination, strategy: 0 })
+        const origins = form.multiWaypoint.originsRaw.split(/;/).map((s) => s.trim()).filter(Boolean)
+        const destinations = form.multiWaypoint.destinationsRaw.split(/;/).map((s) => s.trim()).filter(Boolean)
+        res = await amapApi.multiWaypoint({ origins, destinations })
         break
       }
       case "weather":

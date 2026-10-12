@@ -182,3 +182,97 @@
 .md-modal-leave-to {
   opacity: 0;
 }
+/* ------------------------------------------------------------------ *
+ * 右键操作菜单（createApp 动态挂载，scoped 不生效，必须放全局）
+ * ------------------------------------------------------------------ */
+.md-ctxmenu-host {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3000;
+}
+.md-ctxmenu {
+  position: fixed;
+  min-width: 200px;
+  max-width: 260px;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--md-panel-solid, rgba(16, 26, 42, 0.96));
+  border: 1px solid var(--md-border-strong, rgba(120, 180, 230, 0.35));
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
+  backdrop-filter: var(--md-blur, blur(12px));
+  -webkit-backdrop-filter: var(--md-blur, blur(12px));
+  pointer-events: auto;
+  animation: md-ctxmenu-in 0.14s ease;
+}
+@keyframes md-ctxmenu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.md-ctxmenu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--md-text, #d6e1ee);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.md-ctxmenu__item:hover:not(:disabled) {
+  background: rgba(0, 212, 255, 0.14);
+  color: var(--md-accent-1, #00d4ff);
+}
+.md-ctxmenu__item--danger {
+  color: var(--md-danger, #f5365c);
+}
+.md-ctxmenu__item--danger:hover:not(:disabled) {
+  background: rgba(245, 54, 92, 0.16);
+  color: var(--md-danger, #f5365c);
+}
+.md-ctxmenu__item--disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.md-ctxmenu__icon {
+  display: inline-flex;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.md-ctxmenu__icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+.md-ctxmenu__label {
+  flex: 1;
+  white-space: nowrap;
+}
+.md-ctxmenu__hint {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--md-text-3, rgba(214, 225, 238, 0.5));
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.md-ctxmenu__divider {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--md-border, rgba(120, 180, 230, 0.16));
+}

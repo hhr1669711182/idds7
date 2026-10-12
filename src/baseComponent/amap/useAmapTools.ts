@@ -530,8 +530,7 @@ export const fetchVehicleArrivalTimes = async (
   if (!origins.length) return [];
   const routes = await multiWaypoint({
     origins: origins.map(toAmapLngLatString),
-    destination: toAmapLngLatString(destination),
-    strategy: 0,
+    destinations: [toAmapLngLatString(destination)],
   });
   const singleOrigin = origins.length === 1;
   if (!Array.isArray(routes) || routes.length !== (singleOrigin ? 2 : origins.length)) {
@@ -1096,8 +1095,7 @@ export class AmapRealtimeNav {
   }> {
     const routes = await multiWaypoint({
       origins: origins.map(toAmapLngLatString),
-      destination: toAmapLngLatString(destination),
-      strategy: 0,
+      destinations: [toAmapLngLatString(destination)],
     });
 
     if (!Array.isArray(routes) || routes.length === 0) {

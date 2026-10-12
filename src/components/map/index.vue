@@ -23,6 +23,7 @@ import bigPanel from "./component/bigPanel.vue";
 import config from "./config.vue";
 import layers from "./layers.vue";
 import ssrkPanel from "./component/ssrkPanel.vue";
+import routePlanPanel from "./component/routePlanPanel.vue";
 
 import OpenlayersMap from "../../baseComponent/OpenlayersMap/map.vue";
 import {
@@ -124,6 +125,7 @@ onUnmounted(() => {
 
     <WeatherPanel />
     <circleQueryPanel v-if="type == PANEL_TYPES.CIRCLE_QUERY" />
+    <routePlanPanel />
   </OpenlayersMap>
 
     <brp />

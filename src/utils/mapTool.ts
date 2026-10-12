@@ -429,6 +429,16 @@ export const tileLoadFunction: LoadFunction = (imageTile, src) => {
   img.src = src;
 };
 
+/**
+ * MapStore 的 map 初值是 {} 或 null，并非真实 OL Map 实例。
+ * 建层 / 取层 / 绑定交互前必须先校验，否则会出现
+ * `this.map.addLayer is not a function` 之类的运行期错误。
+ */
+export const isOlMap = (target: unknown): target is Map =>
+  !!target &&
+  typeof (target as Map).addLayer === "function" &&
+  typeof (target as Map).getView === "function";
+
 // 根据图层名获取图层
 export const getLayerByClassName = (map: Map, classname: any) => {
   return map

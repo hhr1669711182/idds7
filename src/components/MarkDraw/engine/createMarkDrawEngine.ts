@@ -8,11 +8,23 @@ import type { StyleLike } from "ol/style/Style";
 
 import { MarkDrawVectorLayer } from "./MarkDrawVectorLayer";
 import { MarkDrawSelectInteraction } from "./MarkDrawSelectInteraction";
+import { MarkDrawHighlight } from "./MarkDrawHighlight";
 import { MarkDrawEmitter } from "./emitter";
-import { geometryToLngLat } from "../utils/proj";
+import { FeatureHistory } from "./FeatureHistory";
+import { geometryToLngLat, lngLatToMercator } from "../utils/proj";
+import { applyDefaultStyle, isFenceLayer } from "../utils/layerStyle";
 import { exportFeatureCollection, importFeatureCollection } from "../utils/geojson";
 import { getLayer } from "../view/layerConfig";
 import { createTool } from "../tools";
+import {
+  SNAP_TOLERANCE_M,
+  coordsOfGeometry,
+  snapToNeighbourEdges,
+  validateFence,
+  type FenceViolation,
+} from "../utils/fenceConstraint";
+import { MdMessage } from "../ui/MdMessage";
+import { Polygon, MultiPolygon } from "ol/geom";
 import type {
   MarkDrawEngineOptions,
   MarkDrawEventMap,
@@ -20,6 +32,8 @@ import type {
   MarkDrawFeature,
   MarkDrawLayer,
   MarkDrawToolType,
+  CoordArray,
+  MarkDrawHistoryState,
   MeasurePayload,
 } from "./types";
 
@@ -74,7 +88,18 @@ export interface CreateMarkDrawEngineResult {
   setActiveToolInstance: (instance: unknown, destroy: () => void) => void;
   setActiveLayer: (layer: MarkDrawLayer | null) => void;
   getActiveLayer: () => MarkDrawLayer | null;
+  /** 选中高亮器：外部可读取当前高亮要素数做校验 */
+  highlight: MarkDrawHighlight;
   vectorLayer: import("ol/layer/Vector").default;
+  /** 撤销 / 重做：返回被影响的要素 id（无历史时返回 null） */
+  undo: () => string | number | null;
+  redo: () => string | number | null;
+  /** 历史栈快照：驱动工具栏 / 右键菜单的可用性 */
+  getHistoryState: () => MarkDrawHistoryState;
+  /** 围栏约束校验：保存前可再校验一次，违规返回冲突描述 */
+  validateFenceOf: (feature: Feature) => FenceViolation[];
+  /** 把围栏顶点吸附到同层相邻围栏边上（贴边，共用同一组经纬度） */
+  snapFenceOf: (feature: Feature) => boolean;
 }
 
 export const createMarkDrawEngine = (
@@ -83,6 +108,8 @@ export const createMarkDrawEngine = (
 ): CreateMarkDrawEngineResult => {
   const emitter = new MarkDrawEmitter();
   const vectorLayer = new MarkDrawVectorLayer(map);
+  const highlight = new MarkDrawHighlight(map);
+  const history = new FeatureHistory();
   const toolState: {
     name: MarkDrawToolType | null;
     instance: unknown | null;
@@ -121,6 +148,10 @@ export const createMarkDrawEngine = (
       feature.set("_layerId", layer.id);
       layerCache.set(layer.id, layer);
     }
+    if (layer) {
+      // 业务图层要素：按几何类型 + 图层语义上默认样式（围栏 / 图标 / 兜底）
+      applyDefaultStyle(feature, layer);
+    }
     if (!feature.getStyle()) {
       const t = toolState.name;
       feature.setStyle(options.defaultStyle?.[t as MarkDrawToolType] ?? DEFAULT_STYLE(t ?? "Point"));
@@ -135,7 +166,10 @@ export const createMarkDrawEngine = (
     const f = vectorLayer.source.getFeatureById(id);
     if (!f) return;
     vectorLayer.source.removeFeature(f);
+    history.prune(aliveIds());
+    highlight.highlight(null);
     emitter.emit("feature:removed", toPublicFeature(f));
+    emitHistory();
   };
 
   /** 批量删除：跳过 null id，避免列表/要素不同步时误删 */
@@ -146,9 +180,11 @@ export const createMarkDrawEngine = (
       const f = vectorLayer.source.getFeatureById(id);
       if (!f) return;
       vectorLayer.source.removeFeature(f);
+      highlight.highlight(null);
       emitter.emit("feature:removed", toPublicFeature(f));
       count += 1;
     });
+    if (count) history.prune(aliveIds());
     return count;
   };
 
@@ -157,7 +193,10 @@ export const createMarkDrawEngine = (
     // 量算 / 查询工具的图元没有业务 id，不能只按 id 删，直接清空 source
     const removed = vectorLayer.source.getFeatures().length;
     vectorLayer.source.clear();
+    history.clear();
+    highlight.highlight(null);
     emitter.emit("selection:change", null);
+    emitHistory();
     return removed;
   };
 
@@ -175,6 +214,16 @@ export const createMarkDrawEngine = (
   };
 
   const getAll = () => vectorLayer.source.getFeatures();
+
+  /** 当前仍存在于数据源里的要素 id 集合（历史裁剪用） */
+  const aliveIds = (): Set<string | number> => {
+    const out = new Set<string | number>();
+    vectorLayer.source.getFeatures().forEach((f) => {
+      const id = f.getId();
+      if (id !== undefined) out.add(id);
+    });
+    return out;
+  };
   const getById = (id: string | number): Feature | undefined =>
     vectorLayer.source.getFeatureById(id) ?? undefined;
 
@@ -225,10 +274,12 @@ export const createMarkDrawEngine = (
 
   const selectById = (id: string | number | null) => {
     if (id === null) {
+      highlight.highlight(null);
       emitter.emit("selection:change", null);
       return;
     }
     const f = vectorLayer.source.getFeatureById(id);
+    highlight.highlight(f ?? null);
     emitter.emit("selection:change", f ? toPublicFeature(f) : null);
   };
 
@@ -274,7 +325,7 @@ export const createMarkDrawEngine = (
       if (cached) return cached;
       return getLayer(id);
     });
-    features.forEach((f) => vectorLayer.source.addFeature(f));
+    features.forEach((f) => addFeature(f, layerCache.get((f.get("_layerId") as string) ?? "")));
     return features;
   };
 
@@ -283,26 +334,173 @@ export const createMarkDrawEngine = (
     return JSON.stringify(fc, null, 2);
   };
 
+  /* ------------------------------------------------------------------ *
+   * 撤销 / 重做
+   * ------------------------------------------------------------------ */
+
+  const historyState = (): MarkDrawHistoryState => ({
+    canUndo: history.canUndo,
+    canRedo: history.canRedo,
+    undoLabel: history.undoLabel,
+    redoLabel: history.redoLabel,
+    size: history.size,
+  });
+
+  const emitHistory = () => emitter.emit("history:change", historyState());
+
+  // 撤销 / 重做后：要素已在 apply 中换几何，这里补一次重绘 + 选中同步
+  const afterTravel = (id: string | number | null, verb: "撤销" | "重做") => {
+    if (id === null) return;
+    const f = vectorLayer.source.getFeatureById(id);
+    if (!f) return;
+    f.set("_isDirty", true);
+    vectorLayer.source.changed();
+    highlight.highlight(f);
+    emitter.emit("selection:change", toPublicFeature(f));
+    emitter.emit("feature:modified", toPublicFeature(f));
+    MdMessage.info(`${verb}成功`);
+  };
+
+  const undo = () => {
+    const id = history.undo((x) => vectorLayer.source.getFeatureById(x) ?? undefined);
+    afterTravel(id, "撤销");
+    emitHistory();
+    return id;
+  };
+
+  const redo = () => {
+    const id = history.redo((x) => vectorLayer.source.getFeatureById(x) ?? undefined);
+    afterTravel(id, "重做");
+    emitHistory();
+    return id;
+  };
+
+  /* ------------------------------------------------------------------ *
+   * 围栏约束
+   * ------------------------------------------------------------------ */
+
+  /** 取同层其它围栏的 4326 坐标（排除自身），供交叠校验与贴边吸附使用 */
+  const neighbourFences = (feature: Feature) => {
+    const layerId = feature.get("_layerId") as string | undefined;
+    const id = feature.getId();
+    const out: Array<{ id: string | number; coords: CoordArray }> = [];
+    if (!layerId) return out;
+    vectorLayer.source.getFeatures().forEach((f) => {
+      if (f.getId() === id) return;
+      if ((f.get("_layerId") as string) !== layerId) return;
+      const geom = f.getGeometry();
+      if (!geom) return;
+      if (!(geom instanceof Polygon) && !(geom instanceof MultiPolygon)) return;
+      // 统一转 4326：校验与展示、落库同一口径
+      const coords = coordsOfGeometry(geom);
+      if (coords) out.push({ id: (f.getId() as string | number) ?? "?", coords: geometryToLngLat(coords) });
+    });
+    return out;
+  };
+
+  const validateFenceOf = (feature: Feature): FenceViolation[] => {
+    const layerId = feature.get("_layerId") as string | undefined;
+    const layer = layerId ? getLayer(layerId) ?? null : null;
+    if (!isFenceLayer(layer)) return [];
+    const coords = coordsOfGeometry(feature.getGeometry());
+    if (!coords) return [];
+    // 与其它围栏同口径（4326）比对
+    return validateFence(geometryToLngLat(coords), neighbourFences(feature)).violations;
+  };
+
+  /**
+   * 贴边吸附：把当前围栏顶点吸到同层相邻围栏边上，使两者共用同一条边（同一组经纬度）。
+   * 返回是否发生了吸附。
+   */
+  const snapFenceOf = (feature: Feature): boolean => {
+    const layerId = feature.get("_layerId") as string | undefined;
+    const layer = layerId ? getLayer(layerId) ?? null : null;
+    if (!isFenceLayer(layer)) return false;
+    const geom = feature.getGeometry();
+    const coords = coordsOfGeometry(geom);
+    if (!coords) return false;
+    const neighbours = neighbourFences(feature);
+    if (!neighbours.length) return false;
+
+    // 在 4326 口径做吸附（与展示、落库一致），再转回 3857 交给地图
+    const target4326 = geometryToLngLat(coords);
+    const snapped4326 = snapToNeighbourEdges(
+      target4326,
+      neighbours.map((n) => n.coords),
+      SNAP_TOLERANCE_M
+    );
+    if (snapped4326 === target4326) return false;
+
+    const snapped3857 = lngLatToMercator(snapped4326);
+    if (geom instanceof Polygon) feature.setGeometry(new Polygon(snapped3857 as unknown as number[][][]));
+    else if (geom instanceof MultiPolygon) feature.setGeometry(new MultiPolygon(snapped3857 as unknown as number[][][][]));
+    else return false;
+    return true;
+  };
+  /** modifystart：几何改动前先记历史快照（围栏还会记住吸附基线） */
+  const onModifyStart = (id: string | number) => {
+    const f = vectorLayer.source.getFeatureById(id);
+    if (!f) return;
+    history.push(f, "拖拽编辑几何");
+  };
+
+  /**
+   * modifyend：围栏图层先贴边吸附，再校验是否与同层其它围栏交叠；
+   * 违规时回滚到快照并拦截，不让非法几何留在图上。
+   */
+  const onModified = (id: string | number) => {
+    const f = vectorLayer.source.getFeatureById(id);
+    if (!f) return;
+    const snapped = snapFenceOf(f);
+    const violations = validateFenceOf(f);
+    if (violations.length) {
+      history.restoreCurrent(f);
+      vectorLayer.source.changed();
+      const detail = violations.map((v) => v.message).join("；");
+      MdMessage.error(`围栏冲突已回滚：${detail}`);
+      return;
+    }
+    history.commit(f);
+    f.set("_isDirty", true);
+    emitter.emit("feature:modified", toPublicFeature(f));
+    if (snapped) MdMessage.info("已贴边吸附到相邻围栏");
+    emitHistory();
+  };
+
   let sel: MarkDrawSelectInteraction | null = null;
   if (options.selectEnabled !== false) {
     sel = new MarkDrawSelectInteraction(map, {
       onSelect: (id) => {
         if (id === null) {
+          highlight.highlight(null);
           emitter.emit("selection:change", null);
           return;
         }
         const f = vectorLayer.source.getFeatureById(id);
+        highlight.highlight(f ?? null);
         emitter.emit("selection:change", f ? toPublicFeature(f) : null);
       },
-      onModified: (id) => {
+      onModifyStart,
+      onModified,
+      onContextMenu: (id, x, y) => {
         const f = vectorLayer.source.getFeatureById(id);
         if (!f) return;
-        f.set("_isDirty", true);
-        emitter.emit("feature:modified", toPublicFeature(f));
+        const layerId = (f.get("_layerId") as string) ?? "";
+        const layer = layerId ? getLayer(layerId) ?? null : null;
+        emitter.emit("contextmenu:open", {
+          featureId: id,
+          x,
+          y,
+          layerId,
+          writable: layer?.writable === true,
+          history: historyState(),
+        });
       },
     });
     sel.onDelete = (id) => removeFeature(id);
   }
+
+
 
   const engine: CreateMarkDrawEngineResult = {
     addFeature,
@@ -324,10 +522,18 @@ export const createMarkDrawEngine = (
     setActiveToolInstance,
     setActiveLayer,
     getActiveLayer,
+    highlight,
     vectorLayer: vectorLayer.layer as never,
+    undo,
+    redo,
+    getHistoryState: historyState,
+    validateFenceOf,
+    snapFenceOf,
     destroy: () => {
       setActiveTool(null);
       sel?.destroy();
+      history.clear();
+      highlight.destroy();
       emitter.clear();
       vectorLayer.destroy();
       emitter.emit("destroy");

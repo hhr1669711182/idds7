@@ -13,6 +13,8 @@ export const LAYER_NAMES = {
   GRID_LAYER: "GRID_LAYER", //网格
   WATER_LAYER: "WATER_LAYER", //水印
   ES_WMS_LAYER: "ES_WMS_LAYER", //WMS ES搜索
+  SEARCH_FOCUS_LAYER: "SEARCH_FOCUS_LAYER", // 检索结果聚焦特效
+  SEARCH_ROUTE_LAYER: "SEARCH_ROUTE_LAYER", // 路径规划路径线
 };
 
 // 临时前端数据上图图层 ID。后续接入真实接口/WMS 后，优先从这里移除映射。

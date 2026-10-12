@@ -36,6 +36,8 @@ const loading = ref(false);
 const multipleSelection = ref<Record<string, unknown>[]>([]);
 const activeId = ref<string | number | null>(null);
 const truncated = ref(false);
+/** 当前已上图的业务图层 id：切图层时用它把上一个图层的要素整体下掉 */
+const renderedLayerId = ref<string>("");
 
 const writable = computed(() => Boolean(props.layer && isWritable(props.layer)));
 
@@ -94,13 +96,14 @@ const load = async () => {
     rows.value = features.map((f) => ({ id: f.id ?? "", ...(f.properties ?? {}) }));
 
     if (props.engine) {
-      const layerId = props.layer.id;
-      // 清掉同 layer 的旧要素
-      const toRemove: Array<string | number> = [];
-      props.engine.getAll().forEach((feat) => {
-        if (feat.get("_layerId") === layerId) toRemove.push(feat.getId() as string);
-      });
-      toRemove.forEach((id) => props.engine!.removeFeature(id));
+      // 图上同一时间只保留当前图层的要素：先下掉上一个图层（含刷新当前图层）
+      const stale = props.engine
+        .getAll()
+        .filter((feat) => (feat.get("_layerId") as string) === renderedLayerId.value)
+        .map((feat) => feat.getId() as string | number)
+        .filter((id) => typeof id === "string" || typeof id === "number");
+      if (stale.length) props.engine.removeFeatures(stale);
+      renderedLayerId.value = props.layer.id;
 
       // 整体读 GeoJSON（4326 → 3857 一并完成）
       const geometries = readGeoJsonAsMercator(res);
@@ -120,6 +123,8 @@ const load = async () => {
     emit("features-loaded", features.length);
   } catch (e) {
     console.error(e);
+    // 加载失败时清空，避免把上一个图层的旧数据误显示为当前图层
+    rows.value = [];
     MdMessage.error(`加载失败：${(e as Error).message}`);
   } finally {
     loading.value = false;

@@ -18,10 +18,17 @@ const props = defineProps<{
   activeTool: MarkDrawToolType | null;
   /** 是否存在可清除的绘制要素 */
   hasElements?: boolean;
+  /** 撤销 / 重做可用性 */
+  canUndo?: boolean;
+  canRedo?: boolean;
+  undoLabel?: string;
+  redoLabel?: string;
 }>();
 const emit = defineEmits<{
   (e: "tool-change", tool: MarkDrawToolType | null): void;
   (e: "clear"): void;
+  (e: "undo"): void;
+  (e: "redo"): void;
 }>();
 
 const tools: ToolItem[] = [
@@ -48,6 +55,8 @@ const tools: ToolItem[] = [
 
 const hoverIdx = ref<number | null>(null);
 const clearHover = ref(false);
+const undoHover = ref(false);
+const redoHover = ref(false);
 
 /** 上一项与当前项不同组时，在其前面画一条分隔线 */
 const needDivider = (idx: number) => idx > 0 && tools[idx].group !== tools[idx - 1].group;
@@ -76,6 +85,40 @@ const onClick = (tool: MarkDrawToolType) => {
         </button>
       </template>
     </div>
+
+    <span class="md-toolbar__divider md-toolbar__divider--tail" />
+
+    <!-- 撤销 / 重做：作用于最近一次几何编辑 -->
+    <button
+      class="md-tool md-tool--undo"
+      :disabled="!canUndo"
+      title="撤销上一步"
+      @click="emit('undo')"
+      @mouseenter="undoHover = true"
+      @mouseleave="undoHover = false"
+    >
+      <svg class="md-tool__icon" aria-hidden="true">
+        <use xlink:href="#icon-left-arrow" />
+      </svg>
+      <span v-if="undoHover" class="md-tool__tip md-tool__tip--tail">
+        撤销{{ undoLabel ? `：${undoLabel}` : "" }}
+      </span>
+    </button>
+    <button
+      class="md-tool md-tool--redo"
+      :disabled="!canRedo"
+      title="重做下一步"
+      @click="emit('redo')"
+      @mouseenter="redoHover = true"
+      @mouseleave="redoHover = false"
+    >
+      <svg class="md-tool__icon" aria-hidden="true">
+        <use xlink:href="#icon-right-arrow" />
+      </svg>
+      <span v-if="redoHover" class="md-tool__tip md-tool__tip--tail">
+        重做{{ redoLabel ? `：${redoLabel}` : "" }}
+      </span>
+    </button>
 
     <span class="md-toolbar__divider md-toolbar__divider--tail" />
 
@@ -172,6 +215,12 @@ const onClick = (tool: MarkDrawToolType) => {
 .md-tool:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+.md-tool--undo:hover:not(:disabled),
+.md-tool--redo:hover:not(:disabled) {
+  color: var(--md-accent-2);
+  border-color: var(--md-accent-2);
+  box-shadow: 0 4px 14px rgba(77, 171, 247, 0.25);
 }
 .md-tool--clear:hover:not(:disabled) {
   color: var(--md-danger);

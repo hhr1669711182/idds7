@@ -7,7 +7,6 @@
  * @FilePath: \ids-gis-web\src\apis\amap.ts
  */
 import { alovaMapProxyInstance } from '@/service/alovaMapProxy'
-import { AppError } from '@/service/error'
 
 export interface Response<T> {
   success: boolean
@@ -60,18 +59,14 @@ export interface PoiFeatureCollection {
 }
 
 // ----- 逆地理编码 -----
-export interface Regeocode {
-  formatted_address?: string
-  addressComponent?: Record<string, unknown>
-  pois?: PoiFeature[]
-  roads?: Array<Record<string, unknown>>
-  aois?: Array<Record<string, unknown>>
-}
-
+// 代理服务已归一为 GeoJSON FeatureCollection：周边 POI 在 extensions=all 时落入 features，
+// 无 POI 时服务端合成一条代表当前地址的记录。
 export interface RegeoData {
-  status?: string
-  regeocode?: Regeocode
-  /** 直通高德原始结构兜底 */
+  type: 'FeatureCollection'
+  totalFeatures: string
+  formatAddress?: string
+  crs: GeoJsonCrs
+  features: PoiFeature[]
   [key: string]: unknown
 }
 
@@ -88,8 +83,22 @@ export interface GeocodeData {
 }
 
 // ----- 地址语义分析 -----
+// 「全灾害地址同步指令」专用结构，坐标为高德原始 GCJ-02（下游固定消费方，刻意不转换）。
+export interface AnalyzeAddressItem {
+  sjylxdmz: string
+  sjyKey: string
+  sjyValue: string
+  dztbzdmc: string
+  dztbzdlx: string
+  dztbzdz: string
+}
+
 export interface AnalyzeAddressData {
-  status?: string
+  zlmc: string
+  zldm: string
+  zllx: string
+  zltsbt: string
+  sjyjh: AnalyzeAddressItem[]
   [key: string]: unknown
 }
 
@@ -184,8 +193,9 @@ export const aroundSearch = (params: {
   location: string
   keywords?: string
   types?: string
+  city?: string
   radius?: number
-  sortrule?: 'distance' | 'weight'
+  sortRule?: 'distance' | 'weight'
   offset?: number
   page?: number
 }) => alovaMapProxyInstance.Get<PoiFeatureCollection>(
@@ -233,10 +243,9 @@ export const inputTips = (params: {
 /** Geocode 1. 逆地理编码 */
 export const regeo = (params: {
   location: string
-  extensions?: 'base' | 'all'
-  poitype?: string
+  poiType?: string
   radius?: number
-  batch?: boolean
+  extensions?: 'base' | 'all'
 }) => alovaMapProxyInstance.Get<RegeoData>(
   '/api/amap/geo/regeo',
   { params },
@@ -252,7 +261,7 @@ export const regeo = (params: {
 // )
 
 /** Geocode 3. 地址语义分析（保留 GCJ-02） */
-export const analyzeAddress = (params: { address: string }) =>
+export const analyzeAddress = (params: { address: string; city?: string }) =>
   alovaMapProxyInstance.Get<AnalyzeAddressData>(
     '/api/amap/geo/analyze-address',
     { params },
@@ -277,17 +286,8 @@ export const driving = (params: {
 export const drivingV2 = (params: {
   origin: string
   destination: string
-  strategy?: number
-  waypoints?: string
-  avoidpolygons?: string
-  avoidroad?: string
-  ferry?: number
-  cartype?: number
-  truckSize?: string
-  truckHeight?: string
-  truckWidth?: string
-  truckLoad?: string
-  truckWeight?: string
+  walk?: boolean
+  load?: string
   height?: string
   width?: string
 }) => alovaMapProxyInstance.Get<RouteResult>(
@@ -298,17 +298,12 @@ export const drivingV2 = (params: {
 /** Route 3. 多起点、单终点路径规划 */
 export const multiWaypoint = (params: {
   origins: string[]
-  destination: string
-  strategy?: number
+  destinations: string[]
 }) => {
   const query = new URLSearchParams()
-  // 单起点重复传参，兼容服务端坐标列表解析。
-  const origins = params.origins.length === 1
-    ? [params.origins[0], params.origins[0]]
-    : params.origins
-  origins.forEach(origin => query.append('origins', origin))
-  query.set('destination', params.destination)
-  query.set('strategy', String(params.strategy ?? 0))
+  // 坐标本身含逗号，必须重复传参而不是逗号分隔，否则会被服务端错误拆分。
+  params.origins.forEach(origin => query.append('origins', origin))
+  params.destinations.forEach(destination => query.append('destinations', destination))
   return alovaMapProxyInstance.Get<RouteResult[]>(
     '/api/amap/route/multi-waypoint?' + query.toString(),
     { cacheFor: 0 },
