@@ -1,4 +1,4 @@
-import { driving, multiWaypoint, type RouteResult } from "@/apis/amap";
+import { driving, multiWaypoint, type RouteResultResponse } from "@/apis/amap";
 import { markRaw } from "vue";
 import Map from "ol/Map";
 import View from "ol/View";
@@ -20,7 +20,6 @@ import { createRouteMetricsWorker } from "@/hooks/useRouteMetricsWorker";
 import { formatCountdownSeconds } from "./routeMetrics";
 import type { RouteMetrics } from "./routeMetrics";
 import {
-  amapGcj02ToWgs84,
   parseAmapLocation,
   parseMultiPolyline,
   parsePolyline,
@@ -29,7 +28,6 @@ import {
 } from "./amapCoordinate.ts";
 
 export {
-  amapGcj02ToWgs84,
   parseAmapLocation,
   parseMultiPolyline,
   parsePolyline,
@@ -491,27 +489,30 @@ const normalizeStatus = (status: unknown): AmapTmcStatus => {
   return "unknown";
 };
 
-/** 代理返回 GCJ-02 路径点，地图内部统一使用 WGS84。 */
-export const toDrivingResult = (route: RouteResult): AmapDrivingResult => {
-  const fullPath = route.features.flatMap(feature =>
-    feature.geometry.coordinates.map(point => amapGcj02ToWgs84(point)),
+/** driving 回包 geometry.coordinates 为 WGS84（与入参同坐标系），仅 tmcs.polyline 为 GCJ-02 需反向转换。 */
+export const toDrivingResult = (route: RouteResultResponse): AmapDrivingResult => {
+  // 代理信封解包后回包可能是数组（多方案），统一取首个
+  const first = Array.isArray(route) ? route[0] : route;
+  if (!first) throw new Error("未获取到可用路线");
+  const fullPath = first.features.flatMap(feature =>
+    feature.geometry.coordinates.map(point => [point[0], point[1]] as [number, number]),
   );
   if (fullPath.length < 2) throw new Error("未获取到可用路线");
-  const tmcs: AmapTmcSegment[] = route.features.flatMap(feature => {
+  const tmcs: AmapTmcSegment[] = first.features.flatMap(feature => {
     const segments: AmapTmcSegment[] = (feature.properties?.tmcs ?? []).flatMap(tmc => {
       const polyline = parsePolyline(tmc.polyline ?? "");
       return polyline.length >= 2 ? [{ status: normalizeStatus(tmc.status), polyline }] : [];
     });
     if (segments.length) return segments;
     // 某一步没有可用 TMC 时，保留该步路线并以未知路况绘制。
-    const polyline = feature.geometry.coordinates.map(point => amapGcj02ToWgs84(point));
+    const polyline = feature.geometry.coordinates.map(point => [point[0], point[1]] as [number, number]);
     return polyline.length >= 2 ? [{ status: "unknown", polyline }] : [];
   });
   return {
     fullPath,
     tmcs,
-    distanceMeters: Number(route.totalDistance) || 0,
-    durationSeconds: Number(route.totalTime) || 0,
+    distanceMeters: Number(first.totalDistance) || 0,
+    durationSeconds: Number(first.totalTime) || 0,
   };
 };
 

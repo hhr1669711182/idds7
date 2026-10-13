@@ -8,15 +8,62 @@ import { Point, LineString } from "ol/geom";
 import { Style, Circle as StyleCircle, Stroke, Fill, Icon } from "ol/style";
 import { fromLonLat } from "ol/proj";
 import type Map from "ol/Map";
-import type { EventsKey } from "ol/events";
-import { unByKey } from "ol/Observable";
 
 import { geoserverApi } from "@/service/geoserver";
 import { LAYER_NAMES } from "@/baseComponent/OpenlayersMap/layers";
 import { getSVGForSrcById } from "@/utils";
-import { isOlMap } from "@/utils/mapTool";
-import type { ResourceFilterSet } from "@/types/search";
 
+import { isOlMap } from "@/utils/mapTool";
+import { cssVar, themeAccent, withAlpha } from "@/utils/themeColor";
+import type { ResourceFilterSet } from "@/types/search";
+import startImg from "@/components/map/assets/start.svg";
+import endImg from "@/components/map/assets/end.svg";
+
+/** Direction arrow along the route, pointing from start to end */
+const DIRECTION_ARROW_SVG = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#ffffff" stroke="#1f2933" stroke-width="1.5" d="M12 2 L20 20 L12 15.5 L4 20 Z"/></svg>`,
+)}`;
+/** A congestion segment along the route, used for per-segment coloring */
+export interface RouteCongestionSegment {
+  /** WGS84 coordinates for this segment */
+  coords: [number, number][]
+  /** AMap traffic status: unknown / smooth / slow / congested / severe */
+  status: string | number
+}
+
+/**
+/** Path line color, aligned with the existing path planning tool (routePlan.vue) */
+const ROUTE_LINE_COLOR = "#25C2F2";
+
+
+/**
+ * 高德路况等级 → 颜色。高德 tmcs.status 是数字编码：
+ * 0=未知 1=畅通 2=缓行 3=拥堵 4=严重拥堵（部分版本用 5=极度拥堵）
+ * 同时兼容返回中文/英文文案的情况。
+ */
+const congestionColor = (status: string | number): string => {
+  const raw = String(status ?? "").trim();
+  const key = raw.toUpperCase();
+  // 优先按数字编码匹配
+  switch (raw) {
+    case "1":
+      return "#3BA55D";
+    case "2":
+      return "#F2C744";
+    case "3":
+      return "#F08A24";
+    case "4":
+    case "5":
+      return "#E64545";
+    default:
+      break;
+  }
+  if (key.includes("严重") || key.includes("极度") || key.includes("SEVERE")) return "#E64545";
+  if (key.includes("拥堵") || key.includes("CONGEST")) return "#F08A24";
+  if (key.includes("缓行") || key.includes("SLOW")) return "#F2C744";
+  if (key.includes("畅通") || key.includes("SMOOTH")) return "#3BA55D";
+  return themeAccent(ROUTE_LINE_COLOR);
+};
 export interface SearchResultToolOptions {
   map: Map;
   /** 聚焦时的目标 zoom（缺省按当前 zoom + 2） */
@@ -39,7 +86,9 @@ export class SearchResultTool {
   private wmsLayer!: ImageLayer<ImageWMS>;
   private focusLayer!: VectorLayer<VectorSource>;
   private routeLayer!: VectorLayer<VectorSource>;
-  private focusPulseKey: EventsKey | null = null;
+  private endpointLayer!: VectorLayer<VectorSource>;
+  private focusPulseTimer: ReturnType<typeof setInterval> | null = null;
+  private focusPulseFeature: Feature | null = null;
 
   constructor(options: SearchResultToolOptions) {
     // MapStore 的 map 初值是空对象 / null，必须校验后再建层
@@ -65,11 +114,8 @@ export class SearchResultTool {
         source: markRaw(new VectorSource()),
         className: LAYER_NAMES.SEARCH_FOCUS_LAYER,
         zIndex: 120,
-        updateWhileAnimating: true,
-        updateWhileInteracting: true,
       }),
     );
-
     this.routeLayer = markRaw(
       new VectorLayer({
         source: markRaw(new VectorSource()),
@@ -78,7 +124,17 @@ export class SearchResultTool {
       }),
     );
 
+    // The start/end markers have their own layer; showRoute() only clears the path layer
+    this.endpointLayer = markRaw(
+      new VectorLayer({
+        source: markRaw(new VectorSource()),
+        className: LAYER_NAMES.SEARCH_ROUTE_ENDPOINT_LAYER,
+        zIndex: 130,
+      }),
+    );
+
     this.map.addLayer(this.routeLayer);
+    this.map.addLayer(this.endpointLayer);
     this.map.addLayer(this.focusLayer);
   }
 
@@ -146,7 +202,7 @@ export class SearchResultTool {
       feature.setStyle(
         new Style({
           image: new Icon({
-            src: getSVGForSrcById({ symbolId: "icon-poi-1", color: "#27d2ff" }),
+            src: getSVGForSrcById({ symbolId: "icon-poi-1", color: themeAccent() }),
             anchor: [0.5, 1],
             scale: 1,
           }),
@@ -165,11 +221,25 @@ export class SearchResultTool {
     this.stopPulse();
     if (!lngLat) return;
 
-    const feature = new Feature({ geometry: new Point(fromLonLat(lngLat)) });
-    feature.setStyle(this.createFocusStyle(10, 0.85));
-    source?.addFeature(feature);
+    // 地址标点固定显示，聚焦圈单独作为脉冲图层元素，避免脉冲重绘覆盖标点图标
+    const marker = new Feature({ geometry: new Point(fromLonLat(lngLat)) });
+    marker.setStyle(
+      new Style({
+        image: new Icon({
+          src: getSVGForSrcById({ symbolId: "icon-poi-1", color: themeAccent() }),
+          anchor: [0.5, 1],
+          scale: 1,
+        }),
+        zIndex: 3,
+      }),
+    );
+    source?.addFeature(marker);
 
-    this.startPulse(feature);
+    const focusFeature = new Feature({ geometry: new Point(fromLonLat(lngLat)) });
+    focusFeature.setStyle(this.createFocusStyle(10, 0.45));
+    source?.addFeature(focusFeature);
+
+    this.startPulse(focusFeature);
     this.fitTo([lngLat]);
   }
 
@@ -178,77 +248,167 @@ export class SearchResultTool {
       zIndex: 2,
       image: new StyleCircle({
         radius,
-        stroke: new Stroke({ color: "#ffffff", width: 3 }),
-        fill: new Fill({ color: `rgba(39, 210, 255, ${opacity})` }),
+        stroke: new Stroke({ color: cssVar("--text-primary", "#ffffff"), width: 3 }),
+        fill: new Fill({ color: withAlpha(themeAccent(), opacity) }),
       }),
     });
   }
 
-  /** 脉冲特效：仅放大缩小光晕，不动要素位置 */
+  /**
+   * 聚焦特效：脉冲动画只播放 1 秒，随后固定为一个淡半透明聚焦圈。
+   *
+   * 旧实现监听 postrender 并在每帧 setStyle，会触发该图层再次渲染，
+   * 形成「渲染→样式变更→重渲染」反馈循环，导致地图上的所有覆盖物跟着闪烁。
+   * 现改为定时器驱动：动画结束后不再回调 setStyle，只保留固定样式的聚焦圈。
+   */
   private startPulse(feature: Feature) {
     this.stopPulse();
-    let expanding = true;
-    let radius = 8;
-    let opacity = 0.9;
+    this.focusPulseFeature = feature;
 
-    this.focusPulseKey = this.focusLayer.on("postrender", () => {
-      radius += expanding ? 2.2 : -2.2;
-      opacity += expanding ? -0.045 : 0.045;
-      if (radius >= 30) expanding = false;
-      if (radius <= 8) expanding = true;
-      if (opacity <= 0.15) opacity = 0.15;
-      if (opacity >= 0.9) opacity = 0.9;
-      feature.setStyle(this.createFocusStyle(radius, opacity));
-    });
+    const startedAt = performance.now();
+    const duration = 1000;
+
+    this.focusPulseTimer = setInterval(() => {
+      const elapsed = performance.now() - startedAt;
+      if (elapsed >= duration || !this.focusLayer) {
+        // 动画结束：先落定固定样式，再停表；stopPulse 会清空 focusPulseFeature
+        if (this.focusPulseFeature && this.focusLayer) {
+          feature.setStyle(this.createFocusStyle(12, 0.28));
+          this.focusLayer.changed();
+        }
+        this.stopPulse();
+        return;
+      }
+
+      // 1 秒内做 2 个完整脉冲：半径 8→28 往复，透明度同步起伏
+      const progress = elapsed / duration;
+      const phase = (progress * 2) % 1;
+      const wave = Math.sin(phase * Math.PI);
+      feature.setStyle(this.createFocusStyle(8 + wave * 20, 0.45 + wave * 0.35));
+      this.focusLayer.changed();
+    }, 1000 / 30);
   }
 
   private stopPulse() {
-    if (this.focusPulseKey) {
-      unByKey(this.focusPulseKey);
-      this.focusPulseKey = null;
+    if (this.focusPulseTimer) {
+      clearInterval(this.focusPulseTimer);
+      this.focusPulseTimer = null;
     }
+    this.focusPulseFeature = null;
   }
 
-  /** 路径线：坐标已由调用方从 GCJ-02 转为 WGS84 */
-  showRoute(coords: [number, number][]) {
+  /**
+   * 路径线。segments 用于按拥堵等级分段着色；缺省时整条线用主题强调色。
+   */
+  showRoute(coords: [number, number][], segments?: RouteCongestionSegment[]) {
     const source = this.routeLayer.getSource();
     source?.clear();
-    if (coords.length < 2) return;
+    if (!coords || coords.length < 2) return;
 
-    const feature = new Feature({
-      geometry: new LineString(coords.map((lngLat) => fromLonLat(lngLat))),
+    if (!segments || segments.length < 1) {
+      const feature = new Feature({
+        geometry: new LineString(coords.map((lngLat) => fromLonLat(lngLat))),
+      });
+      feature.setStyle(this.routeLineStyle());
+      source?.addFeature(feature);
+      this.drawRouteArrows(coords);
+      return;
+    }
+
+    // 按拥堵等级分段：每段独立 Feature + 独立颜色，段边界轻微重叠避免缝隙
+    segments.forEach((segment) => {
+      if (!segment.coords || segment.coords.length < 2) return;
+      const feature = new Feature({
+        geometry: new LineString(segment.coords.map((lngLat) => fromLonLat(lngLat))),
+      });
+      feature.setStyle(
+        new Style({
+          stroke: new Stroke({ color: congestionColor(segment.status), width: 5 }),
+          zIndex: 1,
+        }),
+      );
+      source?.addFeature(feature);
     });
-    feature.setStyle(
-      new Style({
-        stroke: new Stroke({ color: "#27d2ff", width: 5, lineDash: [1, 0] }),
-        zIndex: 1,
-      }),
-    );
-    source?.addFeature(feature);
-    this.fitTo(coords);
+    this.drawRouteArrows(coords);
   }
 
-  /** 路径起终点标记 */
-  showRouteEndpoints(start: [number, number] | null, end: [number, number] | null) {
+  /**
+   * 需求 3：在路径线上按固定像素间隔绘制方向箭头，指示起点→终点行进方向
+   */
+  private drawRouteArrows(coords: [number, number][]) {
     const source = this.routeLayer.getSource();
+    if (!source || coords.length < 2) return;
+    const line = new LineString(coords.map((lngLat) => fromLonLat(lngLat)));
+    const length = line.getLength();
+    if (!Number.isFinite(length) || length <= 0) return;
+    const arrowCount = Math.min(60, Math.max(3, Math.round(length / 2000)));
+    const pixelCount = arrowCount;
+    for (let i = 1; i < pixelCount; i++) {
+      const fraction = i / pixelCount;
+      const point = line.getCoordinateAt(fraction);
+      const before = line.getCoordinateAt(Math.max(0, fraction - 0.004));
+      const after = line.getCoordinateAt(Math.min(1, fraction + 0.004));
+      const rotation = (Math.atan2(after[1] - before[1], after[0] - before[0]) * 180) / Math.PI;
+      const feature = new Feature({ geometry: new Point(point) });
+      feature.setStyle(
+        new Style({
+          image: new Icon({
+            src: DIRECTION_ARROW_SVG,
+            anchor: [0.5, 0.5],
+            rotateWithView: true,
+            rotation,
+            width: 14,
+            height: 14,
+            opacity: 0.95,
+          }),
+          zIndex: 2,
+        }),
+      );
+      source.addFeature(feature);
+    }
+  }
+  /** Path line style: consistent with the existing route planning tool (routePlan.vue) */
+  private routeLineStyle() {
+    return new Style({
+      stroke: new Stroke({ color: themeAccent(ROUTE_LINE_COLOR), width: 5 }),
+      zIndex: 1,
+    });
+  }
+
+  /**
+   * Start/end markers use the existing path-planning assets (start.svg / end.svg), with the same visual language.
+   * Independent layer from the path line; drawing a route does not clear the markers.
+   */
+  showRouteEndpoints(start: [number, number] | null, end: [number, number] | null) {
+    const source = this.endpointLayer.getSource();
     if (!source) return;
-    const mark = (lngLat: [number, number] | null, color: string, symbolId: string) => {
+    source.clear();
+    const mark = (lngLat: [number, number] | null, img: string) => {
       if (!lngLat) return;
       const feature = new Feature({ geometry: new Point(fromLonLat(lngLat)) });
       feature.setStyle(
         new Style({
           image: new Icon({
-            src: getSVGForSrcById({ symbolId, color }),
-            anchor: [0.5, 0.5],
-            scale: 1,
+            src: img,
+            anchor: [0.5, 1],
+            scale: 0.75,
           }),
           zIndex: 3,
         }),
       );
-      source?.addFeature(feature);
+      source.addFeature(feature);
     };
-    mark(start, "#0DC46E", "icon-start-point");
-    mark(end, "#ff4d4f", "icon-end-point");
+    mark(start, startImg);
+    mark(end, endImg);
+  }
+
+  /** Clear only the endpoint markers; the route line and focus effects are unaffected */
+  clearRouteEndpoints() {
+    this.endpointLayer?.getSource()?.clear();
+  }
+  /** Fit all points into the viewport without animation offset (used when selecting the end point) */
+  fitPoints(lngLats: [number, number][]) {
+    this.fitTo(lngLats);
   }
 
   private fitTo(lngLats: [number, number][]) {
@@ -271,12 +431,13 @@ export class SearchResultTool {
   }
 
   clearFocus() {
-    this.focusLayer.getSource()?.clear();
+    this.focusLayer?.getSource()?.clear();
     this.stopPulse();
   }
 
   clearRoute() {
-    this.routeLayer.getSource()?.clear();
+    this.routeLayer?.getSource()?.clear();
+    this.endpointLayer?.getSource()?.clear();
   }
 
   clear() {
@@ -297,8 +458,10 @@ export class SearchResultTool {
     detach(this.wmsLayer);
     detach(this.focusLayer);
     detach(this.routeLayer);
+    detach(this.endpointLayer);
     this.wmsLayer = null as unknown as ImageLayer<ImageWMS>;
     this.focusLayer = null as unknown as VectorLayer<VectorSource>;
     this.routeLayer = null as unknown as VectorLayer<VectorSource>;
+    this.endpointLayer = null as unknown as VectorLayer<VectorSource>;
   }
 }

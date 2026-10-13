@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch, computed } from "vue";
+import { ElMessage } from "element-plus";
 import { storeToRefs } from "pinia";
 import { EventBus } from "@/utils/mitt";
 import { usePanelStore, useSearchPanelStore } from "@/store";
@@ -12,8 +13,11 @@ import type { CircleQueryTool } from "../MapTools/drawMapTools/CircleQueryTool";
 import { SearchResultTool } from "../MapTools/drawMapTools/SearchResultTool";
 import { transform } from "ol/proj";
 import { isOlMap } from "@/utils/mapTool";
+import { amapApi, type PoiFeature, type RegeoData } from "@/apis/amap";
+import { parseCoordinateText } from "@/service/coordinateText";
 import { useCurrentMap } from "@/composables/useCurrentMap";
 import type { SearchViewOption } from "@/types/search";
+import RoutePlanPanel from "./routePlanPanel.vue";
 
 type AnyTool = CircleQueryTool | any;
 
@@ -29,6 +33,7 @@ const {
   searchError,
   selectedItem,
   searchPanelCollapsed,
+  searchPanelClosed,
   viewOptions,
 } = storeToRefs(searchStore);
 
@@ -71,7 +76,6 @@ const onToggleType = (key: string, checked: boolean) => {
   emitPatch({ resourceTypes: next });
 };
 
-
 const onToolUpdate = (payload: unknown) => {
   const next = payload as CircleQuerySourceData;
   data.value = next;
@@ -92,6 +96,17 @@ const onToolClose = () => {
   panelStore.clearCircleQueryTool();
 };
 
+/** 需求 10：清空地图上的圈，回到可重新绘制状态（不关闭面板） */
+const onClearCircle = () => {
+  if (currentTool && typeof currentTool.clearCircle === "function") {
+    currentTool.clearCircle();
+  }
+  resultTool?.clearResources();
+  searchStore.clearResults();
+};
+
+const viewSelectVisible = ref(false);
+const routeIconClicking = ref(false);
 const bind = (tool: AnyTool | null) => {
   currentTool = tool;
   if (currentTool && typeof currentTool.getSourceData === "function") {
@@ -107,6 +122,14 @@ const bind = (tool: AnyTool | null) => {
     data.value = null;
   }
   visible.value = !!currentTool;
+  // 圈选查询工具每次激活都执行面板联动：收起路径规划面板 + 展开资源检索面板
+  if (visible.value) {
+    if (searchStore.routePlanOpen && !searchStore.routePanelCollapsed) {
+      searchStore.toggleRoutePanelCollapse();
+    }
+    searchStore.expandSearchPanel();
+    viewSelectVisible.value = false;
+  }
 };
 
 const stopWatchTool = watch(
@@ -115,8 +138,6 @@ const stopWatchTool = watch(
   { immediate: true }
 );
 // ===== 检索相关 =====
-const viewSelectVisible = ref(false);
-const routeIconClicking = ref(false);
 
 /** MapStore 的 map 初值是空对象，必须确认拿到真实 OL Map 后再建层 */
 const ensureResultTool = () => {
@@ -165,7 +186,6 @@ const debouncedSyncCircle = (snapshot: CircleQuerySourceData) => {
   }, 350);
 };
 
-
 /** 当前地图视口（WGS84），用于叠加BBOX约束；与圈选工具同源，走 ol/proj */
 const getViewportExtent = (): [number, number, number, number] | undefined => {
   const map = MapInstance.value;
@@ -177,10 +197,65 @@ const getViewportExtent = (): [number, number, number, number] | undefined => {
   return [minX, minY, maxX, maxY];
 };
 
+/**
+ * 经纬度文本逆地址解析：只标点上图 + 定位，不触发检索结果、不触发路径规划、不开新面板。
+ * 接口入参与出参在本项目内统一 WGS84，无需坐标转换。
+ */
+const onQueryCoordinate = async (lngLat: [number, number]) => {
+  const tool = ensureResultTool();
+  if (!tool) return;
+  // 收起视图下拉，避免与坐标解析语义冲突
+  viewSelectVisible.value = false;
+  try {
+    const location = `${lngLat[0].toFixed(6)},${lngLat[1].toFixed(6)}`;
+    const response = (await amapApi.regeo({
+      location,
+      extensions: 'all',
+    })) as RegeoData | undefined;
+    const features = Array.isArray(response?.features) ? response.features : [];
+    // POI 点位：regeo 返回即 WGS84，直接上图
+    const poiPoints: [number, number][] = [];
+    features.forEach((feature: PoiFeature) => {
+      const coords = feature?.geometry?.coordinates;
+      if (!Array.isArray(coords)) return;
+      const lng = Number(coords[0]);
+      const lat = Number(coords[1]);
+      if (Number.isFinite(lng) && Number.isFinite(lat)) poiPoints.push([lng, lat]);
+    });
+    const name = features?.[0]?.properties?.name || response?.formatAddress;
+    // 解析出名称时回填输入框，让用户看到反查到的地址
+    if (name) queryText.value = String(name);
+    tool.clearResources();
+    if (poiPoints.length) {
+      tool.showAddressPoints(poiPoints);
+      tool.focusPoint(lngLat);
+    } else {
+      // 没有 POI 时至少把输入坐标标出来并定位
+      tool.clearFocus();
+      tool.focusPoint(lngLat);
+    }
+  } catch (error) {
+    console.warn("[circleQueryPanel] regeo failed:", error);
+    ElMessage.error("逆地址解析失败，请稍后重试");
+  }
+};
+
 const onQuery = async () => {
   const tool = ensureResultTool();
   if (!tool) return;
+  // 需求 1：点查询按钮后收起视图下拉
+  viewSelectVisible.value = false;
+  // 经纬度文本：只走逆地址解析，标点上图 + 定位；不触发检索、不触发路径规划、不展开新面板
+  const lngLat = parseCoordinateText(queryText.value);
+  if (lngLat) {
+    await onQueryCoordinate(lngLat);
+    return;
+  }
   searchStore.expandSearchPanel();
+  // 需求 4：资源检索展开时折叠路径规划面板
+  if (searchStore.routePlanOpen && !searchStore.routePanelCollapsed) {
+    searchStore.toggleRoutePanelCollapse();
+  }
   await searchStore.runKeywordSearch(queryText.value, getViewportExtent());
   const filter = searchStore.activeFilter;
   if (filter.typeNames.length) tool.showResources(filter);
@@ -198,9 +273,12 @@ const onQuery = async () => {
 const onSelectView = async (option: SearchViewOption) => {
   viewSelectVisible.value = false;
   queryText.value = option.name;
+  // D6：选中视图配置项即视为发起检索，展开 cq-panel 并切到资源 tab
+  searchStore.expandSearchPanel();
+  // 视图检索：以视图中文名回填输入框，并按名称同时做文本模糊，地址/资源双源都有数据
   const tool = ensureResultTool();
   if (!tool) return;
-  await searchStore.runViewSearch(option.id);
+  await searchStore.runViewSearch(option.id, option.name);
   const filter = searchStore.activeFilter;
   if (filter.typeNames.length) tool.showResources(filter);
   else tool.clearResources();
@@ -212,13 +290,20 @@ const onTabChange = (name: string | number) => {
   searchStore.switchTab(name);
   const tool = resultTool;
   if (!tool) return;
+  // 需求 2：切换 tab 时同步刷新地图上图，两源互斥显示
   if (name === "address") {
     const items = searchStore.addressResults.items;
     if (items.length) {
       tool.showAddressPoints(items.map((i) => i.lngLat).filter((c): c is [number, number] => !!c));
+      tool.clearResources();
     } else {
       tool.clearFocus();
     }
+  } else {
+    tool.clearFocus();
+    const filter = searchStore.activeFilter;
+    if (filter.typeNames.length) tool.showResources(filter);
+    else tool.clearResources();
   }
 };
 
@@ -232,16 +317,30 @@ const onTogglePanel = () => {
   searchStore.toggleSearchPanel();
 };
 
+const onClosePanel = () => {
+  searchStore.closeSearchPanel();
+};
+
 const onToggleRoute = () => {
   // 抑制 click 冒泡导致的 input-panel 误展开
   routeIconClicking.value = true;
   setTimeout(() => (routeIconClicking.value = false), 0);
+  // 需求 1：点路径规划图标后收起视图下拉
+  viewSelectVisible.value = false;
+  // 需求 3 / 7：打开路径规划时折叠 cq-panel，两者上下顺序排列
+  const willOpen = !searchStore.routePlanOpen;
   searchStore.toggleRoutePanel();
+  if (willOpen && !searchStore.searchPanelCollapsed) {
+    searchStore.toggleSearchPanel();
+  }
 };
 
 const onFocusInput = () => {
   if (routeIconClicking.value) return;
-  searchStore.expandSearchPanel();
+  // 未发起检索前 cq-panel 保持隐藏，聚焦输入框只折叠路径规划面板 + 展开视图下拉
+  if (searchStore.routePlanOpen && !searchStore.routePanelCollapsed) {
+    searchStore.toggleRoutePanelCollapse();
+  }
   viewSelectVisible.value = true;
 };
 
@@ -269,9 +368,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="search-panel-wrapper">
+  <div class="search-panel-wrapper themed-panel">
     <!-- input-panel：检索框（路径规划图标前缀 + 查询按钮后缀） -->
-    <div class="input-panel" :class="{ collapsed: searchPanelCollapsed }">
+    <div class="input-panel">
       <div class="input-panel-inner" @click="onFocusInput">
         <span
           class="input-icon-route"
@@ -292,15 +391,11 @@ onBeforeUnmount(() => {
         <el-button
           class="input-search-btn"
           :loading="loading"
+          :disabled="!queryText.trim()"
           @click.stop="onQuery"
         >
           查询
         </el-button>
-        <span class="input-fold" :title="searchPanelCollapsed ? '展开' : '折叠'" @click.stop="onTogglePanel">
-          <svg width="1em" height="1em" fill="currentColor" aria-hidden="true">
-            <use xlink:href="#icon-close"></use>
-          </svg>
-        </span>
       </div>
 
       <!-- 视图下拉（取 LAYER_SOURCE_CONFIGS：name 展示、id 查询） -->
@@ -317,15 +412,29 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- cq-panel：检索结果 + 圈选配置 -->
-    <div v-if="!searchPanelCollapsed" class="cq-panel">
+    <div v-if="!searchPanelClosed" class="cq-panel">
       <div class="cq-header">
         <span class="cq-title">检索结果</span>
-        <span class="cq-close" role="img" tabindex="-1" @click="onTogglePanel">
-          <svg width="1em" height="1em" fill="currentColor" aria-hidden="true">
-            <use xlink:href="#icon-close"></use>
-          </svg>
+        <span class="cq-hdr-actions">
+          <span
+            class="cq-fold"
+            role="img"
+            tabindex="-1"
+            :title="searchPanelCollapsed ? '展开' : '折叠'"
+            @click="onTogglePanel"
+          >
+            <svg width="1em" height="1em" fill="currentColor" aria-hidden="true">
+              <use :xlink:href="searchPanelCollapsed ? '#icon-unfold' : '#icon-closes'"></use>
+            </svg>
+          </span>
+          <span class="cq-close" role="img" tabindex="-1" title="关闭" @click="onClosePanel">
+            <svg width="1em" height="1em" fill="currentColor" aria-hidden="true">
+              <use xlink:href="#icon-close"></use>
+            </svg>
+          </span>
         </span>
       </div>
+      <template v-if="!searchPanelCollapsed">
 
       <!-- 双数据源 tab -->
       <el-tabs v-model="activeTab" class="cq-tabs" @tab-change="onTabChange">
@@ -408,8 +517,19 @@ onBeforeUnmount(() => {
             <span class="cq-result-unit">个</span>
           </div>
         </div>
+
+        <div class="cq-divider" />
+
+        <!-- 需求 10：清空圈，回到可重新绘制 -->
+        <div class="cq-section">
+          <el-button class="cq-clear-btn" @click="onClearCircle">清空圈选</el-button>
+        </div>
+      </template>
       </template>
     </div>
+
+    <!-- 路径规划面板：与检索面板在同一个 flex 容器内上下顺序排列 -->
+    <RoutePlanPanel />
   </div>
 </template>
 
@@ -456,6 +576,14 @@ onBeforeUnmount(() => {
 
 .input-el {
   flex: 1;
+}
+
+/* Requirement 6: the query button matches the path-planning analyze button */
+.input-search-btn {
+  height: 30px;
+  padding: 0 16px;
+  border-radius: 6px;
+  font-size: 13px;
 }
 
 .input-fold {
@@ -524,6 +652,23 @@ onBeforeUnmount(() => {
 }
 
 .cq-title { letter-spacing: 1px; }
+
+.cq-hdr-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cq-fold,
+.cq-close {
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--header-text);
+  display: inline-flex;
+}
+
+.cq-fold:hover,
+.cq-close:hover { opacity: 0.75; }
 .cq-close { cursor: pointer; font-size: 16px; color: var(--header-text); }
 
 .cq-tabs {
@@ -540,13 +685,13 @@ onBeforeUnmount(() => {
 }
 
 .cq-truncated {
-  background: rgba(250, 173, 20, 0.12);
-  color: #faad14;
+  background: var(--accent-gold-soft);
+  color: var(--accent-gold);
 }
 
 .cq-error {
-  background: rgba(255, 77, 79, 0.12);
-  color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.16);
+  color: #ff6b6e;
 }
 
 .cq-list {
@@ -575,7 +720,7 @@ onBeforeUnmount(() => {
   }
 
   &.active {
-    background: rgba(39, 210, 255, 0.12);
+    background: var(--accent-cyan-soft);
     outline: 1px solid var(--accent-cyan);
   }
 
@@ -601,7 +746,7 @@ onBeforeUnmount(() => {
 
 .cq-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--primary-li-bottom-color);
   margin: 0 12px;
   flex: 0 0 auto;
 }
@@ -620,6 +765,8 @@ onBeforeUnmount(() => {
   align-items: center;
 }
 
+.cq-clear-btn { width: 100%; }
+
 .cq-section-title {
   color: var(--text-primary);
   font-size: 13px;
@@ -629,8 +776,8 @@ onBeforeUnmount(() => {
 .cq-radius-value {
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
-  background: rgba(39, 210, 255, 0.25);
+  color: var(--text-primary);
+  background: var(--accent-cyan-soft);
   padding: 2px 10px;
   border-radius: 4px;
 }
@@ -678,7 +825,7 @@ onBeforeUnmount(() => {
   align-items: baseline;
   gap: 8px;
   padding: 10px 14px;
-  background: rgba(39, 210, 255, 0.08);
+  background: var(--accent-cyan-soft);
   border-radius: 6px;
 }
 
@@ -701,8 +848,8 @@ onBeforeUnmount(() => {
 
 html[data-theme="NIGHT"] {
   .cq-type :deep(.el-checkbox__inner) {
-    border-color: rgba(39, 210, 255, 0.45);
-    background: rgba(0, 0, 0, 0.25);
+    border-color: var(--accent-cyan);
+    background: var(--widget-bg);
   }
   .cq-type :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
     border-color: var(--accent-cyan);
@@ -711,7 +858,7 @@ html[data-theme="NIGHT"] {
 }
 
 :deep(.el-slider__runway) {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--primary-li-bottom-color);
   height: 4px;
 }
 

@@ -31,6 +31,12 @@
     "prebuild": "node scripts/fix-js-clipper-utf8.mjs",
     "postinstall": "patch-package",
     "lint": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "lint:baseline": "node scripts/check-lint-baseline.mjs",
+    "lint:baseline:update": "node scripts/check-lint-baseline.mjs --update",
     "prepare": "husky"
   },
   "dependencies": {
@@ -72,10 +78,14 @@
     "@types/three": "^0.160.0",
     "@unocss/processor-lightningcss": "^66.10.5",
     "@vitejs/devtools": "^0.7.2",
+    "@vitejs/devtools-vitest": "^0.7.6",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
+    "@vitest/coverage-v8": "^5.0.4",
+    "@vitest/ui": "^5.0.4",
     "cross-env": "^10.1.0",
     "husky": "^9.0.0",
+    "jsdom": "^30.1.2",
     "patch-package": "^8.0.1",
     "postinstall-postinstall": "^2.1.0",
     "typescript": "^6.0.2",
@@ -86,6 +96,7 @@
     "vite-plugin-cesium": "^1.2.23",
     "vite-plugin-static-copy": "^3.1.4",
     "vite-plugin-svg-icons": "^2.0.1",
+    "vitest": "^5.0.4",
     "vue-tsc": "^3.2.6"
   }
 }

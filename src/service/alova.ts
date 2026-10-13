@@ -1,4 +1,4 @@
-﻿import { createAlova } from 'alova'
+import { createAlova } from 'alova'
 import VueHook from 'alova/vue'
 import adapterFetch from 'alova/fetch'
 import { createAlovaMockAdapter } from '@alova/mock'
@@ -7,6 +7,10 @@ import { ElMessage } from 'element-plus'
 import { appEnv } from '@/config/env'
 import { AppError, DEFAULT_MESSAGES, ERROR_CODES, toAppError, type AppErrorMeta } from './error'
 import { useUserStore } from '@/store/useUserStore'
+import { createLogger } from '@/utils/logger'
+
+const log = createLogger('alova')
+
 
 const baseURL = appEnv.apiBaseUrl
 
@@ -68,6 +72,12 @@ export const alovaInstance = createAlova({
   requestAdapter,
   cacheLogger: false,
   async beforeRequest(method) {
+    const startedAt = performance.now()
+    log.debug('请求发起', {
+      url: method.url,
+      type: method.type,
+    })
+    ;(method.config as any).__startedAt = startedAt
     const token = useUserStore().accessToken
     if (token) {
       method.config.headers['Authorization'] = `Bearer ${token}`
@@ -119,6 +129,17 @@ export const alovaInstance = createAlova({
         handleUnauthorized()
         appErr = new AppError(ERROR_CODES.UNAUTHORIZED, 401)
       }
+      const elapsed = (method.config as any).__startedAt
+        ? Math.round(performance.now() - (method.config as any).__startedAt)
+        : undefined
+      log.error('请求失败', {
+        url: method.url,
+        type: method.type,
+        status,
+        elapsed,
+        code: appErr.code,
+        message: appErr.message,
+      })
       showError(method, appErr)
       throw appErr
     }

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 拦截器注册表 + 链式执行
  *
  * - register / unregister / setEnabled
@@ -14,6 +14,9 @@ import type {
   SubscribeRule,
 } from './types'
 import { matchSubscription } from './matcher'
+import { createLogger } from '@/utils/logger'
+
+const log = createLogger('interceptor')
 
 const sortByPriority = (list: MessageInterceptor[]) =>
   [...list].sort((a, b) => a.priority - b.priority)
@@ -39,7 +42,7 @@ class InterceptorRegistry {
 
   register(interceptor: MessageInterceptor): () => void {
     if (this.items.some(i => i.id === interceptor.id)) {
-      console.warn(`[interceptor] duplicate id: ${interceptor.id}`)
+      log.warn('重复注册拦截器', { id: interceptor.id })
     }
     this.items.push(interceptor)
     this.sortedCache = null
@@ -75,7 +78,10 @@ class InterceptorRegistry {
    */
   run(raw: unknown, channel: string, system: string): NormalizedMessage[] {
     const list = this.list().filter(i => i.enabled !== false)
-    if (!list.length) return []
+    if (!list.length) {
+      log.debug('无已启用拦截器，消息被丢弃', { channel, system })
+      return []
+    }
 
     const collected: NormalizedMessage[] = []
     const ctx: InterceptorContext = { raw, channel, system }
@@ -87,7 +93,7 @@ class InterceptorRegistry {
       try {
         out = it.transform(ctx)
       } catch (error) {
-        console.error(`[interceptor] ${it.id} 执行异常`, error)
+        log.error('拦截器执行异常', { id: it.id, channel, system, error })
         continue
       }
       if (!out || !out.matched) continue
@@ -96,6 +102,17 @@ class InterceptorRegistry {
       if (results.length) collected.push(...results)
 
       if (out.stop) break
+    }
+
+    if (!collected.length) {
+      log.warn('消息未命中任何拦截器，已静默丢弃', { channel, system })
+    } else {
+      log.debug('消息分发完成', {
+        channel,
+        system,
+        count: collected.length,
+        eventKeys: collected.map(r => r.eventKey),
+      })
     }
 
     return collected

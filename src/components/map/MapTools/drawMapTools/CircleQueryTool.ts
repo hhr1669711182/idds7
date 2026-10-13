@@ -1,4 +1,4 @@
-﻿import { markRaw } from "vue";
+import { markRaw } from "vue";
 import { Draw, Modify } from "ol/interaction";
 import ImageLayer from "ol/layer/Image";
 import ImageWMS from "ol/source/ImageWMS";
@@ -68,6 +68,9 @@ export class CircleQueryTool extends BaseTool {
   private _resourceTypes: string[] = ALL_RESOURCE_TYPES.map(t => t.key);
   private _centerLonLat: [number, number] = [0, 0];
   private _stats = { total: 0, perType: {} as Record<string, number> };
+
+  /** 记录圈要素参数，供工具重启后恢复（需求 10：关闭后二次点击可继续编辑） */
+  private static persistedCircle: { center: number[]; radius: number } | null = null;
 
   drawStyle = new Style({
     stroke: new Stroke({
@@ -166,6 +169,11 @@ export class CircleQueryTool extends BaseTool {
 
     this.map.on("pointermove", this.setHelpTooltip as any);
 
+    // 需求 10：地图上只允许一个圈。已有圈时直接进入编辑态（二次拉半径），不再新建。
+    if (this.restorePersistedCircle()) {
+      return;
+    }
+
     this.draw.on("drawstart", (evt: any) => {
       this.drawIng = true;
       this.sketch = evt.feature;
@@ -175,7 +183,7 @@ export class CircleQueryTool extends BaseTool {
       this.drawIng = false;
       this.sketch = null;
 
-      const feature = evt.feature;
+      const feature = evt.feature as Feature<Circle>;
       feature.setId(this.uuid);
       feature.setStyle(this.drawStyle);
 
@@ -217,6 +225,58 @@ export class CircleQueryTool extends BaseTool {
     });
   }
 
+  /**
+   * 需求 10：恢复上次圈选的圆并直接挂 Modify，二次点击工具即可继续拉半径。
+   * 没有历史圈时才返回 false，让调用方进入新建流程。
+   */
+  private restorePersistedCircle(): boolean {
+    const persisted = CircleQueryTool.persistedCircle;
+    const source = this.vectorLayer?.getSource?.();
+    if (!persisted || !source) return false;
+
+    // 清掉可能残留的历史圈，保证地图上只有一个
+    source.getFeatures().forEach((item: Feature) => {
+      if (item.getGeometry() instanceof Circle) source.removeFeature(item);
+    });
+
+    const feature = new Feature({
+      id: this.uuid,
+      geometry: new Circle(persisted.center, persisted.radius),
+    });
+    feature.setStyle(this.drawStyle);
+    source.addFeature(feature);
+
+    // 直接进入可编辑态
+    this.map.removeInteraction(this.draw);
+    this.modify = markRaw(new Modify({
+      features: markRaw(new Collection([feature])),
+    }));
+    this.map.addInteraction(this.modify);
+
+    const modifyEndKey = this.modify.on("modifyend", (e: any) => {
+      const features = e.features.getArray();
+      if (features.length > 0) {
+        this.updateRadiusAndWMS(features[0].getGeometry() as Circle, true);
+      }
+    });
+    this.listeners.push(modifyEndKey);
+
+    const moveEndKey = this.map.on("moveend", () => {
+      if (this.moveendLeading) return;
+      this.moveendLeading = true;
+      this.moveendThrottle = setTimeout(() => {
+        this.moveendLeading = false;
+        this.moveendThrottle = null;
+        if (this.wmsLayer) this.updateRadiusAndWMS(feature.getGeometry() as Circle, true);
+      }, 300);
+    });
+    this.listeners.push(moveEndKey);
+
+    // 恢复半径提示与查询结果
+    this.updateRadiusAndWMS(feature.getGeometry() as Circle, true);
+    return true;
+  }
+
   updateRadiusAndWMS(geom: Circle, triggerWms: boolean) {
     const center = geom.getCenter();
     const radius = geom.getRadius();
@@ -241,6 +301,8 @@ export class CircleQueryTool extends BaseTool {
     // 保存状态
     this._centerLonLat = centerLonLat as [number, number];
     this._radiusMeters = distanceInMeters;
+    // 需求 10：记录当前圈的工具重启后可继续二次编辑
+    CircleQueryTool.persistedCircle = { center: [...center], radius };
 
     if (triggerWms) {
       this.updateWMSLayer(centerLonLat, distanceInMeters);
@@ -344,8 +406,30 @@ export class CircleQueryTool extends BaseTool {
 
     // 统计数据更新完成后再发送事件
     this.emitUpdate();
-  }
 
+  }
+  /**
+   * 需求 10：主动清空地图上的圈（面板「清空」入口），并重置可恢复状态，
+   * 下次点击圈选工具会重新进入绘制流程。
+   */
+  clearCircle() {
+    const source = this.vectorLayer?.getSource?.();
+    if (source) {
+      source.getFeatures().forEach((item: Feature) => {
+        if (item.getGeometry() instanceof Circle) source.removeFeature(item);
+      });
+    }
+    if (this.modify) {
+      this.map.removeInteraction(this.modify);
+      this.modify = undefined as unknown as Modify;
+    }
+    CircleQueryTool.persistedCircle = null;
+    this._centerLonLat = [0, 0];
+    this._stats = { total: 0, perType: {} };
+    this._radiusMeters = 500;
+    this.wmsLayer?.getSource()?.updateParams({ CQL_FILTER: "1=0" });
+    this.emitUpdate();
+  }
   destroy() {
     // 取消防抖
     this.debouncedUpdateWMS.cancel();

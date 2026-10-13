@@ -38,7 +38,12 @@ export class MarkDrawSelectInteraction {
   constructor(map: OLMap, callbacks: SelectCallbacks) {
     this.map = map;
     this.select = new Select();
-    this.modify = new Modify({ features: this.select.getFeatures() });
+    // pixelTolerance 给到 10px：OL 的 Modify 默认容差很窄，围栏顶点密集，
+    // 顶点抓不住会让「地图编辑后表单不同步」看起来像没生效。
+    this.modify = new Modify({
+      features: this.select.getFeatures(),
+      pixelTolerance: 10,
+    });
     map.addInteraction(this.select);
     map.addInteraction(this.modify);
 

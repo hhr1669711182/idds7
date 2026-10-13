@@ -10,7 +10,7 @@ lerna-debug.log*
 node_modules
 # server
 dist
-scripts
+# scripts
 dist-ssr
 dist-lib
 *.local 
@@ -31,15 +31,17 @@ dist-lib
 *.sln
 *.sw?
 *.trae*
-/src/**/*.md
+# /src/**/*.md
 *.anima*
 *.agnes*
 *.hermes*
 mds/hhr*
 skills*
 .env.local
+.env.local.example
 
 # jenkins
 .dockerignore
 Dockerfile
 nginx.conf
+*.err 

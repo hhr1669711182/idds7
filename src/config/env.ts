@@ -1,4 +1,10 @@
-﻿/*
+import amapRawConfig from "@/baseComponent/amap/data.json";
+
+type AmapConfigItem = { data?: { city?: string; adcode?: string; keywords?: string; boundaries?: unknown[] } }
+const amapConfigData = amapRawConfig as AmapConfigItem[]
+
+
+/*
  * @Author: hhr
  * @Date: 2026-05-06 17:11:52
  * @LastEditTime: 2026-08-27 16:15:05
@@ -21,6 +27,8 @@ export const appEnv = {
   appMode: readEnvString('VITE_APP_ENV'),
   apiBaseUrl: stripTrailingSlashes(readEnvString('VITE_API_BASE_URL')),
   useMock: readEnvString('VITE_USE_MOCK') === 'true',
+  // 日志级别：dev 默认 debug，production 默认 warn；可经 VITE_LOG_LEVEL 覆写
+  logLevel: readEnvString('VITE_LOG_LEVEL') as 'debug' | 'info' | 'warn' | 'error' | '',
   // 同源多标签页互通开关与通道名，由 register/initMessage.ts 统一绑定到 useMessageStore
   useBroadcastChannel: readEnvString('VITE_USE_BROADCAST_CHANNEL') === 'true',
   broadcastChannelName: readEnvString('VITE_BROADCAST_CHANNEL_NAME'),
@@ -34,6 +42,9 @@ export const appEnv = {
   panel25DUrl: readEnvString('VITE_PANEL_25D_URL'),
   panel3DUrl: readEnvString('VITE_PANEL_3D_URL'),
   amapApiBaseUrl: isDev ? '/a' : stripTrailingSlashes(readEnvString('VITE_AMAP_PROXY_API')),
+  // 高德城市限制：keyword-search 用城市名，input-tips 用 adcode
+  amapCity: amapConfigData[0]?.data?.city ?? "深圳市",
+  amapAdcode: amapConfigData[0]?.data?.adcode ?? "440300",
 }
 
 export const joinUrl = (baseUrl: string, path: string) => {

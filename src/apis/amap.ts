@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-08-27 10:09:42
- * @LastEditTime: 2026-08-28 17:15:57
+ * @LastEditTime: 2026-10-13 15:12:05
  * @LastEditors: hhr
  * @Description: ids-address-query-client (高德代理) 接口客户端 - COLA 信封解包
  * @FilePath: \ids-gis-web\src\apis\amap.ts
@@ -110,7 +110,7 @@ export interface RouteProperties {
   tmcs?: Array<{
     distance: string
     status: string
-    /** 高德 GCJ-02 坐标串 */
+    /** 高德 GCJ-02 坐标串（实测与 geometry.coordinates 的 WGS84 相差约 638m，上图前需反向转换） */
     polyline: string
     lcode?: unknown[]
   }>
@@ -119,6 +119,7 @@ export interface RouteProperties {
 export interface RouteFeature {
   type: 'Feature'
   id: string
+  /** WGS84，与入参同坐标系，可直接上图 */
   geometry: { type: 'LineString'; coordinates: LngLat[] }
   properties: RouteProperties
 }
@@ -132,6 +133,9 @@ export interface RouteResult {
   crs: GeoJsonCrs
   features: RouteFeature[]
 }
+
+/** 代理信封解包后 driving 回包为数组（多方案），取首个即可 */
+export type RouteResultResponse = RouteResult | RouteResult[]
 
 // ----- 天气 -----
 export interface AmapWeatherLive {
@@ -232,6 +236,7 @@ export const detail = (params: { id: string }) =>
 /** POI 6. 输入提示 */
 export const inputTips = (params: {
   keywords: string
+  cityLimit?: boolean
   type?: string
   city?: string
   location?: string
@@ -272,12 +277,13 @@ export const driving = (params: {
   origin: string
   destination: string
   strategy?: number
-  waypoints?: string
-  avoidpolygons?: string
-  avoidroad?: string
-  ferry?: number
-  cartype?: number
-}) => alovaMapProxyInstance.Get<RouteResult>(
+  // show_fields?: string
+  // waypoints?: string
+  // avoidpolygons?: string
+  // avoidroad?: string
+  // ferry?: number
+  // cartype?: number
+}) => alovaMapProxyInstance.Get<RouteResultResponse>(
   '/api/amap/route/driving',
   { params },
 )
@@ -290,7 +296,7 @@ export const drivingV2 = (params: {
   load?: string
   height?: string
   width?: string
-}) => alovaMapProxyInstance.Get<RouteResult>(
+}) => alovaMapProxyInstance.Get<RouteResultResponse>(
   '/api/amap/route/driving-v2',
   { params },
 )

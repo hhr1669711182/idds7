@@ -14,7 +14,6 @@ import bigPanel from "@/components/map/component/bigPanel.vue";
 import config from "@/components/map/config.vue";
 import layers from "@/components/map/layers.vue";
 import ssrkPanel from "@/components/map/component/ssrkPanel.vue";
-import routePlanPanel from "@/components/map/component/routePlanPanel.vue";
 
 import OpenlayersMap from "@/baseComponent/OpenlayersMap/drawMap.vue";
 import {
@@ -24,7 +23,6 @@ import {
   usePanelStore,
   useTabsStore,
 } from "@/store/index.ts";
-import { PANEL_TYPES } from "@/const/const.panel.ts";
 import type { LayerChangeHandler } from "@/components/map/layers.vue";
 
 type OpenlayersMapExpose = {
@@ -40,7 +38,7 @@ const tabsStore = useTabsStore();
 const layersStore = useLayersStore();
 const mapConfigStore = useMapConfigStore();
 
-const { type, ssrkPanelOpen } = storeToRefs(PanelStore);
+const { ssrkPanelOpen } = storeToRefs(PanelStore);
 const openLayersMapRef = shallowRef<OpenlayersMapExpose | null>(null);
 let viewportRefreshFrame: number | null = null;
 
@@ -114,8 +112,7 @@ onUnmounted(() => {
     <ssrkPanel v-show="ssrkPanelOpen" />
 
     <WeatherPanel />
-    <circleQueryPanel v-if="type == PANEL_TYPES.CIRCLE_QUERY" />
-    <routePlanPanel />
+    <circleQueryPanel />
   </OpenlayersMap>
 
     <brp />

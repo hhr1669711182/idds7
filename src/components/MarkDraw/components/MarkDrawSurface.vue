@@ -143,6 +143,14 @@ onMounted(() => {
   e.on("feature:removed", () => {
     hasElements.value = e.getAll().length > 0;
   });
+  // 地图侧几何变化（Modify 拖拽 / 撤销重做 / 右键贴边）后必须重建 selected：
+  // MarkDrawFeature 里的 geometryLngLat 是选中那一刻的快照，
+  // 不重建的话维护表单的 watch 不会触发，几何文本与保存按钮都会停在旧值。
+  e.on("feature:modified", (f) => {
+    if (selected.value && selected.value.id === f.id) {
+      selected.value = buildSelected(f.id) ?? selected.value;
+    }
+  });
   e.on("measure:result", (payload) => {
     measure.value = payload;
     e.setActiveTool(null);

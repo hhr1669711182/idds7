@@ -1,3 +1,4 @@
+import { appEnv } from '@/config/env'
 /**
  * 检索查询编排：把「高德地址」与「GIS 资源」两个数据源、两种检索模式
  * 统一成同一份结果 DTO，并生成与 WMS 上图共用的 CQL 条件。
@@ -168,7 +169,7 @@ export const searchAmapAddress = async (
   if (!text) return bucket
   try {
     // 高德单页上限远小于 1 万，这里按接口 offset 语义取合理页大小
-    const response = await amapApi.keywordSearch({ keywords: text, offset: 20, page: 1 })
+    const response = await amapApi.keywordSearch({ keywords: text, city: appEnv.amapCity, cityLimit: true, offset: 20, page: 1 })
     const collection = response as PoiFeatureCollection | undefined
     const features = Array.isArray(collection?.features) ? collection.features : []
     bucket.items = features

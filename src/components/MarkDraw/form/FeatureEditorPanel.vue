@@ -40,14 +40,9 @@ const geometryPreview = ref("");
 /** 几何编辑模式：readonly=纯预览，lnglat=直接改经纬度文本，raw=改 3857 原始坐标 */
 const geomMode = ref<"readonly" | "lnglat" | "raw">("readonly");
 const geomDirty = ref(false);
-/** 用户是否手动改过几何文本：手动改后地图拖拽不再覆盖文本，只更新提示 */
-const geomTouched = ref(false);
 /** 表单改动前的原几何：校验不过时原样退回 */
 const geomOrigin = shallowRef<AbstractGeometry | null>(null);
-/**
- * 打开表单时的基线快照：几何坐标 + 名称/类型/备注/样式。
- * 保存按钮据此判断「有没有变更」——没有变更就置灰，避免空事务打服务端。
- */
+/** 打开表单 / 上次保存时的属性指纹（不含几何），见 attrSnapshot 注释 */
 const baseline = ref<string>("");
 
 /** 安全 JSON 解析：GeoServer 字段可能是任意字符串 */
@@ -61,14 +56,14 @@ const safeParseJson = <T,>(text: string): T | null => {
 
 const writable = computed(() => Boolean(props.layer && isWritable(props.layer)));
 
-/** 当前表单 + 地图几何的完整指纹（字符串化后比较，避免深层 watch） */
-const currentSnapshot = (): string => {
-  const feat = props.selected?.feature as Feature | undefined;
-  const coords = feat?.getGeometry()
-    ? JSON.stringify((feat.getGeometry() as unknown as { getCoordinates(): CoordArray }).getCoordinates())
-    : "";
-  return JSON.stringify({
-    geom: coords,
+/**
+ * 属性指纹：仅覆盖表单里可编辑的属性与样式，不含几何。
+ * 几何的变更由 mapGeomDirty 单独表达 —— 几何不进指纹，
+ * 是因为地图侧拖拽会不断刷新要素引用，混进指纹会让基线跟着漂移，
+ * 导致 canSave 在「刚拖完」和「没拖过」两种状态下判定相同。
+ */
+const attrSnapshot = (): string =>
+  JSON.stringify({
     name: nameText.value,
     type: typeText.value,
     mark: markText.value,
@@ -76,34 +71,57 @@ const currentSnapshot = (): string => {
     width: widthNum.value,
     opacity: opacityNum.value,
   });
+
+/** 打开表单 / 上次保存时的几何坐标（3857），用于识别地图侧几何是否改动过 */
+const baselineGeom = ref<CoordArray | null>(null);
+/** 地图侧几何是否已改动（拖拽 Modify / 撤销 / 贴边），未保存前保持 true */
+const mapGeomDirty = ref(false);
+
+const geomCoordsOf = (): CoordArray | null => {
+  const geom = (props.selected?.feature as Feature | undefined)?.getGeometry();
+  if (!geom) return null;
+  return (geom as unknown as { getCoordinates(): CoordArray }).getCoordinates();
 };
 
-/**
- * 是否有未保存的变更：没有变更时保存按钮直接置灰。
- * 几何比对的是地图上要素的真实坐标，所以地图拖拽 Modify 也会被识别为变更。
- */
+/** 是否有未保存的变更：没有变更时保存按钮直接置灰 */
 const canSave = computed(() => {
   if (!props.layer || !props.selected?.feature) return false;
   if (!baseline.value) return false;
-  return baseline.value !== currentSnapshot();
+  if (mapGeomDirty.value || geomDirty.value) return true;
+  const cur = geomCoordsOf();
+  const base = baselineGeom.value;
+  if (JSON.stringify(cur) !== JSON.stringify(base)) return true;
+  return baseline.value !== attrSnapshot();
 });
+
+/** 当前表单打开的是哪个要素：用于区分「切换要素」与「同一要素的几何刷新」 */
+let loadedId: string | null = null;
 
 watch(
   () => props.selected,
   (sel) => {
     if (sel && sel.feature) {
       const feat = sel.feature as Feature;
+      const nextId = String(sel.id);
+      // 同一要素的几何被地图侧改动（拖拽 / 撤销 / 贴边）时，
+      // selected 对象会被重建，但业务上不算「换了一个要素」：
+      // 只刷新几何文本与基线，不能把用户的属性草稿和未保存状态冲掉。
+      const sameFeature = loadedId === nextId;
+      loadedId = nextId;
       editor.loadFromFeature(feat, props.layer ?? undefined);
       const fp = (editor.state.properties ?? {}) as Record<string, unknown>;
-      nameText.value = String(fp.name ?? "");
-      markText.value = String(fp.mark ?? "");
-      typeText.value = String(fp.type ?? "");
+      // 同一要素的几何刷新不覆盖属性输入框，否则用户正在敲的内容会被冲掉
+      if (!sameFeature) {
+        nameText.value = String(fp.name ?? "");
+        markText.value = String(fp.mark ?? "");
+        typeText.value = String(fp.type ?? "");
+      }
       idText.value = String(sel.id ?? "");
       const style = (fp.style ?? {}) as StyleJson;
       // style 可能是 GeoServer 里的字符串 / 脏数据，先归一成对象再取值
       const safeStyle: StyleJson =
         typeof style === "string" ? safeParseJson<StyleJson>(style) ?? {} : style ?? {};
-      if (safeStyle.stroke) {
+      if (safeStyle.stroke && !sameFeature) {
         const c = typeof safeStyle.stroke.color === "string" ? safeStyle.stroke.color : "#ff0000";
         colorText.value = c.startsWith("#") ? c : "#ff0000";
         widthNum.value = typeof safeStyle.stroke.width === "number" ? safeStyle.stroke.width : 2;
@@ -121,17 +139,21 @@ watch(
         }
       }
       geometryPreview.value = JSON.stringify(sel.geometryLngLat);
-      geomMode.value = "readonly";
-      geomDirty.value = false;
-      geomTouched.value = false;
-      geomOrigin.value = null;
+      // 几何文本始终跟随地图最新值刷新（用户手动编辑过的除外，见 syncGeomFromMap）
+      geomMode.value = sameFeature ? geomMode.value : "readonly";
+      if (!sameFeature) {
+        geomDirty.value = false;
+        geomOrigin.value = null;
+      }
       // 基线要在表单值全部就位后再取，否则会把上一次的残留值算进基线
-      baseline.value = currentSnapshot();
+      baseline.value = attrSnapshot();
+      // 几何基线只在「换要素」时取：同一要素因地图拖拽被重建时，
+      // 若跟着刷新基线，刚拖完的几何就会被当成「没改过」，保存按钮按不下去。
+      if (!sameFeature) baselineGeom.value = geomCoordsOf();
     } else {
       editor.reset();
       geomMode.value = "readonly";
       geomDirty.value = false;
-      geomTouched.value = false;
       geomOrigin.value = null;
       baseline.value = "";
       nameText.value = "";
@@ -220,7 +242,6 @@ const applyGeomFromText = (): boolean => {
     }
     feat.setGeometry(buildGeometry(type, coords3857));
     geomDirty.value = true;
-    geomTouched.value = true;
     return true;
   } catch (e) {
     MdMessage.error(`几何解析失败：${(e as Error).message}`);
@@ -234,9 +255,10 @@ const revertGeomFromText = () => {
   if (feat && geomOrigin.value) feat.setGeometry(geomOrigin.value);
   geomOrigin.value = null;
   geomDirty.value = false;
-  geomTouched.value = false;
   syncGeomFromMap();
-  baseline.value = currentSnapshot();
+  baseline.value = attrSnapshot();
+  baselineGeom.value = geomCoordsOf();
+  mapGeomDirty.value = false;
 };
 
 /** 地图要素几何变化 → 刷新表单文本（拖拽 / 撤销 / 右键定位都会走这里） */
@@ -246,12 +268,10 @@ const syncGeomFromMap = () => {
   const feat = sel.feature as Feature;
   const g = feat.getGeometry();
   if (!g) return;
-  if (geomTouched.value && geomDirty.value) {
-    // 用户手动编辑过几何：不覆盖文本，避免打架；但记录当前地图坐标供保存
-    editor.state.geometry3857 = (g as unknown as { getCoordinates(): CoordArray }).getCoordinates();
-    editor.state.geometryLngLat = geometryToLngLat(editor.state.geometry3857);
-    return;
-  }
+  // 地图几何始终是唯一真相源：表单文本只是它的 4326 视图。
+  // 用户在文本里改完失焦时 applyGeomFromText 已经把新几何写回要素，
+  // 此刻文本与地图是一致的；之后无论拖拽顶点、撤销重做还是右键贴边，
+  // 都应该让文本重新跟随地图，而不是冻结在旧值。
   const coords = (g as unknown as { getCoordinates(): CoordArray }).getCoordinates();
   editor.state.geometry3857 = coords;
   editor.state.geometryLngLat = geometryToLngLat(coords);
@@ -319,11 +339,12 @@ const onSave = async () => {
     feat.set("_isDirty", false);
     editor.markDirty();
     geomDirty.value = false;
-    geomTouched.value = false;
     geomOrigin.value = null;
     syncGeomFromMap();
     // 保存成功 = 新基线，按钮随即置灰，避免重复提交同一份数据
-    baseline.value = currentSnapshot();
+    baseline.value = attrSnapshot();
+  baselineGeom.value = geomCoordsOf();
+  mapGeomDirty.value = false;
     // 同步退出工具态：engine 与 store 必须一起归位
     store.setActiveTool(null);
     props.engine?.setActiveTool(null);
@@ -332,9 +353,13 @@ const onSave = async () => {
   }
 };
 
-/** 地图侧几何变化（拖拽 Modify / 撤销重做 / 右键贴边）实时刷新表单几何 */
+/**
+ * 地图侧几何变化（拖拽 Modify / 撤销重做 / 右键贴边）实时刷新表单几何，
+ * 并把「地图几何已改动」标记为待保存 —— 保存按钮据此解除置灰。
+ */
 const onEngineModified = (payload: MarkDrawFeature) => {
   if (!props.selected || payload.id !== props.selected.id) return;
+  mapGeomDirty.value = true;
   syncGeomFromMap();
 };
 

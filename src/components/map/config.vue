@@ -453,7 +453,7 @@ onMounted(async () => {
 
 .cfg-panel {
   position: absolute;
-  z-index: 11;
+  z-index: 1100;
   top: 50px;
   right: 20px;
   width: 520px;
