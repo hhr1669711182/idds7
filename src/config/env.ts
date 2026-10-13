@@ -27,8 +27,6 @@ export const appEnv = {
   appMode: readEnvString('VITE_APP_ENV'),
   apiBaseUrl: stripTrailingSlashes(readEnvString('VITE_API_BASE_URL')),
   useMock: readEnvString('VITE_USE_MOCK') === 'true',
-  // 日志级别：dev 默认 debug，production 默认 warn；可经 VITE_LOG_LEVEL 覆写
-  logLevel: readEnvString('VITE_LOG_LEVEL') as 'debug' | 'info' | 'warn' | 'error' | '',
   // 同源多标签页互通开关与通道名，由 register/initMessage.ts 统一绑定到 useMessageStore
   useBroadcastChannel: readEnvString('VITE_USE_BROADCAST_CHANNEL') === 'true',
   broadcastChannelName: readEnvString('VITE_BROADCAST_CHANNEL_NAME'),
