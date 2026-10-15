@@ -1,14 +1,13 @@
 /**
- * 前端运行日志（轻量自研，不引第三方 APM）。
+ * ⚠️ 状态：未接入（暂不使用）。
  *
- * 设计目标：
- * 1. 统一入口，取代业务代码里的裸 console.*；
- * 2. 级别可控，dev 默认 debug、production 默认 warn；
- * 3. 敏感字段自动脱敏；
- * 4. 环形缓冲，保留最近 N 条用于现场导出；
- * 5. 每条日志带 sessionId / userId / buildVersion，便于按会话回溯。
+ * 经团队评估，当前项目没有「导出诊断信息 → 上传 → 分析」的排查流程，
+ * 环形缓冲 + 脱敏等能力无人消费，因此暂不接入任何业务代码。
+ * 本文件保留作为后续可选能力；启用前请先补齐 QA 排查流程。
+ *
+ * 注：resolveLevel 直接读 import.meta.env 而非 appEnv，是为保持本文件自包含、
+ * 不污染 appEnv（appEnv 未新增 logLevel 字段）。正式接入时需改回 appEnv 读取。
  */
-import { appEnv } from '@/config/env'
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
@@ -28,7 +27,7 @@ const MAX_BUFFER = 200
 const SENSITIVE_KEYS = /^(token|accessToken|refreshToken|authorization|password|secret|cookie|sessionKey)$/i
 
 const resolveLevel = (): LogLevel => {
-  const envLevel = appEnv.logLevel
+  const envLevel = typeof import.meta.env.VITE_LOG_LEVEL === 'string' ? import.meta.env.VITE_LOG_LEVEL.trim() : ''
   if (envLevel && envLevel in LEVEL_ORDER) return envLevel as LogLevel
   return import.meta.env.DEV ? 'debug' : 'warn'
 }

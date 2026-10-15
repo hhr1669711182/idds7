@@ -5,7 +5,7 @@
  * 样式、去重 key、坐标提取均由调用方注入，与具体业务解耦。
  * @FilePath: src/composables/mountPointLayer.ts
  */
-import Map from 'ol/Map'
+import OLMap from 'ol/Map'
 import Feature from 'ol/Feature'
 import Point from 'ol/geom/Point'
 import VectorLayer from 'ol/layer/Vector'
@@ -30,7 +30,7 @@ export type PointLayerManager<T> = {
 }
 
 export type MountPointLayerOptions<T> = {
-  map: Map
+  map: OLMap
   items: T[]
   /** 不传则不创建 popup overlay、不绑定点击命中，仅渲染点位 */
   popupElement?: HTMLElement

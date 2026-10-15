@@ -9,6 +9,7 @@ import {
   buildUpdateXml,
   buildDeleteXml,
   buildMixedXml,
+  buildGeomUpdateXml,
 } from "./wfsXml";
 import type Feature from "ol/Feature";
 import type { MarkDrawLayer } from "../../engine/types";
@@ -98,7 +99,11 @@ export const updateFeatures = async (
   features: Feature[]
 ): Promise<TransactionResult> => {
   const info = await resolveFeatureType(layer);
-  const xml = buildUpdateXml(layer, info, features);
+  // 几何专用路径：用 ogc:FeatureId 定位记录，只提交 zone_geom 一个字段。
+  // 不把整个 properties 回写 —— 物理表的 create_time（dateTime）、is_deleted（boolean）
+  // 等字段类型各不相同，全量回写会有丢类型、覆盖原值的风险。
+  const geomXml = buildGeomUpdateXml(layer, info, features);
+  const xml = geomXml ?? buildUpdateXml(layer, info, features);
   const raw = await geoserverApi.transaction(xml, layer.workspace);
   assertTransactionOk(raw);
   return { ok: true, raw };

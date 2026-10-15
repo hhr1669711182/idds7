@@ -1,6 +1,7 @@
 import router from '@/router'
 import { ROUTE_NAMES } from '@/router/constants'
 import { parseSharedMapStage, SEAT_SHARED_STATE_KEY } from './seatSharedState'
+import { usePendingCallLocationStore } from '@/store/usePendingCallLocationStore'
 
 export const PAGE_CONDITION_STORAGE_KEY = 'ids-gis:page-condition'
 
@@ -32,7 +33,19 @@ const routeForCondition = (condition: PageCondition) =>
     ? ROUTE_NAMES.DISPATCH1
     : ROUTE_NAMES.MAP
 
+/** 特灾模式（mode=flood）：所有切页操作一律拦截，留在特殊地图 */
+const isFloodMode = (): boolean => {
+  try {
+    const state = JSON.parse(localStorage.getItem(SEAT_SHARED_STATE_KEY) ?? 'null')
+    return state?.mode === 'flood'
+  } catch {
+    return false
+  }
+}
+
 export const navigateByCondition = async (condition: PageCondition) => {
+  // 特灾模式：不切页，留在特殊地图
+  if (isFloodMode()) return
   const routeName = routeForCondition(condition)
   if (router.currentRoute.value.name === routeName) return
 
@@ -78,9 +91,17 @@ export const initPageConditionListener = () => {
     if (event.storageArea !== localStorage) return
     if (event.key === SEAT_SHARED_STATE_KEY) {
       if (disposed) return
+      // 特灾模式（mode=flood）：不响应 phase 切换，留在特殊地图
+      try {
+        const state = JSON.parse(event.newValue ?? 'null')
+        if (state?.mode === 'flood') return
+      } catch { /* 解析失败走正常流程 */ }
       const stage = parseSharedMapStage(event.newValue)
       if (!stage) return
       console.info('[seat-shared-state] 地图业务状态', stage)
+      // 切页前清除旧来电缓存：值守地图可能在该 storage 事件后才挂载，
+      // 单靠地图组件内的监听会错过事件并把粗定位圈重新绘制出来。
+      if (stage === 'onDuty') usePendingCallLocationStore().consume()
       void navigateByCondition(
         stage === 'dispatch' || stage === 'dispatchTrack'
           ? PAGE_CONDITION.DISPATCH : PAGE_CONDITION.REQUEST,

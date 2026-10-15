@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-09-14 16:37:16
- * @LastEditTime: 2026-09-14 16:39:58
+ * @LastEditTime: 2026-10-15 14:05:21
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\commitlint.config.js
@@ -49,7 +49,7 @@ export default {
     // header 最大长度
     'header-max-length': [2, 'always', 72],
     // body 最大行数
-    'body-max-line-length': [2, 'always', 100],
+    'body-max-line-length': [2, 'always', 200],
   },
   prompt: {
     messages: {

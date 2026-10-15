@@ -17,6 +17,11 @@ import { computed, reactive, ref } from 'vue'
 import type { MessageEnvelope } from '@/types/message'
 import type { AddressUpdatedData } from '@/Control/incidentLocationMessage'
 import { queryIncidentStations } from '@/controller/core/business/IncidentStationQuery'
+import {
+  DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
+  queryIncidentNearbyResources,
+  type NearbyResource,
+} from '@/controller/core/business/IncidentNearbyResourceQuery'
 import type { LngLat } from '@/baseComponent/amap/useAmapTools'
 
 /** 单个警情定位点位（key = 画像 ID，缺省退回 incidentId/eventId） */
@@ -28,6 +33,10 @@ export type IncidentLocationMarker = {
   incidentId: string | null
   disasterProfileId: string | null
   version: number
+  /** 坐标来源；只有 slotChanges 正式坐标可以替换来电粗定位圈。 */
+  coordinateSource: 'alarm' | 'slotChanges'
+  /** 消息 m_org_id 指定的主管队站 ID（view_juris_zone.zone_id）；null 时按坐标命中辖区判定 */
+  primaryStationId: string | null
 }
 
 /** 待定位坐标请求，seq 用于保证相同坐标的重复请求也能触发 watcher */
@@ -50,9 +59,42 @@ export type IncidentLocationZone = {
   role: JurisdictionRole
 }
 
+/**
+ * 点位命中的主管队站点位（独立 zhu.png 图标上图），key 与 marker 相同。
+ * 派生物，不持久化：点位移除/主管未命中/查询失败时同步移除，刷新后按 markers 重查重建。
+ */
+export type IncidentPrimaryStation = {
+  /** = 所属 marker key */
+  key: string
+  stationId: string
+  name: string
+  address: string
+  lng: number
+  lat: number
+  version: number
+}
+
+/**
+ * 点位周边资源查询结果（消防栓/重点单位/队站辖区/建筑），与 markers 同 key。
+ * 派生物，不持久化：点位移除/查询失败时同步移除，刷新后按 markers 重查重建。
+ * 范围圈同步声明到 useNearbyResourceLayerStore，由地图侧对 WMS 图层强制过滤上图。
+ */
+export type IncidentNearbyResources = {
+  /** = 所属 marker key */
+  key: string
+  /** 本次查询半径（米），与 WMS 图层 DWITHIN 过滤半径保持一致 */
+  radiusMeters: number
+  fireHydrants: NearbyResource[]
+  keyEnterprises: NearbyResource[]
+  jurisZones: NearbyResource[]
+  buildings: NearbyResource[]
+  version: number
+}
+
 /** 路径规划请求：origins 为队站坐标，destination 为警情点；seq 防重复请求不触发 watcher */
 export type IncidentLocationRoutePlanRequest = {
   origins: LngLat[]
+  stations?: { id: string; name: string; coordinate: LngLat }[]
   destination: LngLat
   markerKey: string
   seq: number
@@ -67,6 +109,8 @@ export type IncidentLocationRoutePlanRequest = {
 export const useStationLayerStore = defineStore('stationLayerStore', () => {
   /** ownerKey -> 需要显示的队站 ID 列表（如 loc:${markerKey} / dispatchT1） */
   const entries = reactive<Record<string, string[]>>({})
+  /** ownerKey -> 主管队站 ID 列表（主管以独立 zhu.png 图标上图，需从全量消防站图层排除避免重叠） */
+  const primaryEntries = reactive<Record<string, string[]>>({})
   /** 全部业务方声明的队站 ID 并集，供地图侧生成 CQL_FILTER */
   const selectedStationIds = computed<string[]>(() => {
     const union = new Set<string>()
@@ -75,24 +119,93 @@ export const useStationLayerStore = defineStore('stationLayerStore', () => {
     })
     return [...union]
   })
+  /** 全部业务方声明的主管队站 ID 并集，供地图侧从全量消防站图层排除 */
+  const primaryStationIds = computed<string[]>(() => {
+    const union = new Set<string>()
+    Object.values(primaryEntries).forEach((ids) => {
+      ids.forEach((id) => union.add(id))
+    })
+    return [...union]
+  })
+  const normalizeIds = (ids: string[]) => [
+    ...new Set(
+      ids.map((id) => String(id ?? '').trim()).filter(Boolean),
+    ),
+  ]
   const setStations = (owner: string, ids: string[]) => {
-    const normalized = [
-      ...new Set(
-        ids.map((id) => String(id ?? '').trim()).filter(Boolean),
-      ),
-    ]
-    entries[owner] = normalized
+    entries[owner] = normalizeIds(ids)
+  }
+  /** 声明某业务方当前的主管队站（独立图标上图，全量图层中排除） */
+  const setPrimaryStations = (owner: string, ids: string[]) => {
+    primaryEntries[owner] = normalizeIds(ids)
   }
   const clearOwner = (owner: string) => {
     delete entries[owner]
+    delete primaryEntries[owner]
   }
-  return { entries, selectedStationIds, setStations, clearOwner }
+  return {
+    entries,
+    primaryEntries,
+    selectedStationIds,
+    primaryStationIds,
+    setStations,
+    setPrimaryStations,
+    clearOwner,
+  }
 })
 
 /** 警情定位点位在队站图层 store 中使用的 owner 前缀 */
 export const LOCATION_STATION_OWNER_PREFIX = 'loc:'
 /** DispatchT1 立案查询在队站图层 store 中使用的固定 owner */
 export const DISPATCH_T1_STATION_OWNER = 'dispatchT1'
+
+/**
+ * 周边资源查询范围圈（圆心 EPSG:4326 [经度, 纬度] + 半径米）。
+ * 地图侧对消防栓/重点单位 WMS 图层按各 owner 范围圈并集拼 DWITHIN CQL_FILTER。
+ */
+export type NearbyResourceCircle = {
+  lng: number
+  lat: number
+  radiusMeters: number
+}
+
+/**
+ * 警情定位周边资源 WMS 图层（消防栓 gis:env_fire_water / 重点单位 gis:view_env_enterprises）
+ * 的范围圈声明。多个警情点位按 ownerKey 各自声明一个 500 米范围圈，
+ * 地图侧取并集对两个图层下 DWITHIN CQL_FILTER 并强制显示；
+ * 所有业务方清空后，由地图侧恢复图层开关的原始可见性、minZoom 与过滤条件。
+ */
+export const useNearbyResourceLayerStore = defineStore('nearbyResourceLayerStore', () => {
+  /** ownerKey -> 该业务方声明的范围圈（警情定位每个点位一个圈） */
+  const entries = reactive<Record<string, NearbyResourceCircle[]>>({})
+  /** 全部业务方声明范围圈的并集，供地图侧拼 CQL_FILTER */
+  const circles = computed<NearbyResourceCircle[]>(() => {
+    const union: NearbyResourceCircle[] = []
+    Object.values(entries).forEach((list) => union.push(...list))
+    return union
+  })
+  const setCircles = (owner: string, list: NearbyResourceCircle[]) => {
+    entries[owner] = list.filter(
+      (circle) =>
+        Number.isFinite(circle.lng)
+        && Number.isFinite(circle.lat)
+        && Number.isFinite(circle.radiusMeters)
+        && circle.radiusMeters > 0,
+    )
+  }
+  const clearOwner = (owner: string) => {
+    delete entries[owner]
+  }
+  return {
+    entries,
+    circles,
+    setCircles,
+    clearOwner,
+  }
+})
+
+/** 警情定位点位在周边资源图层 store 中使用的 owner 前缀 */
+export const LOCATION_RESOURCE_OWNER_PREFIX = 'locres:'
 
 export const useIncidentLocationStore = defineStore(
   'incidentLocationStore',
@@ -101,6 +214,10 @@ export const useIncidentLocationStore = defineStore(
     const markers = reactive<Record<string, IncidentLocationMarker>>({})
     /** 各点位当前命中的辖区面，与 markers 同 key；点位清空/未命中/查询失败时移除 */
     const zones = reactive<Record<string, IncidentLocationZone>>({})
+    /** 各点位当前命中的主管队站点位（独立 zhu.png 图标），与 markers 同 key */
+    const primaryStations = reactive<Record<string, IncidentPrimaryStation>>({})
+    /** 各点位半径内周边资源（消防栓/重点单位），与 markers 同 key；派生物不持久化 */
+    const nearbyResources = reactive<Record<string, IncidentNearbyResources>>({})
     /** 按画像 ID 维护地址主题自己的版本号，只处理更大的 version（可跳号） */
     const versions = reactive<Record<string, number>>({})
     /** 最新待定位坐标，由 dispatchMap.vue 消费 */
@@ -113,8 +230,13 @@ export const useIncidentLocationStore = defineStore(
     /** 每个画像辖区查询的请求令牌，仅最后一次请求的结果允许写入，避免竞态 */
     const zoneRequestTokens: Record<string, number> = {}
 
-    const upsertMarker = (entry: IncidentLocationMarker) => {
+    /**
+     * 写入/更新点位。focus=false 时仅原地更新 marker 字段（如仅 m_org_id 变更、
+     * 坐标未变），不发定位飞行请求；队站图标替换由 fetchJurisdiction 派生。
+     */
+    const upsertMarker = (entry: IncidentLocationMarker, focus = true) => {
       markers[entry.key] = entry
+      if (!focus) return
       focusSeq += 1
       focusRequest.value = { lng: entry.lng, lat: entry.lat, seq: focusSeq }
     }
@@ -134,6 +256,11 @@ export const useIncidentLocationStore = defineStore(
       zoneRequestTokens[key] = (zoneRequestTokens[key] ?? 0) + 1
       delete markers[key]
       removeZonesForMarker(key)
+      // 同步移除主管队站独立图标点位
+      delete primaryStations[key]
+      // 同步移除周边资源查询结果并释放消防栓/重点单位 WMS 图层范围圈声明
+      delete nearbyResources[key]
+      useNearbyResourceLayerStore().clearOwner(`${LOCATION_RESOURCE_OWNER_PREFIX}${key}`)
       // 同步释放该点位在共享队站图层上的过滤声明
       useStationLayerStore().clearOwner(`${LOCATION_STATION_OWNER_PREFIX}${key}`)
       // 若该点位的路径请求尚未消费，清空以免旧请求触发渲染
@@ -154,27 +281,75 @@ export const useIncidentLocationStore = defineStore(
       zoneRequestTokens[entry.key] = token
       queryIncidentStations([entry.lng, entry.lat], {
         showAllJurisdictions: true,
+        // m_org_id 指定主管队站时强制覆盖坐标命中辖区，主管站/辖区面以消息为准
+        forcedPrimaryStationId: entry.primaryStationId,
       })
         .then((result) => {
           if (zoneRequestTokens[entry.key] !== token) return
           // 清除该点位的旧辖区，再写入新结果
           removeZonesForMarker(entry.key)
-          // 主管 + 支撑队站写入共享队站图层 store，由地图侧在唯一 WMS
-          // 消防站图层上按并集 CQL_FILTER 显示（与立案调派流程同一图层）
-          useStationLayerStore().setStations(
-            `${LOCATION_STATION_OWNER_PREFIX}${entry.key}`,
-            [result.primary.id, ...result.support.map((station) => station.id)],
-          )
-          // 主管辖区
-          const primaryGeom = result.jurisdictions.get(result.primary.id)
-          if (primaryGeom) {
-            zones[entry.key] = {
+          const owner = `${LOCATION_STATION_OWNER_PREFIX}${entry.key}`
+
+          // 主管 + 支撑队站 id（主管站未命中时仅支撑队站）
+          const stationIds = [
+            ...(result.primary ? [result.primary.id] : []),
+            ...result.support.map((station) => station.id),
+          ]
+          if (!stationIds.length) {
+            // 警情点附近一个消防站都没有：释放队站图层过滤，仅控制台提示
+            console.warn('[address-updated] 警情点附近未查询到消防站', {
               key: entry.key,
-              zoneId: result.primary.id,
-              zoneName: result.primary.name,
-              geometry: primaryGeom,
+              coordinate: [entry.lng, entry.lat],
+            })
+            delete primaryStations[entry.key]
+            useStationLayerStore().clearOwner(owner)
+            return
+          }
+          if (!result.primary) {
+            // 主管站未命中消防站图层：不报错，仅展示附近支撑队站
+            console.warn('[address-updated] 未命中主管消防站，仅展示周边支撑队站', {
+              key: entry.key,
+              stationId: entry.primaryStationId,
+            })
+            delete primaryStations[entry.key]
+          }
+          console.log('[address-updated] 查询到消防站', {
+            key: result?.primary?.name ?? '',
+            stationIds: result.support.map((station) => station.name).join(','),
+          })
+          // 队站写入共享队站图层 store，由地图侧在唯一 WMS
+          // 消防站图层上按并集 CQL_FILTER 显示（与立案调派流程同一图层）
+          useStationLayerStore().setStations(owner, stationIds)
+          // 主管以独立 zhu.png 图标上图：声明主管 id（全量消防站图层据此排除），
+          // 并写入主管点位供 dispatchMap.vue 的主管图层渲染
+          useStationLayerStore().setPrimaryStations(
+            owner,
+            result.primary ? [result.primary.id] : [],
+          )
+          if (result.primary) {
+            primaryStations[entry.key] = {
+              key: entry.key,
+              stationId: result.primary.id,
+              name: result.primary.name,
+              address: result.primary.address,
+              lng: result.primary.coordinate[0],
+              lat: result.primary.coordinate[1],
               version: entry.version,
-              role: 'primary',
+            }
+          }
+          /* 主管/支撑辖区写入已禁用（辖区查询结果不再写入 zones）
+          // 主管辖区
+          if (result.primary) {
+            const primaryGeom = result.jurisdictions.get(result.primary.id)
+            if (primaryGeom) {
+              zones[entry.key] = {
+                key: entry.key,
+                zoneId: result.primary.id,
+                zoneName: result.primary.name,
+                geometry: primaryGeom,
+                version: entry.version,
+                role: 'primary',
+              }
             }
           }
           // 支撑辖区
@@ -191,15 +366,24 @@ export const useIncidentLocationStore = defineStore(
               role: 'support',
             }
           })
+          */
 
-          // 路径规划请求：主管 + 支撑队站坐标 → 警情点，由 dispatchMap.vue 消费
+          // 路径规划请求：仅主管队站坐标 → 警情点，由 dispatchMap.vue 消费
+          // （支撑队站到警情点的路径规划已注释禁用；主管未命中时无起点）
           const origins: LngLat[] = [
-            result.primary.coordinate,
-            ...result.support.map((s) => s.coordinate),
+            ...(result.primary ? [result.primary.coordinate] : []),
+            // 支撑队站路径规划已禁用
+            // ...result.support.map((s) => s.coordinate),
           ]
           routePlanSeq += 1
           routePlanRequest.value = {
             origins,
+            // 支撑队站路径规划已禁用：stations 仅保留主管
+            stations: [
+              ...(result.primary ? [result.primary] : []),
+              // ...result.support,
+            ]
+              .map(({ id, name, coordinate }) => ({ id, name, coordinate })),
             destination: [entry.lng, entry.lat],
             markerKey: entry.key,
             seq: routePlanSeq,
@@ -212,8 +396,55 @@ export const useIncidentLocationStore = defineStore(
             error,
           })
           removeZonesForMarker(entry.key)
+          delete primaryStations[entry.key]
           useStationLayerStore().clearOwner(
             `${LOCATION_STATION_OWNER_PREFIX}${entry.key}`,
+          )
+        })
+
+      // 周边资源（500 米内消防栓/重点单位/队站辖区/建筑）：与队站查询并行，互不影响结果写入。
+      // 查询成功后写入结果并向 WMS 图层 store 声明范围圈（dispatchMap watch 后
+      // 对消防栓/重点单位/队站辖区/建筑图层下范围圈过滤强制上图）；失败时清除旧声明。
+      queryIncidentNearbyResources([entry.lng, entry.lat], {
+        radiusMeters: DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
+      })
+        .then((result) => {
+          if (zoneRequestTokens[entry.key] !== token) return
+          nearbyResources[entry.key] = {
+            key: entry.key,
+            radiusMeters: DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
+            fireHydrants: result.fireHydrants,
+            keyEnterprises: result.keyEnterprises,
+            jurisZones: result.jurisZones,
+            buildings: result.buildings,
+            version: entry.version,
+          }
+          useNearbyResourceLayerStore().setCircles(
+            `${LOCATION_RESOURCE_OWNER_PREFIX}${entry.key}`,
+            [{
+              lng: entry.lng,
+              lat: entry.lat,
+              radiusMeters: DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
+            }],
+          )
+          console.info('[address-updated] 查询到周边资源', {
+            key: entry.key,
+            radiusMeters: DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
+            fireHydrants: result.fireHydrants.length,
+            keyEnterprises: result.keyEnterprises.length,
+            jurisZones: result.jurisZones.length,
+            buildings: result.buildings.length,
+          })
+        })
+        .catch((error) => {
+          if (zoneRequestTokens[entry.key] !== token) return
+          console.warn('[address-updated] 查询周边资源失败', {
+            key: entry.key,
+            error,
+          })
+          delete nearbyResources[entry.key]
+          useNearbyResourceLayerStore().clearOwner(
+            `${LOCATION_RESOURCE_OWNER_PREFIX}${entry.key}`,
           )
         })
     }
@@ -225,6 +456,19 @@ export const useIncidentLocationStore = defineStore(
 
     /** dispatchMap 消费路径规划请求后置空；无 nav 时保留，待挂载后消费 */
     const consumeRoutePlan = () => {
+      routePlanRequest.value = null
+    }
+
+    /**
+     * 清空所有警情定位运行态：点位、辖区、队站过滤声明、待消费请求及消息版本号。
+     * 供 dispatchMap 卸载（如 /dispatch1 -> /map）及刷新阶段不匹配时调用；
+     * 非 dispatch 阶段的消息由 messageStageGate 门控拦截，无需保留 versions 去重。
+     * 清空后持久化插件自动把空 markers/versions 写回 sessionStorage。
+     */
+    const clearAll = () => {
+      Object.keys(markers).forEach((key) => removeMarker(key))
+      Object.keys(versions).forEach((key) => delete versions[key])
+      focusRequest.value = null
       routePlanRequest.value = null
     }
 
@@ -253,6 +497,8 @@ export const useIncidentLocationStore = defineStore(
         incidentId: key,
         disasterProfileId: existing?.disasterProfileId ?? null,
         version: existing?.version ?? 0,
+        coordinateSource: existing?.coordinateSource ?? 'alarm',
+        primaryStationId: existing?.primaryStationId ?? null,
       }
     }
 
@@ -293,33 +539,97 @@ export const useIncidentLocationStore = defineStore(
         longitude: data.longitude,
         latitude: data.latitude,
         address: data.address,
+        primaryStationId: data.primaryStationId,
       })
 
-      const lng = Number(data.longitude)
-      const lat = Number(data.latitude)
-      if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
-        // 经纬度缺失/清空：整体替换口径下移除旧位置
-        removeMarker(key)
-        return
+      // 已上图的旧点位：增量消息未携带的槽位（坐标/地址/主管）需沿用其值
+      const existing = markers[key]
+
+      let lng = Number(data.longitude)
+      let lat = Number(data.latitude)
+      if (!Number.isFinite(lng) || !Number.isFinite(lat) || lng === 0 || lat === 0) {
+        // 槽位在累计快照中存在但值为空，才表示坐标被显式清空
+        const lngCleared = Object.prototype.hasOwnProperty.call(data.slots, 'longitude')
+          && !Number.isFinite(Number(data.slots.longitude))
+        const latCleared = Object.prototype.hasOwnProperty.call(data.slots, 'latitude')
+          && !Number.isFinite(Number(data.slots.latitude))
+        if (lngCleared || latCleared) {
+          // 经纬度任一被清空时自动移除该画像对应的 marker 及关联辖区/路径
+          removeMarker(key)
+          return
+        }
+        // 本次增量未携带坐标（如仅推送 m_org_id）：必须有之前已上图的点位坐标，
+        // 才能重新定位并更新其主管队站/辖区；从未上图则无坐标可用，回滚版本号，
+        // 等待后续携带坐标的消息（版本号可能更小，如补发/重放）建点
+        if (!existing) {
+          if (typeof handledVersion === 'number') versions[key] = handledVersion
+          else delete versions[key]
+          console.info('[address-updated] 消息无坐标且无已上图点位，暂不处理', {
+            key,
+            version,
+          })
+          return
+        }
+        lng = existing.lng
+        lat = existing.lat
       }
+
+      // 槽位未出现在本次累计快照中表示该字段未变更，沿用旧点位值，避免增量消息
+      // （如只改 m_org_id）把地址、主管队站等冲成空值
+      const address = Object.prototype.hasOwnProperty.call(data.slots, 'disaster_address')
+        ? data.address
+        : existing?.address ?? null
+      const primaryStationId = Object.prototype.hasOwnProperty.call(data.slots, 'm_org_id')
+        ? data.primaryStationId
+        : existing?.primaryStationId ?? null
 
       const entry: IncidentLocationMarker = {
         key,
         lng,
         lat,
-        address: data.address,
-        incidentId: data.incidentId ?? null,
-        disasterProfileId: data.disasterProfileId ?? null,
+        address,
+        incidentId: data.incidentId ?? existing?.incidentId ?? null,
+        disasterProfileId: data.disasterProfileId ?? existing?.disasterProfileId ?? null,
         version,
+        coordinateSource: 'slotChanges',
+        primaryStationId,
       }
-      upsertMarker(entry)
-      // 点位上图后查询所属辖区并写入 zones，辖区面由 dispatchMap.vue 渲染
-      fetchJurisdiction(entry)
+      // data 为累计全量快照：与已上图点位对比即可知本条消息是否真的移动了坐标。
+      // 坐标变化（或新点位）才触发定位飞行；坐标未变（如仅 m_org_id 槽位变更）时
+      // 只原地更新 marker，不重新定位。
+      const coordinateChanged = !existing
+        || existing.lng !== lng
+        || existing.lat !== lat
+      // m_org_id 取累计快照中的最新值（即 slotChanges 传来合并后的值）；
+      // 主管队站变化时才需重查并替换主管/支撑队站图标（同原辖区替换的派生链路）
+      const primaryStationChanged = (existing?.primaryStationId ?? null) !== primaryStationId
+      upsertMarker(entry, coordinateChanged)
+      // 点位上图/坐标移动后查询队站；或主管队站变更时以 forcedPrimaryStationId
+      // 强制覆盖重查，主管 zhu.png 图标与支撑队站图层过滤按新结果替换，
+      // 但坐标未变时不触发定位飞行
+      if (coordinateChanged || primaryStationChanged) {
+        fetchJurisdiction(entry)
+      }
+    }
+
+    /**
+     * 地图挂载后恢复：为已存在的点位（含 sessionStorage 持久化、刷新后恢复的点）
+     * 重建辖区面、队站图层过滤声明、周边资源范围圈、路径规划等派生数据。
+     * zones/队站过滤/周边资源/路径均为派生物，不持久化，刷新后按 marker 重新查询即可，
+     * 保证 marker 为唯一真源；派生数据已齐全的点位（消息先于挂载到达）不重复查询。
+     */
+    const restoreOnMapMount = () => {
+      Object.values(markers).forEach((entry) => {
+        if (zones[entry.key] && nearbyResources[entry.key]) return
+        fetchJurisdiction(entry)
+      })
     }
 
     return {
       markers,
       zones,
+      primaryStations,
+      nearbyResources,
       versions,
       focusRequest,
       routePlanRequest,
@@ -329,6 +639,16 @@ export const useIncidentLocationStore = defineStore(
       removeMarker,
       consumeFocus,
       consumeRoutePlan,
+      clearAll,
+      restoreOnMapMount,
     }
+  },
+  {
+    // F5 刷新调派页（stage=dispatch）后点位仍可上图；关闭标签页自动失效。
+    // 仅持久化点位与消息版本，zones/队站过滤/周边资源/路径请求挂载后按 markers 重查重建。
+    persist: {
+      storage: sessionStorage,
+      pick: ['markers', 'versions'],
+    },
   },
 )

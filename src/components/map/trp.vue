@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { toRaw, ref } from "vue";
+import { computed, toRaw, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import {
   useCardStore,
   useTopicLayerStore,
   useBaseSourceStore,
   usePanelStore,
+  useMapConfigStore,
   useMapStore,
 } from "@/store";
 import { useCurrentMap } from "@/composables/useCurrentMap";
@@ -17,6 +18,7 @@ const { currentMap: MapInstance } = useCurrentMap();
 const cardStore = useCardStore();
 const { active } = storeToRefs(cardStore);
 const panelStore = usePanelStore();
+const mapConfigStore = useMapConfigStore();
 const topicLayerStore = useTopicLayerStore();
 const baseSourceStore = useBaseSourceStore();
 const mobileMenuVisible = ref(false);
@@ -104,29 +106,62 @@ const menuItems = [
   // { text: "专题图", icon: "#icon-topic-layers", type: TYPES.TOPICTYPES },
 ] as const;
 
+const navigationToolTypes = new Set<string>([
+  TYPES.MOVE,
+  TYPES.RESET,
+]);
+const drawingToolTypes = new Set<string>([
+  TYPES.POINT,
+  TYPES.LINESTRING,
+  TYPES.POLYGON,
+  TYPES.CIRCLE,
+  TYPES.RECT,
+]);
+
+const isToolVisible = (type: string) => {
+  const { showNav, showDraw } = mapConfigStore.config.feature;
+  if (navigationToolTypes.has(type)) return showNav;
+  if (drawingToolTypes.has(type)) return showDraw;
+  return true;
+};
+
+const visibleMenuItems = computed(() =>
+  menuItems.filter((item) => isToolVisible(item.type)),
+);
+
 const mobileMenuGroups = computed(() => {
   return [
     {
       title: "绘图工具",
-      items: menuItems.slice(0, 5),
+      items: menuItems.slice(0, 5).filter((item) => isToolVisible(item.type)),
     },
     {
       title: "测量工具",
-      items: menuItems.slice(5, 9),
+      items: menuItems.slice(5, 9).filter((item) => isToolVisible(item.type)),
     },
     {
       title: "其他功能",
-      items: menuItems.slice(9),
+      items: menuItems.slice(9).filter((item) => isToolVisible(item.type)),
     },
-  ];
+  ].filter((group) => group.items.length);
 });
+
+watch(
+  () => [mapConfigStore.config.feature.showNav, mapConfigStore.config.feature.showDraw],
+  () => {
+    if (active.value && !isToolVisible(active.value)) {
+      cardStore.clearDrawTool();
+    }
+  },
+);
 </script>
 
 <template>
   <ul v-if="!isMobile" class="Draw_draw__UPVhb">
     <li
       :class="{ active: active == item.type || (item.type === TYPES.TRAFFIC && baseSourceStore.trafficVisible) }"
-      v-for="item in menuItems"
+      v-for="item in visibleMenuItems"
+      :key="item.type"
       @click="() => handleClickOpIcon(item.type)"
     >
       <el-tooltip
@@ -184,6 +219,7 @@ const mobileMenuGroups = computed(() => {
             <div
               :class="{ active: active == item.type || (item.type === TYPES.TRAFFIC && baseSourceStore.trafficVisible) }"
               v-for="item in group.items"
+              :key="item.type"
               @click="() => handleClickOpIcon(item.type)"
               class="menu-item"
             >

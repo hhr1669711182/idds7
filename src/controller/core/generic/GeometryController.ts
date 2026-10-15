@@ -300,6 +300,36 @@ export class GeometryController {
   }
 
   /**
+   * [G-G04] 候选路线集绘制（立案阶段多方案）
+   *
+   * 同一业务 ID 的候选路线整体替换：先清除该 ID 下旧的 `line_${id}_*` 要素，
+   * 再按顺序绘制。selected 为推荐（选中）方案，使用常规路线样式；
+   * 其余候选半透明置底。drawLine 单路线入口（调派阶段）行为不变。
+   */
+  public drawRouteCandidates(
+    id: string,
+    routes: Array<{ coordinates: [number, number][]; selected?: boolean }>,
+  ) {
+    const source = this.tempVectorLayer.getSource();
+    if (!source) return;
+
+    // 整体替换：移除上一次同 ID 的全部候选线（含数量减少时残留的高索引线）。
+    const staleIds = source.getFeatures()
+      .map(feature => String(feature.getId() ?? ''))
+      .filter(featureId => featureId.startsWith(`${FEATURE_TYPE_PREFIX.LINE}${id}_`));
+    if (staleIds.length) this.removeFeature({ featureIds: staleIds });
+
+    routes.forEach((route, index) => {
+      this.drawLine({
+        id: `${id}_${index}`,
+        coordinates: route.coordinates,
+        strokeColor: route.selected ? ROUTE_LINE_STROKE : 'rgba(64, 158, 255, 0.5)',
+        width: route.selected ? 5 : 4,
+      });
+    });
+  }
+
+  /**
    * [G-G05] 单要素显隐
    */
   public setFeatureVisible(data: FeatureVisibleData) {

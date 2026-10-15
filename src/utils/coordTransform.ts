@@ -43,3 +43,30 @@ export const gcj02ToWgs84 = (lngLat: LngLat): LngLat => {
   return [lng * 2 - mLng, lat * 2 - mLat]
 }
 
+/**
+ * 把经纬度格式化为 `经度,纬度` 文本（默认 6 位小数），用于复制到剪贴板或对外传递
+ * @param lngLat [经度, 纬度]
+ * @param digits 小数位数
+ */
+export const formatLngLat = (lngLat: LngLat, digits = 6): string => {
+  const [lng, lat] = lngLat
+  return `${lng.toFixed(digits)},${lat.toFixed(digits)}`
+}
+
+const xPi = (Math.PI * 3000.0) / 180.0
+
+/** 百度 BD-09 -> 国测局 GCJ-02 */
+export const bd09ToGcj02 = ([lng, lat]: LngLat): LngLat => {
+  const x = lng - 0.0065
+  const y = lat - 0.006
+  const z = Math.sqrt(x * x + y * y) - 0.00002 * Math.sin(y * xPi)
+  const theta = Math.atan2(y, x) - 0.000003 * Math.cos(x * xPi)
+  return [z * Math.cos(theta), z * Math.sin(theta)]
+}
+
+/** 国测局 GCJ-02 -> 百度 BD-09 */
+export const gcj02ToBd09 = ([lng, lat]: LngLat): LngLat => {
+  const z = Math.sqrt(lng * lng + lat * lat) + 0.00002 * Math.sin(lat * xPi)
+  const theta = Math.atan2(lat, lng) + 0.000003 * Math.cos(lng * xPi)
+  return [z * Math.cos(theta) + 0.0065, z * Math.sin(theta) + 0.006]
+}

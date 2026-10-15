@@ -1,6 +1,7 @@
 # 03-测试
 
-> 测试策略、用例、报告。本项目**当前无自动化测试框架**，测试以「类型门禁 + 手工用例 + 契约核对」为主，详见 [_流程规范.md](_流程规范.md)。
+> 测试策略、用例、报告。自动化 runner 已落地（Vitest + Playwright），详见 [_流程规范.md](_流程规范.md)。
+> **测试侧的完整契约（四要素 + GIS 专用契约 + 覆盖率策略）在 `tests/harness/README.md`**，改测试前先读那份。
 
 ## 文档列表
 
@@ -11,9 +12,25 @@
 | [测试报告/编写规范.md](测试报告/编写规范.md) | 报告编写规范与模板 | 规范 |
 | 测试策略.md | 项目级测试策略 | 待补充 |
 
-## 现有测试资产
+## 测试资产
 
 | 路径 | 说明 | 备注 |
 |------|------|------|
-| `tests/*.test.ts` | 历史遗留测试脚本（9 个） | ⚠️ 无 runner，需自备执行环境 |
-| `pnpm lint` | vue-tsc 类型检查 | 事实上的自动化门禁 |
+| `tests/harness/README.md` | **测试契约真相源**：四要素 + GIS 专用契约 + 覆盖率策略 | 规范 |
+| `tests/harness/setup.ts` | 全局 setup（ResizeObserver / matchMedia / mock 清理） | 代码 |
+| `tests/unit/**/*.spec.ts` | 单元 + 集成测试（14 个文件） | 代码 |
+| `tests/components/**/*.spec.ts` | 组件测试（jsdom + @vue/test-utils） | 代码 |
+| `tests/e2e/**/*.spec.ts` | E2E 冒烟（Playwright） | 代码 |
+| `tests/fixtures/**` | 可复用测试数据 | 代码 |
+| `tests/__artifacts__/**` | 覆盖率 / trace / 报告产物 | 已 gitignore |
+| `tests/*.test.ts` | 历史遗留脚本（9 个，已转写为 `tests/unit/*.spec.ts`） | ⚠️ 待删除 |
+
+## 自动化命令
+
+```bash
+pnpm test              # 单元 + 组件（16 文件 / 86 用例）
+pnpm test:coverage     # 覆盖率（产物在 tests/__artifacts__/coverage）
+pnpm test:ui           # Vitest UI
+pnpm e2e               # Playwright 冒烟（独立拉起 dev server）
+pnpm lint:baseline     # 与基线 diff，输出新增项
+```

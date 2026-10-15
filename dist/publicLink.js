@@ -1,11 +1,8 @@
 const isCross = false
 const isDev = false
-const BASE_LOCATION = isCross ? 'http://192.168.172.115:5173' : (isDev ? window.location.origin : '')
 
-// 预留补充外部配置埋点
+// 预留外部静态文件配置埋点  ---配置入口【config/env.ts】优先级（后台管理接口配置 > 全局配置publicLink > 系统环境配置env > 代码配置）
 export const publicLink = {
-  panel25D: BASE_LOCATION + "/ThreejsViewerRegion",
-  panel3D: BASE_LOCATION + "/ThreejsViewerBuilding",
   apiBase: '/',
   amapProxy: isDev ? '/a' : 'http://192.168.169.28:33082',
   routeApi: 'http://192.168.173.94:8787/api/routes',
@@ -23,5 +20,5 @@ export const publicLink = {
   usePostMessage: false,
   useMock: true,
   useOnlineIcon: true,
-  dis pa tchMock: true,
+  dispatchMock: true,
 }

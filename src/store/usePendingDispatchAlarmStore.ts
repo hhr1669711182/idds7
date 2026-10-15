@@ -1,5 +1,4 @@
-﻿import { defineStore } from 'pinia';
-import { piniaSession } from './piniaPersist'
+import { defineStore } from 'pinia';
 
 export type PendingDispatchAlarmProfile = {
   incidentId?: string;
@@ -47,7 +46,7 @@ export const usePendingDispatchAlarmStore = defineStore(
     },
 
     persist: {
-      storage: piniaSession,
+      storage: sessionStorage,
       pick: ['profile'],
     },
   },

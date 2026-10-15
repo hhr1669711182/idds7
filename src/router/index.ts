@@ -12,6 +12,7 @@ import MainLayout from '@/layout/MainLayout.vue'
 import { setupRouterGuard } from './guard'
 import { unregisterDynamicRoutes } from './dynamic'
 import { ROUTE_NAMES } from './constants'
+import { parseSharedMapStage, SEAT_SHARED_STATE_KEY } from '@/Control/seatSharedState'
 
 export const staticRoutes: RouteRecordRaw[] = [
   {
@@ -147,10 +148,27 @@ const router = createRouter({
   routes: staticRoutes,
 })
 
-// 首次打开或刷新调派页时先回到地图；运行期间的新调派消息仍可正常进入 dispatch1。
+// 首次打开或刷新调派页时先回到地图；但若 seat-shared-state 业务阶段为
+// dispatch，说明正处于调派流程，刷新后应留在调派页继续。
 router.beforeEach((to, from) => {
-  if (from === START_LOCATION && to.name === ROUTE_NAMES.DISPATCH1) {
-    return { name: ROUTE_NAMES.MAP, replace: true }
+  if (from !== START_LOCATION) return
+  const raw = localStorage.getItem(SEAT_SHARED_STATE_KEY)
+  // 特灾模式（mode=flood）：F5 刷新时强制切到 /dispatch1 继续特殊地图
+  try {
+    const state = JSON.parse(raw ?? 'null')
+    if (state?.mode === 'flood') {
+      if (to.name !== ROUTE_NAMES.DISPATCH1) {
+        return { name: ROUTE_NAMES.DISPATCH1, replace: true }
+      }
+      return // 已在 /dispatch1，放行
+    }
+  } catch { /* 解析失败走正常流程 */ }
+  // 非 flood 模式：原有逻辑
+  if (to.name === ROUTE_NAMES.DISPATCH1) {
+    const stage = parseSharedMapStage(raw)
+    if (stage !== 'dispatch') {
+      return { name: ROUTE_NAMES.MAP, replace: true }
+    }
   }
 })
 

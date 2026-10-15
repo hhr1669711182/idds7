@@ -1,7 +1,7 @@
 /*
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-10-10 15:39:03
+ * @LastEditTime: 2026-10-14 19:38:19
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\vite.config.ts
@@ -28,10 +28,18 @@ export default defineConfig(({ mode, command }) => {
   const proxyServer = {}
 
   return {
-    devtools: mode === "dev.local" ? {
+    devtools:
+    {
       enabled: true,
-      clientAuth: false, 
-    } : false,
+      apply: 'serve',
+      clientAuth: false,
+      embeddedVisibility: 'passive',
+      dockPreferences: {
+        defaultPosition: 'bottom',
+        defaultMode: 'float',
+        maxVisibleItems: 6,
+      },
+    },
     plugins: [
       vue(),
       vueJsx(),
@@ -51,7 +59,6 @@ export default defineConfig(({ mode, command }) => {
         iconDirs: [fileURLToPath(new URL("./src/assets/svg", import.meta.url))],
         symbolId: "icon-[dir]-[name]",
       }),
-      // qiankun("vue-openlayers-app", { useDevMode: true }),
     ],
     base: isLib ? "/" : "./",
     css: {
@@ -82,7 +89,6 @@ export default defineConfig(({ mode, command }) => {
       rolldownOptions: {
         external: isLib ? ["vue", "pinia", "vue-router"] : [],
         output: {
-          // sourcemap: mode !== "production",
           codeSplitting: !isLib,
           globals: {},
         },
@@ -93,7 +99,6 @@ export default defineConfig(({ mode, command }) => {
         exclude: ["@hhr001/openlayers-map-lib"],
         include: ["js-clipper"],
         needsInterop: ["js-clipper"],
-        // Reuse Vite dependency cache across restarts.
       }
       : undefined,
     server: {
@@ -104,15 +109,7 @@ export default defineConfig(({ mode, command }) => {
           target: 'http://ids-dev.ks.telewave.tech/',
           changeOrigin: true,
           secure: false,
-          // 网关需要 /bff-client/api/v1/gis/...，不能移除前缀。
         },
-        ...(isDev && env.VITE_DISPATCH_MOCK === 'true' ? {
-          '/api/dispatch': {
-            target: 'http://127.0.0.1:18080',
-            changeOrigin: true,
-            rewrite: (path: string) => path.replace(/^\/api/, ''),
-          },
-        } : {}),// 仅在开发模式下启用本地 Mock 代理；正式环境应使用登录态动态拼接消息网关地址。
         "/geoserver": {
           target: env.VITE_GEOSERVER_URL,
           changeOrigin: true,
@@ -131,6 +128,13 @@ export default defineConfig(({ mode, command }) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/a/, ''),
         },
+         ...(env.VITE_DISPATCH_MOCK === 'true' ? {
+          '/api/dispatch': {
+            target: 'http://127.0.0.1:18080',
+            changeOrigin: true,
+            rewrite: (path: string) => path.replace(/^\/api/, ''),
+          },
+        } : {}),// 仅在VITE_DISPATCH_MOCK为true时启用本地 Mock 代理；正式环境应使用登录态动态拼接消息网关地址。
       },
     },
   }

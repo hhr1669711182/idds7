@@ -1,7 +1,9 @@
 import { Fill, Icon, Stroke, Style, Text } from "ol/style";
+import { asArray } from "ol/color";
 import type { JRAlarmStatus } from "./mapData";
 import type { AmapTmcStatus } from "./useAmapTools";
 import { point } from "@turf/turf";
+import routeDirectionArrow from "../../assets/right.png";
 
 export const MAP_ICON_SRC = {
   alarm: new URL("./imgs/alarm.png", import.meta.url).toString(),
@@ -10,6 +12,8 @@ export const MAP_ICON_SRC = {
   fireEngine: new URL("./imgs/fire-engine.svg", import.meta.url).toString(),
   car: new URL("./imgs/car.png", import.meta.url).toString(),
   point: new URL("./imgs/poi.png", import.meta.url).toString(),
+  endPoint: new URL("./imgs/shui.png", import.meta.url).toString(),
+  primaryStation: new URL("./imgs/zhu.png", import.meta.url).toString(),
 } as const;  // 默认配置
 
 /** mock / 在线车辆图标（GC-03） */
@@ -56,13 +60,16 @@ type StyleParamsMap = {
   jrAlarm: { status: JRAlarmStatus; scale?: number };
   mask: undefined;
   tmcLine: { status: AmapTmcStatus; width?: number };
-  vehicle: {
-    src: string;
-    rotation: number;
-    scale?: number;
-    countdownText?: string;
-    styleId?: string;
-  };
+vehicle: {
+  src: string;
+  rotation: number;
+  scale?: number;
+  countdownText?: string;
+  styleId?: string;
+
+  // 新增：车辆标签纵向偏移
+  labelOffsetY?: number;
+};
   commonAlarm: {
     type: 'fire' | 'rescue' | 'society',
     colorType: 'blue' | 'red' | 'grey' | 'def',
@@ -138,13 +145,90 @@ export const createMaskStyle = () =>
     stroke: new Stroke({ color: "rgba(0,0,0,0)", width: 0 }),
   });
 
-export const createTmcLineStyle = (status: AmapTmcStatus, width = 6) =>
+/**
+ * 路线采用白色外描边 + 彩色内线。外描边会先绘制，保证路线在卫星图、
+ * 深色底图和复杂道路标注上都保持清晰，效果与导航路线一致。
+ */
+export const createRouteLineStyle = (color: string, width = 6): Style[] => [
   new Style({
+    zIndex: 0,
     stroke: new Stroke({
-      color: TMC_STATUS_COLOR[status] ?? TMC_STATUS_COLOR.unknown,
-      width,
+      color: "rgba(255, 255, 255, 0.96)",
+      width: width + 4,
+      lineCap: "round",
+      lineJoin: "round",
     }),
-  });
+  }),
+  new Style({
+    zIndex: 1,
+    stroke: new Stroke({
+      color,
+      width,
+      lineCap: "round",
+      lineJoin: "round",
+    }),
+  }),
+];
+
+export const createTmcLineStyle = (status: AmapTmcStatus, width = 6) =>
+  createRouteLineStyle(
+    TMC_STATUS_COLOR[status] ?? TMC_STATUS_COLOR.unknown,
+    width,
+  );
+
+export const SELECTED_ROUTE_OUTLINE_COLOR = '#00f0ff';
+
+/** 高亮外线与路况内线共用同一几何，避免蓝线露出为填充。 */
+const createSelectedRouteOutlineStyle = (width = 6): Style[] => [
+  new Style({
+    zIndex: 100,
+    stroke: new Stroke({
+      color: 'rgba(0, 240, 255, 0.28)',
+      width: width + 10,
+      lineCap: 'round',
+      lineJoin: 'round',
+    }),
+  }),
+  new Style({
+    zIndex: 101,
+    stroke: new Stroke({
+      color: [...asArray(SELECTED_ROUTE_OUTLINE_COLOR).slice(0, 3), 0.7],
+      width: width + 4,
+      lineCap: 'round',
+      lineJoin: 'round',
+    }),
+  }),
+];
+
+/** 先绘制荧光蓝外描边，再用原路况内线覆盖中心，仅保留两侧蓝边。 */
+export const createSelectedTmcLineStyle = (status: AmapTmcStatus, width = 6): Style[] => {
+  const routeColor = TMC_STATUS_COLOR[status] ?? TMC_STATUS_COLOR.unknown;
+  return [
+    ...createSelectedRouteOutlineStyle(width),
+    new Style({
+      zIndex: 102,
+      stroke: new Stroke({
+        color: routeColor,
+        width,
+        lineCap: 'round',
+        lineJoin: 'round',
+      }),
+    }),
+  ];
+};
+
+/** 路线前进方向箭头样式。旋转值由整条路线的等距采样结果提供。 */
+export const createRouteDirectionArrowStyle = (rotation: number) => new Style({
+  zIndex: 20,
+  image: new Icon({
+    // 素材朝右，高度对应路线横向宽度，不超出 6px 路线。
+    src: routeDirectionArrow,
+    height: 6,
+    anchor: [0.5, 0.5],
+    rotation: rotation - Math.PI / 2,
+    rotateWithView: true,
+  }),
+});
 
 export const createEndpointStyle = (type: "start" | "end" | "alarm") => {
   if (type === "alarm") {
@@ -157,19 +241,33 @@ export const createEndpointStyle = (type: "start" | "end" | "alarm") => {
     scale: 1,
   });
 };
+// 车辆标签布局参数，供渲染和点击检测共用
+export const VEHICLE_LABEL_LAYOUT = {
+  offsetY: -46,
+  fontSize: 12,
+  lineHeight: 16,
+  paddingTop: 5,
+  paddingRight: 8,
+  paddingBottom: 5,
+  paddingLeft: 8,
+} as const;
 
 export const createVehicleStyle = ({
   src,
   rotation,
   scale = 0.65,
   countdownText = "",
+  labelOffsetY = VEHICLE_LABEL_LAYOUT.offsetY,
 }: {
   src: string;
   rotation: number;
   scale?: number;
   countdownText?: string;
+  labelOffsetY?: number;
 }) =>
   new Style({
+    zIndex: 200,
+
     image: new Icon({
       src,
       rotation,
@@ -177,13 +275,35 @@ export const createVehicleStyle = ({
       scale,
       anchor: CENTER_ICON_ANCHOR,
     }),
+
     text: new Text({
       text: countdownText,
-      offsetY: -34,
+
+      // 修改这里：
+      // 原来固定 VEHICLE_LABEL_LAYOUT.offsetY
+      // 现在允许展开详情时动态上移
+      offsetY: labelOffsetY,
+
       font: "700 12px sans-serif",
-      fill: new Fill({ color: "#FFFFFF" }),
-      backgroundFill: new Fill({ color: "rgba(17, 24, 39, 0.86)" }),
-      padding: [3, 7, 3, 7],
+      textAlign: "center",
+      justify: "left",
+
+      fill: new Fill({
+        color: "#FFFFFF",
+      }),
+
+      backgroundFill: new Fill({
+        color: "rgba(17, 24, 39, 0.86)",
+      }),
+
+      padding: [
+        VEHICLE_LABEL_LAYOUT.paddingTop,
+        VEHICLE_LABEL_LAYOUT.paddingRight,
+        VEHICLE_LABEL_LAYOUT.paddingBottom,
+        VEHICLE_LABEL_LAYOUT.paddingLeft,
+      ],
+
+      textBaseline: "bottom",
     }),
   });
 
@@ -278,22 +398,46 @@ const createCachedStyle = <K extends StyleKey>(key: K, params: StyleParamsMap[K]
 export const getStyle = <K extends StyleKey>(key: K, params?: StyleParamsMap[K]) => {
   const cacheKey = getCacheKey(key, params);
 
-  if (key === "vehicle") {
-    const vehicleParams = params as StyleParamsMap["vehicle"];
-    const style =
-      (styleCache.get(cacheKey) as Style | undefined) ??
-      createVehicleStyle({
-        src: vehicleParams.src,
-        rotation: 0,
-        scale: vehicleParams.scale,
-        countdownText: vehicleParams.countdownText,
-      });
+if (key === "vehicle") {
+  const vehicleParams = params as StyleParamsMap["vehicle"];
 
-    styleCache.set(cacheKey, style);
-    (style.getImage() as Icon).setRotation(vehicleParams.rotation);
-    style.getText()?.setText(vehicleParams.countdownText ?? "");
-    return style;
-  }
+  const style =
+    (styleCache.get(cacheKey) as Style | undefined) ??
+    createVehicleStyle({
+      src: vehicleParams.src,
+      rotation: 0,
+      scale: vehicleParams.scale,
+      countdownText: vehicleParams.countdownText,
+
+      // 新增
+      labelOffsetY:
+        vehicleParams.labelOffsetY ??
+        VEHICLE_LABEL_LAYOUT.offsetY,
+    });
+
+  styleCache.set(cacheKey, style);
+
+  // 保持原来的车辆旋转逻辑
+  (style.getImage() as Icon).setRotation(
+    vehicleParams.rotation,
+  );
+
+  // 保持原来的文字动态刷新
+  style
+    .getText()
+    ?.setText(vehicleParams.countdownText ?? "");
+
+  // 新增：
+  // 展开/收起时同步更新标签实际绘制位置
+  style
+    .getText()
+    ?.setOffsetY(
+      vehicleParams.labelOffsetY ??
+        VEHICLE_LABEL_LAYOUT.offsetY,
+    );
+
+  return style;
+}
 
   const cached = styleCache.get(cacheKey);
   if (cached) return cached;

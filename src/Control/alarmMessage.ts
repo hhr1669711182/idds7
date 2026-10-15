@@ -1,5 +1,5 @@
-﻿import { MESSAGE_EVENT_KEY } from '@/const/const.message.type'
-import { useUserStore } from '@/store/useUserStore'
+import { MESSAGE_EVENT_KEY } from '@/const/const.message.type'
+import { getSharedAccessToken, parseSharedMessageSession, SEAT_SHARED_STATE_KEY } from './seatSharedState'
 
 const MESSAGE_CLIENT = 'ids-seat-web'
 const WRAPPER_KEYS = [
@@ -58,13 +58,8 @@ const decodeBase64Url = (value: string) => {
   )
 }
 
-/**
- * 读取 access_token 的 JWT claims。
- * access_token 由 seat-web 写入 seat-shared-state，再由 useUserStore 同步；
- * 本函数直接从 store 取，不再裸读 localStorage。
- */
 export const readAccessTokenClaims = (): JwtClaims | null => {
-  const token = useUserStore().accessToken
+  const token = getSharedAccessToken()
   if (!token) return null
 
   try {
@@ -76,24 +71,15 @@ export const readAccessTokenClaims = (): JwtClaims | null => {
   }
 }
 
-/**
- * 从 store 取消息会话信息（userId / sessionState / seatKey）。
- * 数据来源仍为 seat-shared-state.auth，但不再由本函数直接读 localStorage。
- */
 export const getAlarmMessageSession = () => {
-  const store = useUserStore()
-  const userId = store.userId
-  const sessionState = store.sessionId
-  if (!userId || !sessionState) return null
-  return { userId, sessionState, seatKey: store.seatNumber?.trim() ?? '' }
+  return parseSharedMessageSession(localStorage.getItem(SEAT_SHARED_STATE_KEY))
 }
 
-export const buildAlarmMessageWebSocketUrl = (
-  serviceOrigin: string,
-  userId: string,
-  sessionState: string,
-  client = MESSAGE_CLIENT,
-) => {
+/**
+ * 消息服务 V2 单入口 WebSocket 地址：{origin}/message-client/ws
+ * 身份不再出现在 URL，改为连接后发送 CONNECT 首帧（JWT）鉴权。
+ */
+export const buildMessageWebSocketUrl = (serviceOrigin: string) => {
   const origin = serviceOrigin.trim().replace(/\/+$/g, '')
   if (!origin) return ''
 
@@ -104,8 +90,19 @@ export const buildAlarmMessageWebSocketUrl = (
     ? wsOrigin
     : `${wsOrigin}/message-client`
 
-  return `${base}/ws/${encodeURIComponent(client)}/${encodeURIComponent(userId)}/${encodeURIComponent(sessionState)}`
+  return `${base}/ws`
 }
+
+/**
+ * @deprecated V2 起改为单入口 `/message-client/ws` + CONNECT 首帧鉴权，
+ * 请使用 {@link buildMessageWebSocketUrl}。本封装仅为兼容旧调用方而保留，忽略身份参数。
+ */
+export const buildAlarmMessageWebSocketUrl = (
+  serviceOrigin: string,
+  _userId?: string,
+  _sessionState?: string,
+  _client: string = MESSAGE_CLIENT,
+) => buildMessageWebSocketUrl(serviceOrigin)
 
 export const findAlarmCustomContent = (
   value: unknown,
@@ -123,7 +120,7 @@ export const findAlarmCustomContent = (
   if (visited.has(objectValue)) return null
   visited.add(objectValue)
 
-  // 本地 Mock 或部分网关会直接下发 customContent 主体。
+  // 本地 Mock 或部分网关会直接下发 customContent 本体。
   if (
     objectValue.eventName === 'AlarmIncidentStateChangedEvent'
     && objectValue.source === 'ids-alarm-client'

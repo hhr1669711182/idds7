@@ -1,7 +1,7 @@
 /*
  * @Author: hhr
  * @Date: 2026-08-27 10:09:42
- * @LastEditTime: 2026-10-13 15:12:05
+ * @LastEditTime: 2026-10-14 15:02:07
  * @LastEditors: hhr
  * @Description: ids-address-query-client (高德代理) 接口客户端 - COLA 信封解包
  * @FilePath: \ids-gis-web\src\apis\amap.ts
@@ -124,7 +124,7 @@ export interface RouteFeature {
   properties: RouteProperties
 }
 
-export interface RouteResult {
+export interface RoutePlan {
   type: string
   totalFeatures: string
   totalTime: string
@@ -136,6 +136,11 @@ export interface RouteResult {
 
 /** 代理信封解包后 driving 回包为数组（多方案），取首个即可 */
 export type RouteResultResponse = RouteResult | RouteResult[]
+export interface RouteResult {
+  origin?: string
+  destination?: string
+  routes: RoutePlan[]
+}
 
 // ----- 天气 -----
 export interface AmapWeatherLive {
@@ -272,7 +277,7 @@ export const analyzeAddress = (params: { address: string; city?: string }) =>
     { params },
   )
 
-/** Route 1. 驾车路径规划（v3 基础版） */
+/** Route 1. 驾车路径规划（v3 基础版）；坐标参数为 WGS84，代理负责转为 GCJ-02。 */
 export const driving = (params: {
   origin: string
   destination: string
@@ -285,10 +290,10 @@ export const driving = (params: {
   // cartype?: number
 }) => alovaMapProxyInstance.Get<RouteResultResponse>(
   '/api/amap/route/driving',
-  { params },
+  { params, cacheFor: 0 },
 )
 
-/** Route 2. 驾车路径规划（v5 增强版，含 road_name/step_distance） */
+/** Route 2. 驾车路径规划（v5 增强版，含 road_name/step_distance）；坐标参数为 WGS84。 */
 export const drivingV2 = (params: {
   origin: string
   destination: string
@@ -298,10 +303,10 @@ export const drivingV2 = (params: {
   width?: string
 }) => alovaMapProxyInstance.Get<RouteResultResponse>(
   '/api/amap/route/driving-v2',
-  { params },
+  { params, cacheFor: 0 },
 )
 
-/** Route 3. 多起点、单终点路径规划 */
+/** Route 3. 多起点、单终点路径规划；origins / destination 为 WGS84 坐标串。 */
 export const multiWaypoint = (params: {
   origins: string[]
   destinations: string[]

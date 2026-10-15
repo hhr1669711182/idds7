@@ -1,9 +1,9 @@
 import { MESSAGE_EVENT_KEY } from '@/const/const.message.type'
 
+// V2：旧 {type:'SEAT', key} 订阅指令已下线，按指南 §7.2 翻译为层级 topic（相对 clientId）
 export const buildPositionSubscription = (seatKey = '8001') => ({
   action: 'subscribe',
-  type: 'SEAT',
-  key: seatKey,
+  topic: `seat/${seatKey}`,
 } as const)
 
 type PositionPayload = {
@@ -49,7 +49,7 @@ export const normalizePositionFrames = (frame: unknown) => {
   if (!frame || typeof frame !== 'object') return []
 
   const root = frame as Record<string, any>
-  console.log("🚀 ~ normalizePositionFrames ~ root:", root)
+
   const rawBodies = Array.isArray(root.userMsgBodyList)
     ? root.userMsgBodyList
     : [root]

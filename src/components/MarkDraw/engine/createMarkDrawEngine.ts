@@ -17,9 +17,8 @@ import { exportFeatureCollection, importFeatureCollection } from "../utils/geojs
 import { getLayer } from "../view/layerConfig";
 import { createTool } from "../tools";
 import {
-  SNAP_TOLERANCE_M,
   coordsOfGeometry,
-  snapToNeighbourEdges,
+  snapFenceToNeighbours,
   validateFence,
   type FenceViolation,
 } from "../utils/fenceConstraint";
@@ -424,11 +423,7 @@ export const createMarkDrawEngine = (
 
     // 在 4326 口径做吸附（与展示、落库一致），再转回 3857 交给地图
     const target4326 = geometryToLngLat(coords);
-    const snapped4326 = snapToNeighbourEdges(
-      target4326,
-      neighbours.map((n) => n.coords),
-      SNAP_TOLERANCE_M
-    );
+    const snapped4326 = snapFenceToNeighbours(target4326, neighbours.map((n) => n.coords));
     if (snapped4326 === target4326) return false;
 
     const snapped3857 = lngLatToMercator(snapped4326);

@@ -11,18 +11,28 @@ import OlMap from 'ol/Map';
 import type { EventsKey } from 'ol/events';
 import { boundingExtent } from 'ol/extent';
 import LineString from 'ol/geom/LineString';
+import Point from 'ol/geom/Point';
 import VectorLayer from 'ol/layer/Vector';
 import { unByKey } from 'ol/Observable';
 import { fromLonLat, transform } from 'ol/proj';
 import TileWMS from 'ol/source/TileWMS';
 import VectorSource from 'ol/source/Vector';
+import { asArray } from 'ol/color';
 import { Fill, Stroke, Style } from 'ol/style';
+import { MAP_LAYER_Z_INDEX } from './layerOrder';
 import {
+  buildRouteDirectionFeatures,
   buildTmcFeatures,
-  fetchDrivingRoute,
+  fetchDrivingRoutes,
+  type AmapDrivingResult,
   type AmapTmcStatus,
 } from '@/baseComponent/amap/useAmapTools';
-import { getStyle } from '@/baseComponent/amap/featureStyle';
+import {
+  createRouteLineStyle,
+  getStyle,
+  MAP_ICON_SRC,
+} from '@/baseComponent/amap/featureStyle';
+import { DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS } from '@/baseComponent/OpenlayersMap/FeatureClickQuery';
 import {
   mountPolygonLayer,
   type PolygonLayerManager,
@@ -62,7 +72,6 @@ import {
   JURISDICTION_LAYER_NAME as DISPATCH_T1_JURISDICTION_LAYER,
   cqlLiteral,
   queryStationFeatures,
-  queryJurisdictionsByStationIds,
   queryIncidentStations,
   type StationCandidate,
   type Coordinate,
@@ -72,6 +81,10 @@ import {
   useIncidentLocationStore,
   useStationLayerStore,
 } from '@/store/useIncidentLocationStore';
+import {
+  INCOMING_CALL_FOCUS_ZOOM,
+  usePendingCallLocationStore,
+} from '@/store/usePendingCallLocationStore';
 
 export { DISPATCH_T1_STATION_LAYER, DISPATCH_T1_JURISDICTION_LAYER };
 
@@ -163,10 +176,15 @@ export class DispatchT1 {
   private readonly stationQuerySource: TileWMS;
   private showAllJurisdictions = false;
   private jurisdictionManager!: PolygonLayerManager<JurisdictionItem>;
-  /** 当前已渲染的辖区项（key = stationId），用于 removeSupportJurisdictions 等 diff 操作 */
+  /** 当前已渲染的辖区项（key = stationId） */
   private readonly renderedJurisdictions = new globalThis.Map<string, JurisdictionItem>();
   private readonly routeSource = new VectorSource();
   private readonly routeLayer: VectorLayer<VectorSource>;
+  private readonly vehicleSource = new VectorSource();
+  private readonly vehicleLayer: VectorLayer<VectorSource>;
+  /** 主管队站独立图标图层（zhu.png），每次查询仅渲染当前主管一个点位 */
+  private readonly primaryStationSource = new VectorSource();
+  private readonly primaryStationLayer: VectorLayer<VectorSource>;
 
   constructor(
     private readonly map: OlMap,
@@ -184,37 +202,55 @@ export class DispatchT1 {
       crossOrigin: 'anonymous',
     });
 
+    /* 辖区图层已禁用（主管/支撑辖区渲染逻辑注释）
     this.jurisdictionManager = mountPolygonLayer<JurisdictionItem>({
       map: this.map,
       items: [],
       visible: true,
       className: 'dispatch_t1_jurisdictions',
-      zIndex: 1000,
+      zIndex: MAP_LAYER_Z_INDEX.jurisdiction,
       keyGetter: (item) => item.key,
       geometryGetter: (item) => item.geometry,
       styleGetter: (item) => this.getJurisdictionStyle(item.role),
     });
+    */
     this.routeLayer = new VectorLayer({
       source: this.routeSource,
-      zIndex: 1002,
+      zIndex: MAP_LAYER_Z_INDEX.route,
       updateWhileAnimating: true,
       updateWhileInteracting: true,
-      style: (feature) => new Style({
-        stroke: new Stroke({
-          color: String(feature.get('color') ?? '#2563eb'),
-          width: 5,
-        }),
-      }),
+      style: (feature) => createRouteLineStyle(
+        String(feature.get('color') ?? '#2563eb'),
+        6,
+      ),
       properties: { name: 'dispatch_t1_routes' },
     });
 
     this.map.addLayer(this.routeLayer);
+    this.vehicleLayer = new VectorLayer({
+      source: this.vehicleSource,
+      zIndex: MAP_LAYER_Z_INDEX.vehicle,
+      updateWhileAnimating: true,
+      updateWhileInteracting: true,
+      properties: { name: 'dispatch_t1_vehicles' },
+    });
+    this.map.addLayer(this.vehicleLayer);
+
+    // 主管队站独立图标图层（zhu.png）：盖在消防站图层之上、车辆图层之下，始终可见
+    this.primaryStationLayer = new VectorLayer({
+      source: this.primaryStationSource,
+      className: DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS,
+      zIndex: MAP_LAYER_Z_INDEX.incident,
+      properties: { name: 'dispatch_t1_primary_station' },
+    });
+    this.map.addLayer(this.primaryStationLayer);
 
     this.bindStationClick();
     this.observeGenericStationPopups();
     this.hideGenericFeaturePopups();
     this.vehicleManager = createVehicleManager({
       routeSource: this.routeSource,
+      vehicleSource: this.vehicleSource,
       getState: () => this.getState(),
     });
     void this.getStationFeatures().then(() => {
@@ -346,7 +382,9 @@ export class DispatchT1 {
         'EPSG:4326',
         this.map.getView().getProjection(),
       ),
-      zoom: 14,
+      zoom: usePendingCallLocationStore().getActive()
+        ? INCOMING_CALL_FOCUS_ZOOM
+        : 14,
       duration: 400,
     });
     console.info('[DispatchT1] 已定位警情，开始查询队站辖区', {
@@ -356,7 +394,6 @@ export class DispatchT1 {
     try {
       // 调派编队与队站辖区相互独立，提前并行发起，避免阻塞首屏定位。
       const formationPromise = queryDispatchFormation(data.incident.id);
-      const stationFeatures = await this.getStationFeatures();
       this.assertCurrent(version);
 
       const incidentCoordinate: Coordinate = [
@@ -364,25 +401,29 @@ export class DispatchT1 {
         data.incident.latitude,
       ];
       // 队站/辖区查询的纯业务逻辑统一下沉到 IncidentStationQuery；
-      // 此处只负责传入缓存队站要素与主管判定策略，复用同一份实现。
+      // 此处只负责传入主管判定策略，复用同一份实现。
       const result = await queryIncidentStations(incidentCoordinate, {
-        stationFeatures,
         primaryStationId: data.incident.primaryStationId,
         showAllJurisdictions: data.showAllJurisdictions,
       });
       this.assertCurrent(version);
 
-      const selected = [result.primary, ...result.support];
+      // 本流程不传 forcedPrimaryStationId，不走可空精简路径，primary 必有值，仅做类型收窄
+      const primary = result.primary;
+      if (!primary) throw new Error('未查询到有效消防站');
+
+      const selected = [primary, ...result.support];
+      // 辖区查询结果已禁用：toStation 第三参数传 undefined，不携带辖区面
       const primaryStation = this.toStation(
-        result.primary,
+        primary,
         'primary',
-        result.jurisdictions.get(result.primary.id),
+        undefined,
       );
       const supportStations = result.support.map((station) =>
         this.toStation(
           station,
           'support',
-          result.jurisdictions.get(station.id),
+          undefined,
         ),
       );
 
@@ -402,15 +443,25 @@ export class DispatchT1 {
         searchRadiusMeters: result.searchRadiusMeters,
       });
       this.showStations(selected, incidentCoordinate);
+      // 主管队站以独立 zhu.png 图标渲染，并声明主管 id 供地图侧从全量消防站图层排除
+      this.renderPrimaryStation(primary);
+      useStationLayerStore().setPrimaryStations(
+        DISPATCH_T1_STATION_OWNER,
+        [primary.id],
+      );
+      /* 辖区渲染已禁用（主管/支撑辖区不再上图）
       this.drawJurisdiction(primaryStation);
       if (this.showAllJurisdictions) {
         supportStations.forEach(station => this.drawJurisdiction(station));
       }
-      // 警情状态展示辖区后，主管与支撑队站并行规划到警情点的路线；
+      */
+      // 警情状态展示辖区后，主管队站规划到警情点的路线；
       // 不阻塞查询结果返回，单站失败仅标记该站 routeStatus 由面板提示。
-      [primaryStation, ...supportStations].forEach((station) => {
-        void this.planRoute(station);
-      });
+      // 支撑队站到警情点的路径规划已注释禁用，仅规划主管队站
+      // [primaryStation, ...supportStations].forEach((station) => {
+      //   void this.planRoute(station);
+      // });
+      void this.planRoute(primaryStation);
       console.info('[DispatchT1] 辖区查询完成', {
         primaryJurisdiction: Boolean(primaryStation.jurisdiction),
         supportJurisdictions: supportStations.filter(station => station.jurisdiction).length,
@@ -419,7 +470,7 @@ export class DispatchT1 {
       this.options.onQueryComplete?.(data.incident);
       this.hideGenericFeaturePopups();
       // 主管队站车辆随查询结果预取；支撑队站车辆延后到弹窗展开时加载。
-      await this.loadStationVehicles(result.primary.id);
+      await this.loadStationVehicles(result.primary?.id || '');
       return this.getState();
     } catch (error) {
       // 被新查询取代的在途请求静默处理，仅当前请求标记失败并上抛。
@@ -432,10 +483,6 @@ export class DispatchT1 {
   public activateStation(stationId: string): Readonly<DispatchT1State> {
     const station = this.stateController.activateStation(stationId);
     if (!station) return this.getState();
-    if (!this.showAllJurisdictions) {
-      this.removeSupportJurisdictions();
-      if (station.role === 'support') this.drawJurisdiction(station);
-    }
     void this.loadStationVehicles(stationId);
     return this.getState();
   }
@@ -468,21 +515,6 @@ export class DispatchT1 {
     //     this.stateController.setStationVehicles(stationId, null, this.errorMessage(error, '车辆列表加载失败'));
     //   }
     // }
-  }
-
-  /** 未传入报警点时，仅预览所点击队站的辖区，不进入调派流程。 */
-  public async previewStationJurisdiction(stationId: string): Promise<void> {
-    const jurisdictions = await queryJurisdictionsByStationIds([stationId]);
-    const geometry = jurisdictions.get(stationId);
-    this.renderedJurisdictions.clear();
-    if (geometry) {
-      this.renderedJurisdictions.set(stationId, {
-        key: stationId,
-        geometry,
-        role: 'primary',
-      });
-    }
-    this.jurisdictionManager.setData([...this.renderedJurisdictions.values()]);
   }
 
   public async toggleVehicle(
@@ -581,6 +613,13 @@ export class DispatchT1 {
     }
     // 地图展示异常不应把服务端已确认的调派标记为失败。
     try {
+      // 进入调派：被调派队站只保留选中方案，移除立案预览的其余候选路线。
+      const dispatchedStationIds = [...new Set(
+        command.vehicles
+          .map((item) => String(item.stationId ?? '').trim())
+          .filter(Boolean),
+      )];
+      this.pruneAlternativeRoutes(dispatchedStationIds);
       this.vehicleManager.registerDispatchedVehicles(command);
       await this.options.onDispatch?.(command);
     } catch (error) { console.warn('[DispatchT1] 调派成功，展示更新失败', error); }
@@ -594,6 +633,7 @@ export class DispatchT1 {
       this.routeVersions.set(stationId, version + 1);
     });
     this.vehicleManager.clearTrackedVehicles();
+    this.vehicleSource.clear();
     this.routeSource.clear();
     this.stateController.cancelDispatch();
     return this.getState();
@@ -615,8 +655,12 @@ export class DispatchT1 {
     }
     this.reset();
     this.stateController.destroy();
+    /* 辖区图层已禁用，无需 destroy
     this.jurisdictionManager.destroy();
+    */
     this.map.removeLayer(this.routeLayer);
+    this.map.removeLayer(this.vehicleLayer);
+    this.map.removeLayer(this.primaryStationLayer);
   }
 
   private async planRoute(station: DispatchT1Station): Promise<void> {
@@ -627,44 +671,76 @@ export class DispatchT1 {
     this.stateController.setRoutePlanning(station.id);
 
     try {
-      const result = await fetchDrivingRoute({
+      // 立案阶段：strategy=11 返回多条候选路线，全部渲染；首条为选中方案（面板里程/ETA 与车辆模拟路径以它为准）。
+      const fetched = await fetchDrivingRoutes({
         origin: [station.longitude, station.latitude],
         destination: [incident.longitude, incident.latitude],
-        strategy: 0,
         extensions: 'all',
       });
       if (this.routeVersions.get(station.id) !== version) return;
-      if (!result.fullPath.length) throw new Error('未获取到可用路线');
-
-      if (result.fullPath.length < 2 || result.distanceMeters <= 0) {
-        throw new Error('路线距离无效');
-      }
+      const results: AmapDrivingResult[] = fetched.filter(
+        (result) => result.fullPath.length >= 2 && result.distanceMeters > 0,
+      );
+      const selected = results[0];
+      if (!selected) throw new Error('未获取到可用路线');
 
       this.removeRouteFeatures(station.id);
-      const tmcFeatures = buildTmcFeatures(result.tmcs);
-      if (tmcFeatures.length) {
-        tmcFeatures.forEach((feature, index) => {
-          const status = (feature.get('tmcStatus') ?? 'unknown') as AmapTmcStatus;
-          feature.setId(`dispatch_t1_route_${station.id}_${index}`);
+      results.forEach((result, planIndex) => {
+        const alternative = planIndex > 0;
+        const projectedPath = result.fullPath.map((point) => fromLonLat(point));
+        const tmcFeatures = buildTmcFeatures(result.tmcs);
+        if (tmcFeatures.length) {
+          tmcFeatures.forEach((feature, index) => {
+            const status = (feature.get('tmcStatus') ?? 'unknown') as AmapTmcStatus;
+            const style = getStyle('tmcLine', { status, width: 6 });
+            feature.setId(`dispatch_t1_route_${station.id}_p${planIndex}_${index}`);
+            feature.set('stationId', station.id);
+            feature.set('routePlanIndex', planIndex);
+            feature.set('routeAlternative', alternative);
+            // 候选方案半透明置底，避免与选中路线等权重叠。
+            feature.setStyle(alternative ? this.dimRouteStyle(style) : style);
+          });
+          this.routeSource.addFeatures(tmcFeatures);
+        } else {
+          const feature = new Feature({
+            geometry: new LineString(projectedPath),
+          });
+          feature.setId(`dispatch_t1_route_${station.id}_p${planIndex}_0`);
           feature.set('stationId', station.id);
-          feature.setStyle(getStyle('tmcLine', { status, width: 6 }));
+          feature.set('routePlanIndex', planIndex);
+          feature.set('routeAlternative', alternative);
+          if (alternative) {
+            feature.setStyle(this.dimRouteStyle(createRouteLineStyle(this.routeColor(station.id), 6)));
+          } else {
+            feature.set('color', this.routeColor(station.id));
+          }
+          this.routeSource.addFeature(feature);
+        }
+        // 车辆模拟与方向箭头都以选中方案的完整路径为准，避免 TMC 分段方向不统一。
+        if (!alternative) {
+          const routePathFeature = new Feature({
+            geometry: new LineString(projectedPath),
+          });
+          routePathFeature.setId(`dispatch_t1_route_${station.id}_path`);
+          routePathFeature.set('stationId', station.id);
+          routePathFeature.set('routePlanIndex', 0);
+          routePathFeature.set('dispatchRoutePath', true);
+          routePathFeature.setStyle([]);
+          this.routeSource.addFeature(routePathFeature);
+        }
+        // 箭头按方案分别生成并随方案裁剪；共享路段重叠的箭头坐标一致，视觉无差异。
+        const directionFeatures = buildRouteDirectionFeatures([projectedPath]);
+        directionFeatures.forEach((feature) => {
+          feature.set('stationId', station.id);
+          feature.set('routePlanIndex', planIndex);
+          feature.set('routeAlternative', alternative);
         });
-        this.routeSource.addFeatures(tmcFeatures);
-      } else {
-        const feature = new Feature({
-          geometry: new LineString(
-            result.fullPath.map((point) => fromLonLat(point)),
-          ),
-        });
-        feature.setId(`dispatch_t1_route_${station.id}`);
-        feature.set('stationId', station.id);
-        feature.set('color', this.routeColor(station.id));
-        this.routeSource.addFeature(feature);
-      }
+        this.routeSource.addFeatures(directionFeatures);
+      });
       this.stateController.setRouteReady(
         station.id,
-        result.distanceMeters,
-        result.durationSeconds,
+        selected.distanceMeters,
+        selected.durationSeconds,
       );
     } catch (error) {
       if (this.routeVersions.get(station.id) !== version) return;
@@ -677,14 +753,23 @@ export class DispatchT1 {
 
   private bindStationClick(): void {
     this.clickKey = this.map.on('singleclick', async (event) => {
-      const dispatchStarted = Boolean(this.getState().incident);
+      // 未进入调派时由通用队站弹窗处理点击，不查询辖区边界。
+      if (!this.getState().incident) return;
       // 立案查询中：队站图层由 store 强制过滤显示主管+支撑，无候选时不响应点击
-      if (dispatchStarted && !this.getState().stations.length) return;
-      if (
-        !dispatchStarted
-        && this.options.isLayerVisible
-        && !this.options.isLayerVisible(DISPATCH_T1_STATION_LAYER)
-      ) return;
+      if (!this.getState().stations.length) return;
+      // 主管以独立 zhu.png 矢量图标上图（WMS 像素反查可能落空）：
+      // 先按像素命中主管要素，命中则直接展开主管详情，与点支撑队站行为一致
+      const primaryHit = this.map.forEachFeatureAtPixel(
+        event.pixel,
+        (feature, layer) =>
+          layer === this.primaryStationLayer ? feature : undefined,
+        { hitTolerance: 6 },
+      ) as Feature | undefined;
+      if (primaryHit) {
+        const stationId = String(primaryHit.get('stationId') ?? '').trim();
+        if (stationId) this.activateStation(stationId);
+        return;
+      }
       try {
         const view = this.map.getView();
         // stationQuerySource 不挂载到地图，仅用于拼装 GetFeatureInfo 请求参数
@@ -708,20 +793,12 @@ export class DispatchT1 {
           height: Number(urlObject.searchParams.get('HEIGHT')),
           x: Number(urlObject.searchParams.get('X') ?? urlObject.searchParams.get('I')),
           y: Number(urlObject.searchParams.get('Y') ?? urlObject.searchParams.get('J')),
-          cql_filter: dispatchStarted
-            ? (dispatchCqlFilter || '1=1')
-            : '1=1',
+          cql_filter: dispatchCqlFilter || '1=1',
           feature_count: 1,
           srs: view.getProjection().getCode(),
         });
         const stationId = String(data?.features?.[0]?.properties?.id ?? '');
-        if (stationId) {
-          if (dispatchStarted) {
-            this.activateStation(stationId);
-          } else {
-            await this.previewStationJurisdiction(stationId);
-          }
-        }
+        if (stationId) this.activateStation(stationId);
       } catch (error) {
         console.error('[DispatchT1] 点击消防站失败', error);
       }
@@ -751,7 +828,8 @@ export class DispatchT1 {
 
     this.map.getOverlays().getArray().forEach((overlay) => {
       const element = overlay.getElement();
-      if (!element || element.querySelector('.dispatch-station-popup')) return;
+      if (!element || element.querySelector('.dispatch-station-popup')
+        || element.dataset.stationPopup === 'true') return;
       const popup = element.querySelector('.overlay_popup');
       if (!popup) return;
 
@@ -815,6 +893,7 @@ export class DispatchT1 {
     };
   }
 
+  /* 辖区渲染已禁用（主管/支撑辖区不再上图）
   private drawJurisdiction(station: DispatchT1Station): void {
     if (!station.jurisdiction) return;
     const item: JurisdictionItem = {
@@ -825,15 +904,7 @@ export class DispatchT1 {
     this.renderedJurisdictions.set(station.id, item);
     this.jurisdictionManager.upsert(item);
   }
-
-  private removeSupportJurisdictions(): void {
-    for (const [key, item] of this.renderedJurisdictions) {
-      if (item.role === 'support') {
-        this.jurisdictionManager.remove(key);
-        this.renderedJurisdictions.delete(key);
-      }
-    }
-  }
+  */
 
   /**
    * 将本次主管+支撑队站写入共享队站图层 store（地图侧对唯一 WMS 消防站图层
@@ -847,6 +918,9 @@ export class DispatchT1 {
       DISPATCH_T1_STATION_OWNER,
       stations.map((station) => station.id),
     );
+    // 来电粗定位仍有效时，前面的定位动画已经把视图放到 17 级。
+    // 此处只更新队站图层，不再用异步 fit 覆盖视图；用户之后仍可自由手动缩放。
+    if (usePendingCallLocationStore().getActive()) return;
     const projection = this.map.getView().getProjection().getCode();
     const extent = boundingExtent(
       [incidentCoordinate, ...stations.map((station) => station.coordinate)]
@@ -859,12 +933,42 @@ export class DispatchT1 {
     });
   }
 
+  /**
+   * 渲染本次查询的主管队站独立图标（zhu.png）。
+   * 重复查询/换新火情时先清空再绘制，保证图上仅有一个主管点。
+   */
+  private renderPrimaryStation(primary: StationCandidate): void {
+    this.primaryStationSource.clear();
+    const feature = new Feature({
+      geometry: new Point(fromLonLat(primary.coordinate)),
+    });
+    feature.set('stationId', primary.id);
+    // 点击主管图标时供 FeatureClickQuery 直接渲染与支撑队站一致的弹窗（无需 WMS 反查）
+    feature.set('data', {
+      stationId: primary.id,
+      name: primary.name,
+      address: primary.address,
+    });
+    feature.setStyle(
+      getStyle('icon', {
+        iconSrc: MAP_ICON_SRC.primaryStation,
+        scale: 0.9,
+        anchor: [0.5, 0.5],
+      }),
+    );
+    this.primaryStationSource.addFeature(feature);
+  }
+
   private clearRenderedResults(): void {
     this.vehicleManager.clearTrackedVehicles();
+    this.vehicleSource.clear();
     this.routeVersions.clear();
     this.routeSource.clear();
+    this.primaryStationSource.clear();
+    /* 辖区图层已禁用，无需清空
     this.renderedJurisdictions.clear();
     this.jurisdictionManager.setData([]);
+    */
     // 释放本模块对共享 WMS 消防站图层的过滤声明，恢复图层开关控制
     useStationLayerStore().clearOwner(DISPATCH_T1_STATION_OWNER);
   }
@@ -883,6 +987,35 @@ export class DispatchT1 {
       .forEach((feature) => this.routeSource.removeFeature(feature));
   }
 
+  /**
+   * 调派确认后：被调派队站只保留选中的首条方案，
+   * 移除立案阶段半透明预览的其余候选路线及其方向箭头。
+   */
+  private pruneAlternativeRoutes(stationIds: Iterable<string>): void {
+    const targets = new Set(stationIds);
+    this.routeSource.getFeatures()
+      .filter((feature) => feature.get('routeAlternative') === true
+        && targets.has(String(feature.get('stationId') ?? '')))
+      .forEach((feature) => this.routeSource.removeFeature(feature));
+  }
+
+  /** 候选路线样式：克隆原样式后描边透明度降到 70% 并置底，与选中方案区分。 */
+  private dimRouteStyle(style: Style | Style[]): Style | Style[] {
+    const styles = (Array.isArray(style) ? style : [style]).map((item) => {
+      const copy = item.clone();
+      const stroke = copy.getStroke();
+      const color = stroke?.getColor();
+      if (stroke && color) {
+        const rgba = asArray(color as string | number[]).slice();
+        rgba[3] = (rgba[3] ?? 1) * 0.7;//路线透明度，0~1，0为全透明，1为不透明
+        stroke.setColor(rgba);
+      }
+      copy.setZIndex((copy.getZIndex() ?? 0) - 10);
+      return copy;
+    });
+    return Array.isArray(style) ? styles : styles[0];
+  }
+
   private cancelRoute(stationId: string): void {
     this.routeVersions.set(stationId, (this.routeVersions.get(stationId) ?? 0) + 1);
   }
@@ -894,6 +1027,7 @@ export class DispatchT1 {
     return ROUTE_COLORS[Math.max(0, index) % ROUTE_COLORS.length];
   }
 
+  /* 辖区样式已禁用（主管/支撑辖区不再上图）
   private getJurisdictionStyle(role: DispatchT1StationRole): Style {
     return role === 'primary'
       ? new Style({
@@ -905,6 +1039,7 @@ export class DispatchT1 {
           stroke: new Stroke({ color: '#2563eb', width: 2.5 }),
         });
   }
+  */
 
   private assertCurrent(version: number): void {
     if (version !== this.requestVersion) throw new Error('查询已被新的火情替换');

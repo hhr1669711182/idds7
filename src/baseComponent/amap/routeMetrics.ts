@@ -81,6 +81,20 @@ export const computeRouteMetrics = (
   };
 };
 
+/** 按路线距离和 ETA 计算匀速动画速度，单位为米/秒。 */
+export const computeEtaSpeedMps = (totalMeters: number, etaSeconds: number) => {
+  if (
+    !Number.isFinite(totalMeters) ||
+    totalMeters <= 0 ||
+    !Number.isFinite(etaSeconds) ||
+    etaSeconds <= 0
+  ) {
+    return 0;
+  }
+  return totalMeters / etaSeconds;
+};
+
+
 export const formatCountdownSeconds = (seconds: number) => {
   const safeSeconds = Math.max(0, Math.ceil(seconds));
   const minutes = Math.floor(safeSeconds / 60);

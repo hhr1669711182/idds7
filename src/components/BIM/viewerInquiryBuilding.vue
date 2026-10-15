@@ -62,7 +62,7 @@ import {
 } from "./module/viewerInquiryBuilding.js";
 import { updateBIMType } from "./module/commonSetting.js";
 
-import { onLoadModel } from "@/controller/three"
+// import { onLoadModel } from "@/controller/three"
 import { useDispatchStore } from "@/store";
 const dispatchStore = useDispatchStore();
 
@@ -148,43 +148,43 @@ onMounted(async () => {
   //   startRender();
   // }
 
-  onLoadModel(async (data) => {
-    if (container.value) {
-      const { buildId, floor, totalFloor, trappedCount, smokeCondition } = data;
-      Object.assign(formData.value, { floor, trapped: trappedCount, smoke: smokeCondition })
+  // onLoadModel(async (data) => {
+  //   if (container.value) {
+  //     const { buildId, floor, totalFloor, trappedCount, smokeCondition } = data;
+  //     Object.assign(formData.value, { floor, trapped: trappedCount, smoke: smokeCondition })
 
-      const dis = {
-        buildId: data.buildId,
-        lon: data.lon,
-        lat: data.lat,
-      }
+  //     const dis = {
+  //       buildId: data.buildId,
+  //       lon: data.lon,
+  //       lat: data.lat,
+  //     }
 
-      if (currentBuildId === buildId) {
-        // formData.value.totalFloor = allFloors.length;
-        // startRender();
-        handleFloorChange();
-        handleTrappedChange();
-        handleSmokeChange();
-        return;
-      }
+  //     if (currentBuildId === buildId) {
+  //       // formData.value.totalFloor = allFloors.length;
+  //       // startRender();
+  //       handleFloorChange();
+  //       handleTrappedChange();
+  //       handleSmokeChange();
+  //       return;
+  //     }
 
-      if (currentBuildId !== null) {
-        clearBuildGroup();
-        allFloors = [];
-        await loadData(allFloors, dis);
-      } else {
-        await initThree(container, allFloors, dis, false);
-      }
+  //     if (currentBuildId !== null) {
+  //       clearBuildGroup();
+  //       allFloors = [];
+  //       await loadData(allFloors, dis);
+  //     } else {
+  //       await initThree(container, allFloors, dis, false);
+  //     }
 
-      currentBuildId = buildId;
-      formData.value.totalFloor = allFloors.length;
-      startRender();
+  //     currentBuildId = buildId;
+  //     formData.value.totalFloor = allFloors.length;
+  //     startRender();
 
-        handleFloorChange();
-        handleTrappedChange();
-        handleSmokeChange();
-    }
-  })
+  //       handleFloorChange();
+  //       handleTrappedChange();
+  //       handleSmokeChange();
+  //   }
+  // })
 });
 
 onUnmounted(() => {

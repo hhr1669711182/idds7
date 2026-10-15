@@ -43,6 +43,17 @@ export const LAYER_WRITABLE_OVERRIDES: Record<string, boolean> = {
   "gis:view_juris_zone": true,
 };
 
+/**
+ * 可写图层的真实 WFS typeName 覆盖：
+ * 地图页面展示的 gis:view_juris_zone 是数据库视图，WFS-T 对它一律返回 read-only；
+ * 真正可写的是同名的物理表 gis:juris_zone（视图 SQL = select * from public.juris_zone）。
+ * 这里只在 MarkDraw 内做映射，不动 src/config/layers.ts，避免影响 map 页面的图层树。
+ */
+export const LAYER_TYPE_OVERRIDES: Record<string, string> = {
+  "gis:view_juris_zone": "gis:juris_zone",
+};
+
+
 const toMarkDrawLayer = (cfg: LayerSourceConfig): MarkDrawLayer => ({
   groupId: cfg.groupId,
   groupName: cfg.groupName,
@@ -50,7 +61,7 @@ const toMarkDrawLayer = (cfg: LayerSourceConfig): MarkDrawLayer => ({
   id: cfg.id,
   name: cfg.name,
   workspace: cfg.workspace,
-  typeName: cfg.typeName,
+  typeName: LAYER_TYPE_OVERRIDES[cfg.id] ?? cfg.typeName,
   icon: cfg.icon,
   writable: cfg.enabled ? (LAYER_WRITABLE_OVERRIDES[cfg.id] ?? false) : false,
   displayFields: ["id", cfg.name],

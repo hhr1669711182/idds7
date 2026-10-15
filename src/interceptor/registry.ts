@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 拦截器注册表 + 链式执行
  *
  * - register / unregister / setEnabled
@@ -14,7 +14,6 @@ import type {
   SubscribeRule,
 } from './types'
 import { matchSubscription } from './matcher'
-
 
 const sortByPriority = (list: MessageInterceptor[]) =>
   [...list].sort((a, b) => a.priority - b.priority)
@@ -76,7 +75,8 @@ class InterceptorRegistry {
    */
   run(raw: unknown, channel: string, system: string): NormalizedMessage[] {
     const list = this.list().filter(i => i.enabled !== false)
-    if (!list.length) {
+    if (!list.length) return []
+
     const collected: NormalizedMessage[] = []
     const ctx: InterceptorContext = { raw, channel, system }
 
@@ -98,7 +98,7 @@ class InterceptorRegistry {
       if (out.stop) break
     }
 
-    if (!collected.length) {
+    return collected
   }
 }
 

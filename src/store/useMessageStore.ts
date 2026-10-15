@@ -14,9 +14,6 @@ import type { MessageEnvelope } from '@/types/message'
 import { WebSocketClient, type WebSocketOptions } from '@/hooks/useWebSocket'
 import { BroadcastChannelClient, type BroadcastChannelOptions } from '@/hooks/useBroadcastChannel'
 import { interceptorRegistry, installDefaultInterceptors } from '@/interceptor'
-import { createLogger } from '@/utils/logger'
-
-const log = createLogger('message')
 
 type AnyRecord = Record<string, any>
 
@@ -184,12 +181,6 @@ export const useMessageStore = defineStore(
      * 拦截器未命中时按 Envelope / Legacy 兼容路径回退。
      */
     const ingest = (raw: any, channel: MessageChannel, system: MessageSystem, meta?: AnyRecord) => {
-      log.debug('消息进入', {
-        channel,
-        system,
-        origin: meta?.origin,
-        readyState: meta?.readyState,
-      })
       ensureInterceptors()
 
       if (isEnvelope(raw)) {
@@ -213,10 +204,7 @@ export const useMessageStore = defineStore(
       }
 
       const legacy = normalizeLegacy(raw)
-      if (!legacy.eventKey) {
-        log.warn('消息无法归一，已丢弃', { channel, system })
-        return
-      }
+      if (!legacy.eventKey) return
       dispatch(legacy.eventKey, legacy.data, system, channel, meta)
     }
 
@@ -237,7 +225,7 @@ export const useMessageStore = defineStore(
     }
 
     const connectWebSocket = (options: BindWebSocketOptions) => {
-      const system = options.system ?? MESSAGE_SYSTEM.DISPATCH
+      const system = options.system ?? MESSAGE_SYSTEM.IDS_SEAT_WEB
       const prev = wsClients.get(system)
       prev?.disconnect()
       const client = new WebSocketClient(options.url, {
@@ -245,7 +233,6 @@ export const useMessageStore = defineStore(
         ...options.socketOptions,
         onOpen: (e) => {
           runtime.wsStatus[system] = true
-          log.info('WS 连接成功', { system })
           runtime.wsError[system] = null
           options.socketOptions?.onOpen?.(e)
         },
@@ -256,16 +243,10 @@ export const useMessageStore = defineStore(
         },
         onError: (e) => {
           runtime.wsError[system] = 'ws error'
-          log.error('WS 错误', { system, error: e })
           options.socketOptions?.onError?.(e)
         },
         onClose: (e) => {
           runtime.wsStatus[system] = false
-          log.warn('WS 连接关闭', {
-            system,
-            code: e.code,
-            reason: e.reason,
-          })
           options.socketOptions?.onClose?.(e)
         },
       } satisfies WebSocketOptions)

@@ -30,6 +30,8 @@ export const appEnv = {
   // 同源多标签页互通开关与通道名，由 register/initMessage.ts 统一绑定到 useMessageStore
   useBroadcastChannel: readEnvString('VITE_USE_BROADCAST_CHANNEL') === 'true',
   broadcastChannelName: readEnvString('VITE_BROADCAST_CHANNEL_NAME'),
+  // 地图初始中心点（WGS84 [经度, 纬度]），VITE_MAP_CENTER 固定格式 "[经度, 纬度]"，未配置时兜底深圳
+  mapCenter: (JSON.parse(readEnvString('VITE_MAP_CENTER') || 'null') as [number, number] | null) ?? [113.9354071, 22.54831],
   // geoserverBaseUrl: stripTrailingSlashes(readEnvString('') + 'geoserver'),
   geoserverBaseUrl: stripTrailingSlashes(readEnvString('VITE_GEOSERVER_URL')),
   

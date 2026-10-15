@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
+import * as olProj from "ol/proj";
 import { ElMessage } from "element-plus";
 import { fetchInputTips } from "../amap/useAmapTools.ts";
 import amapData from "../amap/data.json";
 import { useFireStations } from "@/composables/useFireStations";
-import { addrCtrl } from "@/controller/map";
-import { EventBus } from "@/utils";
+import { EventBus } from "@/utils/mitt.ts";
 
 const props = defineProps<{
   nav: any;
@@ -108,7 +108,7 @@ const onDisasterSelect = (item: any) => {
   // 地图视口移动逻辑，由父组件通过事件处理或保留原有nav逻辑
   if (props.nav && props.nav.map) {
     props.nav.map.getView().animate({
-      center: (window as any).ol.proj.fromLonLat(loc),
+      center: olProj.fromLonLat(loc),
       duration: 300,
     });
     props.nav.setEndpoint("end", loc);
@@ -133,7 +133,6 @@ const pickOnMap = async (type: "start" | "end") => {
   } else {
     endText.value = picked.address;
     endCoord.value = picked.lngLat;
-    addrCtrl.send(picked);
   }
 };
 

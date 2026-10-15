@@ -12,7 +12,7 @@ import { PANEL_TYPES } from "../../../const/index.ts";
 import endImg from "../assets/end.svg";
 import startImg from "../assets/start.svg";
 import rightImg from "../../../assets/right.png";
-import { getStyleFunction } from "@/utils";
+import { getStyleFunction } from "@/utils/index.ts";
 import {
   VECTOR_LAYER,
   LAYER_NAMES,

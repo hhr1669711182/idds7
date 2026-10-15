@@ -20,7 +20,6 @@ import { CAR_LOCATION_SUBSCRIPTION } from '@/Control/carLocationMessage'
 import {
     ALARM_CALL_SUBSCRIPTION,
 } from '@/Control/alarmCallMessage'
-import { startUnreadCountPolling } from '@/Control/informRecords'//消息中心未读数量
 import { ADDRESS_UPDATED_SUBSCRIPTION } from '@/Control/incidentLocationMessage'//画像地址变更（警情定位）
 import { createMessageStageGate } from '@/Control/messageStageGate'
 import {
@@ -40,8 +39,6 @@ export const initMessage = () => {
     const stageGate = createMessageStageGate()
     const mockBridge = createMockCallLocationBridge()
     cleanups.push(() => stageGate.dispose(), msg.setIngressGate(stageGate.accept))
-
-    cleanups.push(startUnreadCountPolling())//消息中心未读数量
 
     cleanups.push(msg.subscribe(MESSAGE_EVENT_KEY.ALARM_PROFILE_SYNC, handlers.onAlarmProfileSync))
     cleanups.push(msg.subscribe(MESSAGE_EVENT_KEY.MAP_LOCATE_CALL, handlers.onLocateCall))
@@ -87,7 +84,7 @@ export const initMessage = () => {
                 import.meta.env.VITE_MESSAGE_CLIENT?.trim() || 'ids-seat-web',
             )
         disconnectWs = msg.connectWebSocket({
-            system: MESSAGE_SYSTEM.DISPATCH,
+            system: MESSAGE_SYSTEM.IDS_SEAT_WEB,
             url: messageWsUrl,
             socketOptions: {
                 heartbeat: true,

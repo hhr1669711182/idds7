@@ -74,7 +74,7 @@ const refreshMapViewport = () => {
       if (!hasScaleLine) {
         map.addControl(new ScaleLine({ units: readScaleLineUnit() }));
       }
-      map.renderSync();
+      try { map.renderSync(); } catch { /* 地图过渡期 renderer 未就绪，忽略 */ }
     });
   });
 };

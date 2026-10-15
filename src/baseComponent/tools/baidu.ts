@@ -14,8 +14,8 @@ import {
   gcj02ToBd09,
   gcj02ToWgs84,
   wgs84ToGcj02,
-  type CoordinateTuple,
-} from "./transform.ts";
+  type LngLat as CoordinateTuple,
+} from "@/utils/coordTransform.ts";
 
 export type BaiduMapType = "road" | "image";
 
@@ -200,13 +200,13 @@ const sphericalMercatorInverse = ([x, y]: CoordinateTuple): CoordinateTuple => [
 ];
 
 const bd09ToWgs84 = ([lon, lat]: CoordinateTuple): CoordinateTuple => {
-  const [gcjLon, gcjLat] = bd09ToGcj02(lon, lat);
-  return gcj02ToWgs84(gcjLon, gcjLat);
+  const [gcjLon, gcjLat] = bd09ToGcj02([lon, lat]);
+  return gcj02ToWgs84([gcjLon, gcjLat]);
 };
 
 const bd09FromWgs84 = ([lon, lat]: CoordinateTuple): CoordinateTuple => {
-  const [gcjLon, gcjLat] = wgs84ToGcj02(lon, lat);
-  return gcj02ToBd09(gcjLon, gcjLat);
+  const [gcjLon, gcjLat] = wgs84ToGcj02([lon, lat]);
+  return gcj02ToBd09([gcjLon, gcjLat]);
 };
 
 const baiduMercatorForwardPoint = ([

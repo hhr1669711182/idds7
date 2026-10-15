@@ -1,11 +1,11 @@
-﻿import Map from "ol/Map";
+import Map from "ol/Map";
 import { Coordinate } from "ol/coordinate";
 import { Type } from "ol/geom/Geometry";
 import { Point } from "ol/geom";
 import Overlay, { Positioning } from "ol/Overlay";
 import Feature from "ol/Feature";
 import { Style, Icon, Circle, Stroke, Fill } from "ol/style";
-import { getSVGForSrcById } from "@/utils";
+import { getSVGForSrcById } from "@/utils/index.ts";
 import { LAYER_NAMES } from "../../../../baseComponent/OpenlayersMap/layers.ts";
 
 export class BaseTool {

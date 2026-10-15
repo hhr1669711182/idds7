@@ -1,11 +1,10 @@
-﻿import { useUserStore } from "@/store/useUserStore"
+import { useUserStore } from "@/store"
 
 export const MESSAGE_PROTOCOL_VERSION = '1.0.0' as const
 
 export const MESSAGE_CHANNEL = {
   WS: 'ws',
   POST_MESSAGE: 'postMessage',
-  LOCAL_STORAGE: 'localStorage',
   BROADCAST_CHANNEL: 'broadcastChannel',
 } as const
 
@@ -25,17 +24,13 @@ export type MessageChannel = (typeof MESSAGE_CHANNEL)[keyof typeof MESSAGE_CHANN
  * @enum {string}
  * @property {string} HOST - 主系统
  * @property {string} MAP - 地图系统
- * @property {string} DISPATCH - 分发系统
- * @property {string} PANEL_25D - 25D面板系统
- * @property {string} PANEL_3D - 3D面板系统
+ * @property {string} IDS_SEAT_WEB - 主控系统
  */
 export const MESSAGE_SYSTEM = {
   HOST: 'host',
   MAP: 'map',
   THREE: 'three',
   DISPATCH: 'dispatch',
-  PANEL_25D: 'panel_25d',
-  PANEL_3D: 'panel_3d',
   IDS_SEAT_WEB: 'ids-seat-web',
 } as const
 
@@ -51,14 +46,13 @@ export type MessageSystem = (typeof MESSAGE_SYSTEM)[keyof typeof MESSAGE_SYSTEM]
  * @property {string} GPS_MSG - 车辆GPS消息
  * @property {string} DISASTER_PROFILE - 警情画像
  */
-export const MESSAGE_SUBSCRIBE_TOPIC =  {
-  SEAT: () => ({ "action":"subscribe","type":"SEAT","key": useUserStore().seatNumber}),
-  ALARM_CALL:{"action":"subscribe","type":"CUSTOM","customType":"ALARM_CALL","key":"ANSWER_STATUS_CHANGED"},
-  ALARM_INCIDENT:{"action":"subscribe","type":"CUSTOM","customType":"ALARM_INCIDENT","key":"STATE_CHANGED"},
-  GPS_MSG:{"action":"subscribe","type":"CUSTOM","customType":"GPS_MSG","key":"car-location-broadcast-all"},
-  DISASTER_PROFILE:{"action":"subscribe","type":"CUSTOM","customType":"DISASTER_PROFILE","key":"UPDATED"},
+export const MESSAGE_SUBSCRIBE_TOPIC = {
+  SEAT: () => ({ "action": "subscribe", "type": "SEAT", "key": useUserStore().seatNumber }),
+  ALARM_CALL: { "action": "subscribe", "type": "CUSTOM", "customType": "ALARM_CALL", "key": "ANSWER_STATUS_CHANGED" },
+  ALARM_INCIDENT: { "action": "subscribe", "type": "CUSTOM", "customType": "ALARM_INCIDENT", "key": "STATE_CHANGED" },
+  GPS_MSG: { "action": "subscribe", "type": "CUSTOM", "customType": "GPS_MSG", "key": "car-location-broadcast-all" },
+  DISASTER_PROFILE: { "action": "subscribe", "type": "CUSTOM", "customType": "DISASTER_PROFILE", "key": "UPDATED" },
 }
-
 
 /*&*
  * 消息事件键
@@ -136,15 +130,28 @@ export const MESSAGE_EVENT_KEY = {
 
   TRACKING_VEHICLE_GPS_UPDATE: 'tracking.vehicle.gps.update', // 车辆 GPS 实时更新
   TRACKING_VEHICLE_ROUTE_REALTIME: 'tracking.vehicle.route.realtime', // 车辆实时路径推送
+  MOCK_DISPATCH_VEHICLES: 'mock.dispatch.vehicles', // 模拟调派车辆清单（mock 补丁通道注入型）
+  MOCK_SPECIAL_MAP_RENDER: 'mock.special_map.render', // 模拟特殊地图：清空并渲染假数据+路径规划（mode=flood 触发，只负责清空）
+  MOCK_SPECIAL_MAP_DISASTER_SITE: 'mock.special_map.disaster_site', // 模拟特殊地图：disasterSite 有值时执行渲染
+  MOCK_SPECIAL_MAP_SIMULATE: 'mock.special_map.simulate', // 模拟特殊地图：车辆模拟运行
+  MOCK_SPECIAL_MAP_CLEAR: 'mock.special_map.clear', // 模拟特殊地图：退出特灾模式，清除上图数据
+  MOCK_INCIDENT_RELOCATE: 'mock.incident.relocate', // 模拟警情二次定位：受理席传入警情id，地图选点确认后更新坐标
 
   // 遗留及其他保留控制
   ROUTE_PLAN_RESULT: 'route.plan.result', // 路径规划结果回调
+  ROUTE_PLAN_MULTIPLE: 'route.plan.multiple', // 路径规划批量下发
+  ROUTE_PLAN_CANCEL: 'route.plan.cancel', // 路径规划取消
+  ROUTE_PLAN_REQUEST: 'route.plan.request', // 路径规划请求
+  ADDR_SYNC_RESULT: 'addr.sync.result', // 地址同步结果
   ADDR_POI_PICK: 'addr.poi.pick', // 地址 POI 拾取
+  MAP_CTRL: 'map.ctrl', // 地图控制指令
   MAP_LOCATE: 'map.locate', // 地图定位
   MAP_POI_PICK: 'map.poi.pick', // 地图 POI 拾取
+  THREE_LOAD_MODEL: 'three.load_model', // 三维模型加载请求
+  THREE_BUILD_FORM_SEND: 'three.build_form.send', // 三维建筑物模型表单回传
 
   // Address Robot 控制层
-  ADDRESS_ROBOT_GIS_SEARCH: 'address_robot.gis_search', // GIS地址机器人jian
+  ADDRESS_ROBOT_GIS_SEARCH: 'address_robot.gis_search', // GIS地址机器人数据接收
   // ADDRESS_ROBOT_GIS_CANDIDATES: 'address_robot.gis_candidates',
   // ADDRESS_ROBOT_CLEAR: 'address_robot.clear',
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, nextTick, onUnmounted, ref, watch, markRaw } from "vue";
+import { onMounted, nextTick, onUnmounted, ref, shallowRef, watch, markRaw } from "vue";
 import OLMap from "ol/Map";
 import { waitForBaseMap } from "./startup.ts";
 let cancelStartup: (() => void) | undefined;
@@ -13,10 +13,6 @@ import { ScaleLine, OverviewMap } from "ol/control";
 import { readScaleLineUnit } from "../../config/scaleLine.ts";
 // import { KeyboardPan } from "ol/interaction";
 import { FeatureClickQuery } from "./FeatureClickQuery.ts";
-import {
-  JurisdictionQuery,
-  STATION_LAYER_NAME,
-} from "./JurisdictionQuery.ts";//T1调派查询
 import { useExtent } from "@/components/map/MapTools/commonTools/useExtent.ts";
 import {
   AMAP_LAYER,
@@ -30,6 +26,7 @@ import { ZOOM, CENTER } from "./const.map.ts";
 import { useResponsive } from "../../composables/useResponsive.ts";
 import {
   AmapRealtimeNav,
+  FIRE_STATION_LAYER_Z_INDEX,
   mountFireStations,
   mountJRAlarmLayer,
 } from "../amap/useAmapTools.ts";
@@ -41,14 +38,14 @@ import carImg from "../amap/imgs/car.png";
 import fireImg from "../amap/imgs/xfz.png";
 import { useFireStations } from "@/composables/useFireStations";
 import { useUnclosedIncidents } from "@/composables/useUnclosedIncidents";
-import { EventBus } from "@/utils";
+import { EventBus } from "@/utils/mitt.ts";
 import AlarmDetailPopup from "./AlarmDetailPopup.vue";
+import IncidentDetailDialog from "./IncidentDetailDialog.vue";
 import ZoomLevelControl from "./ZoomLevelControl.vue";
-import { useBaseSourceStore, useTabsStore } from "@/store"; // , useCommonStore
+import { useBaseSourceStore, useMapConfigStore, useTabsStore } from "@/store"; // , useCommonStore
 // import { THEME_COLOR } from "../../const/const.common.ts";
 import { createBaseSourceSource } from "./baseSource.ts";
 // import { storeToRefs } from "pinia";
-import { addrCtrl, onPOIRequest, onRouteRequest } from "@/controller/map";
 import {
   IOController,
   GenericController,
@@ -56,6 +53,7 @@ import {
 } from "@/controller/core";
 import TileWMS from "ol/source/TileWMS";
 import { getWMSLayerOptions } from "@/apis/layers";
+import { STATION_LAYER_NAME } from "@/controller/core/business/IncidentStationQuery";
 import { useLayersStore } from "@/store/useLayersStore";
 
 import NavPanel from "./NavPanel.vue";
@@ -68,7 +66,7 @@ const emit = defineEmits(["setMap"]);
 const { isMobile } = useResponsive();
 
 let map: OLMap | null = null;
-let nav: AmapRealtimeNav | null = null;
+const nav = shallowRef<AmapRealtimeNav | null>(null);
 let zoomLevelChangeKey: EventsKey | null = null;
 const mapZoomLevel = ref(ZOOM.INIT);
 
@@ -101,13 +99,13 @@ let fireManager: any = null;
 let alarmOverlayManager: any = null;
 let jrAlarmManager: any = null;
 let featureClickQuery: FeatureClickQuery | null = null;
-let jurisdictionQuery: JurisdictionQuery | null = null;//T1调派查询
 let ioCtrl: IOController | null = null;
 let genericCtrl: GenericController | null = null;
 let trafficTool: TrafficTools | null = null;
 
 const layersStore = useLayersStore();
 const baseSourceStore = useBaseSourceStore();
+const mapConfigStore = useMapConfigStore();
 // const commonStore = useCommonStore();
 const {
   alarms: unclosedIncidents,
@@ -117,6 +115,26 @@ const { load: loadFireStations } = useFireStations();
 const wmsLayerMap = new globalThis.Map<string, TileLayer<TileWMS>>();
 let baseLayer: TileLayer | null = null;
 let overviewLayer: TileLayer | null = null;
+let baseSourceMaxZoom = ZOOM.MAX;
+
+const applyFeatureZoomLimits = () => {
+  if (!map) return;
+  const { minZoom, maxZoom } = mapConfigStore.config.feature;
+  const effectiveMaxZoom = Math.min(maxZoom, baseSourceMaxZoom);
+  const view = map.getView();
+  view.setMinZoom(minZoom);
+  view.setMaxZoom(effectiveMaxZoom);
+
+  const zoom = view.getZoom();
+  if (typeof zoom === "number") {
+    view.setZoom(Math.min(Math.max(zoom, minZoom), effectiveMaxZoom));
+  }
+};
+
+watch(
+  () => [mapConfigStore.config.feature.minZoom, mapConfigStore.config.feature.maxZoom],
+  applyFeatureZoomLimits,
+);
 
 const syncBaseSourceLayer = () => {
   if (!baseLayer) return;
@@ -125,12 +143,18 @@ const syncBaseSourceLayer = () => {
     {
       // night: themeColor.value === THEME_COLOR.NIGHT,
     },
-    (maxZoom: number) => nextTick(() => map?.getView().setMaxZoom(maxZoom)),
+    (maxZoom: number) => nextTick(() => {
+      baseSourceMaxZoom = maxZoom;
+      applyFeatureZoomLimits();
+    }),
   );
 
   const previous = baseLayer.getSource();
   baseLayer.setSource(source);
   if (overviewLayer) overviewLayer.setSource(source);
+
+  if(baseSourceStore.activeId === 'thematic-road') baseLayer.setBackground('#1c3863')
+
   previous?.dispose();
 };
 
@@ -159,6 +183,7 @@ const addLayer = (id: string, visible?: boolean) => {
     }),
     opacity: options.opacity,
     minZoom: config.minZoom,
+    zIndex: id === STATION_LAYER_NAME ? FIRE_STATION_LAYER_Z_INDEX : undefined,
   });
   map.addLayer(wmsLayer);
   wmsLayer.set('id', id);
@@ -170,7 +195,6 @@ const addLayer = (id: string, visible?: boolean) => {
 const removeLayer = (id: string) => {
   if (!map) return false;
   if (isTempFrontendLayerId(id)) return setTempFrontendLayerVisible(id, false);
-  if (id === STATION_LAYER_NAME) jurisdictionQuery?.clear();//T1调派查询
   const layer = wmsLayerMap.get(id);
   if (!layer) return;
   map.removeLayer(layer);
@@ -234,28 +258,10 @@ const updateMapZoomLevel = () => {
   if (typeof zoom === "number") mapZoomLevel.value = zoom;
 };
 
-const mapMessageUnsubscribers: Array<() => void> = [];
 const configList = Array.isArray(amapData)
   ? (amapData as any[])
   : [amapData as any];
 const regionCfg = (configList[0] || {}).data || configList[0];
-
-const onFatherMessage = async (
-  coord: [number, number],
-  otherData: any,
-  fireBrigade = [],
-  d?: any,
-) => {
-  useTabsStore().setActiveTab(1);
-  popups.alarmData.value = otherData || null;
-  if (navPanelRef.value) {
-    navPanelRef.value.endCoord = coord;
-    navPanelRef.value.startSimulate(fireBrigade, d);
-    const address = await nav?.reverseGeocode(coord);
-    navPanelRef.value.endText = address || "";
-  }
-  EventBus.emit("panelClose");
-};
 
 const initMap = async () => {
   if (disposed) return;
@@ -270,10 +276,11 @@ const initMap = async () => {
       view: new View({
         center: olProj.fromLonLat(CENTER),
         zoom: ZOOM.INIT,
-        minZoom: ZOOM.MIN,
-        maxZoom: ZOOM.MAX,
+        minZoom: mapConfigStore.config.feature.minZoom,
+        maxZoom: Math.min(mapConfigStore.config.feature.maxZoom, baseSourceMaxZoom),
       }),
     });
+  applyFeatureZoomLimits();
     
   const startup = waitForBaseMap(map);
   cancelStartup = startup.cancel;
@@ -300,8 +307,6 @@ const initMap = async () => {
     .on("change:resolution", updateMapZoomLevel);
   featureClickQuery = new FeatureClickQuery(map);
   featureClickQuery.activate();
-  jurisdictionQuery = new JurisdictionQuery(map);//T1调派查询
-  jurisdictionQuery.activate();//T1调派查询
 
   map.addControl(
     new OverviewMap({
@@ -312,13 +317,13 @@ const initMap = async () => {
   );
   map.addControl(new ScaleLine({ units: readScaleLineUnit() }));
 
-  nav = new AmapRealtimeNav(map, {
+  nav.value = new AmapRealtimeNav(map, {
     amapKey: "7405ae6dde247ee87be4e7d8021056f4",
     xzKeywords: (regionCfg?.adcode as string) || "",
     vehicleIconSrc: carImg,
   });
-  (window as any).nav = nav;
-  // nav.loadMask((regionCfg?.boundaries as any) || []).catch(() => {});
+  (window as any).nav = nav.value;
+  // nav.value.loadMask((regionCfg?.boundaries as any) || []).catch(() => {});
 
   if (popups.firePopupRef.value) {
     fireManager = mountFireStations({
@@ -386,8 +391,8 @@ const initMap = async () => {
     ),
   });
 
-  if (popups.alarmPopupRef.value && nav) {
-    alarmOverlayManager = nav.mountAlarmOverlay({
+  if (popups.alarmPopupRef.value && nav.value) {
+    alarmOverlayManager = nav.value.mountAlarmOverlay({
       element: popups.alarmPopupRef.value,
       onUpdate: (d) => {
         popups.alarmData.value = d;
@@ -434,10 +439,6 @@ const cleanup = () => {
     featureClickQuery.destroy();
     featureClickQuery = null;
   }
-  if (jurisdictionQuery) {
-    jurisdictionQuery.destroy();
-    jurisdictionQuery = null;
-  }//T1调派查询
   alarmOverlayManager?.destroy();
   jrAlarmManager?.destroy();
   carManager?.destroy();
@@ -445,10 +446,10 @@ const cleanup = () => {
   ssrkManager = null;
   incomingCallManager?.destroy();
   fireManager?.destroy();
-  if (nav) {
-    if ((window as any).nav === nav) delete (window as any).nav;
-    nav.destroy();
-    nav = null;
+  if (nav.value) {
+    if ((window as any).nav === nav.value) delete (window as any).nav;
+    nav.value.destroy();
+    nav.value = null;
   }
   if (trafficTool) {
     trafficTool.remove();
@@ -475,24 +476,9 @@ const cleanup = () => {
 
 onMounted(() => {
   nextTick(() => initMap());
-  mapMessageUnsubscribers.push(
-    onRouteRequest((d: any) =>
-      onFatherMessage(
-        [d.alarmData.gisX, d.alarmData.gisY],
-        d.alarmData.info,
-        d.fireBrigade,
-        d,
-      ),
-    ),
-    addrCtrl.receive(({ status }: { status: boolean }) => {
-      if (typeof status !== "boolean") return;
-      if (!status && navPanelRef.value) (navPanelRef.value as any).clearNav();
-    }),
-  );
 });
 
 onUnmounted(() => {
-  mapMessageUnsubscribers.splice(0).forEach((unsub) => unsub());
   cleanup();
 });
 </script>
@@ -549,7 +535,9 @@ onUnmounted(() => {
         :visible="popups.alarmPopupVisible.value"
         :title="popups.alarmPopupTitle.value"
         :rows="popups.alarmPopupRows.value"
+        detail-button-text="警情详情"
         @close="popups.closeAlarmPopup"
+        @detail="popups.openIncidentDetailFromAlarm"
       />
     </div>
 
@@ -562,9 +550,17 @@ onUnmounted(() => {
         :visible="popups.jrAlarmPopupVisible.value"
         :title="popups.jrAlarmPopupTitle.value"
         :rows="popups.jrAlarmPopupRows.value"
+        detail-button-text="警情详情"
         @close="popups.closeJRAlarmPopup"
+        @detail="popups.openIncidentDetailFromJrAlarm"
       />
     </div>
+
+    <!-- 警情详情固定弹窗（居中 Modal，小弹窗点"警情详情"打开） -->
+    <IncidentDetailDialog
+      v-model="popups.incidentDetailVisible.value"
+      :data="popups.incidentDetailData.value"
+    />
 
     <div
       :ref="(el) => { carPopupRef = el as HTMLElement | null }"

@@ -37,7 +37,11 @@
     "test:coverage": "vitest run --coverage",
     "lint:baseline": "node scripts/check-lint-baseline.mjs",
     "lint:baseline:update": "node scripts/check-lint-baseline.mjs --update",
-    "prepare": "husky"
+    "harness:check": "node scripts/check-herness-size.mjs",
+    "prepare": "husky",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:report": "playwright show-report tests/__artifacts__/e2e/report"
   },
   "dependencies": {
     "@alova/mock": "^2.0.20",
@@ -70,6 +74,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.0.0",
     "@commitlint/config-conventional": "^19.0.0",
+    "@playwright/test": "^1.64.0",
     "@types/crypto-js": "^4.2.2",
     "@types/file-saver": "^2.0.7",
     "@types/js-clipper": "^0.0.32",
@@ -83,6 +88,7 @@
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "@vitest/coverage-v8": "^5.0.4",
     "@vitest/ui": "^5.0.4",
+    "@vue/test-utils": "^2.5.1",
     "cross-env": "^10.1.0",
     "husky": "^9.0.0",
     "jsdom": "^30.1.2",
@@ -98,5 +104,8 @@
     "vite-plugin-svg-icons": "^2.0.1",
     "vitest": "^5.0.4",
     "vue-tsc": "^3.2.6"
-  }
+  },
+  "overrides": {
+    "@devframes/hub-ui": "1.2.2"
+ }
 }

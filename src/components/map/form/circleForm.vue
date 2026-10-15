@@ -6,7 +6,7 @@ import Overlay from 'ol/Overlay'
 import { useCardStore, useMapStore } from '../../../store/index.ts';
 import locImgSrc from "../../../assets/loc.png";
 import Slider from '../../../baseComponent/Slider.vue';
-import { getSVGForSrcById, convertToRGBA, getImagePattern } from "@/utils";
+import { getSVGForSrcById, convertToRGBA, getImagePattern } from "@/utils/index.ts";
 
 const cardstore = useCardStore()
 const { setItem, getItem: getMarkerData } = cardstore

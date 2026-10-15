@@ -17,13 +17,13 @@
 
 ## 变更文件
 - 修改：src/controller/core/business/CallController.ts
-- 修改：src/controller/map/index.ts
+- 修改：src/controller/publish/index.ts
 
 ## 分层落点
 | 改动点 | 层 | 文件 |
 |--------|----|------|
 | 呼吸动画参数 | 业务控制 | CallController.ts |
-| 订阅可取消 | 消息门面 | controller/map/index.ts |
+| 订阅可取消 | 消息中枢 | useMessageStore().subscribe |
 
 ## 测试情况
 - 类型门禁：pnpm lint（通过）

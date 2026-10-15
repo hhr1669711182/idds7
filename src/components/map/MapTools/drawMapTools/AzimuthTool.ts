@@ -1,10 +1,10 @@
-﻿import { Coordinate } from "ol/coordinate";
+import { Coordinate } from "ol/coordinate";
 import Map from "ol/Map";
 import Feature from "ol/Feature";
 import { Style, Stroke, Icon, Text, Fill } from "ol/style";
 import { Draw, Interaction } from "ol/interaction";
 import { unByKey } from "ol/Observable";
-import { calculateAngle, createAngleSVG } from "@/utils";
+import { calculateAngle, createAngleSVG } from "@/utils/index.ts";
 import { BaseTool } from "./BaseTool";
 import Geometry, { Type } from "ol/geom/Geometry";
 import { Point, LineString } from "ol/geom";

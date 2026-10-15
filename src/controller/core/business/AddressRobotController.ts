@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @Author: hhr
  * @Description: 地址机器人业务控制器
  *  - 接收 GIS 搜索结果 -> 解析 GeoJSON Features -> 上图高亮
@@ -16,7 +16,7 @@ import { featureRenderOrder } from "./AddressRobotUtils/featureRenderOrder.js";
 import GeoJSON from "ol/format/GeoJSON";
 import VectorSource from "ol/source/Vector.js";
 import { Extent } from "ol/extent.js";
-import { EventBus } from "@/utils";
+import { EventBus } from "@/utils/index.ts";
 import Feature from "ol/Feature.js";
 import { Point } from "ol/geom.js";
 import { fromLonLat } from "ol/proj.js";

@@ -1,4 +1,4 @@
-﻿import { markRaw } from 'vue'
+import { markRaw } from 'vue'
 import type OlMap from 'ol/Map'//地图冲突修改
 // import type Map from 'ol/Map
 import Overlay from 'ol/Overlay'
@@ -17,7 +17,6 @@ import Fill from 'ol/style/Fill'
 import dayjs from 'dayjs'
 import { gsap } from 'gsap'
 import { useMapStore } from '@/store/useMapStore'
-import { onIncomingCall } from '@/controller/map'
 
 export type IncomingCallLocationType = 'cellId' | 'gps' | 'wifi' | 'unknown'
 export type IncomingCallStatus = 'online' | 'offline' | 'lost'
@@ -471,7 +470,7 @@ export const mountIncomingCallFeatures = (
     overlay.setPosition(coordinate)
   }
 
-  const clickKey: EventsKey = map.on('singleclick', (evt) => {
+  const clickKey: EventsKey = map.on('singleclick', (evt: any) => {
     if (!layer.getVisible()) {
       closePopup()
       return
@@ -479,7 +478,7 @@ export const mountIncomingCallFeatures = (
     let hit: { data: IncomingCallData; coordinate: number[] } | null = null
     map.forEachFeatureAtPixel(
       evt.pixel,
-      (feature, targetLayer) => {
+      (feature: any, targetLayer: any) => {
         if (targetLayer !== layer) return false
         const data = (feature as any).get('data') as IncomingCallData | undefined
         const geometry = feature.getGeometry() as Point | undefined
@@ -489,8 +488,9 @@ export const mountIncomingCallFeatures = (
       },
       { hitTolerance: 6 },
     )
-    if (hit) {
-      showPopupForCall(hit.data, hit.coordinate)
+    const { data = null, coordinate = [] } = hit || {}
+    if (data && coordinate) {
+      showPopupForCall(data, coordinate)
     } else {
       closePopup()
     }
@@ -562,34 +562,8 @@ export const mountIncomingCallFeatures = (
     circleLayer.setVisible(visible)
     if (!visible) closePopup()
   }
-
-  const unsubscribe = onIncomingCall((payload: any) => {
-    try {
-      if (!payload || typeof payload !== 'object') return
-      if (Array.isArray((payload as any).items)) {
-        ;(payload as any).items.forEach((item: IncomingCallEnvelope) => {
-          const data = normalizeEnvelope(item)
-          if (!data) return
-          if (dataMap.has(data.callId)) updateCall(data)
-          else addCall(data)
-        })
-        return
-      }
-      const data = normalizeEnvelope(payload)
-      if (!data) return
-      if (dataMap.has(data.callId)) updateCall(data)
-      else addCall(data)
-    } catch (err) {
-      if (typeof console !== 'undefined') {
-        console.error('[useIncomingCallFeatures] handler error', err)
-      }
-      params.onError?.(err)
-    }
-  })
-
   const destroy = () => {
     unByKey(clickKey)
-    unsubscribe()
     callPulseTweens.forEach((tween) => tween.kill())
     callPulseTweens.clear()
     dataMap.clear()

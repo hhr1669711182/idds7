@@ -9,6 +9,7 @@ import VectorSource from 'ol/source/Vector'
 import { unByKey } from 'ol/Observable'
 import type { EventsKey } from "ol/events";
 import { CAR_ICON, getStyle } from '@/baseComponent/amap/featureStyle'
+import { MAP_LAYER_Z_INDEX } from '@/baseComponent/OpenlayersMap/layerOrder'
 
 export type CarStatus = 'online' | 'offline' | 'maintenance'
 
@@ -183,7 +184,7 @@ const fakeRequest = (
   })
 }
 
-const CAR_LAYER_ZINDEX = 200
+const CAR_LAYER_ZINDEX = MAP_LAYER_Z_INDEX.vehicle
 const CAR_ICON_SCALE = 1.2
 
 const populateCarSource = (source: VectorSource, cars: CarItem[]) => {

@@ -9,6 +9,9 @@
     <div class="overlay_popup_body">
       <slot />
     </div>
+    <div v-if="$slots.footer" class="overlay_popup_footer">
+      <slot name="footer" />
+    </div>
   </div>
 </template>
 
@@ -66,5 +69,13 @@ defineEmits(["close"]);
   gap: 6px;
   font-size: 12px;
   color: #111827;
+}
+
+.overlay_popup_footer {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

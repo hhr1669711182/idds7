@@ -2,10 +2,12 @@
 import { onMounted, nextTick, onUnmounted, ref, computed, watch, markRaw } from "vue";
 import OLMap from "ol/Map";
 import { readScaleLineUnit } from "../../config/scaleLine.ts";
+import { MAP_LAYER_Z_INDEX } from "./layerOrder";
 import View from "ol/View";
 import * as olProj from "ol/proj";
 import { unByKey } from "ol/Observable";
 import type { EventsKey } from "ol/events";
+import type Overlay from "ol/Overlay";
 import OSM from "ol/source/OSM.js";
 import TileLayer from "ol/layer/Tile";
 import {
@@ -15,12 +17,21 @@ import {
   ZoomToExtent,
   OverviewMap,
 } from "ol/control";
-import { KeyboardPan } from "ol/interaction";
+import { KeyboardPan, Modify } from "ol/interaction";
+import VectorLayer from "ol/layer/Vector";
+import VectorSource from "ol/source/Vector";
+import Feature from "ol/Feature";
+import CircleGeom from "ol/geom/Circle";
+import { fromLonLat, transform } from "ol/proj";
 import PrintDialog from "ol-ext/control/PrintDialog";
 import jsPDF from "jspdf";
 import { saveAs } from "file-saver";
 import { v4 as uuidv4 } from "uuid";
-import { FeatureClickQuery } from "./FeatureClickQuery.ts";
+import {
+  FeatureClickQuery,
+  INCIDENT_PRIMARY_STATION_LAYER_CLASS,
+  RESOURCE_CIRCLE_LAYER_CLASS,
+} from "./FeatureClickQuery.ts";
 import {
   AMAP_LAYER,
   GOOGLE_LAYER,
@@ -33,9 +44,13 @@ import { EXTENT, ZOOM, CENTER } from "./const.map.ts";
 import { useResponsive, useTouch } from "../../composables/useResponsive.ts";
 import {
   AmapRealtimeNav,
+  FIRE_STATION_LAYER_Z_INDEX,
   fetchInputTips,
   mountFireStations,
   mountJRAlarmLayer,
+  type AmapDrivingResult,
+  type LngLat,
+  type RouteVideoCheckpointEvent,
 } from "../amap/useAmapTools.ts";
 import {
   mountCarFeatures,
@@ -50,24 +65,55 @@ import {
   mountPolygonLayer,
   type PolygonLayerManager,
 } from '@/baseComponent/OpenlayersMap/mountPolygonLayer.ts'
+import { createSpecialMapMock, type SpecialMapMock } from '@/baseComponent/OpenlayersMap/specialMapMock.ts'
+import { createIncidentRelocate, type IncidentRelocate } from '@/baseComponent/OpenlayersMap/incidentRelocate.ts'
+import { consumePendingSpecialMapRender } from '@/Control/mockCallLocationBridge'
 import { Fill, Stroke, Style } from "ol/style";
 import { getStyle, MAP_ICON_SRC } from '@/baseComponent/amap/featureStyle'
 import {
   useIncidentLocationStore,
   useStationLayerStore,
+  useNearbyResourceLayerStore,
+  LOCATION_RESOURCE_OWNER_PREFIX,
   type IncidentLocationMarker,
   type IncidentLocationZone,
+  type IncidentPrimaryStation,
   type IncidentLocationRoutePlanRequest,
+  type NearbyResourceCircle,
 } from '@/store'
 import {
   STATION_LAYER_NAME,
   cqlLiteral,
+  queryStationCoordinatesByIds,
 } from '@/controller/core/business/IncidentStationQuery'
+import {
+  FIRE_HYDRANT_LAYER_NAME,
+  KEY_ENTERPRISE_LAYER_NAME,
+  JURIS_ZONE_LAYER_NAME,
+  BUILDING_LAYER_NAME,
+  buildCircleIntersectsCql,
+  queryIncidentNearbyResources,
+} from '@/controller/core/business/IncidentNearbyResourceQuery'
 import { IncidentVideoOverlayController } from '@/controller/core/business/IncidentVideoOverlayController'
 import {
-  mountIncomingCallFeatures,
-  type IncomingCallFeaturesManager,
-} from '@/composables/useIncomingCallFeatures'
+  parseSharedMapStage,
+  SEAT_SHARED_STATE_KEY,
+  SEAT_SHARED_STATE_MOCK_KEY,
+} from '@/Control/seatSharedState'
+import { resetAddressUpdatedCache } from '@/Control/incidentLocationMessage'
+import { MESSAGE_EVENT_KEY } from '@/const/const.message.type'
+import { useMessageStore } from '@/store/useMessageStore'
+import {
+  INCOMING_CALL_FOCUS_ZOOM,
+  usePendingCallLocationStore,
+} from '@/store/usePendingCallLocationStore'
+import { GenericController } from '@/controller/core/generic'
+import { CallController } from '@/controller/core/business/CallController'
+import type { SharedDispatchVehicleMock } from '@/Control/mockCallLocationBridge'
+// import {
+//   mountIncomingCallFeatures,
+//   type IncomingCallFeaturesManager,
+// } from '@/composables/useIncomingCallFeatures'
 import amapData from "../amap/data.json";
 import carImg from "../amap/imgs/car.png";
 import fireImg from "../amap/imgs/xfz.png";
@@ -78,8 +124,21 @@ import { useUnclosedIncidents } from '@/composables/useUnclosedIncidents'
 import { useFireStations } from '@/composables/useFireStations'
 import dayjs from 'dayjs'
 import { ElMessage } from "element-plus";
-import { EventBus } from "@/utils";
+import { EventBus } from "@/utils/mitt.ts";
 import AlarmDetailPopup from "./AlarmDetailPopup.vue";
+import IncidentDetailDialog, {
+  type IncidentDetailData,
+} from "./IncidentDetailDialog.vue";
+import {
+  buildUnifiedAlarmPopupRows,
+  buildUnifiedAlarmPopupTitle,
+  toAlarmPlanPopupFields,
+  toJrAlarmPopupFields,
+  type AlarmDetailRow,
+  type UnifiedAlarmPopupFields,
+} from "./useMapPopups";
+import DispatchRoutePreview from './DispatchRoutePreview.vue';
+import { getSelectedRoute, matchStationRoute, type RouteAlternative, type StationRouteAlternatives } from '../amap/routeAlternatives';
 import type { AlarmData } from "../amap/useAmapTools.ts";
 import ZoomLevelControl from "./ZoomLevelControl.vue";
 import { THEME_COLOR } from "../../const/const.common.ts";
@@ -89,15 +148,10 @@ import xcImg from "@/assets/svg/xc.svg";
 import zjImg from "@/assets/svg/jz.svg";
 import { useDispatchMapStore } from "@/store";
 import { storeToRefs } from "pinia";
-import {
-  addrCtrl,
-  onPOIRequest,
-  onRouteRequest,
-} from "@/controller/map";
 import TileWMS from "ol/source/TileWMS";
 import { getWMSLayerOptions } from "@/apis/layers";
 import { LAYER_SOURCE_CONFIGS } from "@/config/layers";
-import { useBaseSourceStore, useCommonStore, useTabsStore } from "@/store";
+import { useBaseSourceStore, useCommonStore, useMapConfigStore, useTabsStore } from "@/store";
 
 const props = withDefaults(defineProps<{
   mapId?: string;
@@ -134,41 +188,87 @@ type TempFrontendLayerManager = {
   setData?: (alarms: JRAlarmData[]) => void;
   [key: string]: any;
 };
-type AlarmDetailRow = {
-  label: string;
-  value?: string | number | null;
-  visible?: boolean;
-};
 let fireManager: TempFrontendLayerManager | null = null;
 
 /** 已添加到地图的 WMS 图层（id -> ol.layer.Tile） */
 const baseSourceStore = useBaseSourceStore();
 const commonStore = useCommonStore();
+const mapConfigStore = useMapConfigStore();
 const {
   alarms: unclosedIncidents,
   fetch: fetchUnclosedIncidents,
 } = useUnclosedIncidents();
-const { load: loadFireStations, getNearestFireStation } = useFireStations();
+const { stations: fireStations, load: loadFireStations, getNearestFireStation } = useFireStations();
+/** WFS 全量队站原始列表；主管队站改由独立 zhu.png 图标上图，fireManager 填充时排除主管 id 避免图标重叠 */
+let allFireStations: typeof fireStations.value = [];
 const { themeColor } = storeToRefs(commonStore);
 const wmsLayerMap = new globalThis.Map<string, TileLayer<TileWMS>>();
 let baseLayer: TileLayer | null = null;
 let overviewLayer: TileLayer | null = null;
+let baseSourceMaxZoom = ZOOM.MAX;
 let trafficTool: TrafficTools | null = null;
+
+const applyFeatureZoomLimits = () => {
+  if (!map) return;
+  const { minZoom, maxZoom } = mapConfigStore.config.feature;
+  const effectiveMaxZoom = Math.min(maxZoom, baseSourceMaxZoom);
+  const view = map.getView();
+  view.setMinZoom(minZoom);
+  view.setMaxZoom(effectiveMaxZoom);
+
+  const zoom = view.getZoom();
+  if (typeof zoom === "number") {
+    view.setZoom(Math.min(Math.max(zoom, minZoom), effectiveMaxZoom));
+  }
+};
+
+watch(
+  () => [mapConfigStore.config.feature.minZoom, mapConfigStore.config.feature.maxZoom],
+  applyFeatureZoomLimits,
+);
 
 let jrAlarmManager: TempFrontendLayerManager | null = null;
 
 /** 画像地址变更（警情定位）点位图层：数据来自 useIncidentLocationStore，始终可见 */
 const incidentLocationStore = useIncidentLocationStore();
+const messageStore = useMessageStore();
+const pendingCallLocationStore = usePendingCallLocationStore();
+let callLocationGenericController: GenericController | null = null;
+let callLocationController: CallController | null = null;
+let specialMapMock: SpecialMapMock | null = null;
+/** 警情二次定位实例（受理席 mock 通道传入警情 id，激活地图选点确认后更新坐标） */
+let incidentRelocate: IncidentRelocate | null = null;
+/** 特殊地图激活标志：激活时 selectStationRoute 不写 lastRoutePlanResults，避免污染原有调派 */
+let specialMapActive = false;
+
+/** slotChanges 已形成有效警情点后，才结束来电粗定位圈。 */
+const clearActiveCallLocation = () => {
+  const active = pendingCallLocationStore.getActive();
+  if (!active) return;
+  callLocationController?.locateCallRemove({ id: active.id });
+  pendingCallLocationStore.consume(active.id);
+};
 /**
  * 警情/调派主管+支撑队站过滤状态：警情定位与 DispatchT1 立案共用，
  * 地图侧对唯一 WMS 消防站图层（gis:view_res_org_dept）应用 CQL_FILTER。
  */
 const stationLayerStore = useStationLayerStore();
+/**
+ * 警情定位周边资源范围圈状态：各警情点 500 米范围圈的并集，
+ * 地图侧对消防栓/重点单位 WMS 图层应用 DWITHIN CQL_FILTER。
+ */
+const nearbyResourceLayerStore = useNearbyResourceLayerStore();
 let incidentLocationManager: PointLayerManager<IncidentLocationMarker> | null = null;
 /** 已渲染进图层的点位快照，用于与 store 数据 diff 出 upsert/remove */
 let renderedMarkers = new globalThis.Map<string, IncidentLocationMarker>();
-const INCIDENT_LOCATION_LAYER_ZINDEX = 60; // 高于未结案警情图层（55）
+/** 主管队站独立图标图层（zhu.png）：数据来自 store.primaryStations（警情定位链路） */
+let primaryStationManager: PointLayerManager<IncidentPrimaryStation> | null = null;
+/** 已渲染进主管图层的点位快照，用于与 store.primaryStations diff 出 upsert/remove */
+let renderedPrimaryStations = new globalThis.Map<string, IncidentPrimaryStation>();
+const INCIDENT_LOCATION_LAYER_ZINDEX = MAP_LAYER_Z_INDEX.incident;
 const INCIDENT_LOCATION_LAYER_CLASS = "INCIDENT_LOCATION_ALARM_LAYER";
+/** 今日灾情点位图层 className（与 mountJRAlarmLayer 工厂内一致） */
+const JR_ALARM_LAYER_CLASS = "JR_ALARM_LAYER";
 const INCIDENT_LOCATION_FOCUS_ZOOM = 15;
 
 /** 点位所属辖区面图层：数据来自 store.zones（WFS INTERSECTS 异步查询），始终可见 */
@@ -177,21 +277,27 @@ let incidentZoneManager: PolygonLayerManager<IncidentLocationZone> | null = null
 let incidentVideoController: IncidentVideoOverlayController | null = null;
 /** 已渲染进辖区图层的快照，用于与 store.zones diff 出 upsert/remove */
 let renderedZones = new globalThis.Map<string, IncidentLocationZone>();
-const INCIDENT_LOCATION_ZONE_LAYER_ZINDEX = 59; // 低于点位图层（60），保证图标在辖区面之上
+const INCIDENT_LOCATION_ZONE_LAYER_ZINDEX = MAP_LAYER_Z_INDEX.jurisdiction;
 const INCIDENT_LOCATION_ZONE_LAYER_CLASS = "INCIDENT_LOCATION_ZONE_LAYER";
 
 /** 将地图视图定位到指定坐标（不低于 FOCUS_ZOOM） */
 const focusMapView = (target: OLMap, point: { lng: number; lat: number }) => {
+  if (!map) return;
+  if (!point.lng || !point.lat) return;
   const view = target.getView();
+  const minimumZoom = pendingCallLocationStore.getActive()
+    ? INCOMING_CALL_FOCUS_ZOOM
+    : INCIDENT_LOCATION_FOCUS_ZOOM;
   view.animate({
     center: olProj.fromLonLat([point.lng, point.lat]),
-    zoom: Math.max(view.getZoom() ?? 0, INCIDENT_LOCATION_FOCUS_ZOOM),
+    zoom: Math.max(view.getZoom() ?? 0, minimumZoom),
     duration: 300,
   });
 };
 
 /**
- * 队站图层强制过滤的现场快照：警情/调派需要显示主管+支撑队站时，
+ * 队站图层强制过滤的现场快照：警情/调派需要显示支撑队站时
+ * （主管队站由独立 zhu.png 矢量图层显示，不在此层出图），
  * 复用图层开关控制的唯一 WMS 消防站图层，临时下 CQL_FILTER 并强制可见，
  * 业务释放后恢复开关原始状态。
  */
@@ -202,17 +308,36 @@ let forcedStationLayerSnapshot: {
   prevMinZoom: number;
 } | null = null;
 
+// 非调派状态下支撑队站不渲染；模拟调派期间通过该 owner 按调派支撑 id 过滤上图
+const MOCK_DISPATCH_STATION_OWNER = "mockDispatch";
+
+/**
+ * 模拟调派期间主管队站图标（zhu.png）门控：
+ * 非 null 时主管图层只放行集合内（本次参与路径规划）的主管站 id；
+ * null 表示非调派期，主管图标恢复为 store 全量。
+ */
+let mockDispatchPrimaryGate: Set<string> | null = null;
+
 const buildStationCqlFilter = (ids: string[]) =>
   ids.map((id) => `id=${cqlLiteral(id)}`).join(" OR ");
 
-/** 按共享队站 store 的并集对唯一 WMS 消防站图层应用/恢复 CQL_FILTER */
+/**
+ * 按共享队站 store 的并集对唯一 WMS 消防站图层应用/恢复 CQL_FILTER。
+ * 主管队站改由独立 zhu.png 矢量图层上图，这里从并集中排除主管 id，
+ * WMS 只渲染支撑队站，避免同一位置两个图标重叠。
+ */
 const syncStationLayerOverride = () => {
   if (!map) return;
-  const ids = stationLayerStore.selectedStationIds;
+  const primaryIds = new Set(
+    stationLayerStore.primaryStationIds.map((id) => String(id).trim()),
+  );
+  const ids = stationLayerStore.selectedStationIds.filter(
+    (id) => !primaryIds.has(String(id).trim()),
+  );
   if (ids.length) {
     const existed = wmsLayerMap.has(STATION_LAYER_NAME);
     let layer = wmsLayerMap.get(STATION_LAYER_NAME);
-    // 图层开关未开启时也需要临时上图显示主管/支撑队站
+    // 图层开关未开启时也需要临时上图显示支撑队站（主管由独立 zhu.png 图层显示）
     if (!layer) {
       if (!addLayer(STATION_LAYER_NAME)) return;
       layer = wmsLayerMap.get(STATION_LAYER_NAME);
@@ -231,10 +356,23 @@ const syncStationLayerOverride = () => {
         prevMinZoom: layer.getMinZoom(),
       };
     }
-    source.updateParams({ CQL_FILTER: buildStationCqlFilter(ids) });
-    // 过滤上图的视野可能低于图层 minZoom（如 fit maxZoom=14），临时解除缩放限制
-    layer.setMinZoom(0);
-    layer.setVisible(true);
+    // 模拟调派期间：WMS 消防站图层只显示本次参与路径规划的支撑队站
+    // （不取 store 并集，避免警情定位阶段声明的其他支撑站泄漏上图；
+    // 主管 id 已在写入时拆分到 primaryEntries，这里再排除一次兜底）；
+    // 本次调派没有支撑队站（仅主管）或非调派状态：整体过滤掉、不显示
+    const dispatchIds =
+      stationLayerStore.entries[MOCK_DISPATCH_STATION_OWNER]?.filter(
+        (id) => !primaryIds.has(String(id).trim()),
+      ) ?? [];
+    if (dispatchIds.length) {
+      source.updateParams({ CQL_FILTER: buildStationCqlFilter(dispatchIds) });
+      // 过滤上图的视野可能低于图层 minZoom（如 fit maxZoom=14），临时解除缩放限制
+      layer.setMinZoom(0);
+      layer.setVisible(true);
+    } else {
+      source.updateParams({ CQL_FILTER: "1=2" });
+      layer.setVisible(false);
+    }
     return;
   }
   if (!forcedStationLayerSnapshot) return;
@@ -258,15 +396,310 @@ const syncStationLayerOverride = () => {
 };
 
 watch(
-  () => [...stationLayerStore.selectedStationIds],
+  () => [
+    ...stationLayerStore.selectedStationIds,
+    ...stationLayerStore.primaryStationIds,
+  ],
   () => syncStationLayerOverride(),
+);
+
+/**
+ * 警情定位周边资源 WMS 图层（消防栓 gis:env_fire_water、重点单位 gis:view_env_enterprises、
+ * 队站辖区 gis:view_juris_zone、建筑 gis:view_env_building）强制过滤的现场快照，key = 图层名。
+ * 复用图层开关控制的 WMS 图层，按各警情点范围圈并集下圆面相交 CQL_FILTER 并强制可见、
+ * 临时解除 minZoom，业务释放后恢复开关原始状态。
+ */
+const NEARBY_RESOURCE_LAYER_NAMES = [
+  FIRE_HYDRANT_LAYER_NAME,
+  KEY_ENTERPRISE_LAYER_NAME,
+  JURIS_ZONE_LAYER_NAME,
+  BUILDING_LAYER_NAME,
+] as const;
+const forcedResourceLayerSnapshots = new globalThis.Map<string, {
+  existed: boolean;
+  prevVisible: boolean;
+  hadCqlFilter: boolean;
+  prevMinZoom: number;
+}>();
+
+/** 各周边资源图层空间过滤的几何字段名（辖区为 zone_geom，其余为 geom） */
+const RESOURCE_LAYER_GEOM_FIELDS: Record<string, string> = {
+  [FIRE_HYDRANT_LAYER_NAME]: 'geom',
+  [KEY_ENTERPRISE_LAYER_NAME]: 'geom',
+  [JURIS_ZONE_LAYER_NAME]: 'zone_geom',
+  [BUILDING_LAYER_NAME]: 'geom',
+};
+
+/**
+ * 多个警情点范围圈拼"圆面相交"OR 过滤（按图层几何字段名拼，带 SRID=4326 前缀）。
+ * 与 WFS 查询共用 buildCircleIntersectsCql（turf 测地圆），保证 WMS 出图与查询口径一致。
+ */
+const buildResourceCircleCqlFilter = (
+  circles: NearbyResourceCircle[],
+  geomField: string,
+) =>
+  circles
+    .map((circle) =>
+      buildCircleIntersectsCql(
+        geomField,
+        [circle.lng, circle.lat],
+        circle.radiusMeters,
+      ),
+    )
+    .join(" OR ");
+
+/** 对单个周边资源 WMS 图层按范围圈并集应用/恢复 CQL_FILTER（与消防站图层同一快照恢复模式） */
+const syncOneResourceLayerOverride = (layerName: string) => {
+  if (!map) return;
+  const circles = nearbyResourceLayerStore.circles;
+  if (circles.length) {
+    const existed = wmsLayerMap.has(layerName);
+    let layer = wmsLayerMap.get(layerName);
+    // 图层开关未开启（消防栓默认关闭）时也需要临时上图显示圈内资源
+    if (!layer) {
+      if (!addLayer(layerName)) return;
+      layer = wmsLayerMap.get(layerName);
+    }
+    if (!layer) return;
+    const source = layer.getSource();
+    if (!source) return;
+    if (!forcedResourceLayerSnapshots.has(layerName)) {
+      forcedResourceLayerSnapshots.set(layerName, {
+        existed,
+        prevVisible: layer.getVisible(),
+        hadCqlFilter: Object.prototype.hasOwnProperty.call(
+          source.getParams(),
+          "CQL_FILTER",
+        ),
+        prevMinZoom: layer.getMinZoom(),
+      });
+    }
+    const geomField = RESOURCE_LAYER_GEOM_FIELDS[layerName] ?? 'geom';
+    source.updateParams({ CQL_FILTER: buildResourceCircleCqlFilter(circles, geomField) });
+    // 警情定位 zoom 可能低于图层 minZoom（消防栓 15.5、定位 zoom 15），临时解除缩放限制
+    layer.setMinZoom(0);
+    layer.setVisible(true);
+    return;
+  }
+  const snapshot = forcedResourceLayerSnapshots.get(layerName);
+  if (!snapshot) return;
+  forcedResourceLayerSnapshots.delete(layerName);
+  const layer = wmsLayerMap.get(layerName);
+  const source = layer?.getSource();
+  if (layer && source) {
+    if (snapshot.hadCqlFilter) {
+      source.updateParams({ CQL_FILTER: "1=1" });
+    } else {
+      const params = { ...source.getParams() };
+      delete params.CQL_FILTER;
+      source.updateParams(params);
+    }
+    layer.setVisible(snapshot.prevVisible);
+    layer.setMinZoom(snapshot.prevMinZoom);
+    // 原本未挂载（开关关闭）的临时图层直接移除，避免残留全量资源
+    if (!snapshot.existed) removeLayer(layerName);
+  }
+};
+
+/** 范围圈填充色（淡橙），与来电定位圈（蓝 rgba(0,100,255,*)）区分 */
+const RESOURCE_CIRCLE_FILL = 'rgba(255, 140, 0, 0.12)';
+const RESOURCE_CIRCLE_STROKE = 'rgba(255, 140, 0, 0.9)';
+/** 范围圈 feature id 前缀（与来电定位圈区分，互不干扰） */
+const RESOURCE_CIRCLE_FEATURE_ID = 'nearby_resource_circle';
+/**
+ * 范围圈图层 zIndex：位于警情点位（incident=1003.5）之下，
+ * 保证警情图标始终在圈面之上、点击命中不被装饰面遮挡。
+ */
+const RESOURCE_CIRCLE_LAYER_Z_INDEX = MAP_LAYER_Z_INDEX.incident - 0.1;
+
+/**
+ * Web Mercator(EPSG:3857) 投影米 ↔ 地面米换算。
+ * ol/geom/Circle 在 3857 坐标系下半径单位是投影米，同纬度下
+ * 地面距离 = 投影距离 × cos(纬度)；直接把 500 地面米当投影半径画，
+ * 在深圳纬度圈会偏小（约 462 地面米），与 turf 测地查询圆不一致。
+ */
+const mercatorMetersToGround = (projectedMeters: number, latDeg: number) =>
+  projectedMeters * Math.cos((latDeg * Math.PI) / 180);
+const groundMetersToMercator = (groundMeters: number, latDeg: number) =>
+  groundMeters / Math.cos((latDeg * Math.PI) / 180);
+
+/**
+ * 警情点周边资源范围圈独立矢量图层。
+ * 用 ol/geom/Circle（而非 turf buffer 的 Polygon 多边形）以便 Modify 交互拖拽边缘改半径；
+ * 松开鼠标（modifyend）时从 Circle 几何读圆心+半径，更新 store 触发 WMS 重查 + 周边资源重查。
+ */
+let resourceCircleLayer: VectorLayer<VectorSource> | null = null;
+/** Modify 交互实例，范围圈上图时激活、清除时移除 */
+let resourceCircleModify: Modify | null = null;
+/** 拖拽中标志：拖拽期间跳过 store→图层同步，避免循环更新 */
+let resourceCircleDragging = false;
+
+/** 创建范围圈独立矢量图层 + Modify 交互（懒初始化，地图就绪后首次画圈时创建） */
+const ensureResourceCircleLayer = () => {
+  if (!map || resourceCircleLayer) return;
+  const source = markRaw(new VectorSource({ wrapX: false }));
+  resourceCircleLayer = markRaw(new VectorLayer({
+    source,
+    className: RESOURCE_CIRCLE_LAYER_CLASS,
+    zIndex: RESOURCE_CIRCLE_LAYER_Z_INDEX,
+    style: new Style({
+      fill: new Fill({ color: RESOURCE_CIRCLE_FILL }),
+      stroke: new Stroke({ color: RESOURCE_CIRCLE_STROKE, width: 2 }),
+    }),
+  }));
+  map.addLayer(resourceCircleLayer);
+  // Modify 绑定本图层的 source，拖拽圈边缘改半径
+  resourceCircleModify = markRaw(new Modify({
+    source,
+    pixelTolerance: 8,
+    // 圆心与警情点图标重合：在警情点图层上按下时 Modify 不介入，
+    // 保证点击图标能正常触发点位弹窗，同时禁用圆心拖动（仅允许拖圈边改半径）
+    condition: (evt) =>
+      !map!.hasFeatureAtPixel(evt.pixel, {
+        hitTolerance: 6,
+        layerFilter: (targetLayer) =>
+          targetLayer.getClassName() === INCIDENT_LOCATION_LAYER_CLASS,
+      }),
+  }));
+  map.addInteraction(resourceCircleModify);
+  // 拖拽开始时设标志，跳过 store→图层同步避免循环
+  resourceCircleModify.on('modifystart', () => {
+    resourceCircleDragging = true;
+  });
+  // 松开鼠标时读 Circle 几何更新 store（触发 WMS 重查 + 周边资源重查）
+  resourceCircleModify.on('modifyend', () => {
+    resourceCircleDragging = false;
+    if (!resourceCircleLayer) return;
+    const source = resourceCircleLayer.getSource();
+    if (!source) return;
+    const feature = source.getFeatureById(RESOURCE_CIRCLE_FEATURE_ID);
+    if (!feature) return;
+    const geom = feature.getGeometry() as CircleGeom | null;
+    if (!geom) return;
+    const center = geom.getCenter(); // EPSG:3857
+    const projectedRadius = geom.getRadius(); // EPSG:3857 投影米
+    const centerLonLat = transform(center, 'EPSG:3857', 'EPSG:4326');
+    // 投影半径 → 地面米（按圆心纬度），store/WFS/WMS 一律使用地面米
+    const radius = mercatorMetersToGround(projectedRadius, centerLonLat[1]);
+    if (!Number.isFinite(radius) || radius <= 0) return;
+    // 更新 store：用拖拽后的圆心 + 半径替换范围圈，触发 WMS 重查 + 圈重画
+    // 注：circles 是按 owner 分组的，这里只更新第一个 owner 的第一个圈
+    const owners = Object.keys(nearbyResourceLayerStore.entries);
+    if (!owners.length) return;
+    nearbyResourceLayerStore.setCircles(owners[0], [{
+      lng: centerLonLat[0],
+      lat: centerLonLat[1],
+      radiusMeters: radius,
+    }]);
+    // 触发周边资源重新查询（store 范围圈更新后 WMS 自动重查，但 WFS 查询需手动触发）
+    const markerKey = owners[0].replace(LOCATION_RESOURCE_OWNER_PREFIX, '');
+    const marker = incidentLocationStore.markers[markerKey];
+    if (marker) {
+      // 复用 fetchJurisdiction 的周边资源查询链路（竞态令牌 + WFS + 范围圈声明）
+      void queryIncidentNearbyResources([centerLonLat[0], centerLonLat[1]], {
+        radiusMeters: radius,
+      }).then((result) => {
+        incidentLocationStore.nearbyResources[markerKey] = {
+          key: markerKey,
+          radiusMeters: radius,
+          fireHydrants: result.fireHydrants,
+          keyEnterprises: result.keyEnterprises,
+          jurisZones: result.jurisZones,
+          buildings: result.buildings,
+          version: marker.version,
+        };
+      }).catch((error) => {
+        console.warn('[resource-circle] 拖拽后重新查询周边资源失败', { markerKey, error });
+      });
+    }
+  });
+};
+
+/**
+ * 同步范围圈独立矢量图层：store 范围圈变化时画/移/改圈几何。
+ * - 新增：创建 ol/geom/Circle（EPSG:3857，半径米），画到独立图层
+ * - 消失：移除 feature
+ * - 变化（如拖拽松开后 store 更新）：原地更新几何，不重建（避免闪烁）
+ * 拖拽中跳过同步，避免 modifyend 更新 store 后又回写图层导致循环。
+ */
+const syncResourceCircles = () => {
+  const circles = nearbyResourceLayerStore.circles;
+  if (!circles.length) {
+    // 无范围圈：移除 feature（保留图层+交互，下次画时复用）
+    if (resourceCircleLayer) {
+      const source = resourceCircleLayer.getSource();
+      const feature = source?.getFeatureById(RESOURCE_CIRCLE_FEATURE_ID);
+      if (feature) source?.removeFeature(feature);
+    }
+    return;
+  }
+  if (resourceCircleDragging) return; // 拖拽中不同步，避免循环
+  ensureResourceCircleLayer();
+  if (!map || !resourceCircleLayer) return;
+  const source = resourceCircleLayer.getSource();
+  if (!source) return;
+  // 只画第一个圈（当前单警情点场景）；多警情点拖拽需求出现时再扩展
+  const circle = circles[0];
+  const center3857 = fromLonLat([circle.lng, circle.lat]);
+  // store 存地面米，ol/geom/Circle 需要投影米（按圆心纬度换算），
+  // 保证视觉圈与 turf 测地查询圆/WMS 过滤圆一致
+  const projectedRadius = groundMetersToMercator(circle.radiusMeters, circle.lat);
+  const newGeom = new CircleGeom(center3857, projectedRadius);
+  let feature = source.getFeatureById(RESOURCE_CIRCLE_FEATURE_ID) as Feature | undefined;
+  if (feature) {
+    feature.setGeometry(newGeom);
+  } else {
+    feature = markRaw(new Feature({ geometry: newGeom }));
+    feature.setId(RESOURCE_CIRCLE_FEATURE_ID);
+    source.addFeature(feature);
+  }
+};
+
+/** 按共享周边资源 store 的范围圈并集，对消防栓/重点单位 WMS 图层统一应用/恢复 */
+const syncResourceLayersOverride = () => {
+  NEARBY_RESOURCE_LAYER_NAMES.forEach((layerName) =>
+    syncOneResourceLayerOverride(layerName),
+  );
+  syncResourceCircles();
+};
+
+watch(
+  () =>
+    nearbyResourceLayerStore.circles
+      .map((circle) => `${circle.lng},${circle.lat},${circle.radiusMeters}`)
+      .join("|"),
+  () => syncResourceLayersOverride(),
+);
+
+/**
+ * 主管队站以独立 zhu.png 图标上图：全量消防站图层（fireManager / xfz.png）
+ * 填充时排除各业务方声明的主管 id，避免同一位置两个队站图标重叠。
+ * 队站 WFS 数据加载完成或主管集合变化时重新填充。
+ */
+const syncFireManagerStations = () => {
+  if (!fireManager || !allFireStations.length) return;
+  const excludedIds = new Set(
+    stationLayerStore.primaryStationIds.map((id) => String(id).trim()),
+  );
+  const visibleStations = allFireStations.filter(
+    (station) => !excludedIds.has(String(station.id).trim()),
+  );
+  fireManager.setStations?.(visibleStations);
+};
+
+watch(
+  () => [...stationLayerStore.primaryStationIds],
+  () => syncFireManagerStations(),
 );
 
 const syncBaseSourceLayer = () => {
   if (!baseLayer) return;
   const source = createBaseSourceSource(baseSourceStore.activeId, {
     night: themeColor.value === THEME_COLOR.NIGHT,
-  }, (maxZoom: number) =>  nextTick(() => map?.getView().setMaxZoom(maxZoom)));
+  }, (maxZoom: number) => nextTick(() => {
+    baseSourceMaxZoom = maxZoom;
+    applyFeatureZoomLimits();
+  }));
   
   baseLayer.setSource(source);
   if (overviewLayer) overviewLayer.setSource(source);
@@ -292,6 +725,10 @@ watch(unclosedIncidents, (next) => {
 watch(
   () => ({ ...incidentLocationStore.markers }),
   (next) => {
+    // 立案消息也会创建 marker；只有 slotChanges 的正式坐标可以清除粗定位圈。
+    if (Object.values(next).some((entry) => entry.coordinateSource === 'slotChanges')) {
+      clearActiveCallLocation();
+    }
     if (!incidentLocationManager) return;
     Object.values(next).forEach((entry) => {
       const old = renderedMarkers.get(entry.key);
@@ -313,7 +750,87 @@ watch(
   },
 );
 
-/** 点位辖区：watch store.zones diff 后增量 upsert/remove（辖区查询异步到达/版本变化） */
+/**
+ * 按模拟调派门控刷新主管图层（zhu.png）：
+ * 调派期间仅显示本次参与路径规划的主管站，调派结束后恢复 store 全量主管站。
+ */
+const syncPrimaryStationVisibility = () => {
+  if (!primaryStationManager) return;
+  const items = Object.values(incidentLocationStore.primaryStations);
+  primaryStationManager.setData(
+    mockDispatchPrimaryGate
+      ? items.filter((station) => mockDispatchPrimaryGate!.has(station.stationId))
+      : items,
+  );
+};
+
+/**
+ * 模拟调派队站图标门控：在本次参与路径规划的队站中，
+ * 命中 queryIncidentStations 判定主管（store.primaryStations）的显示主管图标 zhu.png，
+ * 其余按支撑队站 WMS 图标显示；不参与本次路径规划的队站一律不显示。
+ */
+const applyMockDispatchStationIcons = (stationIds: string[]) => {
+  const primaryIds = new Set(
+    Object.values(incidentLocationStore.primaryStations).map(
+      (station) => station.stationId,
+    ),
+  );
+  const dispatchPrimaryIds = stationIds.filter((id) => primaryIds.has(id));
+  const dispatchSupportIds = stationIds.filter((id) => !primaryIds.has(id));
+  const store = useStationLayerStore();
+  // 主管 id 进 primaryEntries（zhu.png 图层 + 全量消防站层排除），支撑 id 进 entries（WMS 过滤上图）
+  store.setPrimaryStations(MOCK_DISPATCH_STATION_OWNER, dispatchPrimaryIds);
+  store.setStations(MOCK_DISPATCH_STATION_OWNER, dispatchSupportIds);
+  mockDispatchPrimaryGate = new Set(dispatchPrimaryIds);
+  syncPrimaryStationVisibility();
+};
+
+/** 退出模拟调派：清除图标门控，恢复非调派期队站图层规则 */
+const clearMockDispatchStationIcons = () => {
+  mockDispatchPrimaryGate = null;
+  useStationLayerStore().clearOwner(MOCK_DISPATCH_STATION_OWNER);
+  syncPrimaryStationVisibility();
+};
+
+/** 主管队站点位：watch store.primaryStations diff 后增量 upsert/remove（zhu.png 独立图标） */
+watch(
+  () => ({ ...incidentLocationStore.primaryStations }),
+  (next) => {
+    if (!primaryStationManager) return;
+    // 模拟调派期间：主管图层只保留本次参与路径规划的主管站，store 变化也不放行其他主管
+    if (mockDispatchPrimaryGate) {
+      primaryStationManager.setData(
+        Object.values(next).filter((station) =>
+          mockDispatchPrimaryGate!.has(station.stationId),
+        ),
+      );
+      renderedPrimaryStations = new globalThis.Map(
+        Object.values(next).map((station) => [station.key, station]),
+      );
+      return;
+    }
+    Object.values(next).forEach((station) => {
+      const old = renderedPrimaryStations.get(station.key);
+      if (
+        !old ||
+        old.lng !== station.lng ||
+        old.lat !== station.lat ||
+        old.stationId !== station.stationId ||
+        old.version !== station.version
+      ) {
+        primaryStationManager?.upsert(station);
+      }
+    });
+    renderedPrimaryStations.forEach((_old, key) => {
+      if (!(key in next)) primaryStationManager?.remove(key);
+    });
+    renderedPrimaryStations = new globalThis.Map(
+      Object.values(next).map((station) => [station.key, station]),
+    );
+  },
+);
+
+/* 辖区渲染已禁用：watcher 不再同步 store.zones 到图层
 watch(
   () => ({ ...incidentLocationStore.zones }),
   (next) => {
@@ -336,6 +853,7 @@ watch(
     );
   },
 );
+*/
 
 /** 路径规划请求：有 nav 时立即消费（fetchRoutesAndEta + renderRoutesOnly），无 nav 时保留待挂载 */
 watch(
@@ -344,7 +862,13 @@ watch(
     if (!nav || !map) return;
     if (!req) {
       // 点位移除：清空已渲染的路线
+      resetRouteVideoPlayback();
       nav.clearRoutes();
+      routePreviewVisible.value = false;
+      routePreviewLoading.value = false;
+      routePreviewStations.value = [];
+      lastRoutePlanResults = [];
+      featureClickQuery?.close();
       return;
     }
     void processRoutePlan(req);
@@ -358,8 +882,6 @@ watch(
     if (!req || !incidentLocationManager || !map) return;
     incidentLocationStore.consumeFocus();
     focusMapView(map, req);
-    // 定位完成后在灾情点弹出现场视频
-    incidentVideoController?.show(req.lng, req.lat);
   },
 );
 
@@ -387,6 +909,7 @@ const addLayer = (id: string) => {
     })),
     opacity: options.opacity,
     minZoom: config.minZoom,
+    zIndex: id === STATION_LAYER_NAME ? FIRE_STATION_LAYER_Z_INDEX : undefined,
   }));
 
   map.addLayer(wmsLayer);
@@ -400,6 +923,13 @@ const removeLayer = (id: string) => {
   if (
     id === STATION_LAYER_NAME
     && stationLayerStore.selectedStationIds.length
+  ) {
+    return false;
+  }
+  // 警情定位正在复用消防栓/重点单位/队站辖区/建筑 WMS 图层显示 500 米圈内资源时，禁止开关移除
+  if (
+    (id === FIRE_HYDRANT_LAYER_NAME || id === KEY_ENTERPRISE_LAYER_NAME || id === JURIS_ZONE_LAYER_NAME || id === BUILDING_LAYER_NAME)
+    && nearbyResourceLayerStore.circles.length
   ) {
     return false;
   }
@@ -439,26 +969,32 @@ defineExpose({
   syncLayers,
 });
 
+/**
+ * 地图业务点位统一弹窗数据：警情规划(alarm)/今日灾情(jr)/警情定位(incident)
+ * 三类点位共用同一个 alarmPopupRef DOM 与同一个 OL Overlay，
+ * 由统一 singleclick 处理器按命中图层切换数据，避免多个 Overlay 抢占同一元素。
+ */
+type ActiveMapPopup =
+  | { kind: 'alarm'; data: any }
+  | { kind: 'jr'; data: JRAlarmData }
+  | { kind: 'incident'; data: IncidentLocationMarker };
+
 const alarmPopupRef = ref<HTMLElement | null>(null);
-const alarmPopupVisible = ref(false);
+/** 当前弹窗数据（null 表示关闭）；三类点位互斥，同一时刻只显示一个 */
+const activeMapPopup = ref<ActiveMapPopup | null>(null);
+const alarmPopupVisible = computed(() => activeMapPopup.value !== null);
+/** 警情规划数据：路径规划等其他链路直接使用，不随弹窗关闭清空 */
 const alarmData = ref<any>(null);
-// const alarmData = ref<AlarmData | null>(null);
 let alarmOverlayManager: {
+  overlay: Overlay;
   showAtAlarm: () => void;
   hide: () => void;
   destroy: () => void;
 } | null = null;
+/** 三类点位统一弹窗的 singleclick 监听 key，cleanup 时解绑 */
+let unifiedPopupClickKey: EventsKey | null = null;
 
 let featureClickQuery: FeatureClickQuery | null = null;
-
-const jrAlarmPopupRef = ref<HTMLElement | null>(null);
-const jrAlarmPopupVisible = ref(false);
-const jrAlarmData = ref<JRAlarmData | null>(null);
-
-const joinText = (...values: Array<string | number | null | undefined>) =>
-  values
-    .filter((value) => value !== null && value !== undefined && value !== "")
-    .join("");
 
 const hasText = (value: string | number | null | undefined) =>
   value !== null && value !== undefined && value !== "";
@@ -491,56 +1027,34 @@ const carTypeLabel = (t?: CarItem['carType']) =>
 const carStatusLabel = (s?: CarItem['status']) =>
   s ? CAR_STATUS_LABELS[s] ?? s : '';
 
-const alarmPopupTitle = computed(
-  () => alarmData.value?.aoi || alarmData.value?.address || "警情详情",
+/**
+ * 将当前命中的点位归一化到统一弹窗字段：
+ * 警情规划/今日灾情/警情定位三类点位展示完全一致的 7 行，
+ * 数据源缺字段时留空（组件渲染 "-"）。
+ */
+const activePopupFields = computed<UnifiedAlarmPopupFields | null>(() => {
+  const popup = activeMapPopup.value;
+  if (!popup) return null;
+  if (popup.kind === "jr") return toJrAlarmPopupFields(popup.data);
+  if (popup.kind === "alarm") return toAlarmPlanPopupFields(popup.data);
+  // 警情定位点：仅有地址与主管队站（主管名取同 key 派生物，未命中回退队站 ID）
+  const marker = popup.data;
+  return {
+    disasterAddress: marker.address,
+    mOrgIdLabel:
+      incidentLocationStore.primaryStations[marker.key]?.name
+      || marker.primaryStationId
+      || null,
+  };
+});
+
+const alarmPopupTitle = computed(() =>
+  buildUnifiedAlarmPopupTitle(activePopupFields.value),
 );
 
-const alarmPopupRows = computed<AlarmDetailRow[]>(() => {
-  const data = alarmData.value;
-  return [
-    // { label: "地址", value: data?.address, visible: !!data?.address },
-    // {
-    //   label: "区域",
-    //   value: joinText(data?.province, data?.city, data?.county, data?.town, data?.community),
-    // },
-    // { label: "坐标", value: formatCoordinateText(data?.x, data?.y) },
-    // { label: "用途", value: data?.areausag_name, visible: !!data?.areausag_name },
-
-    { label: "地址", value: data?.address },
-    { label: "状态", value: data?.status },
-    { label: "时间", value: data?.alarmTime },
-    { label: "类型", value: data?.alarmType },
-    { label: "燃烧物", value: data?.burningMaterial },
-    { label: "重点单位", value: data?.keyUnit },
-    { label: "辖区", value: joinText(data?.district, data?.street) },
-    { label: "坐标", value: formatCoordinateText(data?.lng, data?.lat) },
-    { label: "详情", value: data?.description },
-  ];
-});
-
-const jrAlarmPopupTitle = computed(() => {
-  const data = jrAlarmData.value;
-  const left = data?.disasterTypeLabel ?? "警情";
-  const right = data?.disasterGradeLabel ?? data?.disasterGrade ?? "";
-  return right ? `${left} - ${right}` : left;
-});
-
-const jrAlarmPopupRows = computed<AlarmDetailRow[]>(() => {
-  const data = jrAlarmData.value;
-  return [
-    { label: "警情类型", value: data?.disasterTypeLabel },
-    {
-      label: "报警时间",
-      value: dayjs(data?.createdAt || '').format("YYYY-MM-DD HH:mm:ss"),
-    },
-    { label: "警情等级", value: data?.disasterGradeLabel ?? data?.disasterGrade },
-    { label: "事发地址", value: data?.disasterAddress },
-    { label: "警情编号", value: data?.incidentId },
-    // { label: "问询编号", value: data?.inquiryId },
-    { label: "主管队站", value: data?.mOrgIdLabel ?? data?.mOrgId },
-    { label: "坐标", value: formatCoordinateText(data?.lng, data?.lat) },
-  ];
-});
+const alarmPopupRows = computed<AlarmDetailRow[]>(() =>
+  buildUnifiedAlarmPopupRows(activePopupFields.value),
+);
 
 const setTempFrontendLayerVisible = (id: string, visible: boolean) => {
   const managerMap: Record<string, TempFrontendLayerManager | null> = {
@@ -599,28 +1113,528 @@ const ensureAmapKey = () => {
   return amapKey.value;
 };
 
-/**
- * 消费路径规划请求：调 nav.fetchRoutesAndEta 取路线+ETA+指标，
- * 再调 nav.renderRoutesOnly 渲染 TMC 路况彩线（无车辆动画）。
- * seq 用于竞态保护：请求被替换或 nav 销毁后丢弃旧结果。
- */
-const processRoutePlan = async (req: IncidentLocationRoutePlanRequest) => {
+/** 最近一次警情定位路径规划结果（TMC 路线 + 指标 + ETA），供模拟调派匹配后重放车辆动画 */
+let lastRoutePlanResults: AmapDrivingResult[] = [];
+
+const routePreviewStations = ref<StationRouteAlternatives[]>([]);
+const routePreviewLoading = ref(false);
+const routePreviewVisible = ref(false);
+let pendingRoutePlan: Promise<void> | null = null;
+
+const getStationRouteInfo = (stationId: string) => {
+  if (!routePreviewVisible.value) return null;
+  const station = routePreviewStations.value.find((item) => item.stationId === stationId);
+  if (!station) return null;
+  const route = getSelectedRoute(station);
+  return route
+    ? {
+        etaText: `${Math.ceil(route.etaSeconds / 60)} 分钟`,
+        distanceText: `${(route.result.distanceMeters / 1000).toFixed(1)} km`,
+      }
+    : { etaText: '正在计算', distanceText: '正在计算' };
+};
+
+const showRouteStationPopup = (station: StationRouteAlternatives) => {
+  fireManager?.hide();
+  const details = fireStations.value.find((item) => String(item.id) === station.stationId);
+  featureClickQuery?.showStation({
+    id: station.stationId,
+    name: details?.title ?? station.stationName,
+    address: details?.address ?? '暂无地址',
+    coordinate: olProj.fromLonLat(station.origin),
+  });
+};
+
+const syncSelectedRoutePlan = () => {
+  const selected = routePreviewStations.value.map(getSelectedRoute)
+    .filter((route): route is RouteAlternative => !!route);
+  lastRoutePlanResults = selected.map(route => route.result);
+};
+
+const selectStationRoute = (stationId: string, routeId: string) => {
+  if (!routePreviewVisible.value || routePreviewLoading.value) return;
+  const station = routePreviewStations.value.find(item => item.stationId === stationId);
+  if (!station?.alternatives.some(route => route.id === routeId)) return;
+  station.selectedId = routeId;
+  routePreviewStations.value.forEach(item => {
+    item.manualSelected = item.stationId === stationId;
+  });
+  // 特殊地图激活时不写 lastRoutePlanResults，避免污染原有调派的 resolveMockDestination/resolveStationCoordinates
+  if (!specialMapActive) syncSelectedRoutePlan();
+  nav?.renderRouteAlternatives(routePreviewStations.value);
+  showRouteStationPopup(station);
+};
+
+/** 地址更新后逐队站请求候选；旧地址的异步结果不得覆盖新地址。 */
+const loadRoutePlan = async (req: IncidentLocationRoutePlanRequest) => {
   if (!nav || !map) return;
-  const key = ensureAmapKey();
-  if (!key) return;
-  nav.setKey(key);
-  const seq = req.seq;
+  // 正常调派启动时退出特殊地图模式，恢复 lastRoutePlanResults 写入
+  specialMapActive = false;
+  specialMapMock?.clear();
+  resetRouteVideoPlayback();
+  clearMockTrackingTimers();
+  nav.stop();
+  routePreviewStations.value = [];
+  routePreviewVisible.value = true;
+  routePreviewLoading.value = true;
+  lastRoutePlanResults = [];
+  const planner = nav;
+  const generation = routeVideoGeneration;
+  const stations = req.stations ?? req.origins.map((coordinate, index) => ({
+    id: `origin-${index}`, name: `队站 ${index + 1}`, coordinate,
+  }));
+  routePreviewStations.value = stations.map((station) => ({
+    stationId: station.id,
+    stationName: station.name,
+    origin: station.coordinate,
+    destination: req.destination,
+    alternatives: [],
+    selectedId: '',
+  }));
+  if (routePreviewStations.value[0]) showRouteStationPopup(routePreviewStations.value[0]);
   try {
-    const { results } = await nav.fetchRoutesAndEta(
-      req.origins,
-      req.destination,
-    );
-    if (seq !== incidentLocationStore.routePlanRequest?.seq || !nav) return;
-    nav.renderRoutesOnly(results);
-  } catch (e) {
-    console.warn("[address-updated] 路径规划失败", { markerKey: req.markerKey, e });
+    const groups = await Promise.all(stations.map(async (station): Promise<StationRouteAlternatives> => {
+      const group: StationRouteAlternatives = {
+        stationId: station.id, stationName: station.name,
+        origin: station.coordinate, destination: req.destination,
+        alternatives: [], selectedId: '',
+      };
+      try {
+        group.alternatives = await planner.fetchRouteAlternatives(station.coordinate, req.destination);
+        group.selectedId = group.alternatives[0].id;
+      } catch (error) {
+        group.error = '暂未获取到可用路线，请更新地址重试';
+        console.warn('[address-updated] 队站候选路线查询失败', { stationId: station.id, error });
+      }
+      return group;
+    }));
+    if (req.seq !== incidentLocationStore.routePlanRequest?.seq || nav !== planner
+      || generation !== routeVideoGeneration) return;
+    routePreviewStations.value = groups;
+    syncSelectedRoutePlan();
+    planner.renderRouteAlternatives(groups, true);
+    if (groups[0]) showRouteStationPopup(groups[0]);
+  } finally {
+    if (req.seq === incidentLocationStore.routePlanRequest?.seq && generation === routeVideoGeneration) {
+      routePreviewLoading.value = false;
+    }
   }
 };
+
+const processRoutePlan = (req: IncidentLocationRoutePlanRequest) => {
+  const task = loadRoutePlan(req).catch(error => {
+    console.warn('[address-updated] 路线预览失败', error);
+  });
+  pendingRoutePlan = task;
+  void task.finally(() => { if (pendingRoutePlan === task) pendingRoutePlan = null; });
+  return task;
+};
+
+/** 模拟调派"先渲染路线、再定位起点、后启动跟踪"的分步计时器，卸载时清理 */
+let mockTrackingTimers: number[] = [];
+let routeVideoGeneration = 0;
+
+const resetRouteVideoPlayback = () => {
+  routeVideoGeneration += 1;
+  incidentVideoController?.close();
+  nav?.clearRouteVideoCheckpoints();
+  // 模拟调派状态依赖 generation，重置后即失效，由下一次首次调派重新建立
+  mockDispatchState = null;
+  // 清除模拟调派队站图标门控，恢复非调派期 WMS 整体不显示、主管图层全量
+  clearMockDispatchStationIcons();
+};
+
+const playRouteVideoCheckpoint = (event: RouteVideoCheckpointEvent, generation: number) => {
+  if (generation !== routeVideoGeneration || !nav || !incidentVideoController) return;
+  // 同一调派周期内每个监控点全局只播放一次，首车和追加车辆使用同一状态与会话 key。
+  nav.setRouteVideoCheckpointStatus(event.checkpointIndex, "playing");
+  // 正常在到点前 10 秒触发，因此显示 15 秒；若首点已来不及提前，则按实际剩余时间 + 5 秒关闭。
+  const durationMs = Math.max(5, event.secondsUntilArrival + 5) * 1000;
+  const checkpointKey = `${generation}:${event.checkpointIndex}`;
+  void incidentVideoController
+    .playSingle(checkpointKey, event.lngLat[0], event.lngLat[1], durationMs)
+    .then(() => {
+      if (generation === routeVideoGeneration) {
+        nav?.setRouteVideoCheckpointStatus(event.checkpointIndex, "played");
+      }
+    });
+};
+
+const clearMockTrackingTimers = () => {
+  mockTrackingTimers.forEach((t) => window.clearTimeout(t));
+  mockTrackingTimers = [];
+};
+
+/** 模拟调派（mock 补丁通道，§7.2 注入型）：受理席调派成功后注入车辆清单。
+ *  按 stationId 去重：同一消防队站无论调派多少辆车都只规划一条路线。
+ *  起点来源：stationId 命中当前主管/辖区队站时复用警情定位已规划路线的起点坐标；
+ *  未命中时按 stationId 查询 gis:view_res_org_dept 获取队站坐标。
+ *  所有起点确定后统一规划路线至警情点：先渲染路线并适配视图（先看到路），
+ *  再缩放定位至首车起点 zoom:16，最后启动模拟跟踪。
+ *
+ *  二次调派：若已有活跃模拟调派（generation 未失效且终点一致），则增量处理：
+ *  - 同队站车辆：在已有路线上追加一辆车，从队站起点按该路线 ETA 运行；
+ *  - 新队站车辆：规划新路线并渲染上图、创建首车。 */
+
+/** 活跃模拟调派状态：队站 ID → nav 内部 routeIndex，及对应的警情终点与 generation */
+let mockDispatchState: {
+  generation: number;
+  destination: LngLat;
+  stationToRouteIndex: Map<string, number>;
+  /** 首车动画是否已启动（首次调派 startRouteVehicleAnimation 后置 true） */
+  started: boolean;
+  /** 首车启动前到达的二次调派排队回调，启动后按序执行 */
+  onStarted?: () => void;
+} | null = null;
+
+/** 解析模拟调派的警情终点（优先级：routePlanRequest → 已规划路线终点 → mock 坐标） */
+const resolveMockDestination = (): LngLat | undefined => {
+  let mockDestination: LngLat | undefined;
+  try {
+    const mock = JSON.parse(localStorage.getItem(SEAT_SHARED_STATE_MOCK_KEY) || "null");
+    const lng = Number(mock?.callLocation?.lng);
+    const lat = Number(mock?.callLocation?.lat);
+    if (Number.isFinite(lng) && Number.isFinite(lat)) mockDestination = [lng, lat];
+  } catch {
+    // 非法 mock 数据由桥接层统一忽略，这里仅不采用坐标兜底。
+  }
+  return (
+    incidentLocationStore.routePlanRequest?.destination
+    ?? (lastRoutePlanResults[0]?.fullPath?.slice(-1)[0] as LngLat | undefined)
+    ?? mockDestination
+  );
+};
+
+/** 按 zones 命中 → gis 队站表 → POI 兜底的顺序，解析给定车辆所属队站的起点坐标 */
+const resolveStationCoordinates = async (
+  vehicles: SharedDispatchVehicleMock[],
+  generation: number,
+): Promise<Map<string, LngLat>> => {
+  const zones = incidentLocationStore.zones;
+  const markerKey = incidentLocationStore.routePlanRequest?.markerKey;
+  const stationIdsByRouteIndex: string[] = [];
+  if (markerKey && zones[markerKey]) {
+    stationIdsByRouteIndex.push(zones[markerKey].zoneId);
+  }
+  Object.keys(zones).forEach((key) => {
+    if (markerKey && key.startsWith(`${markerKey}::`)) {
+      stationIdsByRouteIndex.push(zones[key].zoneId);
+    }
+  });
+
+  const stationStartCoords = new Map<string, LngLat>();
+  routePreviewStations.value.forEach(station => stationStartCoords.set(station.stationId, station.origin));
+  stationIdsByRouteIndex.forEach((sid, idx) => {
+    const start = lastRoutePlanResults[idx]?.fullPath?.[0];
+    if (sid && start && !stationStartCoords.has(sid)) stationStartCoords.set(sid, start as LngLat);
+  });
+
+  const unmatchedStationIds = [
+    ...new Set(
+      vehicles
+        .map((v) => String(v.stationId ?? "").trim())
+        .filter((sid) => sid && !stationStartCoords.has(sid)),
+    ),
+  ];
+  if (unmatchedStationIds.length) {
+    const coordMap = await queryStationCoordinatesByIds(unmatchedStationIds);
+    if (generation !== routeVideoGeneration) return stationStartCoords;
+    coordMap.forEach((coord, sid) => stationStartCoords.set(sid, coord));
+
+    const key = ensureAmapKey();
+    const unresolved = vehicles.filter((vehicle) => {
+      const stationId = String(vehicle.stationId ?? "").trim();
+      return stationId && !stationStartCoords.has(stationId) && vehicle.stationName?.trim();
+    });
+    if (key && unresolved.length) {
+      await Promise.all(unresolved.map(async (vehicle) => {
+        const stationId = String(vehicle.stationId).trim();
+        if (stationStartCoords.has(stationId)) return;
+        try {
+          const tips = await fetchInputTips({
+            key,
+            keywords: vehicle.stationName!.trim(),
+            city: String(regionCfg?.adcode ?? "深圳市"),
+            citylimit: true,
+          });
+          const stationName = vehicle.stationName!.trim();
+          const matchedTip = tips.find((tip) => tip.name === stationName && tip.location)
+            ?? tips.find((tip) => tip.name.includes("消防") && tip.location)
+            ?? tips.find((tip) => tip.location);
+          const coordinate = matchedTip?.location;
+          if (coordinate) stationStartCoords.set(stationId, coordinate);
+        } catch (error) {
+          console.warn("[dispatchMap] 队站名称坐标兜底查询失败", {
+            stationId,
+            stationName: vehicle.stationName,
+            error,
+          });
+        }
+      }));
+    }
+  }
+  return stationStartCoords;
+};
+
+/**
+ * 二次调派：在已有活跃模拟调派基础上增量处理车辆。
+ * 同队站 → 已有路线追加车辆；新队站 → 规划新路线并创建首车。
+ */
+const handleSecondaryDispatch = (
+  vehicles: SharedDispatchVehicleMock[],
+  destination: LngLat,
+  state: NonNullable<typeof mockDispatchState>,
+) => {
+  const doSecondary = async () => {
+      if (!nav || state.generation !== routeVideoGeneration) return;
+      const planner = nav;
+      const sameStationCount = vehicles.filter((v) => {
+        const sid = String(v.stationId ?? "").trim();
+        return sid && state.stationToRouteIndex.has(sid);
+      }).length;
+
+      // 同队站：每次推送追加一辆车；本次推送中 stationId 相同的车辆信息
+      // 合并到这辆车的同一个标签中，后续推送则生成新的车辆与标签。
+      const sameStationGroups = new Map<string, SharedDispatchVehicleMock[]>();
+      vehicles.forEach((vehicle) => {
+        const sid = String(vehicle.stationId ?? "").trim();
+        if (!sid || !state.stationToRouteIndex.has(sid)) return;
+        const group = sameStationGroups.get(sid) ?? [];
+        group.push(vehicle);
+        sameStationGroups.set(sid, group);
+      });
+      sameStationGroups.forEach((group, sid) => {
+        const routeIndex = state.stationToRouteIndex.get(sid);
+        if (routeIndex !== undefined) {
+          planner.addVehicleToRoute(routeIndex, group);
+        }
+      });
+
+      // 新队站：解析坐标 → 规划路线 → 渲染上图 → 创建首车
+      const newStationVehicles = vehicles.filter((v) => {
+        const sid = String(v.stationId ?? "").trim();
+        return sid && !state.stationToRouteIndex.has(sid);
+      });
+
+      if (newStationVehicles.length) {
+        const stationStartCoords = await resolveStationCoordinates(
+          newStationVehicles,
+          state.generation,
+        );
+        if (state.generation !== routeVideoGeneration || nav !== planner) return;
+        const uniqueNewStationIds = [
+          ...new Set(
+            newStationVehicles
+              .map((v) => String(v.stationId!).trim())
+              .filter((sid): sid is string => Boolean(sid)),
+          ),
+        ];
+        for (const sid of uniqueNewStationIds) {
+          if (!nav || state.generation !== routeVideoGeneration) return;
+          const origin = stationStartCoords.get(sid) ?? destination;
+          try {
+            const selected = matchStationRoute(routePreviewStations.value, sid, destination);
+            const { routeIndex } = await nav.addRoute(origin, destination, selected);
+            state.stationToRouteIndex.set(sid, routeIndex);
+            nav.setRouteVehicles(
+              routeIndex,
+              newStationVehicles.filter((vehicle) => String(vehicle.stationId ?? "").trim() === sid),
+            );
+          } catch (error) {
+            console.warn("[dispatchMap] 二次调派新队站路径规划失败", { sid, error });
+          }
+        }
+        // 新队站并入后按全部调派队站（已有+新增）刷新图标门控：
+        // 主管显示 zhu.png、新支撑队站 WMS 上图；不改动上方路径规划/车辆追加逻辑
+        applyMockDispatchStationIcons([...state.stationToRouteIndex.keys()]);
+      }
+
+      console.info("[dispatchMap] 二次调派处理完成", {
+        sameStationCount,
+        newStationCount: newStationVehicles.length,
+        totalRouteCount: nav.getRouteCount(),
+      });
+  };
+
+  // 首车动画尚未启动（首次调派仍在"先看到路→定位起点"阶段），
+  // 排队到首车启动后再追加，避免在车辆 marker 创建前启动动画。
+  if (state.started) {
+    doSecondary();
+  } else {
+    const prev = state.onStarted;
+    state.onStarted = () => {
+      prev?.();
+      doSecondary();
+    };
+  }
+};
+
+const receiveMockDispatchVehicles = async (vehicles: SharedDispatchVehicleMock[]) => {
+  if (!Array.isArray(vehicles) || !vehicles.length || !nav || !map) return;
+
+  // 调派可能与地址规划同时到达，等待当前地址候选完成再锁定选择。
+  while (pendingRoutePlan) {
+    const task = pendingRoutePlan;
+    await task;
+    if (pendingRoutePlan === task) break;
+  }
+  if (!nav || !map) return;
+  const destination = resolveMockDestination();
+  if (!destination) {
+    console.warn("[dispatchMap] 模拟调派缺少警情点坐标，跳过");
+    return;
+  }
+
+  routePreviewVisible.value = false;
+  featureClickQuery?.close();
+  // 判断是否为二次调派：已有活跃模拟调派、generation 未失效、终点一致
+  const isSecondary =
+    !!mockDispatchState
+    && mockDispatchState.generation === routeVideoGeneration
+    && mockDispatchState.destination[0] === destination[0]
+    && mockDispatchState.destination[1] === destination[1];
+
+  if (isSecondary && mockDispatchState) {
+    handleSecondaryDispatch(vehicles, destination, mockDispatchState);
+    return;
+  }
+
+  // 首次调派：立即收起所有备选，只保留当前选中的路线。
+  if (routePreviewStations.value.length) {
+    nav.renderRoutesOnly(routePreviewStations.value.map(getSelectedRoute)
+      .filter((route): route is RouteAlternative => !!route).map(route => route.result), false);
+  }
+  resetRouteVideoPlayback();
+  const playbackGeneration = routeVideoGeneration;
+
+  const stationStartCoords = await resolveStationCoordinates(vehicles, playbackGeneration);
+  if (playbackGeneration !== routeVideoGeneration) return;
+
+  const uniqueStationIds = [
+    ...new Set(
+      vehicles
+        .map((vehicle) => String(vehicle.stationId ?? "").trim())
+        .filter((stationId): stationId is string => Boolean(stationId)),
+    ),
+  ];
+  if (!uniqueStationIds.length) {
+    console.warn("[dispatchMap] 模拟调派车辆均无 stationId，跳过路径规划");
+    return;
+  }
+
+  // 调派期间只显示本次参与路径规划的队站图标：
+  // 命中主管判定的显示 zhu.png，其余显示支撑队站 WMS 图标
+  applyMockDispatchStationIcons(uniqueStationIds);
+
+  // origins 与去重后的消防队站严格一一对应：一个 stationId 只产生一条路线。
+  const missing: string[] = [];
+  const origins: LngLat[] = uniqueStationIds.map((sid) => {
+    const coord = stationStartCoords.get(sid);
+    if (coord) return coord;
+    missing.push(sid);
+    return [...destination] as LngLat;
+  });
+  if (missing.length) {
+    console.warn("[dispatchMap] 部分队站坐标缺失，以警情点为起点占位", missing);
+  }
+  console.info("[dispatchMap] 模拟调派车辆起点就绪", {
+    vehicleCount: vehicles.length,
+    uniqueStationCount: uniqueStationIds.length,
+    originCount: origins.length,
+    matchedCount: uniqueStationIds.length - missing.length,
+  });
+
+  // 按 stationId 复用已选方案；未参与预览的队站才补查默认时间最短方案。
+  const planner = nav;
+  let selectedRoutes: RouteAlternative[];
+  try {
+    selectedRoutes = await Promise.all(uniqueStationIds.map(async (sid, index) =>
+      matchStationRoute(routePreviewStations.value, sid, destination)
+        ?? (await planner.fetchRouteAlternatives(origins[index], destination))[0],
+    ));
+  } catch (error) {
+    console.warn('[dispatchMap] 调派路线获取失败', error);
+    ElMessage.warning('部分调派队站暂无可用路线，请重试');
+    // 调派未成功：清除队站图标门控，恢复非调派期图层规则
+    clearMockDispatchStationIcons();
+    if (nav === planner && playbackGeneration === routeVideoGeneration) {
+      routePreviewVisible.value = routePreviewStations.value.length > 0;
+      planner.renderRouteAlternatives(routePreviewStations.value);
+    }
+    return;
+  }
+  if (nav !== planner || playbackGeneration !== routeVideoGeneration) return;
+  const results = selectedRoutes.map(route => route.result);
+  const metrics = selectedRoutes.map(route => route.metrics);
+  const etaSeconds = selectedRoutes.map(route => route.etaSeconds);
+
+  // 第一步：先渲染路线并适配视图（fit 全路线 extent，先看到整条路）
+  nav.renderRoutesOnly(results);
+  nav.setRouteVideoCheckpoints(results, metrics, (event) => {
+    playRouteVideoCheckpoint(event, playbackGeneration);
+  });
+
+  // 记录活跃模拟调派状态（stationId → routeIndex，与 origins/results 顺序一致）
+  mockDispatchState = {
+    generation: playbackGeneration,
+    destination,
+    stationToRouteIndex: new Map(
+      uniqueStationIds.map((sid, idx) => [sid, idx] as const),
+    ),
+    started: false,
+  };
+
+  // 中心点：首车路线起点（队站坐标）
+  const stationLngLat = results[0]?.fullPath?.[0];
+
+  const startTracking = () => {
+    // 调派车辆消息即确认选线并启动跟踪，无需额外等待阶段消息。
+      if (playbackGeneration !== routeVideoGeneration) return;
+      // 路线已上图、视野已定位，启动动画时不再 fit 全路线，避免视野跳回
+      nav?.startRouteVehicleAnimation(results, metrics, etaSeconds, false);
+      nav?.setRouteVehicleGroups(
+        uniqueStationIds.map((sid) => vehicles.filter(
+          (vehicle) => String(vehicle.stationId ?? "").trim() === sid,
+        )),
+      );
+      // 首车已启动，标记活跃状态并触发排队中的二次调派
+      if (mockDispatchState && mockDispatchState.generation === playbackGeneration) {
+        mockDispatchState.started = true;
+        const onStarted = mockDispatchState.onStarted;
+        mockDispatchState.onStarted = undefined;
+        onStarted?.();
+      }
+  };
+
+  // 分步调度：计时器触发后即从清理列表移除，避免误清复用 ID
+  const schedule = (delay: number, fn: () => void) => {
+    const id = window.setTimeout(() => {
+      mockTrackingTimers = mockTrackingTimers.filter((t) => t !== id);
+      fn();
+    }, delay);
+    mockTrackingTimers.push(id);
+  };
+
+  clearMockTrackingTimers();
+  if (stationLngLat) {
+    // 第二步：等路径视野适配完成（fit 300ms）后，再定位至首车起点 zoom:16
+    schedule(350, () => {
+      map?.getView().animate({
+        center: olProj.fromLonLat(stationLngLat),
+        zoom: 16,
+        duration: 400,
+      });
+      // 第三步：定位动画完成后启动模拟跟踪
+      schedule(450, startTracking);
+    });
+  } else {
+    schedule(350, startTracking);
+  }
+};
+
+let mockDispatchUnsubscribe: (() => void) | null = null;
+let mockDispatchQueue: Promise<void> = Promise.resolve();
+let mockSpecialMapUnsubscribers: Array<() => void> = [];
 
 type TipItem = {
   id?: string;
@@ -800,29 +1814,8 @@ const pickOnMap = async (type: "start" | "end") => {
     endText.value = picked.address;
     endCoord.value = picked.lngLat;
 
-    addrCtrl.send(picked);
   }
   activeDropdown.value = null;
-};
-
-const onFatherMessage = async (
-  coord: [number, number],
-  otherData: any,
-  fireBrigade = [],
-  d?: any, // 路径规划接口数据
-) => {
-  // tabs切换地图模式
-  tabsStore.setActiveTab(1);
-
-  endCoord.value = coord;
-  alarmData.value = (otherData || null) as AlarmData | null;
-  startSimulate(fireBrigade, d);
-  // 逆地址解析，获取地址信息
-  const address = await nav?.reverseGeocode(coord);
-  endText.value = address || "";
-
-  // 关闭模型
-  EventBus.emit("panelClose");
 };
 
 const startSimulate = async (orgs?: any[], d?: any) => {
@@ -890,6 +1883,7 @@ const startSimulate = async (orgs?: any[], d?: any) => {
 };
 
 const clearNav = () => {
+  resetRouteVideoPlayback();
   nav?.stop();
   nav?.clearEndpoints();
   closeAlarmPopup();
@@ -918,15 +1912,86 @@ const closeFirePopup = () => {
 };
 
 const closeAlarmPopup = () => {
-  alarmPopupVisible.value = false;
+  activeMapPopup.value = null;
   alarmData.value = null;
   alarmOverlayManager?.hide();
 };
 
-const closeJRAlarmPopup = () => {
-  jrAlarmPopupVisible.value = false;
-  jrAlarmData.value = null;
-  jrAlarmManager?.hide();
+/** 警情详情固定弹窗（与地图锚定小弹窗分离，居中 Modal 展示报警/接警两段信息） */
+const incidentDetailVisible = ref(false);
+const incidentDetailData = ref<IncidentDetailData | null>(null);
+
+/** 从松散业务对象中按候选字段名取第一个非空值 */
+const pickField = (
+  data: Record<string, any> | null | undefined,
+  keys: string[],
+): string | null => {
+  for (const key of keys) {
+    const value = data?.[key];
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      return String(value);
+    }
+  }
+  return null;
+};
+
+/** 时间值格式化为 YYYY-MM-DD HH:mm:ss，空值/非法值返回 null */
+const formatDetailTime = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const text = dayjs(value as string | number | Date);
+  return text.isValid() ? text.format("YYYY-MM-DD HH:mm:ss") : null;
+};
+
+/** 将当前命中点位归一化为警情详情字段（缺失字段留空，弹窗渲染 "-"） */
+const buildIncidentDetailData = (popup: ActiveMapPopup): IncidentDetailData => {
+  if (popup.kind === "jr") {
+    const d = popup.data;
+    return {
+      alarmOrderNo: d.incidentId || null,
+      receiveTime: formatDetailTime(d.createdAt),
+      disasterGrade: d.disasterGradeLabel ?? d.disasterGrade ?? null,
+      keyUnitName: d.keyUnit ?? null,
+      disasterAddress: d.disasterAddress ?? null,
+      burningMaterial: d.burningMaterial ?? null,
+      disasterType: d.disasterTypeLabel ?? d.disasterType ?? null,
+    };
+  }
+  if (popup.kind === "alarm") {
+    const d = popup.data as Record<string, any> | null;
+    return {
+      alarmOrderNo: pickField(d, ["alarmOrderNo", "orderNo", "incidentId", "inquiryId"]),
+      callInTime: formatDetailTime(
+        pickField(d, ["callInTime", "callTime", "alarmTime"]),
+      ),
+      accessType: pickField(d, ["accessType", "accessTypeLabel"]),
+      callerPhone: pickField(d, ["callerPhone", "callerNumber", "phone"]),
+      callerName: pickField(d, ["callerName", "ownerName"]),
+      installAddress: pickField(d, ["installAddress", "installedAddress"]),
+      seatNo: pickField(d, ["seatNo", "seatId"]),
+      receiveTime: formatDetailTime(pickField(d, ["receiveTime", "createdAt"])),
+      disasterGrade: pickField(d, ["disasterGradeLabel", "disasterGrade"]),
+      keyUnitName: pickField(d, ["keyUnitName", "keyUnit"]),
+      supplementary: pickField(d, ["supplementary", "isSupplementary"]),
+      disasterAddress: pickField(d, ["disasterAddress", "address"]),
+      burningMaterial: pickField(d, ["burningMaterial"]),
+      alarmFlag: pickField(d, ["alarmFlag", "alarmFlagLabel"]),
+      smokeSituation: pickField(d, ["smokeSituation", "smoke"]),
+      trappedCount: pickField(d, ["trappedCount", "trappedPeopleCount"]),
+      administrativeDivision: pickField(d, ["administrativeDivision", "district"]),
+      disasterType: pickField(d, ["disasterTypeLabel", "disasterType", "alarmType"]),
+    };
+  }
+  // 警情定位点：当前仅灾害地址（主管队站等字段后端补全后可在此扩展）
+  return {
+    disasterAddress: popup.data.address ?? null,
+  };
+};
+
+/** 点击小弹窗"警情详情"按钮：快照当前点位数据并打开固定弹窗 */
+const openIncidentDetail = () => {
+  if (!activeMapPopup.value) return;
+  incidentDetailData.value = buildIncidentDetailData(activeMapPopup.value);
+  incidentDetailVisible.value = true;
 };
 
 const initMap = () => {
@@ -953,12 +2018,25 @@ const initMap = () => {
     view: new View({
       center: olProj.fromLonLat(CENTER),
       zoom: ZOOM.INIT,
-      minZoom: ZOOM.MIN,
-      maxZoom: ZOOM.MAX,
+      minZoom: mapConfigStore.config.feature.minZoom,
+      maxZoom: Math.min(mapConfigStore.config.feature.maxZoom, baseSourceMaxZoom),
     }),
   }));
   map = mapInstance;
+  applyFeatureZoomLimits();
   emit("setMap", mapInstance);
+  // 调派页使用与问询页相同的来电粗定位绘制逻辑，并从活动缓存恢复定位圈。
+  callLocationGenericController = new GenericController(mapInstance);
+  callLocationController = new CallController(callLocationGenericController);
+  const activeCallLocation = pendingCallLocationStore.getActive();
+  const hasSlotCoordinate = Object.values(incidentLocationStore.markers)
+    .some((entry) => entry.coordinateSource === 'slotChanges');
+  if (activeCallLocation && !hasSlotCoordinate) {
+    callLocationController.locateCall(activeCallLocation);
+  } else if (activeCallLocation) {
+    // 有警情 marker 说明有效 slotChanges 坐标已先于地图挂载到达。
+    pendingCallLocationStore.consume(activeCallLocation.id);
+  }
   updateMapZoomLevel();
   if (!mapInstance) return;
   
@@ -966,7 +2044,7 @@ const initMap = () => {
     .getView()
     .on("change:resolution", updateMapZoomLevel);
 
-  featureClickQuery = new FeatureClickQuery(mapInstance);
+  featureClickQuery = new FeatureClickQuery(mapInstance, getStationRouteInfo);
   featureClickQuery.activate();
 
   // 灾情现场视频弹窗控制器（绑定到当前地图实例）
@@ -1041,6 +2119,12 @@ const initMap = () => {
   });
   (window as any).nav = nav;
 
+  // 特殊地图模拟实例（受理席 mock 通道触发渲染/车辆模拟），需在 nav 初始化后创建
+  specialMapMock = createSpecialMapMock(mapInstance, nav!);
+
+  // 警情二次定位实例（受理席 mock 通道传入警情 id，激活地图选点确认后更新坐标），需 nav 做逆地址解析
+  incidentRelocate = createIncidentRelocate(mapInstance, nav!);
+
   if (amapKey.value) {
     nav.loadMask((regionCfg?.boundaries as any) || []).catch(() => {});
   }
@@ -1062,8 +2146,15 @@ const initMap = () => {
       },
     });
     // 队站来自 WFS gis:view_res_org_dept（EPSG:4326），异步到达后填充图层
+    // （主管队站由独立 zhu.png 图层显示，填充时排除主管 id）
     void loadFireStations()
-      .then((list) => fireManager?.setStations?.(list))
+      .then((list) => {
+        allFireStations = list;
+        syncFireManagerStations();
+        const openId = featureClickQuery?.getOpenStationId();
+        const openStation = routePreviewStations.value.find((station) => station.stationId === openId);
+        if (openStation) showRouteStationPopup(openStation);
+      })
       .catch(() => {});
   }
 
@@ -1089,42 +2180,85 @@ const initMap = () => {
   // });
 
   if (alarmPopupRef.value && nav) {
+    // 弹窗 overlay 由本页统一 singleclick 处理器驱动（attachClick:false），
+    // 警情规划/今日灾情/警情定位三类点位共用这一个 overlay 与弹窗 DOM
     alarmOverlayManager = nav.mountAlarmOverlay({
       element: alarmPopupRef.value,
+      attachClick: false,
       onUpdate: (data) => {
         alarmData.value = data;
-        alarmPopupVisible.value = !!data;
+        // showAtAlarm/hide 时同步统一弹窗（data 为 null 关闭）
+        activeMapPopup.value = data ? { kind: 'alarm', data } : null;
       },
+    });
+    unifiedPopupClickKey = map.on("singleclick", (evt) => {
+      let next: ActiveMapPopup | null = null;
+      // forEachFeatureAtPixel 按图层 zIndex 从高到低遍历，
+      // 警情定位点(1003.5)在调派终点(1002.8)之上，重合时优先响应定位点
+      map!.forEachFeatureAtPixel(
+        evt.pixel,
+        (feature, layer) => {
+          const layerClass = layer?.getClassName();
+          const itemData = feature.get("data");
+          if (
+            layerClass === INCIDENT_LOCATION_LAYER_CLASS &&
+            itemData
+          ) {
+            next = {
+              kind: "incident",
+              data: itemData as IncidentLocationMarker,
+            };
+            return true;
+          }
+          if (layerClass === JR_ALARM_LAYER_CLASS && itemData) {
+            next = { kind: "jr", data: itemData as JRAlarmData };
+            return true;
+          }
+          // nav 警情规划终点：feature 上挂 alarmData（键存在即该点）
+          const alarm = feature.get("alarmData");
+          if (alarm !== undefined) {
+            next = { kind: "alarm", data: alarm };
+            return true;
+          }
+          return false;
+        },
+        { hitTolerance: 6 },
+      );
+      activeMapPopup.value = next;
+      alarmOverlayManager?.overlay.setPosition(
+        next ? evt.coordinate : undefined,
+      );
     });
   }
 
-  if (jrAlarmPopupRef.value) {
-    jrAlarmManager = mountJRAlarmLayer({
-      map,
-      alarms: [],
-      popupElement: jrAlarmPopupRef.value,
-      visible: dispatchCheckedIds.value.includes(
-        TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER,
-      ),
-      onSelect: (data) => {
-        jrAlarmData.value = data;
-        jrAlarmPopupVisible.value = true;
-      },
-      onClose: () => {
-        jrAlarmPopupVisible.value = false;
-        jrAlarmData.value = null;
-      },
-    });
-  }
+  jrAlarmManager = mountJRAlarmLayer({
+    map,
+    alarms: [],
+    // 弹窗统一由 alarmPopupRef + 统一点击处理器承载，本图层只负责渲染
+    visible: dispatchCheckedIds.value.includes(
+      TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER,
+    ),
+  });
 
   // 画像地址变更（警情定位）点位：初始数据取自 store，后续由 watcher 增量同步
   if (map) {
+    // 刷新恢复门控：dispatch / dispatchTrack 阶段（/dispatch1 且业务状态为
+    // 调派或调派跟踪）允许持久化点位上图；其他阶段清空缓存，避免旧警情残留。
+    // dispatchTrack 需保留警情定位数据以供模拟调派跟踪复用路线起点/终点。
+    const stage = parseSharedMapStage(
+      localStorage.getItem(SEAT_SHARED_STATE_KEY),
+    );
+    if (stage !== "dispatch" && stage !== "dispatchTrack") {
+      incidentLocationStore.clearAll();
+    }
+
     incidentLocationManager = mountPointLayer<IncidentLocationMarker>({
       map,
       items: Object.values(incidentLocationStore.markers),
       visible: true,
       className: INCIDENT_LOCATION_LAYER_CLASS,
       zIndex: INCIDENT_LOCATION_LAYER_ZINDEX,
+      // 弹窗统一由 alarmPopupRef + 统一点击处理器承载，本图层只负责渲染
       keyGetter: (entry) => entry.key,
       coordinateGetter: (entry) => [entry.lng, entry.lat],
       styleGetter: () =>
@@ -1137,7 +2271,30 @@ const initMap = () => {
       ]),
     );
 
-    // 点位所属辖区面：初始数据取 store.zones，后续由 watcher 增量同步
+    // 主管队站独立图标图层（zhu.png）：初始数据取 store.primaryStations，后续由 watcher 增量同步
+    primaryStationManager = mountPointLayer<IncidentPrimaryStation>({
+      map,
+      items: Object.values(incidentLocationStore.primaryStations),
+      visible: true,
+      className: INCIDENT_PRIMARY_STATION_LAYER_CLASS,
+      zIndex: MAP_LAYER_Z_INDEX.incident,
+      keyGetter: (station) => station.key,
+      coordinateGetter: (station) => [station.lng, station.lat],
+      styleGetter: () =>
+        getStyle("icon", {
+          iconSrc: MAP_ICON_SRC.primaryStation,
+          scale: 0.9,
+          anchor: [0.5, 0.5],
+        }),
+    });
+    renderedPrimaryStations = new globalThis.Map(
+      Object.values(incidentLocationStore.primaryStations).map((station) => [
+        station.key,
+        station,
+      ]),
+    );
+
+    /* 辖区图层已禁用（主管/支撑辖区不再上图）
     incidentZoneManager = mountPolygonLayer<IncidentLocationZone>({
       map,
       items: Object.values(incidentLocationStore.zones),
@@ -1163,6 +2320,7 @@ const initMap = () => {
         zone,
       ]),
     );
+    */
 
     // 消息先于地图挂载到达：消费积压的路径规划请求
     const pendingRoute = incidentLocationStore.routePlanRequest;
@@ -1175,15 +2333,49 @@ const initMap = () => {
     if (pending) {
       incidentLocationStore.consumeFocus();
       focusMapView(map, pending);
-      // 定位完成后在灾情点弹出现场视频
-      incidentVideoController?.show(pending.lng, pending.lat);
     }
+
+    // 刷新恢复：持久化点位已直接上图，异步重建辖区面/队站过滤/路径规划等派生数据
+    incidentLocationStore.restoreOnMapMount();
   }
+
+  // dispatch 状态下继续响应定位更新/挂断；切页本身不清除定位圈。
+  mapMessageUnsubscribers.push(
+    messageStore.subscribe(MESSAGE_EVENT_KEY.MAP_LOCATE_CALL, (envelope) => {
+      pendingCallLocationStore.queue(envelope.data);
+      callLocationController?.locateCall(envelope.data);
+    }),
+    messageStore.subscribe(MESSAGE_EVENT_KEY.MAP_LOCATE_CALL_REMOVE, () => {
+      // dispatch 中来电结束也继续保留，等待 slotChanges 的正式坐标替换。
+    }),
+  );
 
   syncLayers(dispatchCheckedIds.value);
 
   // 消息先于地图挂载到达时，按共享队站 store 现状对消防站 WMS 图层补做过滤
   syncStationLayerOverride();
+
+  // 消息先于地图挂载到达时，按周边资源范围圈 store 现状对消防栓/重点单位 WMS 图层补做过滤
+  syncResourceLayersOverride();
+
+  // 跨路由导航场景：mode=flood 从 /map 触发时消息会丢失，
+  // 导航到 /dispatch1 后 dispatchMap 挂载，在此消费 pending 标志触发渲染
+  if (consumePendingSpecialMapRender()) {
+    specialMapActive = true;
+    lastRoutePlanResults = [];
+    callLocationController?.clearLocateCalls();
+    incidentLocationStore.clearAll();
+    clearNav();
+    carManager?.setVisible(false);
+    fireManager?.setVisible(false);
+    incidentLocationManager?.setVisible(false);
+    primaryStationManager?.setVisible(false);
+    // incidentZoneManager?.setVisible(false); // 辖区图层已禁用
+    specialMapMock?.clear();
+    routePreviewStations.value = [];
+    routePreviewVisible.value = false;
+    console.info('[dispatchMap] 特殊地图已清空，等待 disasterSite 触发渲染');
+  }
 
   trafficTool = new TrafficTools(map);
   trafficTool.setVisible(baseSourceStore.trafficVisible);
@@ -1193,6 +2385,7 @@ const initMap = () => {
  * 清理资源
  */
 const cleanup = () => {
+  resetRouteVideoPlayback();
   if (zoomLevelChangeKey) {
     unByKey(zoomLevelChangeKey);
     zoomLevelChangeKey = null;
@@ -1201,18 +2394,46 @@ const cleanup = () => {
     featureClickQuery.destroy();
     featureClickQuery = null;
   }
+  if (unifiedPopupClickKey) {
+    unByKey(unifiedPopupClickKey);
+    unifiedPopupClickKey = null;
+  }
+  activeMapPopup.value = null;
   alarmOverlayManager?.destroy();
   alarmOverlayManager = null;
   jrAlarmManager?.destroy();
   jrAlarmManager = null;
   incidentLocationManager?.destroy();
   incidentLocationManager = null;
+  // 清除周边资源范围圈独立矢量图层 + Modify 交互
+  if (resourceCircleModify) {
+    map?.removeInteraction(resourceCircleModify);
+    resourceCircleModify = null;
+  }
+  if (resourceCircleLayer) {
+    map?.removeLayer(resourceCircleLayer);
+    resourceCircleLayer = null;
+  }
+  resourceCircleDragging = false;
+  callLocationController = null;
+  callLocationGenericController = null;
   renderedMarkers.clear();
+  primaryStationManager?.destroy();
+  primaryStationManager = null;
+  renderedPrimaryStations.clear();
+  // 清空 store 中残留的警情点位/辖区/队站过滤声明，避免离开调派页后再次上图
+  // （与 DispatchT1 卸载时清理路径规划/队站的行为保持一致）
+  incidentLocationStore.clearAll();
+  // 同步清空画像地址消息的 slots 增量缓存（内存 + sessionStorage），
+  // 防止下次进入调派页沿用旧警情的槽位快照
+  resetAddressUpdatedCache();
+  /* 辖区图层已禁用，无需 destroy/clear
   incidentZoneManager?.destroy();
   incidentZoneManager = null;
+  */
   incidentVideoController?.destroy();
   incidentVideoController = null;
-  renderedZones.clear();
+  /* renderedZones.clear(); */
   carManager?.destroy();
   carManager = null;
   // incomingCallManager?.destroy();
@@ -1264,27 +2485,107 @@ onMounted(() => {
     initMap();
   });
   document.addEventListener("click", handleDocumentClick, true);
+  // 受理席模拟调派写入 seat-shared-state-mock 的 dispatchVehicles（桥接为本地消息）
+  mockDispatchUnsubscribe = messageStore.subscribe(
+    MESSAGE_EVENT_KEY.MOCK_DISPATCH_VEHICLES,
+    (envelope) => {
+      const seq = incidentLocationStore.routePlanRequest?.seq;
+      mockDispatchQueue = mockDispatchQueue.then(async () => {
+        if (seq !== incidentLocationStore.routePlanRequest?.seq || !nav) return;
+        await receiveMockDispatchVehicles(envelope.data as SharedDispatchVehicleMock[]);
+      }).catch(error => console.warn('[dispatchMap] 调派处理失败', error));
+    },
+  );
 
-  mapMessageUnsubscribers.push(
-    onRouteRequest((d: any) =>
-      onFatherMessage(
-        [d.alarmData.gisX, d.alarmData.gisY],
-        d.alarmData.info,
-        d.fireBrigade,
-        d,
-      ),
-    ),
-    onPOIRequest((d: any) =>
-      onDisasterSelect({ location: d.lngLat, value: d.markerLabel }),
-    ),
-    addrCtrl.receive(({ status }: { status: boolean }) => {
-      if (typeof status !== "boolean") return;
-      status ? pickOnMap("end") : clearNav();
+  // 受理席模拟特殊地图：mode=flood → 只负责清空已有业务渲染和旧特殊地图数据
+  mockSpecialMapUnsubscribers.push(
+    messageStore.subscribe(MESSAGE_EVENT_KEY.MOCK_SPECIAL_MAP_RENDER, () => {
+      if (!specialMapMock) return;
+      specialMapActive = true;
+      lastRoutePlanResults = [];
+      callLocationController?.clearLocateCalls();
+      incidentLocationStore.clearAll();
+      clearNav();
+      carManager?.setVisible(false);
+      fireManager?.setVisible(false);
+      incidentLocationManager?.setVisible(false);
+      // incidentZoneManager?.setVisible(false); // 辖区图层已禁用
+      specialMapMock.clear();
+      routePreviewStations.value = [];
+      routePreviewVisible.value = false;
     }),
   );
+
+  // 受理席模拟特殊地图：disasterSite 有值 → 渲染假数据+路径规划
+  mockSpecialMapUnsubscribers.push(
+    messageStore.subscribe(MESSAGE_EVENT_KEY.MOCK_SPECIAL_MAP_DISASTER_SITE, async () => {
+      if (!specialMapMock) return;
+      // 渲染灾害点前先清除来电定位点位及圈
+      callLocationController?.clearLocateCalls();
+      const stations = await specialMapMock.render();
+      routePreviewStations.value = stations;
+      routePreviewLoading.value = false;
+      routePreviewVisible.value = true;
+    }),
+  );
+
+  // 受理席模拟特殊地图：flood.dispatchCommand 存在且非空 → 车辆沿选中路径模拟运行
+  // simulate 内部会等渲染完成（同批 mode/flood.dispatchCommand）或自动先渲染
+  // async + 尾部再关面板：RENDER handler 的 await render() 完成后会设 visible=true，
+  // 此处等 simulate 完成后再关一次，确保面板最终关闭
+  mockSpecialMapUnsubscribers.push(
+    messageStore.subscribe(MESSAGE_EVENT_KEY.MOCK_SPECIAL_MAP_SIMULATE, async () => {
+      routePreviewVisible.value = false;
+      await specialMapMock?.simulate().catch((error) =>
+        console.warn("[dispatchMap] 特殊地图模拟运行失败", error),
+      );
+      routePreviewVisible.value = false;
+    }),
+  );
+
+  // 退出特灾模式：清除特殊地图上图数据（含来电定位点位及圈）
+  mockSpecialMapUnsubscribers.push(
+    messageStore.subscribe(MESSAGE_EVENT_KEY.MOCK_SPECIAL_MAP_CLEAR, () => {
+      specialMapActive = false;
+      // 来电定位优先清除，避免后续步骤异常中断导致点位/圈残留
+      try {
+        callLocationController?.clearLocateCalls();
+      } catch (error) {
+        console.warn('[dispatchMap] 退出特灾模式清除来电定位失败', error);
+      }
+      try {
+        specialMapMock?.clear();
+      } catch (error) {
+        console.warn('[dispatchMap] 退出特灾模式清除特殊地图图层失败', error);
+      }
+      routePreviewStations.value = [];
+      routePreviewVisible.value = false;
+    }),
+  );
+
+  // 受理席警情二次定位：传入警情 id + BroadcastChannel 关联标识，激活地图选点交互
+  mockSpecialMapUnsubscribers.push(
+    messageStore.subscribe(MESSAGE_EVENT_KEY.MOCK_INCIDENT_RELOCATE, (envelope) => {
+      const d = envelope.data as { incidentId?: string; ownerId?: string; requestId?: string }
+      if (!d?.incidentId || !incidentRelocate) return
+      const token = d.ownerId && d.requestId ? { ownerId: d.ownerId, requestId: d.requestId } : undefined
+      incidentRelocate.start(d.incidentId, token)
+    }),
+  );
+
+  // 跨路由导航场景的 pending 消费已移至 initMap 末尾（specialMapMock 创建之后）
 });
 
 onUnmounted(() => {
+  mockDispatchUnsubscribe?.();
+  mockDispatchUnsubscribe = null;
+  mockSpecialMapUnsubscribers.splice(0).forEach((unsubscribe) => unsubscribe());
+  specialMapActive = false;
+  specialMapMock?.clear();
+  specialMapMock = null;
+  incidentRelocate?.dispose();
+  incidentRelocate = null;
+  clearMockTrackingTimers();
   mapMessageUnsubscribers.splice(0).forEach((unsubscribe) => unsubscribe());
   cleanup();
   document.removeEventListener("click", handleDocumentClick, true);
@@ -1335,25 +2636,23 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 警情弹窗（模板） -->
+    <!-- 业务点位统一弹窗：警情规划/今日灾情/警情定位共用 -->
     <div ref="alarmPopupRef">
       <AlarmDetailPopup
         :visible="alarmPopupVisible"
         :title="alarmPopupTitle"
         :rows="alarmPopupRows"
+        detail-button-text="警情详情"
         @close="closeAlarmPopup"
+        @detail="openIncidentDetail"
       />
     </div>
 
-    <!-- 今日灾情弹窗 -->
-    <div ref="jrAlarmPopupRef">
-      <AlarmDetailPopup
-        :visible="jrAlarmPopupVisible"
-        :title="jrAlarmPopupTitle"
-        :rows="jrAlarmPopupRows"
-        @close="closeJRAlarmPopup"
-      />
-    </div>
+    <!-- 警情详情固定弹窗（居中 Modal，小弹窗点"警情详情"打开） -->
+    <IncidentDetailDialog
+      v-model="incidentDetailVisible"
+      :data="incidentDetailData"
+    />
 
     <!-- 在线车辆弹窗 -->
     <div ref="carPopupRef" class="car_popup" v-show="carPopupVisible">
@@ -1406,6 +2705,13 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <DispatchRoutePreview
+      v-if="routePreviewVisible"
+      :stations="routePreviewStations"
+      :loading="routePreviewLoading"
+      @select="selectStationRoute"
+    />
 
     <!-- 调派路径规划 -->
     <!-- <div ref="navPanelRef" class="nav_panel_new">

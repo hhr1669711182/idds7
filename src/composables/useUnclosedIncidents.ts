@@ -71,7 +71,7 @@ const toJRAlarmData = (item: GisUnclosedIncident): JRAlarmData | null => {
     lat,
     inquiryId: '',
     mOrgId: item.leadStationId ?? '',
-    mOrgIdLabel: null,
+    mOrgIdLabel: item.leadStationName ?? null,
     buildingProfileId: null,
     disasterProfileId: item.incidentId,
     version: 0,
@@ -104,6 +104,7 @@ const toJRAlarmData = (item: GisUnclosedIncident): JRAlarmData | null => {
 //     longitude: 114.001234,
 //     latitude: 22.545678,
 //     leadStationId: 'demo-station-001',
+//     leadStationName: '示例队站',
 //   },
 //   {
 //     incidentId: 'fake-unclosed-rescue-002',
@@ -123,6 +124,7 @@ const toJRAlarmData = (item: GisUnclosedIncident): JRAlarmData | null => {
 //     longitude: 113.976543,
 //     latitude: 22.532109,
 //     leadStationId: 'demo-station-002',
+//     leadStationName: '示例队站-2',
 //   },
 //   {
 //     incidentId: 'fake-unclosed-society-003',
@@ -141,6 +143,7 @@ const toJRAlarmData = (item: GisUnclosedIncident): JRAlarmData | null => {
 //     longitude: 113.939876,
 //     latitude: 22.576543,
 //     leadStationId: 'demo-station-003',
+//     leadStationName: '示例队站-3',
 //   },
 // ]
 
@@ -158,7 +161,7 @@ export const useUnclosedIncidents = () => {
 
   /** 开发环境 401 时降级为样例假数据，其余情况取 BFF 原始记录 */
   const records = computed<GisUnclosedIncident[]>(() => {
-      console.log('total', list.data.value)
+      console.log('total未结案警情数据')
 
     // if (import.meta.env.DEV && list.error.value && isUnauthorized(list.error.value)) {
     //   return [...FAKE_UNCLOSED_INCIDENTS]

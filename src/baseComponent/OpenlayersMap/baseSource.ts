@@ -3,9 +3,9 @@ import TileGrid from "ol/tilegrid/TileGrid.js";
 import XYZ from "ol/source/XYZ.js";
 import type { ProjectionLike } from "ol/proj.js";
 
-import { createAmapSource } from "../tools/amap.ts";
+import { AmapSourceOptions, createAmapSource } from "../tools/amap.ts";
 import { createBaiduSource } from "../tools/baidu.ts";
-import { tileLoadFunction } from "@/utils";
+import { tileLoadFunction } from "@/utils/mapTool.ts";
 import { LAYER_NAMES } from "./layers.ts";
 
 export type BaseSourceProviderId =
@@ -16,10 +16,11 @@ export type BaseSourceProviderId =
   | "tianditu"
   | "google"
   | "offline"
-  | "local";
+  | "thematic"
+// | "local";
 
-export type BaseSourceMode = "image" | "road" | "transport"; 
-export type BaseSourceModeType = "atlas" | "landscape" | "transport"; 
+export type BaseSourceMode = "image" | "road" | "transport";
+export type BaseSourceModeType = "atlas" | "landscape" | "transport" | "cycle";
 export type BaseSourceId = `${BaseSourceProviderId}-${BaseSourceMode}`;
 
 export interface BaseSourceOption {
@@ -60,12 +61,13 @@ const PROVIDERS: Record<BaseSourceProviderId, string> = {
   tianditu: "天地图",
   google: "谷歌地图",
   offline: "离线地图",
-  local: "局部地图",
+  thematic: "专题地图",
+  // local: "局部地图",
 };
 
 export const DEFAULT_BASE_SOURCE_ID: BaseSourceId = "amap-road"; // 默认底图
 
-export const DEFAULT_OFFLINE_SOURCE: any = "beijing_offline"; // 局部地区底图
+export const DEFAULT_OFFLINE_SOURCE: any = "beijing_offline"; // 局部地区离线底图
 export const DEFAULT_OFFLINE_SOURCE_MODE: any = "WebMercatorQuad"; // 3857
 
 const buildUrlSource = ({
@@ -73,11 +75,13 @@ const buildUrlSource = ({
   crossOrigin,
   projection,
   tileGrid,
+  maxZoom,
 }: {
   url: string;
   crossOrigin?: string | null;
   projection?: ProjectionLike;
   tileGrid?: TileGrid;
+  maxZoom?: number;
 }) =>
   new XYZ({
     url,
@@ -86,6 +90,7 @@ const buildUrlSource = ({
     crossOrigin,
     wrapX: true,
     transition: 500,
+    maxZoom,
   });
 
 const withNightFilter = (source: XYZ, enabled: boolean) => {
@@ -95,10 +100,11 @@ const withNightFilter = (source: XYZ, enabled: boolean) => {
   return source;
 };
 
-const createAmapRoadSource = () =>
+const createAmapRoadSource = (options: AmapSourceOptions = {}) =>
   createAmapSource({
     mapType: "label", // base
     gdSource: "https://webrd01.is.autonavi.com/appmaptile",
+    ...options,
   });
 
 const createAmapImageSource = () =>
@@ -111,12 +117,12 @@ const createBaiduRoadSource = () => createBaiduSource({ mapType: "road" });
 
 const createBaiduImageSource = () => createBaiduSource({ mapType: "image" });
 
-const createTiandituSource = (mode: BaseSourceMode) => {
+const createTiandituSource = (mode: 'img_w' | 'vec_w' | 'cta_w' | 'ter_w') => {
   const tk = '4d49c5a7a297e1ba4629257fe2af76c1';
   // const tk = envOr("VITE_BASE_SOURCE_TIANDITU_TOKEN", "");
-  const type = mode === "image" ? "img_w" : "vec_w";
+  // const type = mode === "image" ? "img_w" : "vec_w";
   return buildUrlSource({
-    url: `https://t0.tianditu.gov.cn/DataServer?T=${type}&x={x}&y={y}&l={z}&tk=${tk}`,
+    url: `https://t0.tianditu.gov.cn/DataServer?T=${mode}&x={x}&y={y}&l={z}&tk=${tk}`,
     crossOrigin: "anonymous",
   });
 };
@@ -135,6 +141,17 @@ const createThunderforestSource = (modeT: BaseSourceModeType) => {
   return buildUrlSource({ url, crossOrigin: "anonymous" });
 };
 
+const createOpenTopoMapSource = () => {
+  const url = `https://a.tile.opentopomap.org/{z}/{x}/{y}.png`;
+  return buildUrlSource({ url, crossOrigin: "anonymous" });
+};
+
+const createEsriTopoSource = () => {
+  const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}`;
+  // Esri 地形瓦片最高 z17，18 级自动放大复用 z17 瓦片（仅瓦片源限制，不限制视图缩放）
+  return buildUrlSource({ url, crossOrigin: "anonymous", maxZoom: 17 });
+};
+
 const createKailideSource = (mode: BaseSourceMode) => {
   const key = mode === "image" ? "VITE_BASE_SOURCE_KAILIDE_IMAGE_URL" : "VITE_BASE_SOURCE_KAILIDE_ROAD_URL";
   return buildUrlSource({
@@ -148,6 +165,33 @@ const createOfflineSource = (mode: BaseSourceMode) => {
     url: envOr(key, `http://192.168.173.198:8080/geoserver/gwc/service/tms/1.0.0/mbtiles:${DEFAULT_OFFLINE_SOURCE}@WebMercatorQuad@png/{z}/{x}/{-y}.png`),
     // url: envOr(key, `/tiles/offline/${mode}/{z}/{x}/{y}.png`),
   });
+};
+
+const createThematicSource = (mode: BaseSourceMode) => {
+  // const key = mode === "image" ? "VITE_BASE_SOURCE_THEMATIC_IMAGE_URL" : "VITE_BASE_SOURCE_THEMATIC_ROAD_URL";
+
+  // mask蒙版
+  const MaskFn = (imageTile: any, src: string) => {
+    const img = new Image();
+    img.setAttribute('crossOrigin', 'anonymous'); // 必须设置，否则跨域会导致滤镜失效
+    img.onload = function () {
+      const canvas = document.createElement('canvas');
+      const w = img.width;
+      const h = img.height;
+      canvas.width = w;
+      canvas.height = h;
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.filter = 'grayscale(98%) invert(100%) sepia(20%) hue-rotate(180deg) saturate(1600%) brightness(80%) contrast(90%)';
+        context.drawImage(img, 0, 0, w, h, 0, 0, w, h);
+        imageTile.getImage().src = canvas.toDataURL('image/png');
+      }
+    };
+    img.src = src;
+  }
+
+  return mode === "image" ? createEsriTopoSource() : createAmapRoadSource({ tileLoadFunction: MaskFn });
+  // return mode === "image" ? [createTiandituSource("cta_w"), createTiandituSource("ter_w")] : createAmapRoadSource({ tileLoadFunction: MaskFn });
 };
 
 const createLocalSource = (mode: BaseSourceMode) => {
@@ -241,7 +285,7 @@ const SOURCE_DEFINITIONS: BaseSourceOption[] = [
     mode: "image",
     label: "影像图",
     supportsNightMode: false,
-    createSource: () => createTiandituSource("image"),
+    createSource: () => createTiandituSource("img_w"),
     maxZoom: 18,
   },
   {
@@ -251,7 +295,7 @@ const SOURCE_DEFINITIONS: BaseSourceOption[] = [
     mode: "road",
     label: "街道路网图",
     supportsNightMode: false,
-    createSource: () => createTiandituSource("road"),
+    createSource: () => createTiandituSource("vec_w"),
     maxZoom: 18,
   },
   {
@@ -291,23 +335,41 @@ const SOURCE_DEFINITIONS: BaseSourceOption[] = [
     createSource: () => createOfflineSource("road"),
   },
   {
-    id: "local-image",
-    providerId: "local",
-    providerName: PROVIDERS.local,
+    id: "thematic-image",
+    providerId: "thematic",
+    providerName: PROVIDERS.thematic,
     mode: "image",
-    label: "影像图",
+    label: "地形地貌",
     supportsNightMode: true,
-    createSource: () => createLocalSource("image"),
+    createSource: () => createThematicSource("image"),
   },
   {
-    id: "local-road",
-    providerId: "local",
-    providerName: PROVIDERS.local,
+    id: "thematic-road",
+    providerId: "thematic",
+    providerName: PROVIDERS.thematic,
     mode: "road",
-    label: "街道路网图",
+    label: "深色地图",
     supportsNightMode: true,
-    createSource: () => createLocalSource("road"),
+    createSource: () => createThematicSource("road"),
   },
+  // {
+  //   id: "local-image",
+  //   providerId: "local",
+  //   providerName: PROVIDERS.local,
+  //   mode: "image",
+  //   label: "影像图",
+  //   supportsNightMode: true,
+  //   createSource: () => createLocalSource("image"),
+  // },
+  // {
+  //   id: "local-road",
+  //   providerId: "local",
+  //   providerName: PROVIDERS.local,
+  //   mode: "road",
+  //   label: "街道路网图",
+  //   supportsNightMode: true,
+  //   createSource: () => createLocalSource("road"),
+  // },
 ];
 
 export const BASE_SOURCE_OPTIONS = SOURCE_DEFINITIONS;

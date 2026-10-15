@@ -3,8 +3,10 @@
  *
  * 业务规则：
  * 1. 围栏之间不允许有面积交叠（有重叠面积即违规）
- * 2. 允许贴边：两个围栏共用一条边（共享一组经纬度）时不算违规
- * 3. 靠近时默认贴边：把当前围栏顶点吸附到相邻围栏已有边上，达成共用同一条边
+ * 2. 允许贴边与贴角：共用一条边或共用一个角点时不算违规
+ *    - 贴边：顶点吸附到邻边任意位置，两条边部分重合
+ *    - 贴角：顶点吸附到邻围栏的角点，两个多边形的这个角完全对齐
+ * 3. 靠近时默认吸附：先试贴角（角点意图更明确），无角可贴时退化为贴边
  * 4. 拖拽结束与保存前都要校验，违规则回滚 / 拦截
  *
  * 坐标口径：全链路统一 EPSG:4326（经纬度），
@@ -33,6 +35,8 @@ export const FENCE_TOLERANCE_AREA = 1e-6;
 
 /** 贴边吸附容差（米）：顶点到邻边距离小于该值时吸附 */
 export const SNAP_TOLERANCE_M = 1;
+/** 贴角吸附容差（米）：顶点到邻围栏顶点的距离小于该值时吸附（共用同一个角点） */
+export const SNAP_VERTEX_TOLERANCE_M = 1.5;
 
 /** 一个纬度对应的米数：用于把经纬度距离换算成米（吸附判定） */
 const M_PER_DEG_LAT = 110574;
@@ -226,6 +230,109 @@ const toNeighbourLines = (neighbours: CoordArray[]): Array<ReturnType<typeof tur
 };
 
 /**
+ * 贴角吸附：把当前围栏的顶点吸附到邻围栏的「顶点」上，
+ * 使两者的这个角共用同一个经纬度点（而不是各自独立的一组坐标）。
+ *
+ * 与贴边的区别：
+ * - 贴边吸附到邻边的任意位置，两条边部分重合
+ * - 贴角吸附到邻围栏的角点，两个多边形的这个角完全对齐
+ *
+ * 贴角优先于贴边：角点位置是明确的，先吸附角能避免后续再被边吸附拉到别处。
+ *
+ * @param target 当前围栏坐标（4326）
+ * @param neighbours 同层其它围栏坐标（4326）
+ * @param tol 容差（米）
+ * @returns 吸附后的坐标；未发生吸附时返回原引用
+ */
+export const snapToNeighbourVertices = (
+  target: CoordArray,
+  neighbours: CoordArray[],
+  tol: number = SNAP_VERTEX_TOLERANCE_M
+): CoordArray => {
+  if (neighbours.length === 0) return target;
+
+  // 收集邻围栏的所有外环顶点
+  const points: Array<[number, number]> = [];
+  for (const n of neighbours) {
+    for (const ring of ringsOf(n)) {
+      ring.filter(isXY).forEach((p) => points.push([p[0], p[1]]));
+    }
+  }
+  if (points.length === 0) return target;
+
+  // 逐环吸附，保持闭合环的首尾一致（不能各自独立吸附，否则环会被拉成不闭合）
+  const walkRing = (ring: number[][]): number[][] => {
+    const n = ring.length;
+    if (n < 3) return ring;
+    const first = ring[0];
+    const last = ring[n - 1];
+    const isClosed = n > 3 && first[0] === last[0] && first[1] === last[1];
+
+    const snapPoint = (p: number[]): [number, number] => {
+      const lon = p[0];
+      const lat = p[1];
+      const mPerDegLon = 111320 * Math.cos((lat * Math.PI) / 180);
+      let best: [number, number] | null = null;
+      let bestDist = tol;
+      for (const point of points) {
+        const d = Math.hypot((point[0] - lon) * mPerDegLon, (point[1] - lat) * M_PER_DEG_LAT);
+        if (d < bestDist) {
+          bestDist = d;
+          best = point;
+        }
+      }
+      return best ?? [lon, lat];
+    };
+
+    const out = ring.map((p, i) => {
+      // 闭合环的末点不单独吸附，交给首点结果复用
+      if (isClosed && i === n - 1) return p;
+      const snapped = snapPoint(p);
+      return [snapped[0], snapped[1]];
+    });
+
+    if (isClosed) {
+      // 末点跟随首点，保证环仍然闭合
+      const snappedFirst = out[0] as number[];
+      out[n - 1] = [snappedFirst[0], snappedFirst[1]];
+    }
+    return out;
+  };
+
+  const walk = (node: unknown): unknown => {
+    // 命中一个完整环（环的元素是 [lon,lat] 而不是数字）
+    if (Array.isArray(node) && node.length > 0 && isXY(node[0])) {
+      return walkRing(node as number[][]);
+    }
+    if (Array.isArray(node)) return node.map(walk);
+    return node;
+  };
+
+  const next = walk(target) as CoordArray;
+  return JSON.stringify(next) === JSON.stringify(target) ? target : next;
+};
+
+/**
+ * 围栏吸附总入口：先试贴角，再试贴边。
+ * 贴角优先 —— 角点是明确的对齐意图，先锁定角能避免被边吸附拉到中间位置。
+ *
+ * @param target 当前围栏坐标（4326）
+ * @param neighbours 同层其它围栏坐标（4326）
+ * @returns 吸附后的坐标；未发生吸附时返回原引用
+ */
+export const snapFenceToNeighbours = (
+  target: CoordArray,
+  neighbours: CoordArray[]
+): CoordArray => {
+  if (neighbours.length === 0) return target;
+  // 贴角优先
+  const byVertex = snapToNeighbourVertices(target, neighbours);
+  if (byVertex !== target) return byVertex;
+  // 没有可吸附的角，退化到贴边
+  return snapToNeighbourEdges(target, neighbours, SNAP_TOLERANCE_M);
+};
+
+/**
  * 贴边吸附：把当前围栏的顶点吸附到相邻围栏已有边上，
  * 使两者共用同一条边（同一组经纬度），从而「贴边」而不是「交叠」。
  *
@@ -243,10 +350,27 @@ export const snapToNeighbourEdges = (
   const lines = toNeighbourLines(neighbours);
   if (lines.length === 0) return target;
 
+  const walkRing = (ring: number[][]): number[][] => {
+    const n = ring.length;
+    if (n < 2) return ring;
+    const isClosed = n > 3 && ring[0][0] === ring[n - 1][0] && ring[0][1] === ring[n - 1][1];
+
+    const out = ring.map((p, i2) => {
+      if (isClosed && i2 === n - 1) return p;
+      const snapped = snapVertex([p[0], p[1]], lines, tol);
+      return snapped ?? ([p[0], p[1]] as [number, number]);
+    }) as number[][];
+
+    if (isClosed) {
+      const snappedFirst = out[0];
+      out[n - 1] = [snappedFirst[0], snappedFirst[1]];
+    }
+    return out;
+  };
+
   const walk = (node: unknown): unknown => {
-    if (isXY(node)) {
-      const snapped = snapVertex([node[0], node[1]], lines, tol);
-      return (snapped ?? [node[0], node[1]]) as [number, number];
+    if (Array.isArray(node) && node.length > 0 && isXY(node[0])) {
+      return walkRing(node as number[][]);
     }
     if (Array.isArray(node)) return node.map(walk);
     return node;

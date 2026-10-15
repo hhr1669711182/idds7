@@ -1,0 +1,112 @@
+{
+    "raw_text": "我在软件园东边",
+    "highlight_entities": [
+        {
+            "anchor_id": "A1",
+            "name": "深圳软件园一期",
+            "anchor_type": "aoi",
+            "anchor_level": "AOI_3",
+            "highlight_role": "context",
+            "display_name": "深圳软件园一期",
+            "source": "postgres://ADDRESSBOT_PG_HOST:ADDRESSBOT_PG_PORT/ADDRESSBOT_PG_DBNAME",
+            "search_name": "软件园",
+            "knowledge_record_id": "AOI3:8d8377f0671774f6a9b2e76861f84831",
+            "geojson": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [
+                                113.9337925,
+                                22.5473689
+                            ],
+                            [
+                                113.9339038,
+                                22.547233
+                            ],
+                            [
+                                113.934859,
+                                22.5472353
+                            ],
+                            [
+                                113.9354083,
+                                22.5473336
+                            ],
+                            [
+                                113.9367995,
+                                22.5473722
+                            ],
+                            [
+                                113.9368861,
+                                22.5474761
+                            ],
+                            [
+                                113.9368507,
+                                22.5490159
+                            ],
+                            [
+                                113.9367473,
+                                22.5491227
+                            ],
+                            [
+                                113.9342343,
+                                22.5490699
+                            ],
+                            [
+                                113.9340709,
+                                22.5489563
+                            ],
+                            [
+                                113.9338237,
+                                22.5476636
+                            ],
+                            [
+                                113.9337925,
+                                22.5473689
+                            ]
+                        ]
+                    ]
+                ]
+            },
+            "coordinate_system": "WGS84",
+            "coordinate_validation": {
+                "status": "db_geometry_verified",
+                "selected_source": "database",
+                "message": "数据库区域几何已命中，当前地图展示数据库面几何。",
+                "display_latitude": 22.544906354767452,
+                "display_longitude": 113.93996578842382,
+                "display_coordinate_system": "GCJ02",
+                "db_coordinate": {
+                    "latitude": 22.5479347,
+                    "longitude": 113.93509738333334,
+                    "coordinate_system": "WGS84",
+                    "source": "geom_wkt"
+                },
+                "amap_coordinate": null,
+                "distance_m": null,
+                "threshold_m": null
+            },
+            "lat": 22.544906354767452,
+            "lon": 113.93996578842382
+        }
+    ],
+    "spatial_relations": [
+        {
+            "relation_type": "directional_offset",
+            "direction": "east",
+            "distance": 300,
+            "source_relation": "absolute_direction",
+            "anchor_ids": [
+                "A1"
+            ]
+        }
+    ],
+    "target_anchor_id": null,
+    "radius": [
+        0,
+        300
+    ],
+    "status": "ambiguous",
+    "need_ask": "已定位到深圳软件园一期，目标范围在其东侧约300米，请补充目标点附近的门口、建筑、店铺或明显标志物。",
+    "highlight_shape": "sector"
+}

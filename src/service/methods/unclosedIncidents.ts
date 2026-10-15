@@ -45,7 +45,7 @@ export type GisUnclosedIncident = {
   leadOfficerPhone: string | null
   /** 通讯员联系电话；后端协议未登记，当前固定为 null */
   communicatorPhone: string | null
-  /** 燃烧物质；“合同 188”未纳入仓库协议，当前固定为 null */
+  /** 燃烧物质； */
   burningMaterial: string | null
   /** 重点单位名称；后端协议未登记，当前固定为 null */
   keyUnitName: string | null
@@ -59,6 +59,8 @@ export type GisUnclosedIncident = {
   latitude: number | string | null
   /** 主管队站 ID，来自画像 mOrgId；用于 orgScope 和车辆查询 */
   leadStationId: string | null
+  /** 主管队站名称，来自画像 mOrgName；用于 orgScope 和车辆查询 */
+  leadStationName: string | null
 }
 
 export type GisUnclosedIncidentList = {

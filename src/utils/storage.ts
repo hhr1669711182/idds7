@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 统一本地存储工具
  *
  * 设计要点
@@ -158,7 +158,6 @@ export const createStorage = (namespace: string, driver: StorageDriver = 'local'
 export const storage = createStorage('app', 'local')
 
 export const STORAGE_KEYS = {
-  accessToken: 'access_token',
   userSession: 'session',
   scaleUnit:   'scale_unit',
   mapConfig:   'map_config',

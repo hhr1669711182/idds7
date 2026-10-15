@@ -1,0 +1,43 @@
+.dispatch-vehicle-label {
+  position: relative;
+  min-width: 200px;
+  padding: 8px 10px;
+  border-radius: 3px;
+  background: rgba(17, 24, 39, 0.86);
+  color: #fff;
+  font: 600 12px/20px sans-serif;
+  white-space: nowrap;
+  box-sizing: border-box;
+  cursor: default;
+}
+
+.dispatch-vehicle-label__metrics {
+  padding-right: 64px;
+}
+
+.dispatch-vehicle-label__toggle {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: #38bdf8;
+  font: inherit;
+  cursor: pointer;
+}
+
+.dispatch-vehicle-label__toggle:hover {
+  color: #bae6fd;
+}
+
+.dispatch-vehicle-label__toggle:focus-visible {
+  outline: 1px solid #38bdf8;
+  outline-offset: 1px;
+}
+
+.dispatch-vehicle-label__vehicles {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
+}

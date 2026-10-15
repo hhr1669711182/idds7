@@ -68,8 +68,10 @@ type RealtimeInterpolation = {
 };
 
 export interface VehicleManagerOptions {
-  /** 路线/车辆 feature 所在的矢量数据源 */
+  /** 规划路线与车辆历史轨迹所在的数据源 */
   routeSource: VectorSource;
+  /** 车辆标记单独置于消防站之上的数据源 */
+  vehicleSource: VectorSource;
   /** 获取当前调派状态（供 simulateVehicleTracking 读取 stations） */
   getState: () => Readonly<DispatchFlowState>;
 }
@@ -97,7 +99,7 @@ export interface VehicleManager {
 export function createVehicleManager(
   options: VehicleManagerOptions,
 ): VehicleManager {
-  const { routeSource, getState } = options;
+  const { routeSource, vehicleSource, getState } = options;
   const trackedVehiclesByPlate = new globalThis.Map<string, TrackedDispatchVehicle>();
   const trackedVehiclesByCarId = new globalThis.Map<string, TrackedDispatchVehicle>();
   const latestLocationsByPlate = new globalThis.Map<string, CarLocationPoint>();
@@ -107,6 +109,10 @@ export function createVehicleManager(
   /** 实时 GPS 帧间插值动画状态，key 为 `${stationId}:${vehicleId}` */
   const realtimeAnimations = new globalThis.Map<string, RealtimeInterpolation>();
 
+  /**
+   * 更新车辆定位：根据消息服务推送的 WGS84 实时坐标更新已调派车辆。
+   * 返回更新的车辆数量。
+   */
   const updateVehicleLocations = (batch: CarLocationBatch): number => {
     console.log('[trace] updateVehicleLocations', batch);
     if (!batch || !Array.isArray(batch.datas)) return 0;
@@ -145,6 +151,11 @@ export function createVehicleManager(
     return updatedCount;
   };
 
+  /**
+   * 模拟跟踪：让本次已调派车辆沿各自队站的规划路线匀速行驶到报警点。
+   * 仅用于无真实 GPS 推送时的演示；真实 GPS 到达、取消调派、重置或销毁时自动停止。
+   * 返回成功启动模拟的车辆数量。
+   */
   const simulateVehicleTracking = (): number => {
     // 调派失败时 registerDispatchedVehicles 不会执行，这里按需补齐跟踪车辆，
     // 保证无论调派成功与否，只要车辆被选中且有规划路线就能演示行进。
@@ -194,6 +205,9 @@ export function createVehicleManager(
     return startedCount;
   };
 
+  /**
+   * 调派车辆注册：根据调派命令注册被调派车辆的 marker 并上图
+   */
   const registerDispatchedVehicles = (command: DispatchVehicleCommand): void => {
     command.vehicles.forEach((vehicle) => {
       const station = getState().stations.find((item) => item.id === vehicle.stationId);
@@ -224,7 +238,7 @@ export function createVehicleManager(
       }) as Style;
       vehicleStyle.setZIndex(100);
       feature.setStyle(vehicleStyle);
-      routeSource.addFeature(feature);
+      vehicleSource.addFeature(feature);
 
       const tracked: TrackedDispatchVehicle = {
         feature,
@@ -271,7 +285,7 @@ export function createVehicleManager(
     }) as Style;
     vehicleStyle.setZIndex(100);
     feature.setStyle(vehicleStyle);
-    routeSource.addFeature(feature);
+    vehicleSource.addFeature(feature);
 
     const tracked: TrackedDispatchVehicle = {
       feature,
@@ -294,16 +308,19 @@ export function createVehicleManager(
       ...trackedVehiclesByCarId.values(),
     ]);
     trackedVehicles.forEach((tracked) => {
-      routeSource.removeFeature(tracked.feature);
+      vehicleSource.removeFeature(tracked.feature);
       if (tracked.trailFeature) routeSource.removeFeature(tracked.trailFeature);
     });
     trackedVehiclesByPlate.clear();
     trackedVehiclesByCarId.clear();
   };
 
+  /**
+   * 移除已调派车辆：根据车辆 ID 移除已调派车辆的 marker 并从登记中移除。
+   */
   const removeTrackedVehicle = (tracked: TrackedDispatchVehicle): void => {
     stopRealtimeAnimation(vehicleAnimationKey(tracked));
-    routeSource.removeFeature(tracked.feature);
+    vehicleSource.removeFeature(tracked.feature);
     if (tracked.trailFeature) routeSource.removeFeature(tracked.trailFeature);
     trackedVehiclesByPlate.forEach((value, key) => {
       if (value === tracked) trackedVehiclesByPlate.delete(key);
@@ -313,6 +330,9 @@ export function createVehicleManager(
     });
   };
 
+  /**
+   * 车辆动画键：根据车辆 ID 生成唯一动画键，用于动画管理。
+   */
   const vehicleAnimationKey = (tracked: TrackedDispatchVehicle): string => {
     return `${tracked.stationId}:${tracked.vehicleId}`;
   };
@@ -352,6 +372,9 @@ export function createVehicleManager(
     ]);
   };
 
+  /**
+   * 停止车辆动画：根据动画键停止车辆的实时动画。
+   */
   const stopVehicleAnimation = (key: string): void => {
     const handle = vehicleAnimations.get(key);
     if (handle === undefined) return;
@@ -359,6 +382,9 @@ export function createVehicleManager(
     vehicleAnimations.delete(key);
   };
 
+  /**
+   * 停止实时动画：根据动画键停止车辆的实时动画。
+   */
   const stopRealtimeAnimation = (key: string): void => {
     const current = realtimeAnimations.get(key);
     if (!current) return;
@@ -366,6 +392,9 @@ export function createVehicleManager(
     realtimeAnimations.delete(key);
   };
 
+  /**
+   * 清除所有车辆动画：停止所有车辆的实时动画和轨迹动画。
+   */
   const clearVehicleAnimations = (): void => {
     vehicleAnimations.forEach((handle) => cancelAnimationFrame(handle));
     vehicleAnimations.clear();
@@ -376,10 +405,18 @@ export function createVehicleManager(
   /** 取队站规划路线（含 TMC 路况分段）在地图投影下的有序坐标，供模拟跟踪沿线路行驶。 */
   const getStationRouteCoordinates = (stationId: string): number[][] => {
     const features = routeSource.getFeatures()
-      .filter((feature) => !feature.get('dispatchVehicle') && !feature.get('dispatchVehicleTrail') && (
+      .filter((feature) => !feature.get('dispatchVehicle')
+        && !feature.get('dispatchVehicleTrail')
+        && !feature.get('routeDirectionArrow') && (
         feature.get('stationId') === stationId
         || feature.getId() === `dispatch_t1_route_${stationId}`
       ));
+    // 与道路箭头共用完整的起点→终点路径，避免 TMC 分段坐标顺序导致车头和箭头相反。
+    const routePath = features.find((feature) => feature.get('dispatchRoutePath'));
+    const routePathGeometry = routePath?.getGeometry();
+    if (routePathGeometry instanceof LineString) {
+      return routePathGeometry.getCoordinates();
+    }
     const segmentIndex = (feature: Feature): number => {
       const match = /_(\d+)$/.exec(String(feature.getId() ?? ''));
       return match ? Number(match[1]) : 0;
@@ -549,6 +586,10 @@ export function createVehicleManager(
     });
   };
 
+  /**
+   * 应用车辆定位：根据消息服务推送的 WGS84 实时坐标更新已调派车辆。
+   * 返回是否成功更新。
+   */
   const applyVehicleLocation = (
     tracked: TrackedDispatchVehicle,
     point: CarLocationPoint,
@@ -616,6 +657,10 @@ export function createVehicleManager(
     return true;
   };
 
+  /**
+   * 归一化车辆定位：根据车辆定位点归一化为标准格式。
+   * 返回归一化后的车辆定位点或 null。
+   */
   const normalizeVehicleLocation = (value: CarLocationPoint): CarLocationPoint | null => {
     if (!value || typeof value !== 'object') return null;
     const longitude = Number(value.longitude);
@@ -641,6 +686,10 @@ export function createVehicleManager(
     };
   };
 
+  /**
+   * 判断是否为更新定位：根据车辆定位点的 gpsTime 判断是否为更新定位。
+   * 返回是否为更新定位。
+   */
   const isNewerVehicleLocation = (
     previous: CarLocationPoint | undefined,
     next: CarLocationPoint,
@@ -652,16 +701,28 @@ export function createVehicleManager(
     return nextTimestamp > previousTimestamp;
   };
 
+  /**
+   * 获取车辆定位时间戳：根据车辆定位点的 gpsTime 获取时间戳。
+   * 返回时间戳或 undefined。
+   */
   const vehicleLocationTimestamp = (gpsTime?: string): number | undefined => {
     if (!gpsTime) return undefined;
     const timestamp = Date.parse(gpsTime.replace(' ', 'T'));
     return Number.isFinite(timestamp) ? timestamp : undefined;
   };
-
+  
+  /**
+   * 生成车辆定位键：根据车辆定位点生成唯一的定位键。
+   * 返回定位键。
+   */
   const vehicleLocationKey = (value: unknown): string => {
     return String(value ?? '').trim().replace(/\s+/g, '').toUpperCase();
   };
 
+  /**
+   * 归一化车辆角度：根据车辆角度归一化为 [0, 2π) 范围。
+   * 返回归一化后的角度。
+   */
   const normalizeRotation = (angle: number, reference: number): number => {
     let normalized = angle;
     while (normalized - reference > Math.PI) normalized -= Math.PI * 2;

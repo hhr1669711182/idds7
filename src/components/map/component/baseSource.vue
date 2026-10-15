@@ -107,6 +107,7 @@ const selectSource = (id: string) => {
   padding: 0 20px;
   display: flex;
   align-items: center;
+  border-radius: inherit;
 }
 
 .card_body {

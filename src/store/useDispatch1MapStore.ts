@@ -1,4 +1,4 @@
-﻿/*
+/*
  * @Author: ljh
  * @Date: 2026-08-27 10:30:08
  * @LastEditTime: 2026-08-27 10:39:46
@@ -7,7 +7,6 @@
  * @FilePath: src\store\useDispatch1MapStore.ts
  */
 import { defineStore } from 'pinia';
-import { piniaSession } from './piniaPersist'
 import type Map from 'ol/Map';
 
 export interface Dispatch1MapState {
@@ -18,7 +17,7 @@ export interface Dispatch1MapState {
 export const useDispatch1MapStore = defineStore('dispatch1MapStore', {
   state: (): Dispatch1MapState => ({
     map: null,
-    checkedIds: ['gis:view_res_org_dept', 'gis:view_juris_zone'],
+    checkedIds: ['gis:view_res_org_dept'],
   }),
   actions: {
     setMap(map: Map) {
@@ -29,7 +28,7 @@ export const useDispatch1MapStore = defineStore('dispatch1MapStore', {
     },
   },
   persist: {
-    storage: piniaSession,
+    storage: sessionStorage,
     pick: ['checkedIds'],
   },
 });

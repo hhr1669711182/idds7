@@ -1,9 +1,14 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-# 类型门禁基线检查（仅提示，不阻塞提交）
-# 现有 193 项 vue-tsc 报错为历史基线，暂不清理、暂不限制。
-# 若后续要接入 CI 严格门禁，在 CI 中设置 LINT_BASELINE_STRICT=1 即可。
+# 1) 类型门禁基线检查（仅提示，不阻塞提交）
+#    现有 vue-tsc 报错为历史基线，暂不清理、暂不限制。
+#    若后续要接入 CI 严格门禁，在 CI 中设置 LINT_BASELINE_STRICT=1 即可。
 node scripts/check-lint-baseline.mjs || true
+
+# 2) herness 文档体量检查（仅提示，不阻塞提交）
+#    防止工作日志重新写回 00-SOP.md，或已修复条目长期留在当前状态摘要。
+#    若后续要接入 CI 严格门禁，在 CI 中设置 HARNESS_STRICT=1 即可。
+node scripts/check-herness-size.mjs || true
 
 exit 0

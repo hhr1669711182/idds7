@@ -52,7 +52,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     visible: false,
     defaultVisible: false,
     icon: 'mdi:fire-hydrant',
-    minZoom: 15.5,
+    minZoom: 14.5,
   },
   // {
   //   ...dispatchGroup,
@@ -66,7 +66,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
   //   visible: false,
   //   defaultVisible: false,
   //   icon: 'mdi:water',
-  //   minZoom: 15.5,
+  //   minZoom: 14.5,
   // },
   {
     ...dispatchGroup,
@@ -81,7 +81,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     defaultVisible: false,
     icon: 'mdi:alert-circle-outline',
     noEsSearch: true,
-    minZoom: 15.5,
+    minZoom: 13.5,
   },
   {
     ...dispatchGroup,
@@ -96,7 +96,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     defaultVisible: true,
     icon: 'mdi:fireplace',
     useWebMock: false,
-    minZoom: 15.5,
+    minZoom: 13.5,
   },
   {
     ...dispatchGroup,
@@ -110,7 +110,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     visible: false,
     defaultVisible: false,
     icon: 'mdi:office-building',
-    minZoom: 15.5,
+    minZoom: 13.5,
   },
   {
     ...dispatchGroup,
@@ -125,7 +125,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     defaultVisible: false,
     noEsSearch: true,
     icon: 'mdi:local-area-network',
-    minZoom: 15.5,
+    minZoom: 13.5,
   },
   {
     ...dispatchGroup,
@@ -140,7 +140,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     defaultVisible: false,
     noEsSearch: true,
     icon: 'mdi:subtitles-outline',
-    minZoom: 15.5,
+    minZoom: 13.5,
   },
   // {
   //   ...dispatchGroup,
@@ -154,7 +154,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
   //   visible: false,
   //   defaultVisible: false,
   //   icon: 'mdi:home-flood',
-  //   minZoom: 15.5,
+  //   minZoom: 14.5,
   // },
   {
     ...dispatchGroup,
@@ -169,7 +169,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     defaultVisible: false,
     noEsSearch: true,
     icon: 'mdi:surface-area',
-    minZoom: 15.5,
+    minZoom: 14.5,
   },
   {
     ...dispatchGroup,
@@ -183,7 +183,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     visible: false,
     defaultVisible: false,
     icon: 'mdi:location-radius-outline',
-    minZoom: 15.5,
+    minZoom: 14.5,
   },
   {
     ...dispatchGroup,
@@ -198,22 +198,22 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     defaultVisible: false,
     noEsSearch: true,
     icon: 'mdi:home',
-    minZoom: 15.5,
+    minZoom: 14.5,
   },
-  {
-    ...dispatchGroup,
-    ...categories.combat,
-    id: 'gis:env_entrance_exit',
-    name: '出入口',
-    workspace: 'gis',
-    typeName: 'gis:env_entrance_exit',
-    order: 18,
-    enabled: true,
-    visible: false,
-    defaultVisible: false,
-    icon: 'mdi:gate',
-    minZoom: 15.5,
-  },
+  // {
+  //   ...dispatchGroup,
+  //   ...categories.combat,
+  //   id: 'gis:env_entrance_exit',
+  //   name: '出入口',
+  //   workspace: 'gis',
+  //   typeName: 'gis:env_entrance_exit',
+  //   order: 18,
+  //   enabled: true,
+  //   visible: false,
+  //   defaultVisible: false,
+  //   icon: 'mdi:gate',
+  //   minZoom: 14.5,
+  // },
   {
     ...dispatchGroup,
     ...categories.combat,
@@ -227,7 +227,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     defaultVisible: false,
     noEsSearch: true,
     icon: 'mdi:road-variant',
-    minZoom: 15.5,
+    minZoom: 14.5,
   },
   //  {
   //   ...dispatchGroup,
@@ -243,7 +243,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
   //   noEsSearch: true,
   //   useWebMock: false,
   //   icon: 'mdi:car-outline',
-  //   minZoom: 15.5,
+  //   minZoom: 14.5,
   // },
    {
     ...dispatchGroup,
@@ -259,7 +259,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     noEsSearch: true,
     useWebMock: true,
     icon: 'mdi:car-outline',
-    minZoom: 15.5,
+    minZoom: 14.5,
   },
   // {
   //   ...dispatchGroup,
@@ -275,7 +275,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
   //   noEsSearch: true,
   //   useWebMock: true,
   //   icon: 'mdi:phone-incoming',
-  //   minZoom: 15.5,
+  //   minZoom: 14.5,
   // },
 ]
 

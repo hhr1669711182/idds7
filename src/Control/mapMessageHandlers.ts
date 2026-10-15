@@ -13,6 +13,7 @@ import {
 } from '@/Control/alarmCallMessage'
 import {
     type AddressUpdatedData,
+    createAddressUpdatedCache,
 } from '@/Control/incidentLocationMessage'
 import {
     PAGE_CONDITION,
@@ -27,7 +28,11 @@ export const createMapMessageHandlers = () => {
     const pendingDispatchAlarm = usePendingDispatchAlarmStore()
     const pendingCallLocation = usePendingCallLocationStore()
     const incidentLocationStore = useIncidentLocationStore()
+    // 同阶段内 slotChanges 为增量推送，需按画像合并缓存后再进入 store 流程
+    const addressCache = createAddressUpdatedCache()
     const handledAlarmEventIds = new Set<string>()
+    // 当前活跃画像 key（incidentId/disasterProfileId/eventId），切换警情时先 clearAll 再上图
+    let lastActiveKey = ''
 
     const openDispatch1 = (profile: Record<string, any>) => {
         // 先交付消息，再统一切页，避免 replace/push 并发取消导航。
@@ -48,10 +53,12 @@ export const createMapMessageHandlers = () => {
         void navigateByCondition(PAGE_CONDITION.REQUEST)
     }
 
-    const onLocateCallRemove = (envelope: MessageEnvelope) => {
-        pendingCallLocation.consume(String(envelope.data?.id ?? ''))
+    const onLocateCallRemove = (_envelope: MessageEnvelope) => {
+        // 来电结束不再提前清除粗定位；进入 dispatch 后仍需保留，
+        // 直到 ADDRESS_UPDATED 的 slotChanges 给出有效经纬度。
     }
 
+    /** 警情状态变更 */
     const onCallAnswerStatusChanged = (envelope: MessageEnvelope) => {
         const data = envelope.data as AlarmCallAnswerStatusData
         const isAnswered = data?.answered === true
@@ -101,7 +108,27 @@ export const createMapMessageHandlers = () => {
     }
 
     const onAddressUpdated = (envelope: MessageEnvelope<AddressUpdatedData>) => {
-        incidentLocationStore.onAddressUpdated(envelope)
+        if (!envelope.data) {
+            incidentLocationStore.onAddressUpdated(envelope)
+            return
+        }
+        // HTTP 全量快照（id 以 profile-sync- 开头）直接替换缓存，不与旧快照合并，
+        // 避免已被清空的 slot 残留旧值；WS 增量消息走 merge 补齐未变更属性后再下发
+        const isHttpFullSnapshot = String(envelope.id ?? '').startsWith('profile-sync-')
+        const merged = isHttpFullSnapshot
+            ? addressCache.replace(envelope.data)
+            : addressCache.merge(envelope.data)
+        // 切换警情（key 变化）：先清除上一次的显示结果（点位/辖区/队站过滤/路径/版本号），
+        // 再上图本次消息，避免不同警情的点位/辖区并存。
+        const key = String(merged.incidentId || merged.disasterProfileId || merged.eventId || '').trim()
+        if (key && key !== lastActiveKey) {
+            lastActiveKey = key
+            incidentLocationStore.clearAll()
+        }
+        incidentLocationStore.onAddressUpdated({
+            ...envelope,
+            data: merged,
+        })
     }
 
     return {
@@ -111,6 +138,11 @@ export const createMapMessageHandlers = () => {
         onCallAnswerStatusChanged,
         onIncidentStateChanged,
         onAddressUpdated,
-        reset: () => handledAlarmEventIds.clear(),
+        reset: () => {
+            handledAlarmEventIds.clear()
+            addressCache.reset()
+            lastActiveKey = ''
+        },
+        dispose: () => addressCache.dispose(),
     }
 }

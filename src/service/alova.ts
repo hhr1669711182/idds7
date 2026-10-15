@@ -6,11 +6,7 @@ import router from '@/router'
 import { ElMessage } from 'element-plus'
 import { appEnv } from '@/config/env'
 import { AppError, DEFAULT_MESSAGES, ERROR_CODES, toAppError, type AppErrorMeta } from './error'
-import { useUserStore } from '@/store/useUserStore'
-import { createLogger } from '@/utils/logger'
-
-const log = createLogger('alova')
-
+import { getSharedAccessToken } from '@/Control/seatSharedState'
 
 const baseURL = appEnv.apiBaseUrl
 
@@ -46,6 +42,7 @@ const getMethodMeta = (method: any): AppErrorMeta =>
 const handleUnauthorized = () => {
   // dev 环境下，不处理未授权错误
   if (import.meta.env.DEV) return
+  // 凭证由 seat-shared-state 持有（受理席侧写入），地图屏不自行清除
   // router.push('/login')
   const currentProtocol = window.location.protocol
   const currentHost = window.location.host
@@ -72,13 +69,9 @@ export const alovaInstance = createAlova({
   requestAdapter,
   cacheLogger: false,
   async beforeRequest(method) {
-    const startedAt = performance.now()
-    log.debug('请求发起', {
-      url: method.url,
-      type: method.type,
-    })
-    ;(method.config as any).__startedAt = startedAt
-    const token = useUserStore().accessToken
+    const token = getSharedAccessToken() ??     
+    'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJXeHdlX1BaMEhkdHdpNnNHUDNZQlIyT3JFN0FxZnNHcGFhRFZZcURNX3VBIn0.eyJleHAiOjE3OTE0MjE0MDAsImlhdCI6MTc4ODgyOTQwMCwianRpIjoiYzcyYmE0MWEtZWU3Yy00YTIyLTgzOGQtZDIzMTkyMDgyMzg0IiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLWlkcy1kZXYudGVsZXdhdmUudGVjaC9hdXRoL3JlYWxtcy9pZHMiLCJzdWIiOiJlODM4ZGYxZi1lYjlmLTQxMGQtOGEwMS1kYTE2YTgzNWI1MGEiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJpZHMtc2VhdC13ZWIiLCJzZXNzaW9uX3N0YXRlIjoiZTExMDI0ZmUtYmQ3Yy00NDcxLThmM2EtMWU1ZDNmZjE2YWVmIiwiYWNyIjoiMSIsInNjb3BlIjoicHJvZmlsZSBlbWFpbCIsInNpZCI6ImUxMTAyNGZlLWJkN2MtNDQ3MS04ZjNhLTFlNWQzZmYxNmFlZiIsImVtcElkIjoiOThjOWQxNWRhYjI3NGNiNWE3NzgyOTI3YThmZTNiODkiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInByZWZlcnJlZF91c2VybmFtZSI6ImNoZW54aWFuZ3FpIiwiZW1haWwiOiIxMzgwMDEzNzk5OUBxcS5jb20ifQ.EeQsVz004tr73VMTycAgcECvr1oSBYJIdor9sVsRYN1mfMzoSppkcDplvXeXEBfh1rFGscUypvrjO8FEbvD03ykSIqNqx8OZhUZv9r2My4sbGFx_cip_6_W2uv7Xoyc3HOJmkUnJIJ6YvUNDCPnOGARS35Q3LBoxp18NbzFx56P3UILbepjMV86_w1roDEKgnjjbfrRkeqvYP9tEZbEtgPsbbFYg7CnZVYI1YklMt7Csmv5YKTMZBEZcIZMExMh4y41aI7h51LvMbPtaTj-U9GoEe6lbr7CwDZ0lCBVyW-OAqm-yDGVE4a9G6zelFo1av6eghUjZO2B-_J6nbQWB9A'
+    // 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJXeHdlX1BaMEhkdHdpNnNHUDNZQlIyT3JFN0FxZnNHcGFhRFZZcURNX3VBIn0.eyJleHAiOjE3ODM3NjczMzYsImlhdCI6MTc4MTE3NTMzNiwianRpIjoiNzUwZWZlYjMtYzk2Zi00YmI3LWExNDUtYTExNjVjMjAyZGQ2IiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLWlkcy1kZXYudGVsZXdhdmUudGVjaC9hdXRoL3JlYWxtcy9pZHMiLCJzdWIiOiJmZmQ3YTYyMi00NTgxLTQ0M2UtYmNjNi1jMmI0OTIwNGE0MWEiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJpZHMtc2VhdC13ZWIiLCJzZXNzaW9uX3N0YXRlIjoiZDJiN2QzZGUtMzI4My00OTg4LWExZTAtN2E4N2MxN2RjMWY5IiwiYWNyIjoiMSIsInNjb3BlIjoicHJvZmlsZSBlbWFpbCIsInNpZCI6ImQyYjdkM2RlLTMyODMtNDk4OC1hMWUwLTdhODdjMTdkYzFmOSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwicHJlZmVycmVkX3VzZXJuYW1lIjoiY2Fvd2VudGFpMSIsImVtYWlsIjoiMTM4MDAyMzgwMDFAcXEuY29tIn0.qV35Pe4cczN0DJ7pJGN39heFNrr5XCAWo0HS4LzXodOiE5oZRtN3nLik08wCR-Atu1LH0uB7ssVVyLRVYK2n8fq2yQqFHAVzNPx-SgEFhNcQ4zCgoemwaxOdZq_sBAMdBjT7gudqiELDzKZfui2VgUKgdX1Av469SRy8ZVysIFETZyRHS5lgmy-KCiictGkn3gfoSBmiWoB2ueOlcbcEMhW7H4aYg_ai6oMgpRQ0HZ3PgrNMaQdCHFTWSL6sebZFFX1lQa6JpxX0Q9t2sU98y2msB-Kkgssz2pB4JGB6xvuqK3ySio-dUvI_oHKYOMyshlbA8LbcDcEh790me9VD1w'
     if (token) {
       method.config.headers['Authorization'] = `Bearer ${token}`
       method.config.headers['clientid'] = 'ids-seat-web'
@@ -129,17 +122,6 @@ export const alovaInstance = createAlova({
         handleUnauthorized()
         appErr = new AppError(ERROR_CODES.UNAUTHORIZED, 401)
       }
-      const elapsed = (method.config as any).__startedAt
-        ? Math.round(performance.now() - (method.config as any).__startedAt)
-        : undefined
-      log.error('请求失败', {
-        url: method.url,
-        type: method.type,
-        status,
-        elapsed,
-        code: appErr.code,
-        message: appErr.message,
-      })
       showError(method, appErr)
       throw appErr
     }

@@ -1,0 +1,280 @@
+{
+    "status": "ambiguous",
+    "center": {
+        "lat": 22.545003921071434,
+        "lon": 113.94086015209979,
+        "coordinate_system": "GCJ02"
+    },
+    "bounds": [
+        [
+            22.54151686328166,
+            113.93865977387867
+        ],
+        [
+            22.54879699983885,
+            113.94467733473056
+        ]
+    ],
+    "anchors": [
+        {
+            "anchor_id": "A1",
+            "name": "深圳软件园一期",
+            "resolved_name": "深圳软件园一期",
+            "source_name": "深圳软件园一期",
+            "anchor_type": "aoi",
+            "anchor_level": "AOI_3",
+            "highlight_role": "context",
+            "lat": 22.544906354767452,
+            "lon": 113.93996578842382,
+            "display_name": "深圳软件园一期",
+            "match_status": "exact",
+            "query_name": "深圳软件园一期",
+            "osm_type": null,
+            "osm_id": null,
+            "source": "postgres://ADDRESSBOT_PG_HOST:ADDRESSBOT_PG_PORT/ADDRESSBOT_PG_DBNAME",
+            "coordinate_system": "GCJ02",
+            "provider_id": null,
+            "poi_detail": null,
+            "geojson": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [
+                                113.9337925,
+                                22.5473689
+                            ],
+                            [
+                                113.9339038,
+                                22.547233
+                            ],
+                            [
+                                113.934859,
+                                22.5472353
+                            ],
+                            [
+                                113.9354083,
+                                22.5473336
+                            ],
+                            [
+                                113.9367995,
+                                22.5473722
+                            ],
+                            [
+                                113.9368861,
+                                22.5474761
+                            ],
+                            [
+                                113.9368507,
+                                22.5490159
+                            ],
+                            [
+                                113.9367473,
+                                22.5491227
+                            ],
+                            [
+                                113.9342343,
+                                22.5490699
+                            ],
+                            [
+                                113.9340709,
+                                22.5489563
+                            ],
+                            [
+                                113.9338237,
+                                22.5476636
+                            ],
+                            [
+                                113.9337925,
+                                22.5473689
+                            ]
+                        ]
+                    ]
+                ]
+            },
+            "line_coords": null,
+            "polygon_coords": [
+                {
+                    "lat": 22.544338624996424,
+                    "lon": 113.93865977387867,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.54420287318915,
+                    "lon": 113.93877115572066,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.544206552716105,
+                    "lon": 113.93972715502144,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.54430567062132,
+                    "lon": 113.94027693943931,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.544346383210442,
+                    "lon": 113.94166941348784,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.544450424881582,
+                    "lon": 113.94175610206408,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.545990285454753,
+                    "lon": 113.94172076584886,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.54609693376909,
+                    "lon": 113.94161727488397,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.546040383495512,
+                    "lon": 113.93910204365464,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.545926540492356,
+                    "lon": 113.93893850145626,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.54463339109352,
+                    "lon": 113.93869101779597,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.544338624996424,
+                    "lon": 113.93865977387867,
+                    "coordinate_system": "GCJ02"
+                }
+            ]
+        }
+    ],
+    "candidates": [],
+    "overlays": [
+        {
+            "kind": "polygon",
+            "role": "锚定区域",
+            "name": "深圳软件园一期",
+            "coords": [
+                {
+                    "lat": 22.544338624996424,
+                    "lon": 113.93865977387867,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.54420287318915,
+                    "lon": 113.93877115572066,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.544206552716105,
+                    "lon": 113.93972715502144,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.54430567062132,
+                    "lon": 113.94027693943931,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.544346383210442,
+                    "lon": 113.94166941348784,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.544450424881582,
+                    "lon": 113.94175610206408,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.545990285454753,
+                    "lon": 113.94172076584886,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.54609693376909,
+                    "lon": 113.94161727488397,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.546040383495512,
+                    "lon": 113.93910204365464,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.545926540492356,
+                    "lon": 113.93893850145626,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.54463339109352,
+                    "lon": 113.93869101779597,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.544338624996424,
+                    "lon": 113.93865977387867,
+                    "coordinate_system": "GCJ02"
+                }
+            ],
+            "coordinate_system": "GCJ02"
+        },
+        {
+            "kind": "polygon",
+            "role": "搜索范围",
+            "coords": [
+                {
+                    "lat": 22.544207306948962,
+                    "lon": 113.94175608669548,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.546097148385737,
+                    "lon": 113.94175620616461,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.54879699983885,
+                    "lon": 113.94467733473056,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.54151686328166,
+                    "lon": 113.9446768743302,
+                    "coordinate_system": "GCJ02"
+                },
+                {
+                    "lat": 22.544207306948962,
+                    "lon": 113.94175608669548,
+                    "coordinate_system": "GCJ02"
+                }
+            ],
+            "coverage_source": "aoi_directional_buffer",
+            "name": "深圳软件园一期east侧搜索范围",
+            "relation_type": "directional_offset",
+            "direction": "east",
+            "distance_m": 300.0,
+            "coordinate_system": "GCJ02"
+        }
+    ],
+    "warnings": [],
+    "source": "高德地图",
+    "geometry_source": "public_geometry",
+    "geometry_resolver": "map_geometry_resolver",
+    "provider": "amap",
+    "resolver": "amap_with_public_geometry",
+    "candidate_source": "amap_poi",
+    "coordinate_system": "GCJ02",
+    "need_ask": "已定位到深圳软件园一期，目标范围在其东侧约300米，请补充目标点附近的门口、建筑、店铺或明显标志物。",
+    "performance": {
+        "map_resolve_ms": 0
+    }
+}

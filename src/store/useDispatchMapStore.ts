@@ -7,7 +7,6 @@
  * @FilePath: \ids-gis-web\src\store\useDispatchMapStore.ts
  */
 import { defineStore } from "pinia";
-import { piniaSession } from "./piniaPersist"
 import { markRaw, toRaw } from "vue";
 import { Map } from "ol";
 
@@ -33,7 +32,7 @@ export const useDispatchMapStore = defineStore("dispatchMapStore", {
     },
   },
   persist: {
-    storage: piniaSession,
+    storage: sessionStorage,
     pick: ['checkedIds'],
   },
 });

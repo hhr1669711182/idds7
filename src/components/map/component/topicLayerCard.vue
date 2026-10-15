@@ -200,6 +200,7 @@ const resetMap = () => {
   justify-content: space-between;
   line-height: 45px;
   padding: 0 20px;
+  border-radius: inherit;
   display: flex;
   align-items: center;
   display: flex;

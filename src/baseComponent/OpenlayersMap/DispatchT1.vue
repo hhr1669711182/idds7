@@ -33,7 +33,6 @@ import type {
 } from '@/Control/carLocationMessage';
 import { geoserverApi } from '@/service/geoserver';
 import { useFireStations } from '@/composables/useFireStations';
-import { IncidentVideoOverlayController } from '@/controller/core/business/IncidentVideoOverlayController';//灾情现场视频弹出
 import {
   DispatchT1,
   type DispatchT1State,
@@ -42,6 +41,7 @@ import {
   type DispatchT1VehicleCommand,
   type DispatchT1WebSocketData,
 } from './DispatchT1';
+import { whenDispatchTrack } from '@/Control/seatSharedState';
 
 const props = defineProps<{
   map: OlMap | null;
@@ -77,7 +77,6 @@ const stationOverlayMap = shallowRef<OlMap | null>(null);
 const hydrantPopupRef = ref<HTMLElement | null>(null);
 const hydrantOverlay = shallowRef<Overlay | null>(null);
 const hydrantOverlayMap = shallowRef<OlMap | null>(null);
-const incidentVideoController = shallowRef<IncidentVideoOverlayController | null>(null);
 const hydrantInfo = ref<{
   title: string;
   rows: Array<{ label: string; value: unknown }>;
@@ -87,6 +86,10 @@ let hydrantRequestVersion = 0;
 let pendingWebSocketData: DispatchT1WebSocketData | null = null;
 let vehicleLocationUnsubscribe: (() => void) | null = null;
 const pendingVehicleLocations = new Map<string, CarLocationPoint>();
+// 首次收到实时车辆定位后，以第一辆车当前点位为中心缩放至 zoom:16（仅执行一次）
+let firstRealtimeZoomDone = false;
+// 当 phase 切换为 dispatchTrack 时重置 firstRealtimeZoomDone，使新一轮跟踪再次触发首次缩放
+let resetZoomOnDispatchTrackDispose: (() => void) | null = null;
 
 const HYDRANT_LAYER = 'gis:env_fire_water';
 
@@ -143,10 +146,8 @@ const createService = (map: OlMap) => {
     amapKey: props.amapKey,
     isLayerVisible: (layerId) => dispatch1MapStore.checkedIds.includes(layerId),
     onDispatch: async (command) => emit('dispatch', command),
-    onQueryComplete: () => showIncidentVideo(),
   });
   service.value = instance;
-  incidentVideoController.value = new IncidentVideoOverlayController(map);
   void nextTick(() => {
     // ensureStationOverlay(); 车辆列表弹窗当前阶段注释调先
     ensureHydrantQuery();
@@ -179,8 +180,6 @@ const destroyService = () => {
   }
   stationOverlay.value = null;
   stationOverlayMap.value = null;
-  incidentVideoController.value?.destroy();
-  incidentVideoController.value = null;
   service.value?.destroy();
   service.value = null;
 };
@@ -389,6 +388,24 @@ const simulateCoordinate = async (longitude: number, latitude: number) => {
 const receiveVehicleLocations = (batch: CarLocationBatch) => {
   console.log('receiveVehicleLocations', batch)
   if (!batch || !Array.isArray(batch.datas)) return 0;
+
+  // 首次收到实时定位：以第一个有效点位为中心缩放至 zoom:16
+  if (!firstRealtimeZoomDone) {
+    const first = batch.datas.find(
+      (p) => Number.isFinite(p.longitude) && Number.isFinite(p.latitude),
+    );
+    const map = props.map;
+    if (first && map) {
+      const center = transform(
+        [first.longitude, first.latitude],
+        'EPSG:4326',
+        map.getView().getProjection(),
+      );
+      map.getView().animate({ center, zoom: 16 });
+      firstRealtimeZoomDone = true;
+    }
+  }
+
   if (service.value) return service.value.updateVehicleLocations(batch);
 
   batch.datas.forEach((point) => {
@@ -409,13 +426,6 @@ const toggleVehicle = async (
 ) => {
   const selected = (event.target as HTMLInputElement).checked;
   await service.value?.toggleVehicle(stationId, vehicleId, selected);
-};
-
-/** 点击调派后在灾情点位附近弹出现场视频（原生 video Overlay，HTTP 直链 + Range 分段加载）。 */
-const showIncidentVideo = () => {
-  const incident = state.value.incident;
-  if (!incident) return;
-  incidentVideoController.value?.show(incident.longitude, incident.latitude);
 };
 
 const dispatchVehicles = async () => {
@@ -493,13 +503,19 @@ onMounted(() => {
     MESSAGE_EVENT_KEY.TRACKING_VEHICLE_GPS_UPDATE,
     (envelope) => receiveVehicleLocations(envelope.data as CarLocationBatch),
   );
+  // 进入 dispatchTrack 阶段时重置首次缩放标记，使新一轮跟踪可再次触发
+  resetZoomOnDispatchTrackDispose = whenDispatchTrack(() => {
+    firstRealtimeZoomDone = false;
+  });
   window.simulateDispatchCoordinate = simulateCoordinate;
-  console.info('[DispatchT1] 坐标模拟入口已注册');
+  // console.info('[DispatchT1] 坐标模拟入口已注册');
 });
 
 onBeforeUnmount(() => {
   vehicleLocationUnsubscribe?.();
   vehicleLocationUnsubscribe = null;
+  resetZoomOnDispatchTrackDispose?.();
+  resetZoomOnDispatchTrackDispose = null;
   pendingVehicleLocations.clear();
   if (window.simulateDispatchCoordinate === simulateCoordinate) {
     delete window.simulateDispatchCoordinate;

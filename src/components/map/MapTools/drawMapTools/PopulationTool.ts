@@ -16,7 +16,7 @@ import { EventsKey } from "ol/events";
 import WFS from "ol/format/WFS";
 import type { Coordinate } from "ol/coordinate";
 import { v4 as uuidv4 } from "uuid";
-import { formatArea, getArea } from "@/utils";
+import { formatArea, getArea } from "@/utils/index.ts";
 import { geoserverApi } from "@/service/geoserver";
 import { BaseTool } from "./BaseTool";
 

@@ -1,9 +1,9 @@
-﻿import { markRaw } from 'vue';
+import { markRaw } from 'vue';
 import OlMap from 'ol/Map';
 import TileLayer from 'ol/layer/Tile';
 import TileWMS from 'ol/source/TileWMS';
 import { circle, point } from '@turf/turf';
-import { fetchDrivingRoute } from '@/baseComponent/amap/useAmapTools';
+import { fetchDrivingRoutes } from '@/baseComponent/amap/useAmapTools';
 import { geoserverApi } from '@/service/geoserver';
 import type { EsQueryData, BufferCalcData, RouteCalcData, RouteCalcResult } from '../protocol';
 
@@ -84,26 +84,31 @@ export class SpatialController {
 
   /**
    * [G-S03] 路径规划算路（高德驾车，内联调用）
+   *
+   * strategy=11 代理返回多条候选路线，本方法只负责算路，返回全部候选（按代理顺序，
+   * 首条为推荐/选中方案）。阶段差异由调用方决定：
+   * - 立案阶段（map.base.route_calc）：全部候选渲染上图；
+   * - 调派阶段（dispatch.route.plan）：只取选中的第一条绘制、导航。
    */
-  public async calcRoute(data: RouteCalcData): Promise<RouteCalcResult | null> {
+  public async calcRoute(data: RouteCalcData): Promise<RouteCalcResult[]> {
     try {
-      const result = await fetchDrivingRoute({
+      const results = await fetchDrivingRoutes({
         origin: data.start,
         destination: data.end,
         strategy: 0,
         extensions: 'all',
       });
 
-      if (!result.fullPath.length) return null;
-
-      return {
-        coordinates: result.fullPath,
-        distanceMeters: result.distanceMeters,
-        durationSeconds: result.durationSeconds,
-      };
+      return results
+        .filter(result => result.fullPath.length > 0)
+        .map(result => ({
+          coordinates: result.fullPath,
+          distanceMeters: result.distanceMeters,
+          durationSeconds: result.durationSeconds,
+        }));
     } catch (e) {
       console.error('[G-S03] 路径规划算路失败', e);
-      return null;
+      return [];
     }
   }
 }

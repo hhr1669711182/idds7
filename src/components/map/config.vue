@@ -137,6 +137,7 @@ import { storeToRefs } from "pinia";
 import { useMapConfigStore, usePanelStore } from "@/store/index.ts";
 import {
   createDefaultMapConfig,
+  FEATURE_ZOOM_LIMITS,
   normalizeMapConfig,
   type ConfigTab,
   type FeatureSettings,
@@ -197,8 +198,8 @@ const tabs: { label: string; value: ConfigTab }[] = [
 ];
 
 const featureSliders: SliderField[] = [
-  { key: "minZoom", label: "最小缩放比例:", min: 0, max: 22, step: 1 },
-  { key: "maxZoom", label: "最大缩放比例:", min: 0, max: 22, step: 1 },
+  { key: "minZoom", label: "最小缩放比例:", ...FEATURE_ZOOM_LIMITS.minZoom, step: 1 },
+  { key: "maxZoom", label: "最大缩放比例:", ...FEATURE_ZOOM_LIMITS.maxZoom, step: 1 },
   { key: "alarmZoom", label: "警情定位比例:", min: 0, max: 22, step: 1 },
 ];
 

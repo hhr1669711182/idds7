@@ -3,7 +3,7 @@ import { reactive } from "vue";
 import { storeToRefs } from "pinia";
 import { Style, Icon } from "ol/style";
 import { useCardStore } from "../../../store/index.ts";
-import { getSVGForSrcById } from "@/utils";
+import { getSVGForSrcById } from "@/utils/index.ts";
 import { POINT_IMG_OPTIONS } from "../../../const/const.form.ts";
 import { StyleLike } from "ol/style/Style";
 

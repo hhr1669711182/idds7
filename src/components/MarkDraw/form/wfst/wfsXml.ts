@@ -9,6 +9,7 @@
  * 过滤出一个「写库副本」，geometryName 之外的一律不落库；
  * DescribeFeatureType 不可用（fields 为空）时只写几何，最保守。
  */
+import GML3 from "ol/format/GML3";
 import WFS from "ol/format/WFS";
 import type { WriteTransactionOptions } from "ol/format/WFS";
 import Feature from "ol/Feature";
@@ -140,6 +141,89 @@ const serialize = (
   return new XMLSerializer().serializeToString(node as unknown as Node);
 };
 
+/**
+ * 只更新几何字段的 WFS-T Update。
+ *
+ * 两个关键点：
+ * 1. 定位用 ogc:FeatureId —— GeoServer 暴露的 fid 就是物理表主键
+ *    （如 juris_zone.<zone_id>），稳定且能被服务端的 Update 识别。
+ *    不能用 PropertyIsEqualTo(zone_id)：主键不在 DescribeFeatureType 的
+ *    属性列表里，走属性过滤会匹配不到任何行（实测 totalUpdated=0）。
+ * 2. 只提交几何一个 Property —— 物理表的 create_time 是 dateTime、
+ *    is_deleted 是 boolean，把整个 properties 回写会有类型丢失和覆盖原值的风险。
+ */
+export const buildGeomUpdateXml = (
+  layer: MarkDrawLayer,
+  info: FeatureTypeInfo,
+  features: Feature[]
+): string | null => {
+  const prefix = info.featurePrefix || layer.workspace;
+  const ns = info.featureNS || `http://www.telewave.com.cn/${layer.workspace}`;
+  const typeName = layer.typeName.split(":").pop() ?? layer.typeName;
+  const geomField = info.geomField || "geom";
+
+  // 用 OL 的 GML3 把几何写成标准的 <gml:MultiSurface>（轴序由 CRS:84 决定，不倒序）
+  const gml = new GML3({ srsName: "CRS:84" });
+
+  const updates = features
+    .map((feature) => {
+      // 定位方式：物理表图层的主键就是 GeoServer 暴露的 fid（如 juris_zone.<zone_id>），
+      // 它不在 properties 里（DescribeFeatureType 不列主键），
+      // 所以必须用 ogc:FeatureId，不能用 PropertyIsEqualTo(zone_id) —— 后者匹配不到任何行。
+      const fid = feature.getId();
+      const rawGeometry = feature.getGeometry();
+      if (fid === undefined || fid === null || fid === "") return "";
+      if (!rawGeometry) return "";
+
+      // 关键：地图内部几何是 3857，落库口径是 4326（WGS84 经纬度）。
+      // 必须先 rebuildGeometry 转一道，否则写出去的是 12683411 这样的米制坐标，
+      // GeoServer 会报 PointOutsideEnvelopeException: 1.268E7 outside of (-180,180)。
+      const geometry = rebuildGeometry(rawGeometry, true);
+
+      // writeGeometryElement 是「往已有节点里写」，返回 void，所以先建一个占位容器
+      const holder = document.createElementNS("http://www.opengis.net/gml", "gml:Geometry");
+      gml.writeGeometryElement(holder, geometry, [
+        {
+          node: holder,
+          gmlVersion: 3,
+          srsName: "CRS:84",
+          featureType: typeName,
+          featurePrefix: prefix,
+          featureNS: ns,
+          geometryName: geomField,
+        },
+      ]);
+
+      const geomChildren = Array.from(holder.childNodes);
+      if (!geomChildren.length) return "";
+
+      const upd = document.createElementNS("http://www.opengis.net/wfs", "wfs:Update");
+      upd.setAttribute("typeName", `${prefix}:${typeName}`);
+
+      const filter = document.createElementNS("http://www.opengis.net/ogc", "ogc:Filter");
+      const featureId = document.createElementNS("http://www.opengis.net/ogc", "ogc:FeatureId");
+      // WFS 1.1.0 要求 FeatureId 用 fid 属性，且值是 GeoServer 暴露的完整 fid
+      featureId.setAttribute("fid", String(fid));
+      filter.appendChild(featureId);
+      upd.appendChild(filter);
+
+      const prop = document.createElementNS("http://www.opengis.net/wfs", "wfs:Property");
+      const name = document.createElementNS("http://www.opengis.net/wfs", "wfs:Name");
+      name.textContent = geomField;
+      const value = document.createElementNS("http://www.opengis.net/wfs", "wfs:Value");
+      geomChildren.forEach((child) => value.appendChild(child));
+      prop.appendChild(name);
+      prop.appendChild(value);
+      upd.appendChild(prop);
+      return new XMLSerializer().serializeToString(upd);
+    })
+    .filter(Boolean);
+
+  if (!updates.length) return null;
+
+  const header = `<?xml version="1.0" encoding="UTF-8"?><wfs:Transaction xmlns:wfs="http://www.opengis.net/wfs" xmlns:ogc="http://www.opengis.net/ogc" xmlns:gml="http://www.opengis.net/gml" xmlns:${prefix}="${ns}" service="WFS" version="1.1.0">`;
+  return header + updates.join("") + "</wfs:Transaction>";
+};
 export const buildInsertXml = (
   layer: MarkDrawLayer,
   info: FeatureTypeInfo,

@@ -18,7 +18,7 @@ export type ZhxfStationData = {
  * 获取与格式转换见 @/composables/useFireStations.ts。
  * ----------------------------------------------------------------------------
  *
- * import { gcj02ToWgs84 } from "../tools/transform.ts";
+ * import { gcj02ToWgs84 } from "@/utils/coordTransform.ts";
  *
  * const fromGcj02Data = <T extends { lng: number; lat: number }>(
  *   item: T,
@@ -157,4 +157,8 @@ export type JRAlarmData = {
   type: 'fire' | 'rescue' | 'society'
   colorType: 'blue' | 'red' | 'grey' | 'def'
   createdAt?: string
+  /** 燃烧物（统一弹窗字段，后端可能缺省） */
+  burningMaterial?: string | null
+  /** 重点单位（统一弹窗字段，后端可能缺省） */
+  keyUnit?: string | null
 }

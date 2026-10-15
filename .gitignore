@@ -38,10 +38,18 @@ dist-lib
 mds/hhr*
 skills*
 .env.local
-.env.local.example
+!.env.local.example
 
 # jenkins
 .dockerignore
 Dockerfile
 nginx.conf
 *.err 
+
+# 测试产物（可重新生成，不入库）
+tests/__artifacts__/
+playwright-report/
+test-results/
+
+# Playwright 本地缓存
+.playwright/

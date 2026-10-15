@@ -8,6 +8,11 @@ import {
 export type ConfigTab = "feature" | "layer";
 export type MapMode = "dispatch" | "oneMap";
 
+export const FEATURE_ZOOM_LIMITS = {
+  minZoom: { min: 3, max: 12 },
+  maxZoom: { min: 12, max: 18 },
+} as const;
+
 export interface FeatureSettings {
   minZoom: number;
   maxZoom: number;
@@ -158,8 +163,8 @@ export const createDefaultMapConfig = (): MapConfigPayload => ({
   version: "1",
   updatedAt: new Date().toISOString(),
   feature: {
-    minZoom: 0,
-    maxZoom: 21,
+    minZoom: FEATURE_ZOOM_LIMITS.minZoom.min,
+    maxZoom: FEATURE_ZOOM_LIMITS.maxZoom.max,
     alarmZoom: 18,
     showNav: true,
     showDraw: true,
@@ -178,6 +183,24 @@ export const createDefaultMapConfig = (): MapConfigPayload => ({
 
 export const normalizeMapConfig = (payload: MapConfigPayload): MapConfigPayload => {
   const next = clone(payload);
+  const clamp = (value: number, min: number, max: number) =>
+    Math.min(Math.max(Number.isFinite(Number(value)) ? Number(value) : min, min), max);
+
+  next.feature.minZoom = clamp(
+    next.feature.minZoom,
+    FEATURE_ZOOM_LIMITS.minZoom.min,
+    FEATURE_ZOOM_LIMITS.minZoom.max,
+  );
+  next.feature.maxZoom = clamp(
+    next.feature.maxZoom,
+    FEATURE_ZOOM_LIMITS.maxZoom.min,
+    FEATURE_ZOOM_LIMITS.maxZoom.max,
+  );
+  next.feature.alarmZoom = clamp(
+    next.feature.alarmZoom,
+    next.feature.minZoom,
+    next.feature.maxZoom,
+  );
   next.layer.groups = buildLayerGroups(next.layer);
 
   return next;

@@ -24,6 +24,9 @@ const update = process.argv.includes('--update')
 const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 
 const current = new Set()
+/** 去掉行号，得到「文件 + 错误码 + 消息」的身份键。
+ *  行号会随任何无关改动漂移，若纳入匹配则整批既有报错都会被误报为新增。 */
+const identity = (item) => item.replace(/\(\d+,\d+\)/, '')
 
 const run = () => {
   const result = spawnSync(command, ['exec', 'vue-tsc', '--noEmit', '--pretty', 'false'], {
@@ -58,7 +61,8 @@ if (count === 0 && output.trim()) {
   process.exit(0)
 }
 
-const added = [...current].filter((item) => !baseline.has(item))
+const baselineIdentities = new Set([...baseline].map(identity))
+const added = [...current].filter((item) => !baselineIdentities.has(identity(item)))
 const fixed = [...baseline].filter((item) => !current.has(item))
 
 console.log(`[lint-baseline] 当前 ${count} 项 / 基线 ${baseline.size} 项`)

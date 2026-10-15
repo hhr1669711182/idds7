@@ -1,4 +1,4 @@
-﻿import { Coordinate } from "ol/coordinate";
+import { Coordinate } from "ol/coordinate";
 import Map from "ol/Map";
 import Feature from "ol/Feature";
 import * as olStyle from "ol/style";
@@ -6,7 +6,7 @@ import Overlay from "ol/Overlay";
 import { Draw, Interaction } from "ol/interaction";
 import { Type } from "ol/geom/Geometry";
 import { unByKey } from "ol/Observable";
-import { getArea } from "@/utils";
+import { getArea } from "@/utils/index.ts";
 import { BaseTool } from "./BaseTool";
 import { EventsKey } from "ol/events";
 import type MapBrowserEvent from "ol/MapBrowserEvent";

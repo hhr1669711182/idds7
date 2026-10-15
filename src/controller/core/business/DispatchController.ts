@@ -78,11 +78,12 @@ export class DispatchController {
   public async dispatchRoutePlan(data: DispatchRoutePlanData) {
     const { spatial, geometry, view } = this.genericController;
 
-    const routeResult = await spatial.calcRoute({
+    // 调派阶段只渲染选中的推荐方案（calcRoute 返回候选数组，首条为选中方案）。
+    const routeResult = (await spatial.calcRoute({
       start: [data.start.longitude, data.start.latitude],
       end: [data.end.longitude, data.end.latitude],
       strategy: data.recommended ? 'fastest' : '0',
-    });
+    }))[0];
 
     if (!routeResult?.coordinates?.length) return;
 

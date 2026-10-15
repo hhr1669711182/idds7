@@ -1,4 +1,4 @@
-﻿import { Coordinate } from "ol/coordinate";
+import { Coordinate } from "ol/coordinate";
 import { markRaw } from "vue";
 import Map from "ol/Map";
 import Feature from "ol/Feature";
@@ -8,7 +8,7 @@ import { Draw } from "ol/interaction";
 import { getDistance } from "ol/sphere";
 import { transform } from "ol/proj";
 import { unByKey } from "ol/Observable";
-import { formatLength, formatDistance } from "@/utils";
+import { formatLength, formatDistance } from "@/utils/index.ts";
 import { BaseTool } from "./BaseTool";
 import Geometry, { Type } from "ol/geom/Geometry";
 

@@ -2,9 +2,7 @@ import { MESSAGE_EVENT_KEY } from '@/const/const.message.type'
 
 export const CAR_LOCATION_SUBSCRIPTION = {
   action: 'subscribe',
-  type: 'CUSTOM',
-  customType: "GPS_MSG",
-  key: 'car-location-broadcast-all',
+  topic: 'GPS_MSG/car-location-broadcast-all',
 } as const
 
 export type CarLocationPoint = {

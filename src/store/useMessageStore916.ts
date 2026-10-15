@@ -1,5 +1,4 @@
 ﻿import { defineStore } from 'pinia'
-import { piniaSession } from './piniaPersist'
 import { reactive, toRefs } from 'vue'
 import {
   // LEGACY_MESSAGE_TYPE_MAP,
@@ -18,7 +17,7 @@ import { normalizeAlarmStateFrame } from '@/Control/alarmMessage' //来电消息
 import { normalizePositionFrames } from '@/Control/positionMessage' //来电位置T1
 import { normalizeAlarmCallFrame } from '@/Control/alarmCallMessage'
 import { normalizeCarLocationFrames } from '@/Control/carLocationMessage'
-import { acknowledgeInformRecord } from '@/Control/informRecords'//消息状态回执
+import { normalizeAddressUpdatedFrame } from '@/Control/incidentLocationMessage' //画像地址变更（警情定位）
 
 type AnyRecord = Record<string, any>
 
@@ -106,8 +105,8 @@ export const useMessageStore = defineStore(
       return () => { if (ingressGate === gate) ingressGate = undefined }
     }
 
-    const push = (bucket: Record<string, MessageEnvelope<any>[]>, system: MessageSystem, msg: MessageEnvelope<any>) => {
-      const list = bucket[system] ?? (bucket[system] = [])
+    const push = (bucket: Record<string, MessageEnvelope<any>[]>, key: string, msg: MessageEnvelope<any>) => {
+      const list = bucket[key] ?? (bucket[key] = [])
       list.push(msg)
       if (list.length > maxKeep) list.splice(0, list.length - maxKeep)
     }
@@ -133,6 +132,11 @@ export const useMessageStore = defineStore(
     const recordInbox = (system: MessageSystem, msg: MessageEnvelope<any>) => {
       push(persisted.inbox, system, msg)
       persisted.lastBySystem[system] = msg
+      // 来电定位按 eventKey 额外持久化（inbox/lastBySystem），刷新后供 InputController 恢复上图
+      if (msg.eventKey === MESSAGE_EVENT_KEY.MAP_LOCATE_CALL) {
+        push(persisted.inbox, msg.eventKey, msg)
+        persisted.lastBySystem[msg.eventKey] = msg
+      }
     }
 
     const recordOutbox = (system: MessageSystem, msg: MessageEnvelope<any>) => {
@@ -157,6 +161,13 @@ export const useMessageStore = defineStore(
       subscriptions.set(eventKey, list.filter(s => s.id !== id))
     }
 
+    /**
+     * 处理入站消息，记录到 inbox/lastBySystem
+     * @param raw 原始消息
+     * @param channel 消息通道
+     * @param system 消息系统
+     * @param meta 元数据
+     */
     const deliverIncoming = (raw: any, channel: MessageChannel, system: MessageSystem, meta?: AnyRecord) => {
       if (isEnvelope(raw)) {
         recordInbox(system, { ...raw, channel, system, ...(meta ? { meta: { ...(raw.meta ?? {}), ...meta } } : null) })
@@ -226,12 +237,7 @@ export const useMessageStore = defineStore(
           /**  消息传递状态添加       **/
           if (d === 'pong') return
 
-          const recordId = d && typeof d === 'object' ? d.id : null
-          if (recordId) {
-            void acknowledgeInformRecord(recordId).catch((error) => {//消息状态回执
-              console.warn('[inform-records] 消息状态回执失败', recordId, error)
-            })
-          }
+          console.log('[message-handler] 收到消息', d)
 
           // 临时实现，特殊性拦截 地址机器人数据
           if (d?.notifyType === 'addressbot' && d?.customContent?.event_type === 'AddressLocationUpdated') {
@@ -310,6 +316,18 @@ export const useMessageStore = defineStore(
             return
           }
 
+          const addressUpdated = normalizeAddressUpdatedFrame(d)
+          if (addressUpdated) {
+            ingest(
+              { eventKey: addressUpdated.eventKey, data: addressUpdated.data },
+              MESSAGE_CHANNEL.WS,
+              system,
+              { readyState: client.ws?.readyState },
+            )
+            options.socketOptions?.onMessage?.(addressUpdated.data, e)
+            return
+          }
+
           const payload = d?.payload ?? (d?.eventType ? d : null)
            /**  消息传递状态添加 **/
 
@@ -374,6 +392,17 @@ export const useMessageStore = defineStore(
       persisted.lastBySystem[system] = null
     }
 
+    // 按 eventKey 清除持久化的最后一条消息（如 MAP_LOCATE_CALL），
+    // 配合 onDuty 阶段清除来电定位，避免刷新后按旧快照重绘
+    const clearLastByEventKey = (eventKey: string) => {
+      if (persisted.lastBySystem[eventKey]) {
+        persisted.lastBySystem[eventKey] = null
+      }
+      if (persisted.inbox[eventKey]?.length) {
+        persisted.inbox[eventKey] = []
+      }
+    }
+
     const disconnectSystem = (system: MessageSystem) => {
       wsClients.get(system)?.disconnect()
       wsClients.delete(system)
@@ -388,7 +417,7 @@ export const useMessageStore = defineStore(
     return {
       ...toRefs(persisted),
       ...toRefs(runtime),
-      wsClients,
+
       createEnvelope,
       setIngressGate,
       ingest,
@@ -398,12 +427,13 @@ export const useMessageStore = defineStore(
       subscribe,
       unsubscribe,
       clearSystem,
+      clearLastByEventKey,
       disconnectSystem,
     }
   },
   {
     persist: {
-      storage: piniaSession,
+      storage: sessionStorage,
       pick: ['inbox', 'outbox', 'lastBySystem'],
     },
   },

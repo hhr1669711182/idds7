@@ -18,6 +18,8 @@ import { openContextMenu, type MdContextMenuHandle, type MdContextMenuItem } fro
 import { getLayer } from "../view/layerConfig";
 import { MdTag } from "../ui";
 import { geometryToLngLat } from "../utils/proj";
+import { copyTextToClipboard } from "@/utils/clipboard";
+import { formatLngLat } from "@/utils/coordTransform";
 import type {
   MarkDrawFeature,
   MarkDrawLayer,
@@ -213,14 +215,11 @@ const geomTypeLabel = (f: MarkDrawFeature | null): string => {
   return depth === 1 ? "点" : depth === 2 ? "线" : depth === 3 ? "面" : "复合面";
 };
 
-const copyText = async (text: string, okMsg: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    MdMessage.success(okMsg);
-  } catch {
-    MdMessage.warning("浏览器拒绝了剪贴板访问");
-  }
-};
+const copyText = (text: string, okMsg: string) =>
+  copyTextToClipboard(text, {
+    successText: okMsg,
+    notify: (type, message) => (type === "success" ? MdMessage.success(message) : MdMessage.warning(message)),
+  });
 
 /** 右键菜单文案 */
 const ctxMenuItemLabel = (f: MarkDrawFeature | null): string => {
@@ -327,7 +326,7 @@ const openFeatureMenu = (payload: MarkDrawContextMenuPayload) => {
             : (g as unknown as { getFirstCoordinate?: () => number[] })?.getFirstCoordinate?.();
         if (!c) return;
         const [lon, lat] = geometryToLngLat(c as number[] as never) as number[];
-        await copyText(`${lon.toFixed(6)},${lat.toFixed(6)}`, "已复制中心经纬度");
+        await copyText(formatLngLat([lon, lat]), "已复制中心经纬度");
         return;
       }
       if (key === "remove") {

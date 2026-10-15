@@ -8,7 +8,7 @@ import locImgSrc from "../../../assets/loc.png";
 import polygon3 from "../../../assets/polygon3.png";
 import polygon4 from "../../../assets/polygon4.png";
 import polygon5 from "../../../assets/polygon5.png";
-import { getSVGForSrcById, convertToRGBA, getImagePattern } from "@/utils";
+import { getSVGForSrcById, convertToRGBA, getImagePattern } from "@/utils/index.ts";
 import Slider from '../../../baseComponent/Slider.vue';
 
 const imgsObject = {

@@ -1,4 +1,4 @@
-﻿<!--
+<!--
  * @Author: hhr
  * @Date: 2026-09-11
  * @LastEditors: hhr
@@ -9,7 +9,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { loadGis, loadOsm } from "./data";
 import { displayLabels } from "./types";
-import { EventBus } from "@/utils";
+import { EventBus } from "@/utils/index.ts";
 
 const open = ref(false);
 const minimized = ref(false);

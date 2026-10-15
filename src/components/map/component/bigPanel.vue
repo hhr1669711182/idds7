@@ -98,6 +98,7 @@ const MapComp = computed(() => {
   display: flex;
   align-items: center;
   display: flex;
+  border-radius: inherit;
 }
 
 .card_body {

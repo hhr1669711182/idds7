@@ -101,7 +101,7 @@ import { reactive, ref, computed } from "vue"
 import { appEnv } from "@/config/env"
 import { amapApi } from "@/apis/amap"
 import { AppError } from "@/service/error"
-import { useUserStore } from "@/store/useUserStore"
+import { getSharedAccessToken } from "@/Control/seatSharedState"
 
 interface FormState {
   keywordSearch: { keywords: string; city: string }
@@ -133,7 +133,7 @@ const form = reactive<FormState>({
 
 const baseUrl = computed(() => appEnv.amapApiBaseUrl)
 const tokenMasked = computed(() => {
-  const t = useUserStore().accessToken || ""
+  const t = getSharedAccessToken() || ""
   if (!t) return "(无)"
   return t.length > 16 ? `${t.slice(0, 8)}…${t.slice(-6)}` : "(已设置)"
 })

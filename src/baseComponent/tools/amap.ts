@@ -13,8 +13,8 @@ import XYZ, { type Options as XYZOptions } from "ol/source/XYZ.js";
 import {
   gcj02ToWgs84,
   wgs84ToGcj02,
-  type CoordinateTuple,
-} from "./transform.ts";
+  type LngLat as CoordinateTuple,
+} from "@/utils/coordTransform.ts";
 
 export type AmapMapType =
   | "sat"
@@ -45,6 +45,7 @@ export interface AmapSourceOptions extends Omit<
   crossOrigin?: string | null;
   wrapX?: boolean;
   visible?: boolean;
+  tileLoadFunction?: TileLoadFunction;
 }
 
 export const AMAP_PROJECTION_CODE = "GCJ-02";
@@ -97,19 +98,19 @@ const inverseSphericalMercator = ([x, y]: CoordinateTuple): CoordinateTuple => {
 };
 
 const ll2gmerc = (input: Coordinate): Coordinate =>
-  forwardSphericalMercator(wgs84ToGcj02(input[0], input[1]));
+  forwardSphericalMercator(wgs84ToGcj02([input[0], input[1]]));
 
 const gmerc2ll = (input: Coordinate): Coordinate =>
-  gcj02ToWgs84(...inverseSphericalMercator([input[0], input[1]]));
+  gcj02ToWgs84(inverseSphericalMercator([input[0], input[1]]));
 
 const smerc2gmerc = (input: Coordinate): Coordinate =>
   forwardSphericalMercator(
-    wgs84ToGcj02(...inverseSphericalMercator([input[0], input[1]])),
+    wgs84ToGcj02(inverseSphericalMercator([input[0], input[1]])),
   );
 
 const gmerc2smerc = (input: Coordinate): Coordinate =>
   forwardSphericalMercator(
-    gcj02ToWgs84(...inverseSphericalMercator([input[0], input[1]])),
+    gcj02ToWgs84(inverseSphericalMercator([input[0], input[1]])),
   );
 
 export const registerGcj02Projection = () => {

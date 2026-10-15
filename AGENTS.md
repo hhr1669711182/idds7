@@ -23,12 +23,13 @@
 
 | 任务类型 | 追加读取 |
 |---------|---------|
-| 任何编码任务 | `herness/05-共享上下文/项目结构速查.md` + `herness/05-共享上下文/设计规范速查.md` |
+| 任何编码任务 | `herness/05-共享上下文/项目结构速查.md` + `herness/05-共享上下文/设计规范速查.md` + `herness/05-共享上下文/公共工具速查.md`（写工具/转换逻辑前必查，先复用再自写） |
 | 需求 / 功能设计 | `herness/01-产品设计/_流程规范.md` |
 | 技术方案 / 重构 | `herness/02-技术设计/_流程规范.md` |
 | 测试 / 验收 | `herness/03-测试/_流程规范.md` |
 | 迭代 / 周计划 | `herness/04-迭代管理/_index.md` |
 | 代码审查 / MR | `herness/06-PR审查/_流程规范.md` |
+| 提交代码 / 多人协作 | `herness/05-共享上下文/协作与提交规范.md` |
 | 涉及消息 / WS / postMessage / 控制器 | `herness/05-共享上下文/消息协议速查.md` |
 | 涉及构建 / 依赖 / 接口 | `herness/05-共享上下文/技术栈速查.md` |
 | 涉及业务名词 | `herness/05-共享上下文/核心概念术语.md` |
@@ -47,7 +48,7 @@
 
 2. **消息收发只有一个出口**：必须经 `useMessageStore().publish/subscribe`，禁止裸 `new WebSocket()`、禁止裸 `window.addEventListener('message')` 处理业务。改消息事件键或 DTO 时必须同步 `docs/source/07-协议事件清单.md` 与 `docs/source/协议层DTO Schema.tsd`。
 
-3. **类型门禁基线不干净**：`pnpm lint` 当前约有 **193 个既有报错**（绝大多数是未用变量 `TS6133`），另有 **6 个 `TS2339/TS2551`** 是 `src/controller/map/index.ts`、`src/controller/three/index.ts` 引用了常量中不存在的消息事件键（真实缺陷，详见 `herness/05-共享上下文/当前状态摘要.md`）。
+3. **类型门禁基线不干净**：`pnpm lint` 当前约有 **190 个既有报错**（绝大多数是未用变量 `TS6133`）。缺失的消息事件键已补齐、`controller/map`、`controller/three` 已删除。基线以 `pnpm lint:baseline` 实测为准。
    → **判定标准是「没有引入新增报错」，不是「零报错」。** 改动前后各跑一次并对比。
 
 ---
@@ -85,6 +86,7 @@ pnpm lint           # 类型检查（vue-tsc，无 ESLint）
 
 任务完成后：
 
-1. 在 `herness/00-SOP.md`「工作日志」追加一条记录
-2. 若新增/修改了设计文档，同步更新对应 `_index.md`
-3. 若代码结构、协议、技术栈发生变化，回写 `herness/05-共享上下文/**` 对应速查
+1. 在 `herness/09-工作日志/YYYY-MM/YYYY-MM-DD.md` 追加一条记录（今天没有就新建该文件）
+2. 若本次结论对后续任务仍有价值（已知缺陷、架构约定、踩过的坑），同步写入 `herness/05-共享上下文/当前状态摘要.md`（问题修复后删掉对应条目）
+3. 若新增/修改了设计文档，同步更新对应 `_index.md`
+4. 若代码结构、协议、技术栈发生变化，回写 `herness/05-共享上下文/**` 对应速查

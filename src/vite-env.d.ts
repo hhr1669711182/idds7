@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_MESSAGE_CLIENT?: string
   readonly VITE_MESSAGE_SEAT_KEY?: string
   readonly VITE_WS_URL?: string
+  readonly VITE_MAP_CENTER?: string
 }
 
 interface ImportMeta {

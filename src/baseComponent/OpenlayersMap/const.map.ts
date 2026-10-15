@@ -1,4 +1,4 @@
-﻿/*
+/*
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
  * @LastEditTime: 2026-09-20 10:52:53
@@ -6,6 +6,8 @@
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\baseComponent\OpenlayersMap\const.map.ts
  */
+import { appEnv } from "@/config/env";
+
 /** 视图范围 */
 export const EXTENT = [
   10062641.88063987, 1498445.467101972, 15385105.034193262, 5661511.775625812,
@@ -13,13 +15,8 @@ export const EXTENT = [
 
 export const ZOOM = { MAX: 20, MIN: 0, INIT: 15 };
 
-// 中心点
-// export const CENTER = [114.3005, 30.5928];
-// export const CENTER = [116.4074, 39.9042];
-// export const CENTER = [113.5437, 22.2657];
-export const CENTER = [113.9354071, 22.54831]; // 深圳
-// 北京的位置坐标
-// export const CENTER = [116.4074, 39.9042];
+// 中心点（WGS84 [经度, 纬度]），由 .env 的 VITE_MAP_CENTER 配置，未配置时兜底深圳
+export const CENTER = appEnv.mapCenter;
 
 
 
