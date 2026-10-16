@@ -28,10 +28,7 @@ const resolveRouteComponent = (component?: string): RouteRecordRaw['component'] 
   if (componentAliasMap[component]) return componentAliasMap[component]
 
   const normalized = normalizeComponentPath(component)
-  const candidates = [
-    `../views/${normalized}.vue`,
-    `../views/${normalized}/index.vue`,
-  ]
+  const candidates = [`../views/${normalized}.vue`, `../views/${normalized}/index.vue`]
 
   const matchedPath = candidates.find((path) => viewModules[path])
   return matchedPath ? viewModules[matchedPath] : undefined
@@ -47,9 +44,7 @@ const toRouteRecord = (record: BackendRouteRecord): RouteRecordRaw | null => {
     return null
   }
 
-  const children = record.children
-    ?.map(toRouteRecord)
-    .filter((route): route is RouteRecordRaw => !!route)
+  const children = record.children?.map(toRouteRecord).filter((route): route is RouteRecordRaw => !!route)
 
   const baseRoute = {
     path: normalizeDynamicPath(record.path),
@@ -73,9 +68,7 @@ const toRouteRecord = (record: BackendRouteRecord): RouteRecordRaw | null => {
 }
 
 export const transformBackendRoutes = (records: BackendRouteRecord[]) =>
-  records
-    .map(toRouteRecord)
-    .filter((route): route is RouteRecordRaw => !!route)
+  records.map(toRouteRecord).filter((route): route is RouteRecordRaw => !!route)
 
 export const unregisterDynamicRoutes = () => {
   while (dynamicRouteRemovers.length) {
@@ -102,10 +95,7 @@ export const registerDynamicRoutes = (
   return routes
 }
 
-export const loadAndRegisterDynamicRoutes = async (
-  router: Router,
-  parentName: string = ROUTE_NAMES.ROOT,
-) => {
+export const loadAndRegisterDynamicRoutes = async (router: Router, parentName: string = ROUTE_NAMES.ROOT) => {
   const backendRoutes = await fetchBackendRoutes()
   return registerDynamicRoutes(router, backendRoutes, parentName)
 }

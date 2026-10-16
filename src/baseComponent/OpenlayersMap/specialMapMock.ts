@@ -8,23 +8,11 @@
 import type OlMap from 'ol/Map'
 import { transform } from 'ol/proj'
 import { Fill, Stroke, Style } from 'ol/style'
-import {
-  type LngLat,
-  type AmapRealtimeNav,
-} from '@/baseComponent/amap/useAmapTools'
+import { type LngLat, type AmapRealtimeNav } from '@/baseComponent/amap/useAmapTools'
 import { getStyle, MAP_ICON_SRC } from '@/baseComponent/amap/featureStyle'
-import {
-  mountPointLayer,
-  type PointLayerManager,
-} from '@/baseComponent/OpenlayersMap/mountPointLayer'
-import {
-  mountPolygonLayer,
-  type PolygonLayerManager,
-} from '@/baseComponent/OpenlayersMap/mountPolygonLayer'
-import {
-  getSelectedRoute,
-  type StationRouteAlternatives,
-} from '@/baseComponent/amap/routeAlternatives'
+import { mountPointLayer, type PointLayerManager } from '@/baseComponent/OpenlayersMap/mountPointLayer'
+import { mountPolygonLayer, type PolygonLayerManager } from '@/baseComponent/OpenlayersMap/mountPolygonLayer'
+import { getSelectedRoute, type StationRouteAlternatives } from '@/baseComponent/amap/routeAlternatives'
 
 /** 北京市中心经纬度 */
 const BEIJING_CENTER: LngLat = [116.4074, 39.9042]
@@ -36,18 +24,20 @@ const BEIJING_CENTER: LngLat = [116.4074, 39.9042]
 const SPECIAL_MAP_MOCK_DATA = {
   jurisdiction: {
     type: 'Polygon',
-    coordinates: [[
-     [116.27008, 39.84081],
-    [116.39508, 39.84081],
-    [116.41071, 39.91906],
-    [116.34821, 39.95031],
-    [116.27008, 39.93469],
-    [116.25446, 39.87219],
-    [116.27008, 39.84081],
-    ]],
+    coordinates: [
+      [
+        [116.27008, 39.84081],
+        [116.39508, 39.84081],
+        [116.41071, 39.91906],
+        [116.34821, 39.95031],
+        [116.27008, 39.93469],
+        [116.25446, 39.87219],
+        [116.27008, 39.84081],
+      ],
+    ],
   } as GeoJSON.Polygon,
-  starts:  [
-     {
+  starts: [
+    {
       id: 'start-1',
       name: '起点1',
       lng: 116.30758,
@@ -72,7 +62,7 @@ const SPECIAL_MAP_MOCK_DATA = {
       vehicleTypeName: '排涝车',
     },
   ] as Array<{ id: string; name: string; lng: number; lat: number; plateNo: string; vehicleTypeName: string }>,
-  end: { id: 'end-1', name: '终点', lng: 116.33258, lat: 39.89606, },
+  end: { id: 'end-1', name: '终点', lng: 116.33258, lat: 39.89606 },
 }
 
 export interface SpecialMapMock {
@@ -82,6 +72,10 @@ export interface SpecialMapMock {
   simulate: () => Promise<void>
   /** 清空特殊地图自身图层与 nav 路线/车辆 */
   clear: () => void
+  destroy: () => void
+  dispose: () => void
+  getGeneration: () => number
+  isCurrent: (generation: number) => boolean
 }
 
 /**
@@ -91,14 +85,25 @@ export interface SpecialMapMock {
  */
 export const createSpecialMapMock = (map: OlMap, nav: AmapRealtimeNav): SpecialMapMock => {
   let jurisdictionLayer: PolygonLayerManager<{ key: string }> | null = null
-  let startLayer: PointLayerManager<{ id: string; name: string; lng: number; lat: number; plateNo: string; vehicleTypeName: string }> | null = null
+  let startLayer: PointLayerManager<{
+    id: string
+    name: string
+    lng: number
+    lat: number
+    plateNo: string
+    vehicleTypeName: string
+  }> | null = null
   let endLayer: PointLayerManager<{ id: string; name: string; lng: number; lat: number }> | null = null
   let routeStations: StationRouteAlternatives[] = []
   /** 进行中的渲染任务：diaopaimoshi/diaopaitezai 同批到达时 simulate 等它完成 */
   let renderPromise: Promise<StationRouteAlternatives[]> | null = null
 
-  const doRender = async (): Promise<StationRouteAlternatives[]> => {
-    clear()
+  let generation = 0
+  let destroyed = false
+  const isCurrent = (taskGeneration: number) => !destroyed && taskGeneration === generation
+
+  const doRender = async (taskGeneration: number): Promise<StationRouteAlternatives[]> => {
+    if (!isCurrent(taskGeneration)) return []
 
     // 1. 辖区多边形
     jurisdictionLayer = mountPolygonLayer<{ key: string }>({
@@ -109,10 +114,11 @@ export const createSpecialMapMock = (map: OlMap, nav: AmapRealtimeNav): SpecialM
       zIndex: 40,
       keyGetter: (item) => item.key,
       geometryGetter: () => SPECIAL_MAP_MOCK_DATA.jurisdiction,
-      styleGetter: () => new Style({
-        fill: new Fill({ color: 'rgba(37, 99, 235, 0.12)' }),
-        stroke: new Stroke({ color: '#2563eb', width: 2 }),
-      }),
+      styleGetter: () =>
+        new Style({
+          fill: new Fill({ color: 'rgba(37, 99, 235, 0.12)' }),
+          stroke: new Stroke({ color: '#2563eb', width: 2 }),
+        }),
     })
 
     // 2. 起点（poi.png）
@@ -163,15 +169,19 @@ export const createSpecialMapMock = (map: OlMap, nav: AmapRealtimeNav): SpecialM
           selectedId: '',
         }
         try {
-          station.alternatives = await nav.fetchRouteAlternatives([start.lng, start.lat], destination)
+          const alternatives = await nav.fetchRouteAlternatives([start.lng, start.lat], destination)
+          if (!isCurrent(taskGeneration)) return station
+          station.alternatives = alternatives
           station.selectedId = station.alternatives[0]?.id ?? ''
         } catch (error) {
+          if (!isCurrent(taskGeneration)) return station
           station.error = '暂未获取到可用路线'
           console.warn(`[special-map] 起点${start.name}路径规划失败`, error)
         }
         return station
       }),
     )
+    if (!isCurrent(taskGeneration)) return []
     routeStations = stations
 
     // 6. 渲染所有候选路线（复用 nav.renderRouteAlternatives，含 TMC/方向箭头/半透明候选）
@@ -182,8 +192,10 @@ export const createSpecialMapMock = (map: OlMap, nav: AmapRealtimeNav): SpecialM
 
   /** 对外渲染入口：渲染中重复调用复用同一 promise，避免并发重绘 */
   const render = (): Promise<StationRouteAlternatives[]> => {
+    if (destroyed) return Promise.resolve([])
     if (renderPromise) return renderPromise
-    const task = doRender().finally(() => {
+    clear()
+    const task = doRender(generation).finally(() => {
       if (renderPromise === task) renderPromise = null
     })
     renderPromise = task
@@ -192,41 +204,47 @@ export const createSpecialMapMock = (map: OlMap, nav: AmapRealtimeNav): SpecialM
 
   const simulate = async (): Promise<void> => {
     // 渲染中先等渲染完成；从未渲染过（只发 diaopaitezai）则先渲染再模拟
-    if (renderPromise) await renderPromise
-    if (!routeStations.length) {
-      await render()
-    }
+    if (destroyed) return
+    const task = renderPromise ?? (!routeStations.length ? render() : null)
+    const taskGeneration = generation
+    if (task) await task
+    if (!isCurrent(taskGeneration)) return
     // 只取有选中路线的起点，避免部分规划失败时车辆组数量与路线数量不匹配
     const validStations = routeStations.filter((station) =>
       station.alternatives.some((route) => route.id === station.selectedId),
     )
-    const selected = validStations
-      .map(getSelectedRoute)
-      .filter((route): route is NonNullable<typeof route> => !!route)
+    const selected = validStations.map(getSelectedRoute).filter((route): route is NonNullable<typeof route> => !!route)
     if (!selected.length) {
       console.warn('[special-map] 尚无选中路线，无法模拟')
       return
     }
     // 收起面板备选，只渲染选中路线（与 dispatchMap 模拟调派流程一致）
-    const results = selected.map(route => route.result)
-    const metrics = selected.map(route => route.metrics)
-    const etaSeconds = selected.map(route => route.etaSeconds)
+    const results = selected.map((route) => route.result)
+    const metrics = selected.map((route) => route.metrics)
+    const etaSeconds = selected.map((route) => route.etaSeconds)
     nav.renderRoutesOnly(results, false)
+    if (!isCurrent(taskGeneration)) return
     nav.startRouteVehicleAnimation(results, metrics, etaSeconds, false)
+    if (!isCurrent(taskGeneration)) return
     // 车辆组与选中路线严格一一对应：只为规划成功的起点创建车辆
     nav.setRouteVehicleGroups(
       validStations.map((station) => {
         const start = SPECIAL_MAP_MOCK_DATA.starts.find((s) => s.id === station.stationId)
-        return [{
-          vehicleId: `vehicle-${station.stationId}`,
-          plateNo: start?.plateNo,
-          vehicleTypeName: start?.vehicleTypeName,
-        }]
+        return [
+          {
+            vehicleId: `vehicle-${station.stationId}`,
+            plateNo: start?.plateNo,
+            vehicleTypeName: start?.vehicleTypeName,
+          },
+        ]
       }),
     )
   }
 
   const clear = (): void => {
+    generation += 1
+    renderPromise = null
+    routeStations = []
     jurisdictionLayer?.destroy()
     jurisdictionLayer = null
     startLayer?.destroy()
@@ -235,8 +253,13 @@ export const createSpecialMapMock = (map: OlMap, nav: AmapRealtimeNav): SpecialM
     endLayer = null
     // 清空 nav 的路线/车辆层
     nav.clearRoutes()
-    routeStations = []
   }
 
-  return { render, simulate, clear }
+  const destroy = () => {
+    if (destroyed) return
+    destroyed = true
+    clear()
+  }
+
+  return { render, simulate, clear, destroy, dispose: destroy, getGeneration: () => generation, isCurrent }
 }

@@ -45,7 +45,7 @@ watch(() => props.coordinates, (newCoords) => {
   if (map && markerLayer) {
     const coords = olProj.fromLonLat(newCoords)
     map.getView().setCenter(coords)
-    
+
     const source = markerLayer.getSource()
     source?.clear()
     const marker = new Feature({
@@ -68,7 +68,7 @@ onMounted(() => {
   const markerFeature = new Feature({
     geometry: new Point(center)
   })
-  
+
   markerLayer = new VectorLayer({
     source: new VectorSource({
       features: [markerFeature]

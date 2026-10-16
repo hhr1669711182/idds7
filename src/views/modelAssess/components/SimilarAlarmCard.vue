@@ -59,7 +59,7 @@ const getSimilarityColor = (sim: number) => {
         <div class="map-container">
           <!-- 为了避免冲突，可以给每个卡片的地图加上唯一 mapId -->
           <MiniMap :mapId="`similar-map-${card.id}`" />
-          
+
           <!-- 模拟比例尺 -->
           <div class="scale-bar">50m</div>
         </div>

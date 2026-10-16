@@ -620,11 +620,7 @@ onBeforeUnmount(() => {
           </div>
           <div v-if="routeSummary.segments.length" class="rp-congestion">
             <span class="rp-congestion-label">路况</span>
-            <span
-              v-for="(seg, idx) in routeSummary.segments"
-              :key="idx"
-              class="rp-congestion-item"
-            >
+            <span v-for="(seg, idx) in routeSummary.segments" :key="idx" class="rp-congestion-item">
               <i class="rp-congestion-dot" :style="{ background: congestionLegendColor(seg.status) }" />
               {{ congestionLabel(seg.status) }}
             </span>
@@ -633,7 +629,6 @@ onBeforeUnmount(() => {
         <div v-else-if="!canPlan" class="rp-status">
           <span class="rp-status-text">请选择起点与终点后点击分析</span>
         </div>
-
       </div>
     </template>
   </div>
@@ -745,7 +740,7 @@ onBeforeUnmount(() => {
     color: #d81e06;
     opacity: 0.65;
   }
-} 
+}
 
 .rp-truck-grid {
   display: grid;

@@ -46,9 +46,7 @@ export interface InterceptorResult {
 }
 
 /** 拦截器函数类型 */
-export type MessageInterceptor = (
-  context: InterceptorContext,
-) => InterceptorResult | Promise<InterceptorResult>
+export type MessageInterceptor = (context: InterceptorContext) => InterceptorResult | Promise<InterceptorResult>
 
 /** 拦截器配置 */
 export interface InterceptorConfig {

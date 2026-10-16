@@ -42,23 +42,12 @@ const hideModal = () => {
 const loading = ref(false);
 </script>
 <template>
-  <el-dialog
-    :model-value="true"
-    title="设置"
-    width="30%"
-    :close-on-press-escape="false"
-    @close="hideModal()"
-  >
+  <el-dialog :model-value="true" title="设置" width="30%" :close-on-press-escape="false" @close="hideModal()">
     <div v-loading="loading">
       <div class="content">
         <div class="item">
           <span>比例尺</span>
-          <el-select
-            v-model="scaleValue"
-            placeholder="请选择比例尺单位"
-            style="width: 80%"
-            @change="selectScaleUnit"
-          >
+          <el-select v-model="scaleValue" placeholder="请选择比例尺单位" style="width: 80%" @change="selectScaleUnit">
             <template v-for="item in SCALEPLATE_LIST">
               <el-option :label="item.t" :value="item.t">
                 <span style="float: left">{{ item.t }}</span>

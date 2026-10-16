@@ -94,6 +94,8 @@ if (warnings.length === 0) {
 
 console.warn('[herness-size] 文档体量告警：')
 for (const w of warnings) console.warn(`  ! ${w}`)
-console.log('[herness-size] 规则：流水账进 09-工作日志，规矩进 05-共享上下文规范，当前状态进当前状态摘要，落地完的方案进 02-技术设计/_archive')
+console.log(
+  '[herness-size] 规则：流水账进 09-工作日志，规矩进 05-共享上下文规范，当前状态进当前状态摘要，落地完的方案进 02-技术设计/_archive',
+)
 
 process.exit(strict ? 1 : 0)

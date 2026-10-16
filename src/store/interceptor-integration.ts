@@ -1,6 +1,6 @@
 /**
  * 消息拦截器集成 - 展示如何在 useMessageStore 中集成拦截器
- * 
+ *
  * 核心思路：
  * 1. 使用 ingressGate 作为拦截器入口点
  * 2. 将各种 normalize*Frames 函数注册为拦截器

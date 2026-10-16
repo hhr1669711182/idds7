@@ -23,10 +23,7 @@ export interface MasterThreeController {
   /** 重播车辆路线动画（绿色路径 + 消防车沿 lat/lng 路线行进） */
   replayRouteAnimation: () => void
   /** 播放 / 重新加载路线动画（传入新数据） */
-  playRouteAnimation: (
-    planData?: Record<string, unknown>,
-    options?: { durationMs?: number },
-  ) => void
+  playRouteAnimation: (planData?: Record<string, unknown>, options?: { durationMs?: number }) => void
   /** 恢复全景视角（相机框选到路线范围） */
   fitCameraToRoute: () => void
   /** 启动 chase camera：跟随第一辆车 */
@@ -72,10 +69,7 @@ export function useThreeController() {
     replayRouteAnimation: () => {
       state.controller?.replayRouteAnimation()
     },
-    playRouteAnimation: (
-      planData?: Record<string, unknown>,
-      options?: { durationMs?: number },
-    ) => {
+    playRouteAnimation: (planData?: Record<string, unknown>, options?: { durationMs?: number }) => {
       state.controller?.playRouteAnimation(planData, options)
     },
     fitCameraToRoute: () => {

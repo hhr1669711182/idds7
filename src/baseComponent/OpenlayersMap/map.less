@@ -4,7 +4,8 @@
   border: 0;
 }
 
-#map, #dispatch-map {
+#map,
+#dispatch-map {
   height: 100%;
   width: 100%;
   touch-action: none; /* 优化触摸体验 */
@@ -45,7 +46,7 @@
   backdrop-filter: blur(8px);
 }
 
-html[data-theme="NIGHT"] {
+html[data-theme='NIGHT'] {
   .nav_panel,
   .nav_panel_new {
     background: var(--panel-bg);
@@ -174,7 +175,6 @@ html[data-theme="NIGHT"] {
     border-color: rgba(255, 255, 255, 0.6);
   }
 }
-
 
 .fire_popup {
   position: absolute;
@@ -437,14 +437,14 @@ html[data-theme="NIGHT"] {
   bottom: 0;
   left: calc(36px + 10px);
   button {
-   display: inline-block;
+    display: inline-block;
   }
 }
 
 .ol-overviewmap:not(.ol-collapsed) button {
-    bottom: 0;
-    left: 0;
-    position: absolute;
+  bottom: 0;
+  left: 0;
+  position: absolute;
 }
 
 :global(.is-mobile .ol-overviewmap) {

@@ -31,11 +31,7 @@ const changeHandle = (visible) => {
 
 <template>
   <div>
-    <el-checkbox
-      label="地图水印"
-      v-model="showWaterMarker"
-      @change="changeHandle"
-    />
+    <el-checkbox label="地图水印" v-model="showWaterMarker" @change="changeHandle" />
   </div>
 </template>
 

@@ -12,7 +12,7 @@ import MainLayout from '@/layout/MainLayout.vue'
 import { setupRouterGuard } from './guard'
 import { unregisterDynamicRoutes } from './dynamic'
 import { ROUTE_NAMES } from './constants'
-import { parseSharedMapStage, SEAT_SHARED_STATE_KEY } from '@/Control/seatSharedState'
+import { getSharedStateRedirect } from './sharedStateGuard'
 
 export const staticRoutes: RouteRecordRaw[] = [
   {
@@ -85,7 +85,7 @@ export const staticRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/dispatch1/index.vue'),
     meta: {
       title: '调派页面1',
-    },//添加T1调派路由
+    }, //添加T1调派路由
   },
   {
     path: '/viewerInquiryBuilding',
@@ -127,13 +127,12 @@ export const staticRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/markDraw/index.vue'),
     meta: {
       title: '绘制地图',
-       },
+    },
   },
   {
     path: '/:pathMatch(.*)*',
     redirect: '/map',
   },
-
 ]
 
 const staticRouteNames = new Set(
@@ -152,24 +151,7 @@ const router = createRouter({
 // dispatch，说明正处于调派流程，刷新后应留在调派页继续。
 router.beforeEach((to, from) => {
   if (from !== START_LOCATION) return
-  const raw = localStorage.getItem(SEAT_SHARED_STATE_KEY)
-  // 特灾模式（mode=flood）：F5 刷新时强制切到 /dispatch1 继续特殊地图
-  try {
-    const state = JSON.parse(raw ?? 'null')
-    if (state?.mode === 'flood') {
-      if (to.name !== ROUTE_NAMES.DISPATCH1) {
-        return { name: ROUTE_NAMES.DISPATCH1, replace: true }
-      }
-      return // 已在 /dispatch1，放行
-    }
-  } catch { /* 解析失败走正常流程 */ }
-  // 非 flood 模式：原有逻辑
-  if (to.name === ROUTE_NAMES.DISPATCH1) {
-    const stage = parseSharedMapStage(raw)
-    if (stage !== 'dispatch') {
-      return { name: ROUTE_NAMES.MAP, replace: true }
-    }
-  }
+  return getSharedStateRedirect(to.name)
 })
 
 setupRouterGuard(router)

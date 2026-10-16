@@ -46,11 +46,9 @@ import { useBaseSourceStore, useMapConfigStore, useTabsStore } from "@/store"; /
 // import { THEME_COLOR } from "../../const/const.common.ts";
 import { createBaseSourceSource } from "./baseSource.ts";
 // import { storeToRefs } from "pinia";
-import {
-  IOController,
-  GenericController,
-  BusinessController,
-} from "@/controller/core";
+import { GenericController } from "@/controller/core/generic";
+import { getBusinessMessageRuntime } from '@/controller/core/io/BusinessMessageRuntime';
+import { createBusinessMapPort } from './businessMapPort';
 import TileWMS from "ol/source/TileWMS";
 import { getWMSLayerOptions } from "@/apis/layers";
 import { STATION_LAYER_NAME } from "@/controller/core/business/IncidentStationQuery";
@@ -99,7 +97,7 @@ let fireManager: any = null;
 let alarmOverlayManager: any = null;
 let jrAlarmManager: any = null;
 let featureClickQuery: FeatureClickQuery | null = null;
-let ioCtrl: IOController | null = null;
+let detachBusinessMap: (() => void) | null = null;
 let genericCtrl: GenericController | null = null;
 let trafficTool: TrafficTools | null = null;
 
@@ -211,17 +209,17 @@ const visibleLayer = (id: string, bol: boolean) => {
 }
 
 const syncLayers = (ids: string[], visible?: boolean) => {
-  
+
   const targetIds = new Set(ids);
 
   Array.from(wmsLayerMap.keys()).forEach((id) => {
     if (!targetIds.has(id)) removeLayer(id);
   });
-  
+
   Object.values(TEMP_FRONTEND_LAYER_IDS).forEach((id) =>
     targetIds.has(id) && setTempFrontendLayerVisible(id, targetIds.has(id)),
   );
-  
+
   ids.forEach((id) => {
     if (!isTempFrontendLayerId(id)) addLayer(id, visible);
   });
@@ -269,7 +267,7 @@ const initMap = async () => {
   overviewLayer = AMAP_LAYER();
   syncBaseSourceLayer();
 
-  map = 
+  map =
     new OLMap({
       layers: [baseLayer, GOOGLE_LAYER, VECTOR_LAYER()],
       target: props.mapId,
@@ -281,7 +279,7 @@ const initMap = async () => {
       }),
     });
   applyFeatureZoomLimits();
-    
+
   const startup = waitForBaseMap(map);
   cancelStartup = startup.cancel;
   await startup.ready;
@@ -298,8 +296,6 @@ const initMap = async () => {
   // })
 
   genericCtrl = new GenericController(map);
-  const businessCtrl = new BusinessController(genericCtrl);
-  ioCtrl = new IOController(genericCtrl, businessCtrl);
 
   updateMapZoomLevel();
   zoomLevelChangeKey = map
@@ -350,7 +346,7 @@ const initMap = async () => {
     map,
     visible: layersStore.checkedIds.includes(TEMP_FRONTEND_LAYER_IDS.SSRK),
   });
-  
+
   carManager = mountCarFeatures({
     map,
     popupElement: getCarPopupElement(),
@@ -423,13 +419,16 @@ const initMap = async () => {
   trafficTool = new TrafficTools(map);
   trafficTool.setVisible(baseSourceStore.trafficVisible);
 
-  ioCtrl.input.initSubscriptions();
+  const attachment = createBusinessMapPort(genericCtrl);
+  detachBusinessMap = getBusinessMessageRuntime().attachMap(attachment.port, { kind: 'map', dispose: attachment.dispose });
 
   emit("setMap", map);
 };
 
 const cleanup = () => {
   disposed = true;
+  detachBusinessMap?.();
+  detachBusinessMap = null;
   cancelStartup?.();
   if (zoomLevelChangeKey) {
     unByKey(zoomLevelChangeKey);
@@ -454,10 +453,6 @@ const cleanup = () => {
   if (trafficTool) {
     trafficTool.remove();
     trafficTool = null;
-  }
-  if (ioCtrl) {
-    ioCtrl.input.destroy();
-    ioCtrl = null;
   }
   if (map) {
     wmsLayerMap.forEach((layer) => {
@@ -485,27 +480,16 @@ onUnmounted(() => {
 
 <template>
   <div :id="props.mapId" :class="{ 'is-mobile': isMobile }" tabindex="2">
-
     <slot></slot>
 
     <ZoomLevelControl :zoom="mapZoomLevel" />
 
-    <div
-      ref="popups.firePopupRef"
-      class="fire_popup"
-      v-show="popups.firePopupVisible.value"
-    >
+    <div ref="popups.firePopupRef" class="fire_popup" v-show="popups.firePopupVisible.value">
       <div class="fire_popup_header">
         <div class="fire_popup_title">
           {{ popups.fireSelected.value?.title }}
         </div>
-        <button
-          class="fire_popup_close"
-          type="button"
-          @click="popups.closeFirePopup"
-        >
-          ×
-        </button>
+        <button class="fire_popup_close" type="button" @click="popups.closeFirePopup">×</button>
       </div>
       <div class="fire_popup_body">
         <div v-if="popups.fireSelected.value?.address" class="fire_popup_row">
@@ -522,10 +506,7 @@ onUnmounted(() => {
         </div>
         <div class="fire_popup_row">
           <span class="fire_popup_k">坐标</span
-          ><span class="fire_popup_v"
-            >{{ popups.fireSelected.value?.lng }},
-            {{ popups.fireSelected.value?.lat }}</span
-          >
+          ><span class="fire_popup_v">{{ popups.fireSelected.value?.lng }}, {{ popups.fireSelected.value?.lat }}</span>
         </div>
       </div>
     </div>
@@ -557,10 +538,7 @@ onUnmounted(() => {
     </div>
 
     <!-- 警情详情固定弹窗（居中 Modal，小弹窗点"警情详情"打开） -->
-    <IncidentDetailDialog
-      v-model="popups.incidentDetailVisible.value"
-      :data="popups.incidentDetailData.value"
-    />
+    <IncidentDetailDialog v-model="popups.incidentDetailVisible.value" :data="popups.incidentDetailData.value" />
 
     <div
       :ref="(el) => { carPopupRef = el as HTMLElement | null }"
@@ -572,13 +550,7 @@ onUnmounted(() => {
           {{ popups.carSelected.value?.plateNo }} -
           {{ popups.carSelected.value?.team }}
         </div>
-        <button
-          class="car_popup_close"
-          type="button"
-          @click="popups.closeCarPopup"
-        >
-          ×
-        </button>
+        <button class="car_popup_close" type="button" @click="popups.closeCarPopup">×</button>
       </div>
       <div class="car_popup_body">
         <div class="car_popup_row">

@@ -9,7 +9,7 @@ export interface LayerConfig {
   icon?: string
   remark?: string
   useWebMock?: boolean
-  srs?: string  // 'EPSG:4326' | 'EPSG:3857'
+  srs?: string // 'EPSG:4326' | 'EPSG:3857'
   noEsSearch?: boolean
   minZoom?: number
 }
@@ -245,7 +245,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
   //   icon: 'mdi:car-outline',
   //   minZoom: 14.5,
   // },
-   {
+  {
     ...dispatchGroup,
     ...categories.combat,
     id: 'gis:env_car',
@@ -294,15 +294,13 @@ export const toLayerConfig = ({
 
 export const LAYER_CONFIGS: LayerConfig[] = LAYER_SOURCE_CONFIGS.map(toLayerConfig)
 
-export const DEFAULT_TOOLBAR_LAYER_CONFIGS: LayerConfig[] = LAYER_SOURCE_CONFIGS
-  .filter((config) => config.enabled)
-  .map(toLayerConfig)
+export const DEFAULT_TOOLBAR_LAYER_CONFIGS: LayerConfig[] = LAYER_SOURCE_CONFIGS.filter((config) => config.enabled).map(
+  toLayerConfig,
+)
 
-export const getLayerConfig = (id: string): LayerConfig | undefined =>
-  LAYER_CONFIGS.find((config) => config.id === id)
+export const getLayerConfig = (id: string): LayerConfig | undefined => LAYER_CONFIGS.find((config) => config.id === id)
 
-export const DEFAULT_CHECKED_IDS = LAYER_SOURCE_CONFIGS
-  .filter((config) => config.enabled)
+export const DEFAULT_CHECKED_IDS = LAYER_SOURCE_CONFIGS.filter((config) => config.enabled)
   .filter((config) => config.visible || config.defaultVisible)
   .map((config) => config.id)
 

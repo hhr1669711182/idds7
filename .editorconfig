@@ -1,0 +1,35 @@
+# 备用规范 · 当前**全部注释掉，不生效**（2026-10-16 完善版 · 规则已补全）
+#
+# 为什么整份注释：`.editorconfig` 会被 VS Code / IDEA 自动读取，一旦启用，
+# 缩进/行尾/末行换行规则会立刻对所有新建文件生效——这与「先备用、后启用」的约定冲突。
+# 所以此处只保留规则文本供审阅，启用时去掉行首 `#` 即可。
+#
+# 启用时机：见 herness/05-共享上下文/设计规范速查.md「四·之一 存量兼容与新增代码规范」
+# 配套：.prettierrc.json（代码格式）、eslint.config.js（代码检查）、.gitattributes（行尾固定）
+# 三者当前均不执行
+
+# root = true
+
+# [*]
+# charset = utf-8
+# end_of_line = lf
+# indent_style = space
+# indent_size = 2
+# insert_final_newline = true
+# trim_trailing_whitespace = true
+
+# [*.{js,ts,vue,jsx,tsx,mjs,cjs}]
+# indent_size = 2
+# max_line_length = 120
+
+# [*.{json,yml,yaml}]
+# indent_size = 2
+
+# [*.md]
+# indent_size = 2
+# trim_trailing_whitespace = false
+
+# [*.{bat,cmd,ps1}]
+# end_of_line = crlf
+
+

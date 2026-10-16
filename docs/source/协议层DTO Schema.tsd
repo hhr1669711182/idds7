@@ -2,21 +2,156 @@
  * 协议层 DTO Schema (TypeScript Schema Format)
  * =====================================================================
  * 文件: 协议层DTO Schema.tsd
- * 版本: v1.0
- * 日期: 2026-07-24
- * 范围: GIS 前端五层架构 — 协议层 (Service ↔ Ctrl) 标准契约
+ * Transport 版本: MESSAGE_PROTOCOL_VERSION = '1.0.0'
+ * 源码同步日期: 2026-10-15（历史概念模型初稿 2026-07-24）
+ * 范围: 当前源码契约索引 + 历史业务概念模型；本 .tsd 不参与编译或运行时校验
  *
- * 设计原则:
+ * 历史业务概念模型的设计目标（不是当前 transport 已实现的统一校验）:
  * 1. 所有 DTO 强约束 WGS84 坐标系 (经度, 纬度) 顺序，渲染层前由底座插件转换
  * 2. 所有 ID 必填，加业务前缀 (alarm_/call_/route_/plan_/vehicle_/trail_)
  * 3. 协议层只承载"业务控制层输出 ↔ 通用控制层输入"的契约
  * 4. 状态机迁移严格遵循 08-业务状态机定义.md 的有向边
- * 5. 协议版本号 v1.0；任何字段变更必须升级 minor 版本
+ * 5. 历史概念版本号 v1.0；当前 transport 使用 v 字段，见下方“当前契约”
  *
  * 文件命名规范: *.tsd (TypeScript Schema Definition)
- * 校验工具: zod 3.x / valibot 0.30+
+ * 本文不证明存在 zod/valibot 或 CI 100% schema 一致性检查；以 package.json / 源码为准
  * =====================================================================
  */
+
+// =====================================================================
+// A. 当前契约（源码为准；不新增事件，不代表最终核验或人工验收完成）
+// =====================================================================
+
+/**
+ * 实际信封：src/types/message.ts。
+ * 字段：id: string、timestamp: number、channel、system、eventKey、data: T；
+ * 可选：targetSystem、meta: MessageMetadata、v: '1.0.0'、isRemoveSameElement。
+ * 没有统一 eventId/occurredAt/payload/version/scene/source/coordSys/tenantId 字段。
+ * meta.eventId/meta.source 是源消息追踪信息，不替代信封 id/system。
+ * store 创建信封时写入 v；标准 Envelope 快路要求 v === '1.0.0'。
+ * 此处以 unknown 实例化未指定的示例载荷；完整泛型定义直接引用源文件。
+ */
+export type MessageEnvelope<T = unknown> = import('../../src/types/message').MessageEnvelope<T>;
+export type { MessageMetadata } from '../../src/types/message';
+export type {
+  MessageChannel, MessageSystem, MessageEventKey,
+} from '../../src/const/const.message.type';
+
+/**
+ * MESSAGE_CHANNEL 实际值：ws | postMessage | broadcastChannel | localStorage | http。
+ * MESSAGE_SYSTEM 实际值：host | map | three | dispatch | ids-seat-web。
+ * 事件键唯一声明：src/const/const.message.type.ts；不从下文历史概念名推导新事件。
+ * LOCAL_STORAGE：F10 bridge 构造业务信封后 ingest，不是总线自动扫描所有 storage。
+ * HTTP：F13 画像补水入站后 ingest；useMessageStore.publish 对 HTTP 返回 false。
+ * 标准 Envelope → interceptorRegistry → Legacy eventKey/type 是公共 ingest 的顺序；
+ * WS 回调共用 receive 但关闭最后 Legacy 回退，不扩大其原始 eventKey/type 支持范围。
+ */
+
+/**
+ * tracking.vehicle.gps.update 的实际 data：
+ * interface CarLocationPoint {
+ *   carId: string;
+ *   orgId?: string;
+ *   orgName?: string;
+ *   latitude: number;
+ *   longitude: number;
+ *   plateNumber: string;
+ *   gpsTime?: string;
+ * }
+ * interface CarLocationBatch { datas: CarLocationPoint[]; }
+ * TrackingVehicleGpsUpdateData 同样仅含 datas，无必填 incidentId/layerId。
+ * 不使用历史 VehicleGPS.position 或单点 TrackingGpsUpdateData 包装实际 GPS。
+ */
+export type {
+  CarLocationPoint, CarLocationBatch, AlarmIncidentStateData,
+  AlarmCallAnswerStatusData, PositionPayload,
+} from '../../src/controller/core/protocol/LegacyMessageProtocol';
+export type {
+  TrackingVehicleGpsUpdateData, TrackingVehicleRouteRealtimeData,
+  AddressRobotGisSearchData, LocateCallData, LocateCallRemoveData,
+} from '../../src/controller/core/protocol/BusinessProtocol';
+
+/**
+ * disaster_profile.address_updated 的实际 data：AddressUpdatedData。
+ * 必含 version: number、slots: Record<string, string | null>，
+ * address/longitude/latitude/primaryStationId 可空；
+ * eventId/occurredAt/disasterProfileId/incidentId/inquiryId 为可选源标识。
+ * 快照语义在 MessageMetadata.snapshotKind?: 'full' | 'delta'。
+ * service/incidentLocation.ts 将 slots[] 推为 full、slotChanges[] 推为 delta；
+ * 归一后的 slots 字典不能自行证明 full，入口须保留 meta.snapshotKind。
+ * full 替换槽位，delta 合并；缺省槽位与显式 null/空坐标不同。
+ * HTTP profile sync 强制 full，并携带 source='http-profile'、contextKey、
+ * sessionEpoch、contextRevision、requestRevision 等水位信息；relay/WS 同样保留种类。
+ */
+export type {
+  AddressUpdatedData, IncidentLocationSnapshotKind, IncidentLocationContext,
+  IncidentLocationSharedState, IncidentProfileData, NormalizedIncidentLocation,
+  IncidentLocationAcceptance, IncidentLocationRenderingPort, IncidentLocationReceiver,
+} from '../../src/controller/core/protocol/IncidentLocationProtocol';
+
+/**
+ * SharedState 源：core/protocol/SharedStateProtocol.ts。
+ * v?/updatedAt?、auth?/user?/seat?、phase?、currentAlarm?、mode?；
+ * auth/user/seat/currentAlarm 可空，auth 支持 Tenantid / X-Trace-Id。
+ * MapPhase = loggedOut | onDuty | popup | inquiry | dispatch | dispatchTrack。
+ * MapMode 是 useUserStore 对原始 phase 的保存，不是派生有效阶段。
+ * utils/seatSharedState.ts::getSharedMapStage 校验 v=1、有限 updatedAt、auth，
+ * inquiry + currentAlarm=null → inquiry；inquiry + 有效 incidentId → dispatch；
+ * auth=null → loggedOut；裸 phase='dispatch' 不直接放行。
+ * user store 保存 rawState/currentAlarm/mode、sharedStateRevision、lastSharedReceiveAt、
+ * mockRevision/sessionEpoch；initUserStore 集中初始读取与 storage 监听。
+ */
+export type {
+  MapPhase, SharedState, SharedUser, SharedAuth, SharedSeat,
+  SharedCurrentAlarm, SharedMessageSession,
+} from '../../src/controller/core/protocol/SharedStateProtocol';
+
+/**
+ * BusinessMapPort 是 controller → 地图底座边界，无 OL/Three 类型：
+ * readonly ready: boolean；view/geometry/spatial/kinematic 使用 GenericProtocol DTO；
+ * trackingVehicleGpsUpdate(data: TrackingVehicleGpsUpdateData): void；
+ * addressRobotGisSearch(data: AddressRobotGisSearchData, options?: { businessId?: string }): void | Promise<void>；
+ * addressRobotClear(options?: { businessId?: string }): void。
+ * MockMapPort：render/disasterSite/simulate/clear/dispatchVehicles。
+ * BusinessMapAttachment：kind?: 'map' | 'dispatch'、mock?、dispose?。
+ * baseComponent/OpenlayersMap/businessMapPort.ts::createBusinessMapPort(generic)
+ * 返回 { port, dispose }，装配 AddressRobotRenderer。
+ */
+export type {
+  BusinessMapPort, BusinessMapAttachment, MockMapPort,
+} from '../../src/controller/core/protocol/BusinessMapPort';
+
+/**
+ * 接线索引（方法/生命周期不是新 transport 事件）：
+ * - core/io/BusinessMessageRuntime：start、attachMap、attachTracking、leaveDispatch、dispose。
+ *   两个 attach 返回解绑函数；attachTracking 同步 hydrate 最新 accepted GPS。
+ * - InputController + messageStagePolicy：应用级业务接收、500ms 稳定窗口与阶段门控。
+ * - IncidentLocationController.receive(envelope)：委托 useIncidentLocationStore 做
+ *   身份/版本/阶段/会话/HTTP 水位接受校验；store 保存 marker/槽位快照并派生资源。
+ * - normalizeBusinessFrames 按 916 顺序：地址机器人→位置→GPS→接听→警情→画像地址，
+ *   先整轮原生识别，无结果才整轮包装增强；install 与 SEAT 使用同一归一裁决。
+ *   位置/GPS 可多结果并去重，answer/incident 仅首匹配；SEAT multi 不等于各类全扇出。
+ * - T1(priority 900, fallback) 最后兜底，只接受根 eventType 或根 payload 单对象的
+ *   eventType/eventKey，保留原值/data，不映射常量名，不展开列表/深层 T1 包装。
+ * - F10 composables/useMockCallLocationBridge 解析/去重/LOCAL_STORAGE ingest，
+ *   Runtime 按会话/generation 排队执行 MockMapPort，仅 dispatch attachment 执行。
+ * - F11 composables/useMapRelayReader 承接 relay 并修正快照/上下文接入；
+ *   F13 composables/useIncidentLocationProfileSync 修正首次补水与在途上下文竞争。
+ * - 仅 F12 composables/useGisPointSelection 的现有 V1.0 选点/ACK 会话等价迁位，
+ *   既有可靠性缺陷保持冻结；F11/F13 不属冻结项。PICK_* / relay kind 不新增内部事件键。
+ * - composables/useBroadcastChannelBridge 仅 send/listen/close/dispose；
+ *   hooks/useBroadcastChannel 的 BroadcastChannelClient 为总线提供通用 BC 传输。
+ * - VehicleRenderer、AddressRobotRenderer、AddressRobotUtils、SwipeControl 位于
+ *   baseComponent/OpenlayersMap；旧业务 vehicleManager 仅兼容导出。
+ * - Control/**、useMessageStore916.ts 和 messageStageGate.ts 保留对照；
+ *   完整人工验收后，须由用户另行确认清理，不能宣称旧 normalizer 全部无引用。
+ */
+
+// =====================================================================
+// B. 历史业务概念模型（以下 0～13 节均非当前 transport 字段/事件声明）
+// 保留用于理解业务目标；ID 前缀、状态机、焦点及校验 helper 不表示统一门禁已实现。
+// 同名 DTO 与源码冲突时以 A 节指向的 src/** 类型为准，不将本文导入活动代码。
+// =====================================================================
 
 // =====================================================================
 // 0. 基础类型 (Base Types)
@@ -81,10 +216,10 @@ export interface BoundingBox {
 // =====================================================================
 
 /**
- * 统一消息信封 — 所有协议事件的载体
- * 业务控制层输出 / 通用控制层输入 / IO 控制层输出
+ * 历史业务概念信封；非当前 MessageEnvelope transport
+ * messageId/messageType/payload/version 等字段仅保留为历史模型
  */
-export interface MessageEnvelope<T = unknown> {
+export interface HistoricalBusinessConceptEnvelope<T = unknown> {
   /** 消息全局唯一 ID（UUID v4） */
   messageId: string;
   /** 消息类型（例：AlarmChanged / VehicleChanged / DispatchChanged） */
@@ -693,12 +828,12 @@ export interface OperationLog {
 // =====================================================================
 
 /**
- * 协议版本演进规则：
+ * 历史概念模型的版本演进目标（不表示当前 transport 已实现版本协商）：
  * 1. 任何新增字段必须升级 minor 版本（v1.0 → v1.1）
  * 2. 任何删除字段必须升级 major 版本（v1.x → v2.0）
  * 3. 任何修改字段语义必须升级 major 版本
  * 4. 向后兼容策略：旧版本字段在 major 升级后保留 6 个月
- * 5. 版本号通过 MessageEnvelope.version 字段携带
+ * 5. 历史版本号通过 HistoricalBusinessConceptEnvelope.version 携带；当前 transport 用 v
  *
  * v1.0 (2026-07-24): 初版发布
  *   - 业务控制层输出：Alarm/Call/Inquiry/Dispatch/Duty/Tracking
@@ -712,7 +847,7 @@ export interface OperationLog {
 // =====================================================================
 
 /**
- * protectInvariants() 强制校验的 5 条规则：
+ * 历史 protectInvariants() 设计目标；不表示当前所有入口已实现以下统一校验：
  * 1. 坐标系 WGS84: GeoPoint.lng ∈ [-180, 180] && GeoPoint.lat ∈ [-90, 90]
  * 2. 业务 ID 前缀: BusinessId 以 alarm_/call_/route_/plan_/vehicle_/trail_ 之一开头
  * 3. 状态机迁移: 在 08-业务状态机定义.md 的迁移表内
@@ -750,7 +885,7 @@ export type {
   GeoPath,
   BoundingBox,
   // Envelope
-  MessageEnvelope,
+  HistoricalBusinessConceptEnvelope,
   MessageType,
   ControlLayerSource,
   // Business

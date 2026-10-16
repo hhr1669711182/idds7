@@ -1,4 +1,4 @@
-import { useUserStore } from "@/store"
+import { useUserStore } from '@/store'
 
 export const MESSAGE_PROTOCOL_VERSION = '1.0.0' as const
 
@@ -6,6 +6,8 @@ export const MESSAGE_CHANNEL = {
   WS: 'ws',
   POST_MESSAGE: 'postMessage',
   BROADCAST_CHANNEL: 'broadcastChannel',
+  LOCAL_STORAGE: 'localStorage',
+  HTTP: 'http',
 } as const
 
 /**
@@ -47,11 +49,11 @@ export type MessageSystem = (typeof MESSAGE_SYSTEM)[keyof typeof MESSAGE_SYSTEM]
  * @property {string} DISASTER_PROFILE - 警情画像
  */
 export const MESSAGE_SUBSCRIBE_TOPIC = {
-  SEAT: () => ({ "action": "subscribe", "type": "SEAT", "key": useUserStore().seatNumber }),
-  ALARM_CALL: { "action": "subscribe", "type": "CUSTOM", "customType": "ALARM_CALL", "key": "ANSWER_STATUS_CHANGED" },
-  ALARM_INCIDENT: { "action": "subscribe", "type": "CUSTOM", "customType": "ALARM_INCIDENT", "key": "STATE_CHANGED" },
-  GPS_MSG: { "action": "subscribe", "type": "CUSTOM", "customType": "GPS_MSG", "key": "car-location-broadcast-all" },
-  DISASTER_PROFILE: { "action": "subscribe", "type": "CUSTOM", "customType": "DISASTER_PROFILE", "key": "UPDATED" },
+  SEAT: () => ({ action: 'subscribe', type: 'SEAT', key: useUserStore().seatNumber }),
+  ALARM_CALL: { action: 'subscribe', type: 'CUSTOM', customType: 'ALARM_CALL', key: 'ANSWER_STATUS_CHANGED' },
+  ALARM_INCIDENT: { action: 'subscribe', type: 'CUSTOM', customType: 'ALARM_INCIDENT', key: 'STATE_CHANGED' },
+  GPS_MSG: { action: 'subscribe', type: 'CUSTOM', customType: 'GPS_MSG', key: 'car-location-broadcast-all' },
+  DISASTER_PROFILE: { action: 'subscribe', type: 'CUSTOM', customType: 'DISASTER_PROFILE', key: 'UPDATED' },
 }
 
 /*&*
@@ -154,7 +156,6 @@ export const MESSAGE_EVENT_KEY = {
   ADDRESS_ROBOT_GIS_SEARCH: 'address_robot.gis_search', // GIS地址机器人数据接收
   // ADDRESS_ROBOT_GIS_CANDIDATES: 'address_robot.gis_candidates',
   // ADDRESS_ROBOT_CLEAR: 'address_robot.clear',
-
 } as const
 
 export type MessageEventKey = (typeof MESSAGE_EVENT_KEY)[keyof typeof MESSAGE_EVENT_KEY]

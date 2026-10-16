@@ -96,13 +96,7 @@ const formatValue = (value: IncidentDetailData[keyof IncidentDetailData]) => {
 </script>
 
 <template>
-  <el-dialog
-    v-model="visible"
-    title="警情详情"
-    width="760px"
-    append-to-body
-    class="incident-detail-dialog"
-  >
+  <el-dialog v-model="visible" title="警情详情" width="760px" append-to-body class="incident-detail-dialog">
     <div class="detail_section">
       <div class="detail_section_title">报警信息</div>
       <div class="detail_grid">

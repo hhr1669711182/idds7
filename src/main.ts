@@ -12,26 +12,26 @@
 // import ElementPlus from "element-plus";
 // import * as ElementPlusIconsVue from "@element-plus/icons-vue";
 // import { renderWithQiankun, qiankunWindow, QiankunProps } from "vite-plugin-qiankun/dist/helper";
-import { mountApp, AppInstance } from "./lib/index";
+import { mountApp, AppInstance } from './lib/index'
 
-let appInstance: AppInstance | null = null;
+let appInstance: AppInstance | null = null
 
 const mount = (props: any = {} as any) => {
   const container: HTMLElement | null = props.container
-    ? props.container.querySelector("#app")
-    : document.getElementById("app");
-  
+    ? props.container.querySelector('#app')
+    : document.getElementById('app')
+
   if (container) {
-    appInstance = mountApp({ container });
+    appInstance = mountApp({ container })
   }
-};
+}
 
 const unmount = () => {
-  appInstance?.unmount();
-  appInstance = null;
-};
+  appInstance?.unmount()
+  appInstance = null
+}
 
-mount({} as any);
+mount({} as any)
 
 // renderWithQiankun({
 //   mount,

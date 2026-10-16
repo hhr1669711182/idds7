@@ -244,15 +244,17 @@ onBeforeUnmount(() => {
       </div>
       <div class="md-flp__actions">
         <button class="md-iconbtn" @click="onRefresh" :disabled="loading">
-          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 4V1L8 5l4 4V6c3.3 0 6 2.7 6 6 0 1-.2 1.9-.7 2.7l1.5 1.5C19.5 15 20 13.5 20 12c0-4.4-3.6-8-8-8zm0 14c-3.3 0-6-2.7-6-6 0-1 .2-1.9.7-2.7L5.2 7.8C4.5 9 4 10.5 4 12c0 4.4 3.6 8 8 8v3l4-4-4-4v3z"/></svg>
+          <svg viewBox="0 0 24 24" width="14" height="14">
+            <path
+              fill="currentColor"
+              d="M12 4V1L8 5l4 4V6c3.3 0 6 2.7 6 6 0 1-.2 1.9-.7 2.7l1.5 1.5C19.5 15 20 13.5 20 12c0-4.4-3.6-8-8-8zm0 14c-3.3 0-6-2.7-6-6 0-1 .2-1.9.7-2.7L5.2 7.8C4.5 9 4 10.5 4 12c0 4.4 3.6 8 8 8v3l4-4-4-4v3z"
+            />
+          </svg>
         </button>
-        <button
-          class="md-iconbtn md-iconbtn--primary"
-          @click="onAdd"
-          :disabled="!writable"
-          v-if="writable"
-        >
-          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>
+        <button class="md-iconbtn md-iconbtn--primary" @click="onAdd" :disabled="!writable" v-if="writable">
+          <svg viewBox="0 0 24 24" width="14" height="14">
+            <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" />
+          </svg>
           新增
         </button>
         <button
@@ -260,7 +262,9 @@ onBeforeUnmount(() => {
           @click="onDelete"
           :disabled="!multipleSelection.length || !writable"
         >
-          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M6 19a2 2 0 002 2h8a2 2 0 002-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          <svg viewBox="0 0 24 24" width="14" height="14">
+            <path fill="currentColor" d="M6 19a2 2 0 002 2h8a2 2 0 002-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+          </svg>
           删除
         </button>
       </div>
@@ -277,9 +281,7 @@ onBeforeUnmount(() => {
         @selection-change="(v: Record<string, unknown>[]) => (multipleSelection = v)"
       />
     </div>
-    <div v-if="truncated" class="md-flp__tip">
-      ⚠ 命中达到 1000 上限，请缩小范围或加 CQL 过滤
-    </div>
+    <div v-if="truncated" class="md-flp__tip">⚠ 命中达到 1000 上限，请缩小范围或加 CQL 过滤</div>
   </section>
 </template>
 

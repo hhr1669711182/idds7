@@ -73,14 +73,9 @@ const onEdit = () => {
           </div>
           <div class="cp-row">
             <span class="cp-key">总层 / 总高：</span>
-            <span class="cp-val">
-              {{ realtimeFactors.totalFloors }} 层 / {{ realtimeFactors.buildingHeight }}m
-            </span>
+            <span class="cp-val"> {{ realtimeFactors.totalFloors }} 层 / {{ realtimeFactors.buildingHeight }}m </span>
           </div>
-          <div
-            v-if="realtimeFactors.fireFloor === selectedComponent.floor"
-            class="cp-row fire-row"
-          >
+          <div v-if="realtimeFactors.fireFloor === selectedComponent.floor" class="cp-row fire-row">
             <span class="cp-key">状态：</span>
             <span class="cp-val">🔥 当前为起火层</span>
           </div>

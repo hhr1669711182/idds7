@@ -24,7 +24,8 @@ const parseEnvValue = (value) => {
 const readServerEnv = () => {
   if (!fs.existsSync(SERVER_ENV_FILE)) return {}
 
-  return fs.readFileSync(SERVER_ENV_FILE, 'utf8')
+  return fs
+    .readFileSync(SERVER_ENV_FILE, 'utf8')
     .split(/\r?\n/)
     .reduce((env, line) => {
       const trimmedLine = line.trim()
@@ -56,13 +57,8 @@ const runCommand = (command, args) => {
   }
 }
 
-const runPowerShell = (command) => runCommand('powershell.exe', [
-  '-NoProfile',
-  '-ExecutionPolicy',
-  'Bypass',
-  '-Command',
-  command,
-])
+const runPowerShell = (command) =>
+  runCommand('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command])
 
 const getListeningPidsOnWindows = (port) => {
   const output = runPowerShell(
@@ -78,22 +74,18 @@ const getListeningPidsOnPosix = (port) => {
 }
 
 const getListeningPids = (port) => {
-  const pids = process.platform === 'win32'
-    ? getListeningPidsOnWindows(port)
-    : getListeningPidsOnPosix(port)
+  const pids = process.platform === 'win32' ? getListeningPidsOnWindows(port) : getListeningPidsOnPosix(port)
 
   return [...new Set(pids)].filter((pid) => pid !== process.pid)
 }
 
-const getCommandLineOnWindows = (pid) => runPowerShell(
-  `(Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}").CommandLine`,
-)
+const getCommandLineOnWindows = (pid) =>
+  runPowerShell(`(Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}").CommandLine`)
 
 const getCommandLineOnPosix = (pid) => runCommand('ps', ['-p', String(pid), '-o', 'command='])
 
-const getCommandLine = (pid) => process.platform === 'win32'
-  ? getCommandLineOnWindows(pid)
-  : getCommandLineOnPosix(pid)
+const getCommandLine = (pid) =>
+  process.platform === 'win32' ? getCommandLineOnWindows(pid) : getCommandLineOnPosix(pid)
 
 const isMockServerProcess = (commandLine) => {
   const normalizedCommand = commandLine.replaceAll('\\', '/')

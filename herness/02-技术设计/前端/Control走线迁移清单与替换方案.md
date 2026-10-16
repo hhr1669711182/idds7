@@ -4,21 +4,21 @@
 
 - 日期：2026-10-15；核验版本：`319fa44564f72d7a0284829a71e4a2cf27039505`。
 - 范围：F1～F14、`src/Control/` 全部 18 个文件，以及相关 store、拦截器、组件、应用装配。
-- 当前阶段：**P0 方案核验；本轮仅修改文档，未实施代码迁移。**
+- 当前阶段：**用户已授权执行 P1；新走线已接入应用，正在收口回归，P2 人工验收尚未开始，P3 清理未授权。**
 - 契约依据：`docs/source/07-协议事件清单.md`、`docs/source/协议层DTO Schema.tsd`、`docs/source/08-业务状态机定义.md`。
 - 配套：[整体核验报告](Control走线迁移方案核验报告.md)，包含问题证据、整改映射和当前验证结果。
 
 **结论：原方案不能直接作为“迁移达标、编码无副作用”的证明。** 本版已统一阶段谓词、应用与地图生命周期、异步失效、恢复数据和实施顺序。可据此拆分实施批次；只有对应实现、自动化回归、人工调试均通过，才能判定该批迁移完成。F12 协议及其现有缺陷仍冻结，整体迁移验收与 Control 清理条件尚未满足。
 
-本文的“目标”“需新增”“迁移后”均为设计要求，不表示当前代码已具备该能力。后续实施必须按 §8、§12 回填证据，不能将设计修订状态写成代码通过状态。
+本文保留设计要求与迁移前基准；当前实现对应 §7.4，自动化实测集中记录在核验报告。自动化通过不能替代 §12.6 的人工验收。
 
 ## 2. 行为基准、现状与边界
 
-### 2.1 旧中枢与装配基准分开认定
+### 2.1 迁移前基准：旧中枢与装配分开认定
 
 **旧业务中枢为 `src/store/useMessageStore916.ts`。** 它的归一链、事件索引快照、准入门控及 handler 是迁移对照基准；不得因新中枢已存在就判为废案。
 
-`src/store/useMessageStore.ts` 为目标消息中枢，已有注册式拦截器、多结果分发与 BroadcastChannel 接入，但尚未完整覆盖 916 行为。
+以下表格记录 HEAD `319fa445` 的迁移前事实，用于新旧回放对照，不代表 P1 后的当前入口。当前活动入口为 `src/lib/index.ts::mountApp`，实现映射见 §7.4。
 
 | 对照项 | 当前事实 | 迁移要求 |
 |---|---|---|
@@ -170,8 +170,8 @@ flowchart TD
 | store | `useUserStore.ts`、`useMessageStore.ts`、`useIncidentLocationStore.ts`、pending stores | 快照版本、已准入状态、事件索引、画像缓存、生命周期清理 |
 | IO/business/protocol | `InputController.ts`、新 runtime/policy、`business/index.ts`、Alarm/Call/Tracking/IncidentLocationController、protocol | 新构造/聚合、唯一接收、DTO、port、异步代次 |
 | 引擎/组件 | `map.vue`、`dispatchMap.vue`、`DispatchT1.vue/.ts`、`specialMapMock.ts`、车辆/资源适配 | attach/detach、移除重复 owner、异步失效；F12 消费仅兼容迁位 |
-| 通用类型/常量 | `types/message.ts`、`const.message.type.ts` | 类型化来源/全量元数据、LOCAL_STORAGE、必要的通用快照能力 |
-| 契约与测试 | `docs/source/**`、`tests/unit|components|e2e/**` | 同步真实变更、批次验收证据 |
+| 通用类型/常量 | `types/message.ts`、`const.message.type.ts` | 类型化来源/全量元数据、LOCAL_STORAGE 与接收专用 HTTP 通道、必要的通用快照能力 |
+| 契约与测试 | `docs/source/**`、`tests/{unit,components,e2e}/**` | 同步真实变更、批次验收证据 |
 
 `useMessageStore916.ts` 及其依赖完整保留为旧链对照。`store/interceptor-integration.ts`、`store/messageInterceptors.ts` 的未引用双实现可登记待清理，不能与 916 混为废案。
 
@@ -189,11 +189,11 @@ flowchart TD
 | 6 | 画像地址 | slots 与 slotChanges、画像/警情标识、相关槽位过滤 |
 | 7 | T1 fallback | 仅此前未产出时，按旧 `payload.eventType ?? payload.eventKey` 归一 |
 
-保留旧 normalizer 支持的 `request/data/body/message/payload/userMsgBodyList` 包装，继承外层路由与 metadata。先核对公共 `unwrap`，不足再补输入适配；不要在每个 controller 复制 JSON 解包。
+公共 `unwrap` 支持 `request/data/body/message/payload/userMsgBodyList` 包装，继承外层路由与 metadata。旧 normalizer 对这些包装的支持并不一致，不能把公共增强误写成旧链全部已支持。实现先按上述类别顺序扫描 916 原生可识别范围，整轮无产出才按同一顺序尝试包装增强；增强不得抢走另一类别的原生结果。位置/GPS 保留多条与去重，应答/警情保留首条语义；地址机器人/画像地址在旧原生范围仅识别根对象，包装增强可收集同类多结果。在真实916 WS回调与新链的隔离固定输入回放中分别核验等价项和明确扩展项。
 
 专属拦截器使用明确且不相同的优先级，命中即 stop；SEAT 的多结果扇出在其内部完成后停止外层重复匹配。**priority 不能修复错误匹配：**有显式 topic/notify/eventName 时，其他事件不能仅凭 `customContent.data` 存在就命中；缺路由信息时才允许事件专属形状兜底。
 
-T1 不注册成可能与专属结果一起执行的 `stop:false` 普通拦截器；放在中枢现有“归一无结果”兜底分支。继续保留新链多结果、BC 能力，归一后的信封只分发一次。`buildPositionSubscription` 当前已是 seat/{seatKey}，不再将其描述为另一条独立 POSITION 订阅。
+T1 使用末尾 `fallback:true` 拦截器，已有专属产出即跳过，不能注册为 `stop:false` 普通拦截器双发。只接受根对象的 eventType，或根 payload 单对象的 eventType/eventKey；保留原事件值及 data，不映射常量名，不递归展开 T1 列表/深层包装，位置/GPS 也不钻入 T1 data 抢先处理。WS回调不额外启用公共 ingest 的 Legacy eventKey/type 回退。继续保留新链多结果、BC 能力，归一后的信封只分发一次。`buildPositionSubscription` 当前已是 seat/{seatKey}，不再将其描述为另一条独立 POSITION 订阅。
 
 ### 6.2 DTO、来源与版本
 
@@ -203,11 +203,11 @@ T1 不注册成可能与专属结果一起执行的 `stop:false` 普通拦截器
 | GPS DTO | `TrackingVehicleGpsUpdateData` 使用实际 `{datas: CarLocationPoint[]}`，保留原点位字段；layerId 由渲染适配决定 | 生产者、控制器、DispatchT1 同批更新 |
 | mock DTO | 调派车辆、灾害点、模拟命令及来源元数据类型进 protocol | 组件不反向 import composable 的内部类型 |
 | storage 来源 | 当前常量没有 localStorage，需新增 `MESSAGE_CHANNEL.LOCAL_STORAGE` | 常量、类型、事件文档、消息协议速查 |
-| HTTP 来源 | 保持内部消息通道与来源概念分离，新增明确 `meta.source='http-profile'`；不称其为实际 WS 接收 | 类型化 metadata 与内部接收接口 |
-| 全量/增量 | 明确 `snapshotKind: 'full'|'delta'`；HTTP/relay 全量为 full，WS 槽位增量为 delta | 不再依赖 `id.startsWith('profile-sync-')`；metadata 不能在 ingest 重建信封时丢失 |
+| HTTP 来源 | 新增接收专用 `MESSAGE_CHANNEL.HTTP: 'http'`，补源经 ingest 投递，并标明 `meta.source='http-profile'`；不伪装成 WS 接收，不增加对外 publish 传输 | 常量、类型化 metadata、事件文档和消息协议速查同批同步 |
+| 全量/增量 | 明确 snapshotKind 的 full / delta 两值；HTTP/relay 全量为 full，WS 槽位增量为 delta | 不再依赖 `id.startsWith('profile-sync-')`；metadata 不能在 ingest 重建信封时丢失 |
 | 会话/上下文 | metadata/任务记录带 sessionEpoch、contextKey、接收序号 | 失效后不更新版本、水位、缓存或图层 |
 
-所有跨层新增接口使用 protocol interface/明确 DTO；不通过 `any` 或双重断言掩盖不匹配。F12 外部 PICK 字段、通道、版本不随本节修改。
+所有跨层新增接口使用 protocol interface/明确 DTO；不通过 `any` 或双重断言掩盖不匹配。F12 外部 PICK 字段、通道、版本不随本节修改。订阅异常统一使用现有 `createLogger`，同步抛错和异步 Promise 拒绝均要可见；不能只捕获同步回调而漏掉异步失败。
 
 ### 6.3 三种数据不能混同
 
@@ -216,6 +216,8 @@ T1 不注册成可能与专属结果一起执行的 `stop:false` 普通拦截器
 3. **已准入业务快照**：由唯一接收者在门控及上下文校验通过后写入 pending/定位 store，带会话、上下文和消费状态；这是图面恢复的依据。
 
 门控移到订阅后，拒绝的原始消息可能已在 inbox 中，不能从它自动恢复上图。F5 刷新时先依据当前共享快照验证业务恢复数据，再 attach 图面；onDuty/登出时清理对应业务恢复数据。兼容旧 sessionStorage 数据须有显式适配与失效规则，不能假设新字段已存在。
+
+持久化恢复按稳定的用户/会话/席位身份 key 与警情上下文校验，不持久化 token；`sessionEpoch` 仅取消本次运行内旧任务。F5 后重新建立运行代次，不能直接用上次进程的 epoch 数字判定快照有效，否则会误丢恢复数据或误接收旧会话任务。
 
 ## 7. 分批实施顺序与启用顺序
 
@@ -257,6 +259,22 @@ M1 可先开发 `initUserStore` 初始化能力，但在 M7 前不能将带已�
 - 不发送 `SEAT` 函数对象；席位变更同时更新本地 matcher 与实际订阅，未绑定席位不发 seat 订阅。
 - sessionDispose 只持有一个当前 WS 释放函数；App 通道、F10/F11/F12、store watch 不混入会话清理数组。
 
+### 7.4 P1 实现对应与交付边界
+
+| 批次 | 已接入的真实落点 | 验证边界 |
+|---|---|---|
+| M0 | 保留 `useMessageStore916.ts` 与 Control 对照闭包；严格类型基线 191 项 | 固定输入隔离回放不等于线上全链 A/B |
+| M1 | `SharedStateProtocol`、`LegacyMessageProtocol`、`IncidentLocationProtocol`、store revision/sessionEpoch、LOCAL_STORAGE/HTTP metadata | 凭证缺失不连 WS；显式 auth=null 不使用 fallback 复活 |
+| M2 | `interceptor/install.ts` 及 transforms；按916顺序和包装归一、seat扇出、T1末尾兜底 | 只在无业务产出时尝试 T1；事件索引不作为已准入状态恢复源 |
+| M3 | `BusinessMessageRuntime`、`messageStagePolicy`、`BusinessMapPort`、唯一 InputController；`register/businessMapLifecycle.ts` | 无图面先接收业务状态；attach/detach 恢复同上下文未完成任务；离开调派仅在导航成功后清理，迟到旧导航不能清新状态 |
+| M4 | `IncidentLocationController`、Alarm/Call/Tracking/AddressRobot；map/dispatchMap/DispatchT1 绑定 | F1 既有组件 watcher 作为唯一渲染适配保留，未另加第二绘图 owner；已禁用分支未恢复 |
+| M5 | `useMockCallLocationBridge`、`useMapRelayReader`、`useIncidentLocationProfileSync` | F10 字段幂等、队列依赖与失效；HTTP/relay 经统一信封和阶段策略 |
+| M6 | `utils/seatSharedState`、service 适配、SwipeControl、VehicleRenderer、AddressRobotRenderer；`useGisPointSelection` 与 BC 工具 | F12 只兼容迁位，线协议及既有缺陷冻结 |
+| M7 | `mountApp` 先 store/runtime 后 producer；`register/initMessage` 唯一 V2 会话；App 不再重复装配 | App/session/map 分域释放；跨标签 storage→特灾进入/退出纳入 E2E |
+| M8 | 自动化结果见核验报告；§12.6 所有人工项目保持未验收 | F2/F3 真实来源、后端鉴权订阅回执、真实地图联调仍须人工记录；Control/916不清理 |
+
+旧入口当前无人装配；仅 `src/Control/initMessage.ts` 中失效的 `setIngressGate` 调用以 `@migration-retained` 标记注释，避免保留代码产生类型错误。未整文件注释、未删除 Control/916，仍可回放旧归一与 handler。
+
 ## 8. 验证方法与证据要求
 
 ### 8.1 自动化回归
@@ -271,7 +289,7 @@ M1 可先开发 `initUserStore` 初始化能力，但在 M7 前不能将带已�
 | 会话/通道 | 无会话启动、WS 关闭、登出再登录、换席、重连、两次 mount/unmount | App 通道不误销毁；旧连接和 timer 无泄漏 |
 | F12 冻结回放 | 对象/字符串输入、token、ACK、延迟取消、创建/发送异常、首包丢失 | 记录既有差异；失败用例不能标通过，见 §11.3 |
 
-测试应接真实适配边界，通过输入与输出断言行为，不能仅检查方法名、mock 调用顺序或复制实现。复用现有 Vitest/组件/Playwright 体系；本轮不新增测试代码。
+测试应接真实适配边界，通过输入与输出断言行为，不能仅检查方法名、mock 调用顺序或复制实现。复用现有 Vitest/组件/Playwright 体系；专项测试位于 `tests/unit`、`tests/components`、`tests/e2e/controlMigration.spec.ts`。
 
 ### 8.2 A/B 隔离
 
@@ -285,10 +303,7 @@ M1 可先开发 `initUserStore` 初始化能力，但在 M7 前不能将带已�
 
 代码迁移各批须有相关 Vitest 用例，接线变化执行 E2E；收口执行 `pnpm build` 和 `pnpm build:lib` 两种构建。构建可能刷新自动生成文件，不得手改它们。项目文档变更检查 `pnpm harness:check` 与 `git diff --check`。
 
-本轮仅对现有代码做只读检查，结果：
-- 严格类型基线：**191 / 191，无新增**。
-- 既有 matcher、unwrap、mapStartup、publish：**4 个文件、28 个用例通过**。
-- 以上不是新迁移链路的验证；本轮未执行端到端人工联调、两种构建或 F12 协议可靠性确认。
+实施前严格类型基线为 **191 / 191，无新增**，全量既有测试为 **20 文件、113 用例通过**。实施后专项、全量、E2E、应用/库构建与严格门禁的最终结果统一见[核验报告](Control走线迁移方案核验报告.md)，避免两份文档重复计数。自动化不覆盖真实后端联调及 F12 冻结缺陷可靠性确认。
 
 ## 9. 风险、行为差异与回滚
 
@@ -299,6 +314,7 @@ M1 可先开发 `initUserStore` 初始化能力，但在 M7 前不能将带已�
 | App/会话/map 清理混用 | 三域清理；按域 generation 失效，不让登出永久移除宿主通道 |
 | F1 渲染 owner 交叠 | 按点位→资源/队站→路径分批；每批只切一个 owner，不能双跑兜底 |
 | 请求跨警情/旧图回写 | 在清理和任何 await 后检查 session/context/request/map generation；失败不动新上下文 |
+| 持久化恢复归属 | pending来电/画像按稳定user/session/seat上下文恢复；旧缓存缺少归属时不恢复，等待有效新输入或HTTP补源。F1首次绑定忽略跨刷新的runtime epoch差异，运行期仍校验epoch |
 | HTTP/relay 全量被当增量 | 明确 snapshotKind；通过校验后再 replace，禁止靠 id 前缀猜 |
 | mock 保留字段重复清场 | 字段级消费状态，不能只按整个 raw 或根 updatedAt 去重 |
 | 历史代码已禁用的功能被顺带恢复 | 维持主管/支撑辖区面、支撑路线等当前关闭状态；另案决定启用 |
@@ -365,12 +381,12 @@ helper 放在 `messageStagePolicy` 的纯策略部分，接收 protocol 快照�
 |---|---|
 | Control 两个 init 的会话监听 | register 观察已提交会话/席位快照，§7.3 处理 |
 | `messageStageGate` | sharedStateRevision + MapMode/上下文，§10.3 处理 |
-| `whenDispatchTrack` | 基于 store 的一次性订阅，当前已满足则立即执行；调用方保存 stop |
+| `whenDispatchTrack` | 已落位 `utils/sharedStateWatch.ts`（基于 store 的一次性订阅，当前已满足则立即执行）；调用方保存 stop |
 | `pageCondition` / router | 读 store 与统一 helper；保留 `ids-gis:page-condition` 自有键监听 |
 | `incidentLocationProfileSync` | 初值及 incidentId/sessionEpoch 变化，§11.2 处理 |
 | 地址 slot 缓存 | 读集中上下文；onDuty/登出/离开调派业务出口清理 |
 | InputController 回值守 | 合法初值 onDuty 时清 pending；每次共享提交有效 onDuty 时清 pending/粗定位，保持旧语义 |
-| service、HTTP 头、演示页凭证 | 使用 store 共享事实传入纯工具；不在每个请求前重新 parse storage |
+| service、HTTP 头、演示页凭证 | 已落位 `service/authHeaders.ts`：`useUserStore` 为唯一凭证源，主 alova 实例 `beforeRequest` 统一注入；高德代理不带凭证。业务层需要快照转换时用 `utils/seatSharedState` 纯函数，不在请求前重新 parse storage |
 | `utils/storage` 通用监听 | 与本议题正交，保留 |
 
 **不采用原方案“仅从非 onDuty 过渡才清”的隐含变更。** 初始清理与每次有效 onDuty 提交的清理保留；持久化快照是否清除，按对应旧调用点是否实际启用逐项回放，不能把原来注释的 clearLastByEventKey 顺带启用。
@@ -407,6 +423,8 @@ storage 只通知其他标签页，集中到 store 不改变这一语义。同�
 | flood→flood | 不重复清场和导航 |
 | flood→非 flood | 先使旧任务与 pending 失效，再投 MOCK_SPECIAL_MAP_CLEAR |
 | isSecondJQLocation | 不迁移旧 storage 二次定位分支；仅由 F12 BC 业务承接 |
+
+真实 `MAP_LOCATE_CALL_REMOVE` 保持旧 handler 的保留粗定位行为；模拟移除在同一接收者内按 `meta.mock` 与固定 mock callId 精确清理。不得把真实分支整体改成删除，也不得以 payload 为 null 为由清空所有来电。
 
 **解析与字段幂等：**
 1. 每个 mock blob 只 parse 一次，共用版本/时间校验，保持现有可接受的数值转换口径；字段各自验证。JSON/基础信封无效整条忽略，某字段无效不阻止其他字段。
@@ -465,12 +483,12 @@ storage 只通知其他标签页，集中到 store 不改变这一语义。同�
 
 | 阶段 | 允许 | 出口 |
 |---|---|---|
-| P0 方案 | 仅文档核验与完善 | 所有设计取舍明确；冻结/外部依赖单列，当前未授权实施 |
+| P0 方案 | 仅文档核验与完善 | 设计核验后用户已明确授权“没有问题就执行方案”，进入 P1 |
 | P1 迁移 | 按 §7 新增/改造新走线；保留旧实现和可回放依赖 | 契约、严格类型、相关测试、生命周期和构建证据符合对应批次要求 |
 | P2 人工调试 | 隔离 A/B、逐项记录现象与确认人 | F1～F14 全部人工确认；冻结问题闭环或有明确范围决策，不能自动豁免 |
 | P3 清理 | **在 P2 全部人工调试确认后，再单独确认 Control 清理范围** | 用户确认清理清单后才注释/删除旧路径；无残留依赖且双形态验证 |
 
-**P2 完成不会自动授权 P3。** 必须先提供具体文件清单、替代落点、验证记录和未决项，用户再确认清理。当前仅优化文档，不执行 P1～P3。
+**P2 完成不会自动授权 P3。** 必须先提供具体文件清单、替代落点、验证记录和未决项，用户再确认清理。当前执行 P1，不自动填写 P2 人工通过，也不执行 P3。
 
 ### 12.2 迁移后编译受旧代码影响时的临时处理
 

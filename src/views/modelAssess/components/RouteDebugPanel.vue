@@ -40,12 +40,7 @@ const onToggleFollow = () => {
 
 <template>
   <div class="route-op-bar">
-    <button
-      class="op-btn replay"
-      :disabled="!ctrlState.hasController"
-      title="重播车辆路线动画"
-      @click="onReplay"
-    >
+    <button class="op-btn replay" :disabled="!ctrlState.hasController" title="重播车辆路线动画" @click="onReplay">
       ▶ 重播路线
     </button>
     <button

@@ -178,30 +178,29 @@ onMounted(() => {
         })
     });
 })
-
 </script>
 
 <template>
-    <el-form :model="form" label-width="auto" style="max-width: 600px" :class="'card_' + form.uuid">
-        <el-form-item label="填充:">
-            <ul class="polygon_content">
-                <li type="polygon_1"></li>
-                <li type="polygon_2"></li>
-                <li type="polygon_3"></li>
-                <li type="polygon_4"></li>
-                <li type="polygon_5"></li>
-            </ul>
-        </el-form-item>
-        <el-form-item label="颜色:">
-            <el-color-picker v-model="form.color" @change="changeColor" @active-change="changeColor" show-alpha />
-        </el-form-item>
-        <el-form-item label="透明度:">
-            <slider :value="form.opacity" :min="1" :step="1" :max="100" @change="changeOpacity" />
-        </el-form-item>
-        <el-form-item label="轮廓宽:">
-            <slider :value="form.width" :min="1" :max="12" @change="changeWidth" />
-        </el-form-item>
-    </el-form>
+  <el-form :model="form" label-width="auto" style="max-width: 600px" :class="'card_' + form.uuid">
+    <el-form-item label="填充:">
+      <ul class="polygon_content">
+        <li type="polygon_1"></li>
+        <li type="polygon_2"></li>
+        <li type="polygon_3"></li>
+        <li type="polygon_4"></li>
+        <li type="polygon_5"></li>
+      </ul>
+    </el-form-item>
+    <el-form-item label="颜色:">
+      <el-color-picker v-model="form.color" @change="changeColor" @active-change="changeColor" show-alpha />
+    </el-form-item>
+    <el-form-item label="透明度:">
+      <slider :value="form.opacity" :min="1" :step="1" :max="100" @change="changeOpacity" />
+    </el-form-item>
+    <el-form-item label="轮廓宽:">
+      <slider :value="form.width" :min="1" :max="12" @change="changeWidth" />
+    </el-form-item>
+  </el-form>
 </template>
 
 <style scoped>

@@ -150,12 +150,7 @@ onMounted(() => {
 <template>
   <div id="animationMap"></div>
   <div class="btn_container">
-    <el-button
-      round
-      v-for="type in ANIMATE_TYPES"
-      @click="() => handleBtnClick(type)"
-      >{{ type.txt }}</el-button
-    >
+    <el-button round v-for="type in ANIMATE_TYPES" @click="() => handleBtnClick(type)">{{ type.txt }}</el-button>
   </div>
 </template>
 <style scoped>

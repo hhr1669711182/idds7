@@ -8,6 +8,29 @@
  */
 import type { MessageChannel, MessageEventKey, MessageSystem } from '@/const/const.message.type'
 
+export interface MessageMetadata {
+  snapshotKind?: 'full' | 'delta'
+  source?: string
+  recordId?: string | number
+  eventId?: string
+  eventName?: string
+  topicKey?: string
+  notifyType?: string
+  notifySubType?: string
+  channel?: string
+  topics?: Array<{ type: string; customType?: string; key?: string }>
+  mock?: boolean
+  initial?: boolean
+  origin?: string
+  readyState?: number
+  sharedStateRevision?: number
+  receivedSequence?: number
+  sessionGeneration?: number
+  mapGeneration?: number
+  contextKey?: string
+  [key: string]: unknown
+}
+
 /**
  * 消息信封，用于在系统内部或跨系统传递消息
  * @template T 消息体数据的类型，默认为任意类型
@@ -28,7 +51,7 @@ export type MessageEnvelope<T = any> = {
   /** 可选，目标系统，指定消息应被哪个系统处理；留空表示广播给所有订阅者 */
   targetSystem?: MessageSystem
   /** 可选，附加元数据，用于扩展字段，如链路追踪、用户标识等 */
-  meta?: Record<string, any>
+  meta?: MessageMetadata
   /** 可选，消息协议版本，当前固定为 '1.0.0'，用于后续版本兼容 */
   v?: '1.0.0'
   /** 可选，是否移除相同元素，默认 false */

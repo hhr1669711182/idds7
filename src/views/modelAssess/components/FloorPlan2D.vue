@@ -66,16 +66,7 @@ const pickHydrant = (name: string) => emit('pick-hydrant', name)
       </g>
 
       <!-- 起火层高亮 -->
-      <rect
-        v-if="isFireFloor"
-        x="2"
-        y="2"
-        width="96"
-        height="96"
-        fill="none"
-        stroke="#ff7a00"
-        stroke-width="0.8"
-      />
+      <rect v-if="isFireFloor" x="2" y="2" width="96" height="96" fill="none" stroke="#ff7a00" stroke-width="0.8" />
 
       <!-- 烟雾覆盖（半透明灰雾） -->
       <rect
@@ -132,9 +123,7 @@ const pickHydrant = (name: string) => emit('pick-hydrant', name)
       </g>
 
       <!-- 标题 -->
-      <text x="50" y="5" fill="#ff9500" font-size="3" text-anchor="middle" font-weight="700">
-        F{{ floor }} 平面图
-      </text>
+      <text x="50" y="5" fill="#ff9500" font-size="3" text-anchor="middle" font-weight="700">F{{ floor }} 平面图</text>
     </svg>
   </div>
 </template>

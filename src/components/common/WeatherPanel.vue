@@ -80,9 +80,7 @@ onBeforeUnmount(() => {
     <div v-else-if="live" class="weather_panel_body">
       <div class="weather_panel_main">
         <div class="weather_panel_icon">{{ weatherIcon }}</div>
-        <div class="weather_panel_temp">
-          {{ live.temperature }}<span class="weather_panel_unit">℃</span>
-        </div>
+        <div class="weather_panel_temp">{{ live.temperature }}<span class="weather_panel_unit">℃</span></div>
       </div>
       <div class="weather_panel_meta">
         <span>{{ live.winddirection }}风 {{ live.windpower }}级</span>

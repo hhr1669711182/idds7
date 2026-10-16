@@ -17,9 +17,9 @@ import { watch } from "vue";
 
 type OpenlayersMapExpose = {
   addLayer: (id: string) => boolean;
-  removeLayer: (id: string) => boolean; 
+  removeLayer: (id: string) => boolean;
   syncLayers: (ids: string[], visible?: boolean) => void;
-};  
+};
 
 const dispatchMapStore = useDispatchMapStore();
 const mapConfigStore = useMapConfigStore();
@@ -91,29 +91,32 @@ onMounted(async () => {
       <Icon icon="mdi:format-list-bulleted" class="mr-2" />
       待命列表
     </el-button> -->
-    
+
     <div class="filter-group">
-      <div 
-        v-for="(item, index) in filterConfig" 
-        :key="index" 
-        :class="['filter-item', { 'ml-6': Number(index) > 0 }]"
-      >
+      <div v-for="(item, index) in filterConfig" :key="index" :class="['filter-item', { 'ml-6': Number(index) > 0 }]">
         <template v-if="item.type === 'timeRange'">
           <span class="label">{{ item.label }}</span>
-          <el-input-number size="small" class="w-32" v-model="filterData[item.modelMin]" v-bind="item.minProps" controls-position="right" />
+          <el-input-number
+            size="small"
+            class="w-32"
+            v-model="filterData[item.modelMin]"
+            v-bind="item.minProps"
+            controls-position="right"
+          />
           <span class="mx-2">-</span>
-          <el-input-number size="small" class="w-32" v-model="filterData[item.modelMax]" v-bind="item.maxProps" controls-position="right" />
+          <el-input-number
+            size="small"
+            class="w-32"
+            v-model="filterData[item.modelMax]"
+            v-bind="item.maxProps"
+            controls-position="right"
+          />
         </template>
-        
+
         <template v-else-if="item.type === 'select'">
           <span class="label">{{ item.label }}</span>
           <el-select size="small" class="!w-32" v-model="filterData[item.model]" placeholder="全部">
-            <el-option 
-              v-for="opt in item.options" 
-              :key="opt.value" 
-              :label="opt.label" 
-              :value="opt.value" 
-            />
+            <el-option v-for="opt in item.options" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </template>
 
@@ -132,14 +135,11 @@ onMounted(async () => {
     </div> -->
     <div class="layer-checkboxes">
       <el-checkbox-group v-model="dispatchMapStore.checkedIds" class="flex gap-3">
-        <el-checkbox 
-          v-for="item in layerCheckboxes" 
-          :key="item.id" 
-          :label="item.label"
-          :value="item.id"
-        >
-          <div :class="['flex items-center transition-colors', dispatchMapStore.checkedIds.includes(item.id) ? 'text-blue-500' : 'text-gray-400']">
-            <Icon :icon="item.icon" class="mr-1" /> 
+        <el-checkbox v-for="item in layerCheckboxes" :key="item.id" :label="item.label" :value="item.id">
+          <div
+            :class="['flex items-center transition-colors', dispatchMapStore.checkedIds.includes(item.id) ? 'text-blue-500' : 'text-gray-400']"
+          >
+            <Icon :icon="item.icon" class="mr-1" />
             {{ item.label }}
           </div>
         </el-checkbox>

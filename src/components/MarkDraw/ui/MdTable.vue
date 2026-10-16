@@ -62,12 +62,7 @@ void isSelected;
         @click="emit('row-click', row)"
         @dblclick="emit('row-dblclick', row)"
       >
-        <div
-          v-for="col in columns"
-          :key="col.key"
-          class="md-table__cell"
-          :style="{ width: col.width }"
-        >
+        <div v-for="col in columns" :key="col.key" class="md-table__cell" :style="{ width: col.width }">
           <input
             v-if="col.type === 'selection'"
             type="checkbox"

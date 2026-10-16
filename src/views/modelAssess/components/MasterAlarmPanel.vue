@@ -107,9 +107,7 @@ const onPickRow = (uuid: string) => {
         <div class="section-wrapper orange">
           <div class="info-box">
             <div class="factor-row">
-              <span class="label">
-                <Icon icon="mdi:pound" color="#3385ff" width="14" height="14" /> 楼层总数:
-              </span>
+              <span class="label"> <Icon icon="mdi:pound" color="#3385ff" width="14" height="14" /> 楼层总数: </span>
               <div class="ctrl">
                 <button class="step-btn" @click="onFactor('totalFloors', -1, 1)">−</button>
                 <div class="val">{{ realtimeFactors.totalFloors }}</div>
@@ -119,9 +117,7 @@ const onPickRow = (uuid: string) => {
             </div>
 
             <div class="factor-row">
-              <span class="label">
-                <Icon icon="mdi:fire" color="#ff4d4f" width="14" height="14" /> 起火楼层:
-              </span>
+              <span class="label"> <Icon icon="mdi:fire" color="#ff4d4f" width="14" height="14" /> 起火楼层: </span>
               <div class="ctrl">
                 <button class="step-btn" @click="onFactor('fireFloor', -1, 1)">−</button>
                 <div class="val">{{ realtimeFactors.fireFloor }}</div>
@@ -148,7 +144,10 @@ const onPickRow = (uuid: string) => {
               </span>
               <div class="smoke-ctrl">
                 <div class="select-wrapper">
-                  <select :value="realtimeFactors.smokeLevel" @change="setSmoke(($event.target as HTMLSelectElement).value)">
+                  <select
+                    :value="realtimeFactors.smokeLevel"
+                    @change="setSmoke(($event.target as HTMLSelectElement).value)"
+                  >
                     <option v-for="lvl in SMOKE_LEVELS" :key="lvl" :value="lvl">{{ lvl }}</option>
                   </select>
                   <Icon icon="mdi:chevron-down" class="select-arrow" />
@@ -177,7 +176,7 @@ const onPickRow = (uuid: string) => {
             <Icon icon="mdi:account-plus-outline" width="14" height="14" />
           </button>
         </div>
-        
+
         <div class="section-wrapper blue" v-if="false">
           <div class="info-box rescue-box">
             <div class="trapped-list" ref="listEl">
@@ -190,19 +189,30 @@ const onPickRow = (uuid: string) => {
               >
                 <div class="item-left">
                   <div class="floor-input">
-                    <input type="number" :value="t.floor" @input="e => onUpdateTrapped(t.uuid, 'floor', (e.target as HTMLInputElement).value)" />
+                    <input
+                      type="number"
+                      :value="t.floor"
+                      @input="e => onUpdateTrapped(t.uuid, 'floor', (e.target as HTMLInputElement).value)"
+                    />
                   </div>
                   <span class="unit">F</span>
                   <span class="divider">|</span>
                   <div class="count-input">
                     <span class="label">人数:</span>
-                    <input type="number" :value="t.count" @input="e => onUpdateTrapped(t.uuid, 'count', (e.target as HTMLInputElement).value)" />
+                    <input
+                      type="number"
+                      :value="t.count"
+                      @input="e => onUpdateTrapped(t.uuid, 'count', (e.target as HTMLInputElement).value)"
+                    />
                   </div>
                 </div>
-                
+
                 <div class="item-right">
                   <div class="dir-select">
-                    <select :value="t.direction" @change="e => onUpdateTrapped(t.uuid, 'direction', (e.target as HTMLSelectElement).value)">
+                    <select
+                      :value="t.direction"
+                      @change="e => onUpdateTrapped(t.uuid, 'direction', (e.target as HTMLSelectElement).value)"
+                    >
                       <option v-for="d in TRAPPED_DIRS" :key="d" :value="d">{{ d }}</option>
                     </select>
                     <Icon icon="mdi:chevron-down" class="select-arrow" />

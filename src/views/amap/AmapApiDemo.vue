@@ -1,4 +1,3 @@
-
 <template>
   <div class="amap-demo">
     <header class="header">
@@ -24,7 +23,10 @@
           <button class="primary" @click="call('aroundSearch')">aroundSearch</button>
         </div>
         <div class="form-row">
-          <label>polygon <input v-model="form.polygonSearch.polygon" placeholder="lng,lat;lng,lat;..." style="min-width:280px" /></label>
+          <label
+            >polygon
+            <input v-model="form.polygonSearch.polygon" placeholder="lng,lat;lng,lat;..." style="min-width:280px"
+          /></label>
           <button class="primary" @click="call('polygonSearch')">polygonSearch</button>
         </div>
         <div class="form-row">
@@ -41,7 +43,8 @@
         <h3>2. 地理编码</h3>
         <div class="form-row">
           <label>location <input v-model="form.regeo.location" placeholder="116.31,39.99" /></label>
-          <label>extensions
+          <label
+            >extensions
             <select v-model="form.regeo.extensions">
               <option value="base">base</option>
               <option value="all">all</option>
@@ -70,7 +73,9 @@
         </div>
         <div class="form-row">
           <label>origins(分号分隔) <input v-model="form.multiWaypoint.originsRaw" style="min-width:260px" /></label>
-          <label>destinations(分号分隔) <input v-model="form.multiWaypoint.destinationsRaw" style="min-width:260px" /></label>
+          <label
+            >destinations(分号分隔) <input v-model="form.multiWaypoint.destinationsRaw" style="min-width:260px"
+          /></label>
           <button class="primary" @click="call('multiWaypoint')">multiWaypoint</button>
         </div>
       </section>
@@ -101,7 +106,7 @@ import { reactive, ref, computed } from "vue"
 import { appEnv } from "@/config/env"
 import { amapApi } from "@/apis/amap"
 import { AppError } from "@/service/error"
-import { getSharedAccessToken } from "@/Control/seatSharedState"
+import { useUserStore } from "@/store/useUserStore"
 
 interface FormState {
   keywordSearch: { keywords: string; city: string }
@@ -133,7 +138,7 @@ const form = reactive<FormState>({
 
 const baseUrl = computed(() => appEnv.amapApiBaseUrl)
 const tokenMasked = computed(() => {
-  const t = getSharedAccessToken() || ""
+  const t = useUserStore().accessToken || ""
   if (!t) return "(无)"
   return t.length > 16 ? `${t.slice(0, 8)}…${t.slice(-6)}` : "(已设置)"
 })

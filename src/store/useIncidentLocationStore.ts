@@ -15,14 +15,24 @@
 import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
 import type { MessageEnvelope } from '@/types/message'
-import type { AddressUpdatedData } from '@/Control/incidentLocationMessage'
+import type {
+  AddressUpdatedData,
+  IncidentLocationAcceptance,
+  IncidentLocationContext,
+} from '@/controller/core/protocol/IncidentLocationProtocol'
+import {
+  deriveSlotSnapshot,
+  getAddressProfileKey,
+  getIncidentLocationContextKey,
+  normalizeIncidentLocationContent,
+} from '@/service/incidentLocation'
 import { queryIncidentStations } from '@/controller/core/business/IncidentStationQuery'
 import {
   DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
   queryIncidentNearbyResources,
   type NearbyResource,
 } from '@/controller/core/business/IncidentNearbyResourceQuery'
-import type { LngLat } from '@/baseComponent/amap/useAmapTools'
+import type { LngLat } from '@/utils/coordTransform'
 
 /** 单个警情定位点位（key = 画像 ID，缺省退回 incidentId/eventId） */
 export type IncidentLocationMarker = {
@@ -127,11 +137,7 @@ export const useStationLayerStore = defineStore('stationLayerStore', () => {
     })
     return [...union]
   })
-  const normalizeIds = (ids: string[]) => [
-    ...new Set(
-      ids.map((id) => String(id ?? '').trim()).filter(Boolean),
-    ),
-  ]
+  const normalizeIds = (ids: string[]) => [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))]
   const setStations = (owner: string, ids: string[]) => {
     entries[owner] = normalizeIds(ids)
   }
@@ -187,10 +193,10 @@ export const useNearbyResourceLayerStore = defineStore('nearbyResourceLayerStore
   const setCircles = (owner: string, list: NearbyResourceCircle[]) => {
     entries[owner] = list.filter(
       (circle) =>
-        Number.isFinite(circle.lng)
-        && Number.isFinite(circle.lat)
-        && Number.isFinite(circle.radiusMeters)
-        && circle.radiusMeters > 0,
+        Number.isFinite(circle.lng) &&
+        Number.isFinite(circle.lat) &&
+        Number.isFinite(circle.radiusMeters) &&
+        circle.radiusMeters > 0,
     )
   }
   const clearOwner = (owner: string) => {
@@ -220,6 +226,12 @@ export const useIncidentLocationStore = defineStore(
     const nearbyResources = reactive<Record<string, IncidentNearbyResources>>({})
     /** 按画像 ID 维护地址主题自己的版本号，只处理更大的 version（可跳号） */
     const versions = reactive<Record<string, number>>({})
+    const profileSnapshots = reactive<Record<string, AddressUpdatedData>>({})
+    const activeKey = ref('')
+    const acceptanceRevision = ref(0)
+    const contextRevision = ref(0)
+    const context = ref<IncidentLocationContext | null>(null)
+    let contextBound = false
     /** 最新待定位坐标，由 dispatchMap.vue 消费 */
     const focusRequest = ref<IncidentLocationFocusRequest | null>(null)
     /** 最新待规划路径请求（队站 origins + 警情点 destination），由 dispatchMap.vue 消费后调 nav.fetchRoutesAndEta + renderRoutesOnly */
@@ -229,6 +241,9 @@ export const useIncidentLocationStore = defineStore(
     let routePlanSeq = 0
     /** 每个画像辖区查询的请求令牌，仅最后一次请求的结果允许写入，避免竞态 */
     const zoneRequestTokens: Record<string, number> = {}
+    const pendingQueries = new Set<string>()
+    const resolvedQueries = new Set<string>()
+    let querySequence = 0
 
     /**
      * 写入/更新点位。focus=false 时仅原地更新 marker 字段（如仅 m_org_id 变更、
@@ -253,7 +268,9 @@ export const useIncidentLocationStore = defineStore(
 
     const removeMarker = (key: string) => {
       // 作废在途辖区/路径查询，防止旧响应在点位移除后回写
-      zoneRequestTokens[key] = (zoneRequestTokens[key] ?? 0) + 1
+      zoneRequestTokens[key] = ++querySequence
+      pendingQueries.delete(key)
+      resolvedQueries.delete(key)
       delete markers[key]
       removeZonesForMarker(key)
       // 同步移除主管队站独立图标点位
@@ -277,9 +294,12 @@ export const useIncidentLocationStore = defineStore(
      * 不阻塞点位上图与定位。
      */
     const fetchJurisdiction = (entry: IncidentLocationMarker) => {
-      const token = (zoneRequestTokens[entry.key] ?? 0) + 1
+      const token = ++querySequence
       zoneRequestTokens[entry.key] = token
-      queryIncidentStations([entry.lng, entry.lat], {
+      pendingQueries.add(entry.key)
+      resolvedQueries.delete(entry.key)
+      let queriesSucceeded = true
+      const stationQuery = queryIncidentStations([entry.lng, entry.lat], {
         showAllJurisdictions: true,
         // m_org_id 指定主管队站时强制覆盖坐标命中辖区，主管站/辖区面以消息为准
         forcedPrimaryStationId: entry.primaryStationId,
@@ -303,6 +323,7 @@ export const useIncidentLocationStore = defineStore(
             })
             delete primaryStations[entry.key]
             useStationLayerStore().clearOwner(owner)
+            if (routePlanRequest.value?.markerKey === entry.key) routePlanRequest.value = null
             return
           }
           if (!result.primary) {
@@ -322,10 +343,7 @@ export const useIncidentLocationStore = defineStore(
           useStationLayerStore().setStations(owner, stationIds)
           // 主管以独立 zhu.png 图标上图：声明主管 id（全量消防站图层据此排除），
           // 并写入主管点位供 dispatchMap.vue 的主管图层渲染
-          useStationLayerStore().setPrimaryStations(
-            owner,
-            result.primary ? [result.primary.id] : [],
-          )
+          useStationLayerStore().setPrimaryStations(owner, result.primary ? [result.primary.id] : [])
           if (result.primary) {
             primaryStations[entry.key] = {
               key: entry.key,
@@ -382,8 +400,7 @@ export const useIncidentLocationStore = defineStore(
             stations: [
               ...(result.primary ? [result.primary] : []),
               // ...result.support,
-            ]
-              .map(({ id, name, coordinate }) => ({ id, name, coordinate })),
+            ].map(({ id, name, coordinate }) => ({ id, name, coordinate })),
             destination: [entry.lng, entry.lat],
             markerKey: entry.key,
             seq: routePlanSeq,
@@ -391,25 +408,26 @@ export const useIncidentLocationStore = defineStore(
         })
         .catch((error) => {
           if (zoneRequestTokens[entry.key] !== token) return
+          queriesSucceeded = false
           console.warn('[address-updated] 查询队站辖区失败', {
             key: entry.key,
             error,
           })
           removeZonesForMarker(entry.key)
           delete primaryStations[entry.key]
-          useStationLayerStore().clearOwner(
-            `${LOCATION_STATION_OWNER_PREFIX}${entry.key}`,
-          )
+          useStationLayerStore().clearOwner(`${LOCATION_STATION_OWNER_PREFIX}${entry.key}`)
+          if (routePlanRequest.value?.markerKey === entry.key) routePlanRequest.value = null
         })
 
       // 周边资源（500 米内消防栓/重点单位/队站辖区/建筑）：与队站查询并行，互不影响结果写入。
       // 查询成功后写入结果并向 WMS 图层 store 声明范围圈（dispatchMap watch 后
       // 对消防栓/重点单位/队站辖区/建筑图层下范围圈过滤强制上图）；失败时清除旧声明。
-      queryIncidentNearbyResources([entry.lng, entry.lat], {
+      const nearbyQuery = queryIncidentNearbyResources([entry.lng, entry.lat], {
         radiusMeters: DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
       })
         .then((result) => {
           if (zoneRequestTokens[entry.key] !== token) return
+          if (!result.complete) queriesSucceeded = false
           nearbyResources[entry.key] = {
             key: entry.key,
             radiusMeters: DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
@@ -419,14 +437,13 @@ export const useIncidentLocationStore = defineStore(
             buildings: result.buildings,
             version: entry.version,
           }
-          useNearbyResourceLayerStore().setCircles(
-            `${LOCATION_RESOURCE_OWNER_PREFIX}${entry.key}`,
-            [{
+          useNearbyResourceLayerStore().setCircles(`${LOCATION_RESOURCE_OWNER_PREFIX}${entry.key}`, [
+            {
               lng: entry.lng,
               lat: entry.lat,
               radiusMeters: DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
-            }],
-          )
+            },
+          ])
           console.info('[address-updated] 查询到周边资源', {
             key: entry.key,
             radiusMeters: DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
@@ -438,24 +455,30 @@ export const useIncidentLocationStore = defineStore(
         })
         .catch((error) => {
           if (zoneRequestTokens[entry.key] !== token) return
+          queriesSucceeded = false
           console.warn('[address-updated] 查询周边资源失败', {
             key: entry.key,
             error,
           })
           delete nearbyResources[entry.key]
-          useNearbyResourceLayerStore().clearOwner(
-            `${LOCATION_RESOURCE_OWNER_PREFIX}${entry.key}`,
-          )
+          useNearbyResourceLayerStore().clearOwner(`${LOCATION_RESOURCE_OWNER_PREFIX}${entry.key}`)
         })
+      void Promise.allSettled([stationQuery, nearbyQuery]).then(() => {
+        if (zoneRequestTokens[entry.key] !== token) return
+        pendingQueries.delete(entry.key)
+        if (queriesSucceeded) resolvedQueries.add(entry.key)
+      })
     }
 
     /** dispatchMap 消费定位请求后置空；无图层时不调用，保留给下次挂载 */
-    const consumeFocus = () => {
+    const consumeFocus = (seq?: number) => {
+      if (seq !== undefined && focusRequest.value?.seq !== seq) return
       focusRequest.value = null
     }
 
     /** dispatchMap 消费路径规划请求后置空；无 nav 时保留，待挂载后消费 */
-    const consumeRoutePlan = () => {
+    const consumeRoutePlan = (seq?: number) => {
+      if (seq !== undefined && routePlanRequest.value?.seq !== seq) return
       routePlanRequest.value = null
     }
 
@@ -468,8 +491,29 @@ export const useIncidentLocationStore = defineStore(
     const clearAll = () => {
       Object.keys(markers).forEach((key) => removeMarker(key))
       Object.keys(versions).forEach((key) => delete versions[key])
+      Object.keys(profileSnapshots).forEach((key) => delete profileSnapshots[key])
+      for (const key of Object.keys(zoneRequestTokens)) zoneRequestTokens[key] = ++querySequence
+      pendingQueries.clear()
+      resolvedQueries.clear()
+      activeKey.value = ''
+      acceptanceRevision.value += 1
+      contextRevision.value += 1
       focusRequest.value = null
       routePlanRequest.value = null
+    }
+
+    const setContext = (next: IncidentLocationContext) => {
+      const previous = context.value
+      if (
+        previous &&
+        ((contextBound && previous.sessionEpoch !== next.sessionEpoch) ||
+          previous.sessionKey !== next.sessionKey ||
+          previous.stage !== next.stage ||
+          previous.incidentId !== next.incidentId)
+      )
+        clearAll()
+      context.value = { ...next }
+      contextBound = true
     }
 
     /**
@@ -488,7 +532,7 @@ export const useIncidentLocationStore = defineStore(
       const key = String(input.incidentId ?? '').trim()
       if (!key || !Number.isFinite(input.lng) || !Number.isFinite(input.lat)) return
       const existing = markers[key]
-      if (existing && existing.version > 0) return
+      if ((existing && existing.version > 0) || profileSnapshots[key]) return
       markers[key] = {
         key,
         lng: input.lng,
@@ -502,113 +546,122 @@ export const useIncidentLocationStore = defineStore(
       }
     }
 
-    const onAddressUpdated = (envelope: MessageEnvelope<AddressUpdatedData>) => {
-      const data = envelope.data
-      if (!data) return
-
-      // 与立案点位按 incidentId 归并同一要素；无 incidentId 时退回画像/事件 ID
-      const key = String(
-        data.incidentId || data.disasterProfileId || data.eventId || '',
-      ).trim()
-      if (!key) {
-        console.warn('[address-updated] 消息缺少画像/警情/事件 ID，已忽略', data)
-        return
+    const onAddressUpdated = (envelope: MessageEnvelope<AddressUpdatedData>): IncidentLocationAcceptance => {
+      const kind = envelope.meta?.snapshotKind === 'full' ? 'full' : 'delta'
+      const normalized = normalizeIncidentLocationContent(envelope.data, kind)
+      if (!normalized) return { accepted: false, reason: 'invalid' }
+      const data = normalized.data
+      let key = getAddressProfileKey(data)
+      if (!key) return { accepted: false, reason: 'identity' }
+      if (!data.incidentId && data.disasterProfileId) {
+        const known = Object.values(profileSnapshots).find(
+          (snapshot) => snapshot.disasterProfileId === data.disasterProfileId,
+        )
+        if (known) {
+          key = getAddressProfileKey(known)
+          data.incidentId = known.incidentId
+        }
       }
-
-      // 版本去重：只处理更大的 version；消息未带 version 时不拦截
-      const version = Number(data.version) || 0
-      const handledVersion = versions[key]
+      const current = context.value
+      if (envelope.meta?.contextRevision !== undefined && envelope.meta.contextRevision !== contextRevision.value)
+        return { accepted: false, reason: 'session' }
+      if (current && envelope.meta?.sessionEpoch !== undefined && envelope.meta.sessionEpoch !== current.sessionEpoch)
+        return { accepted: false, reason: 'session' }
       if (
-        version > 0 &&
-        typeof handledVersion === 'number' &&
-        version <= handledVersion
-      ) {
-        console.info('[address-updated] 跳过旧版本地址消息', {
-          key,
-          version,
-          handledVersion,
-        })
-        return
+        current &&
+        envelope.meta?.contextKey !== undefined &&
+        envelope.meta.contextKey !== getIncidentLocationContextKey(current)
+      )
+        return { accepted: false, reason: 'session' }
+      if (current && current.stage !== 'dispatch') return { accepted: false, reason: 'stage' }
+      if (current?.incidentId && data.incidentId !== current.incidentId) return { accepted: false, reason: 'identity' }
+      const version = data.version
+      const handledVersion = versions[key]
+      if (typeof handledVersion === 'number' && handledVersion > 0 && version <= handledVersion) {
+        return { accepted: false, reason: 'version' }
       }
-      versions[key] = version
-
-      console.info('[address-updated] 收到画像地址变更', {
-        key,
-        incidentId: data.incidentId,
-        version,
-        longitude: data.longitude,
-        latitude: data.latitude,
-        address: data.address,
-        primaryStationId: data.primaryStationId,
-      })
-
-      // 已上图的旧点位：增量消息未携带的槽位（坐标/地址/主管）需沿用其值
+      if (
+        envelope.meta?.source === 'http-profile' &&
+        envelope.meta.requestRevision !== undefined &&
+        envelope.meta.requestRevision !== acceptanceRevision.value &&
+        (!version || !handledVersion)
+      )
+        return { accepted: false, reason: 'watermark' }
+      const previous = profileSnapshots[key]
+      if (
+        previous?.disasterProfileId &&
+        data.disasterProfileId &&
+        previous.disasterProfileId !== data.disasterProfileId
+      )
+        return { accepted: false, reason: 'identity' }
       const existing = markers[key]
-
-      let lng = Number(data.longitude)
-      let lat = Number(data.latitude)
-      if (!Number.isFinite(lng) || !Number.isFinite(lat) || lng === 0 || lat === 0) {
-        // 槽位在累计快照中存在但值为空，才表示坐标被显式清空
-        const lngCleared = Object.prototype.hasOwnProperty.call(data.slots, 'longitude')
-          && !Number.isFinite(Number(data.slots.longitude))
-        const latCleared = Object.prototype.hasOwnProperty.call(data.slots, 'latitude')
-          && !Number.isFinite(Number(data.slots.latitude))
-        if (lngCleared || latCleared) {
-          // 经纬度任一被清空时自动移除该画像对应的 marker 及关联辖区/路径
-          removeMarker(key)
-          return
-        }
-        // 本次增量未携带坐标（如仅推送 m_org_id）：必须有之前已上图的点位坐标，
-        // 才能重新定位并更新其主管队站/辖区；从未上图则无坐标可用，回滚版本号，
-        // 等待后续携带坐标的消息（版本号可能更小，如补发/重放）建点
-        if (!existing) {
-          if (typeof handledVersion === 'number') versions[key] = handledVersion
-          else delete versions[key]
-          console.info('[address-updated] 消息无坐标且无已上图点位，暂不处理', {
-            key,
-            version,
-          })
-          return
-        }
-        lng = existing.lng
-        lat = existing.lat
+      const seed: Record<string, string | null> =
+        previous?.slots ??
+        (existing
+          ? {
+              ...(existing.coordinateSource === 'slotChanges'
+                ? { longitude: String(existing.lng), latitude: String(existing.lat) }
+                : {}),
+              disaster_address: existing.address,
+              m_org_id: existing.primaryStationId,
+            }
+          : {})
+      const slots = kind === 'full' ? { ...data.slots } : { ...seed, ...data.slots }
+      const snapshot: AddressUpdatedData = {
+        ...previous,
+        ...data,
+        slots,
+        ...deriveSlotSnapshot(slots),
+        disasterProfileId: data.disasterProfileId ?? previous?.disasterProfileId ?? null,
       }
-
-      // 槽位未出现在本次累计快照中表示该字段未变更，沿用旧点位值，避免增量消息
-      // （如只改 m_org_id）把地址、主管队站等冲成空值
-      const address = Object.prototype.hasOwnProperty.call(data.slots, 'disaster_address')
-        ? data.address
-        : existing?.address ?? null
-      const primaryStationId = Object.prototype.hasOwnProperty.call(data.slots, 'm_org_id')
-        ? data.primaryStationId
-        : existing?.primaryStationId ?? null
-
-      const entry: IncidentLocationMarker = {
+      Object.keys(markers)
+        .filter((markerKey) => markerKey !== key)
+        .forEach(removeMarker)
+      activeKey.value = key
+      versions[key] = version
+      profileSnapshots[key] = snapshot
+      acceptanceRevision.value += 1
+      const lng = snapshot.longitude ?? (kind === 'delta' && !('longitude' in slots) ? (existing?.lng ?? null) : null)
+      const lat = snapshot.latitude ?? (kind === 'delta' && !('latitude' in slots) ? (existing?.lat ?? null) : null)
+      const validCoordinates =
+        lng !== null &&
+        lat !== null &&
+        Number.isFinite(lng) &&
+        Number.isFinite(lat) &&
+        lng !== 0 &&
+        lat !== 0 &&
+        Math.abs(lng) <= 180 &&
+        Math.abs(lat) <= 90
+      const coordinateChanged = validCoordinates && (!existing || existing.lng !== lng || existing.lat !== lat)
+      const primaryStationChanged = (existing?.primaryStationId ?? null) !== snapshot.primaryStationId
+      if (!validCoordinates) {
+        removeMarker(key)
+        focusRequest.value = null
+      } else {
+        const entry: IncidentLocationMarker = {
+          key,
+          lng,
+          lat,
+          address: snapshot.address,
+          incidentId: snapshot.incidentId ?? existing?.incidentId ?? null,
+          disasterProfileId: snapshot.disasterProfileId ?? existing?.disasterProfileId ?? null,
+          version,
+          coordinateSource:
+            'longitude' in slots && 'latitude' in slots ? 'slotChanges' : (existing?.coordinateSource ?? 'slotChanges'),
+          primaryStationId: snapshot.primaryStationId,
+        }
+        upsertMarker(entry, coordinateChanged)
+        if (coordinateChanged || primaryStationChanged) fetchJurisdiction(entry)
+      }
+      return {
+        accepted: true,
         key,
-        lng,
-        lat,
-        address,
-        incidentId: data.incidentId ?? existing?.incidentId ?? null,
-        disasterProfileId: data.disasterProfileId ?? existing?.disasterProfileId ?? null,
         version,
-        coordinateSource: 'slotChanges',
-        primaryStationId,
-      }
-      // data 为累计全量快照：与已上图点位对比即可知本条消息是否真的移动了坐标。
-      // 坐标变化（或新点位）才触发定位飞行；坐标未变（如仅 m_org_id 槽位变更）时
-      // 只原地更新 marker，不重新定位。
-      const coordinateChanged = !existing
-        || existing.lng !== lng
-        || existing.lat !== lat
-      // m_org_id 取累计快照中的最新值（即 slotChanges 传来合并后的值）；
-      // 主管队站变化时才需重查并替换主管/支撑队站图标（同原辖区替换的派生链路）
-      const primaryStationChanged = (existing?.primaryStationId ?? null) !== primaryStationId
-      upsertMarker(entry, coordinateChanged)
-      // 点位上图/坐标移动后查询队站；或主管队站变更时以 forcedPrimaryStationId
-      // 强制覆盖重查，主管 zhu.png 图标与支撑队站图层过滤按新结果替换，
-      // 但坐标未变时不触发定位飞行
-      if (coordinateChanged || primaryStationChanged) {
-        fetchJurisdiction(entry)
+        snapshot,
+        snapshotKind: kind,
+        coordinateChanged,
+        primaryStationChanged,
+        removed: !validCoordinates,
       }
     }
 
@@ -620,7 +673,7 @@ export const useIncidentLocationStore = defineStore(
      */
     const restoreOnMapMount = () => {
       Object.values(markers).forEach((entry) => {
-        if (zones[entry.key] && nearbyResources[entry.key]) return
+        if (pendingQueries.has(entry.key) || resolvedQueries.has(entry.key)) return
         fetchJurisdiction(entry)
       })
     }
@@ -631,6 +684,12 @@ export const useIncidentLocationStore = defineStore(
       primaryStations,
       nearbyResources,
       versions,
+      profileSnapshots,
+      activeKey,
+      acceptanceRevision,
+      contextRevision,
+      context,
+      setContext,
       focusRequest,
       routePlanRequest,
       onAddressUpdated,
@@ -648,7 +707,7 @@ export const useIncidentLocationStore = defineStore(
     // 仅持久化点位与消息版本，zones/队站过滤/周边资源/路径请求挂载后按 markers 重查重建。
     persist: {
       storage: sessionStorage,
-      pick: ['markers', 'versions'],
+      pick: ['markers', 'versions', 'profileSnapshots', 'activeKey', 'context'],
     },
   },
 )

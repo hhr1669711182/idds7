@@ -164,21 +164,9 @@ watch(
       :key="item.type"
       @click="() => handleClickOpIcon(item.type)"
     >
-      <el-tooltip
-        class="box-item"
-        effect="dark"
-        :content="item.text"
-        placement="left"
-        :offset="20"
-      >
+      <el-tooltip class="box-item" effect="dark" :content="item.text" placement="left" :offset="20">
         <span v-if="item.icon.startsWith('#icon')" role="img" class="anticon">
-          <svg
-            width="1em"
-            height="1em"
-            aria-hidden="true"
-            focusable="false"
-            class=""
-          >
+          <svg width="1em" height="1em" aria-hidden="true" focusable="false" class="">
             <use :xlink:href="item.icon"></use>
           </svg>
         </span>
@@ -209,11 +197,7 @@ watch(
       </div>
 
       <div class="menu-content">
-        <div
-          v-for="group in mobileMenuGroups"
-          :key="group.title"
-          class="menu-group"
-        >
+        <div v-for="group in mobileMenuGroups" :key="group.title" class="menu-group">
           <h4 class="group-title">{{ group.title }}</h4>
           <div class="group-items">
             <div
@@ -224,12 +208,7 @@ watch(
               class="menu-item"
             >
               <span class="item-icon">
-                <svg
-                  width="24"
-                  height="24"
-                  aria-hidden="true"
-                  focusable="false"
-                >
+                <svg width="24" height="24" aria-hidden="true" focusable="false">
                   <use :xlink:href="item.icon"></use>
                 </svg>
               </span>

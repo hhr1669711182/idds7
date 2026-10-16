@@ -11,10 +11,7 @@ import { maModelSetting } from './commonSetting'
  * 加载消防车（GLB）
  * 失败时降级为 BoxGeometry 占位
  */
-export async function loadFireTruck(
-  buildingsGroup: THREE.Group,
-  coor: [number, number],
-): Promise<THREE.Object3D> {
+export async function loadFireTruck(buildingsGroup: THREE.Group, coor: [number, number]): Promise<THREE.Object3D> {
   try {
     const gltf = await loadGLTF(`${maModelSetting.assetBase}/xf_fire_truck.glb`)
     const model = gltf.scene as THREE.Object3D
@@ -26,10 +23,7 @@ export async function loadFireTruck(
     return model
   } catch (e) {
     // 降级占位
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.2, 0.1, 0.08),
-      new THREE.MeshLambertMaterial({ color: 0xd22 }),
-    )
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.08), new THREE.MeshLambertMaterial({ color: 0xd22 }))
     const localCoord = lonLatToLocalCoord(coor[0], coor[1], true) as THREE.Vector3
     mesh.position.set(localCoord.x, 0.05, localCoord.z)
     mesh.userData = { type: 'fireTruck', name: '消防车' }

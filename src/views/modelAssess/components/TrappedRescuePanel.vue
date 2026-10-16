@@ -78,7 +78,10 @@ const onPickRow = (uuid: string) => {
       </div>
     </div>
 
-    <div class="ma-panel-body" style="padding: 4px 12px; color: #8a96b0; font-size: 11px; border-top: 1px solid #1f2940">
+    <div
+      class="ma-panel-body"
+      style="padding: 4px 12px; color: #8a96b0; font-size: 11px; border-top: 1px solid #1f2940"
+    >
       ▸ 新增受困楼层
     </div>
     <div class="add-form">

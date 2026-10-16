@@ -7,16 +7,17 @@
  * 接口形态：Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>，同步。
  * Pinia 调用时会以异步方式消费这里的返回值（返回 string | null 即合规）。
  */
-const make = (
-  driver: 'local' | 'session',
-  ns = 'pinia',
-): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> => {
+const make = (driver: 'local' | 'session', ns = 'pinia'): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> => {
   const s = globalThis[`${driver}Storage`] as Storage
   const prefix = `${ns}:`
   return {
     getItem: (k: string) => s.getItem(prefix + k),
-    setItem: (k: string, v: string) => { s.setItem(prefix + k, v) },
-    removeItem: (k: string) => { s.removeItem(prefix + k) },
+    setItem: (k: string, v: string) => {
+      s.setItem(prefix + k, v)
+    },
+    removeItem: (k: string) => {
+      s.removeItem(prefix + k)
+    },
   }
 }
 

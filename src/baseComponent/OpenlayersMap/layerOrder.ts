@@ -9,4 +9,4 @@ export const MAP_LAYER_Z_INDEX = {
   fireStation: 1003,
   incident: 1003.5,
   vehicle: 1004,
-} as const;
+} as const

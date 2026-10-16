@@ -6,20 +6,20 @@
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\controller\core\io\index.ts
  */
-import { InputController } from './InputController';
-import { OutputController } from './OutputController';
-import type { BusinessController } from '../business';
-import { GenericController } from '../generic';
+import { InputController } from './InputController'
+import { OutputController } from './OutputController'
+import type { BusinessController } from '../business'
+import type { BusinessMapPort } from '../protocol/BusinessMapPort'
 
 export class IOController {
-  public input: InputController;
-  public output: OutputController;
+  public input: InputController
+  public output: OutputController
 
-  constructor(genericController: GenericController, businessController: BusinessController) {
-    this.input = new InputController(genericController, businessController);
-    this.output = new OutputController();
+  constructor(genericController: BusinessMapPort, businessController: BusinessController) {
+    this.input = new InputController(genericController, businessController)
+    this.output = new OutputController()
   }
 }
 
-export * from './InputController';
-export * from './OutputController';
+export * from './InputController'
+export * from './OutputController'

@@ -126,10 +126,7 @@ const extractCoord = (geometry: Record<string, unknown> | null | undefined): [nu
   if (flat.length < 4) return null
   const xs = flat.filter((_, i) => i % 2 === 0)
   const ys = flat.filter((_, i) => i % 2 === 1)
-  const coord: [number, number] = [
-    (Math.min(...xs) + Math.max(...xs)) / 2,
-    (Math.min(...ys) + Math.max(...ys)) / 2,
-  ]
+  const coord: [number, number] = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2]
   return Number.isFinite(coord[0]) && Number.isFinite(coord[1]) ? coord : null
 }
 
@@ -169,7 +166,13 @@ export const searchAmapAddress = async (
   if (!text) return bucket
   try {
     // 高德单页上限远小于 1 万，这里按接口 offset 语义取合理页大小
-    const response = await amapApi.keywordSearch({ keywords: text, city: appEnv.amapCity, cityLimit: true, offset: 20, page: 1 })
+    const response = await amapApi.keywordSearch({
+      keywords: text,
+      city: appEnv.amapCity,
+      cityLimit: true,
+      offset: 20,
+      page: 1,
+    })
     const collection = response as PoiFeatureCollection | undefined
     const features = Array.isArray(collection?.features) ? collection.features : []
     bucket.items = features
@@ -247,4 +250,3 @@ export const runSearch = async (
   ])
   return { address, resource, filter: buildResourceFilter(params) }
 }
-

@@ -40,11 +40,7 @@ const formatValue = (value: AlarmDetailRow["value"]) => {
     </div>
     <!-- 仅在有操作按钮时才提供 footer 插槽，避免 overlayTemplate 渲染空的 footer 分隔线 -->
     <template v-if="detailButtonText" #footer>
-      <el-button
-        size="small"
-        type="primary"
-        @click="$emit('detail')"
-      >
+      <el-button size="small" type="primary" @click="$emit('detail')">
         {{ detailButtonText }}
       </el-button>
     </template>

@@ -23,20 +23,8 @@ const selectSource = (id: string) => {
   <div class="base_source_panel" v-if="visible">
     <div class="card_header">
       <span>图源选择</span>
-      <span
-        role="img"
-        tabindex="-1"
-        class="anticon Head_close__0vFMi"
-        @click="hideCard"
-      >
-        <svg
-          width="1em"
-          height="1em"
-          fill="currentColor"
-          aria-hidden="true"
-          focusable="false"
-          class=""
-        >
+      <span role="img" tabindex="-1" class="anticon Head_close__0vFMi" @click="hideCard">
+        <svg width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false" class="">
           <use xlink:href="#icon-close"></use>
         </svg>
       </span>
@@ -45,12 +33,7 @@ const selectSource = (id: string) => {
     <div class="card_body">
       <div class="container">
         <div class="base_source_list">
-          <el-card
-            v-for="group in BASE_SOURCE_GROUPS"
-            :key="group.providerId"
-            class="source_card"
-            shadow="hover"
-          >
+          <el-card v-for="group in BASE_SOURCE_GROUPS" :key="group.providerId" class="source_card" shadow="hover">
             <template #header>
               <div class="card_source_header">
                 <span>{{ group.providerName }}</span>

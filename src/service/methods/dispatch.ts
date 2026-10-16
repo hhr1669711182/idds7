@@ -10,8 +10,6 @@ export type GetNavPathPlanDTO = {
 }
 
 export const getNavPathPlanMethod = (payload: GetNavPathPlanDTO) =>
-  alovaInstance.Post<NavPath[], GetNavPathPlanDTO>(
-    '/dispatch/navPathPlan',
-    payload,
-    { meta: { showError: true, cacheFor: 0 } }
-  )
+  alovaInstance.Post<NavPath[], GetNavPathPlanDTO>('/dispatch/navPathPlan', payload, {
+    meta: { showError: true, cacheFor: 0 },
+  })

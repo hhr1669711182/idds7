@@ -28,17 +28,26 @@ const getSuite = (secretKey: string, options: Omit<CryptoSuiteOptions, 'key' | '
   return suite
 }
 
-export const encryptText = (plainText: string, secretKey: string, options?: Omit<CryptoSuiteOptions, 'key' | 'keyType'>) =>
-  getSuite(secretKey, options).encrypt(plainText)
+export const encryptText = (
+  plainText: string,
+  secretKey: string,
+  options?: Omit<CryptoSuiteOptions, 'key' | 'keyType'>,
+) => getSuite(secretKey, options).encrypt(plainText)
 
-export const decryptText = (cipherText: string, secretKey: string, options?: Omit<CryptoSuiteOptions, 'key' | 'keyType'>) =>
-  getSuite(secretKey, options).decrypt(cipherText)
+export const decryptText = (
+  cipherText: string,
+  secretKey: string,
+  options?: Omit<CryptoSuiteOptions, 'key' | 'keyType'>,
+) => getSuite(secretKey, options).decrypt(cipherText)
 
 export const encryptJson = <T>(value: T, secretKey: string, options?: Omit<CryptoSuiteOptions, 'key' | 'keyType'>) =>
   getSuite(secretKey, options).encryptJson(value)
 
-export const decryptJson = <T>(cipherText: string, secretKey: string, options?: Omit<CryptoSuiteOptions, 'key' | 'keyType'>) =>
-  getSuite(secretKey, options).decryptJson<T>(cipherText)
+export const decryptJson = <T>(
+  cipherText: string,
+  secretKey: string,
+  options?: Omit<CryptoSuiteOptions, 'key' | 'keyType'>,
+) => getSuite(secretKey, options).decryptJson<T>(cipherText)
 
 export const hash = (text: string, alg: HashAlg = 'SHA256', outputEncoding: Encoder = 'Hex') =>
   new CryptoSuite().hash(text, alg, outputEncoding)

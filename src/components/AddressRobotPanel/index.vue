@@ -253,7 +253,9 @@ const nowStr = computed(() => fmtTime(Date.now()));
       <div class="addr_actions">
         <span class="addr_icon_btn" title="刷新" @click="onRefresh">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-            <path d="M17.65 6.35A8 8 0 0 0 4 12h-2l3.5 4 3.5-4H6a6 6 0 1 1 1.76 4.24l-1.42 1.42A8 8 0 1 0 17.65 6.35z" />
+            <path
+              d="M17.65 6.35A8 8 0 0 0 4 12h-2l3.5 4 3.5-4H6a6 6 0 1 1 1.76 4.24l-1.42 1.42A8 8 0 1 0 17.65 6.35z"
+            />
           </svg>
         </span>
         <span class="addr_icon_btn" :title="collapsed ? '展开' : '折叠'" @click="toggleCollapsed">
@@ -290,14 +292,11 @@ const nowStr = computed(() => fmtTime(Date.now()));
       <!-- 搜索 -->
       <div class="addr_search">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" class="addr_search_icon">
-          <path d="M15.5 14h-.79l-.28-.27A6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z" />
+          <path
+            d="M15.5 14h-.79l-.28-.27A6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"
+          />
         </svg>
-        <input
-          v-model="keyword"
-          class="addr_search_input"
-          type="text"
-          placeholder="搜索编号/名称/地址"
-        />
+        <input v-model="keyword" class="addr_search_input" type="text" placeholder="搜索编号/名称/地址" />
       </div>
 
       <!-- 列表 -->
@@ -350,24 +349,20 @@ const nowStr = computed(() => fmtTime(Date.now()));
           <div class="addr_detail_header">
             <div>
               <div class="addr_detail_title">{{ selected.name }}</div>
-              <div class="addr_detail_sub">
-                {{ selected.id }} · {{ selected.owner || "未指派" }}
-              </div>
+              <div class="addr_detail_sub">{{ selected.id }} · {{ selected.owner || "未指派" }}</div>
             </div>
             <div class="addr_detail_btns">
-              <button class="addr_btn addr_btn_primary" @click="onLocate(selected)">
-                定位
-              </button>
-              <button class="addr_btn" @click="onRemove(selected.id)">
-                移除
-              </button>
+              <button class="addr_btn addr_btn_primary" @click="onLocate(selected)">定位</button>
+              <button class="addr_btn" @click="onRemove(selected.id)">移除</button>
             </div>
           </div>
 
           <div class="addr_video">
             <div class="addr_video_placeholder">
               <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor" opacity="0.55">
-                <path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z" />
+                <path
+                  d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"
+                />
               </svg>
               <span>实时视频</span>
             </div>
@@ -478,9 +473,7 @@ const nowStr = computed(() => fmtTime(Date.now()));
             </div>
           </div>
 
-          <div v-if="selected.remark" class="addr_remark">
-            备注：{{ selected.remark }}
-          </div>
+          <div v-if="selected.remark" class="addr_remark">备注：{{ selected.remark }}</div>
 
           <div class="addr_footer">
             <span>系统时间 {{ nowStr }}</span>

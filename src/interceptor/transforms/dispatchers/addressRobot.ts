@@ -6,20 +6,24 @@
 
 import { MESSAGE_EVENT_KEY } from '@/const/const.message.type'
 import type { SeatDispatcher } from '../seat'
+import { getFrameMetadata } from '../../unwrap'
 
 export const addressRobotDispatcher: SeatDispatcher = (m) => {
   if (m.notifyType !== 'ADDRESSBOT') return null
   const cc = m.customContent
   if (!cc || cc.event_type !== 'AddressLocationUpdated') return null
 
-  return [{
-    eventKey: MESSAGE_EVENT_KEY.ADDRESS_ROBOT_GIS_SEARCH,
-    data: cc,
-    meta: {
-      seatDispatcher: 'address-robot',
-      notifyType: m.raw.notifyType,
-      eventType: cc.event_type,
-      topics: m.topics,
+  return [
+    {
+      eventKey: MESSAGE_EVENT_KEY.ADDRESS_ROBOT_GIS_SEARCH,
+      data: cc,
+      meta: {
+        ...getFrameMetadata(m),
+        seatDispatcher: 'address-robot',
+        notifyType: m.notifyType,
+        eventType: cc.event_type,
+        topics: m.topics,
+      },
     },
-  }]
+  ]
 }

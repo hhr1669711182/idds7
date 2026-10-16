@@ -18,27 +18,27 @@ export const routePlanRequestPayload = {
       // gisY: 22.2762,
       gisX: 113.54581672,
       gisY: 22.22169833,
-      "buildId": "688B9A3F38EA48E6AECD87AB911092A1",
-      "info": {
-        "id": "JR-004",
-        "address": "西海名苑",
-        "status": "接警",
-        "alarmTime": new Date().toISOString(),
-        "alarmType": "办公楼电气火警",
-        "burningMaterial": "插排及办公耗材",
-        "keyUnit": "西海名苑",
-        "district": "珠海市香洲区",
-        "street": "拱北街道",
-        "description": "办公楼茶水间插排短路，现场正在排烟和断电检查。"
-      }
+      buildId: '688B9A3F38EA48E6AECD87AB911092A1',
+      info: {
+        id: 'JR-004',
+        address: '西海名苑',
+        status: '接警',
+        alarmTime: new Date().toISOString(),
+        alarmType: '办公楼电气火警',
+        burningMaterial: '插排及办公耗材',
+        keyUnit: '西海名苑',
+        district: '珠海市香洲区',
+        street: '拱北街道',
+        description: '办公楼茶水间插排短路，现场正在排烟和断电检查。',
+      },
     },
     fireBrigade: [
       {
         id: 'fire_truck_001',
-        "orgName": "珠海市香洲区前山消防队",
-        "orgType": "fire_truck",
-        "gisX": 113.504055,
-        "gisY": 22.24067,
+        orgName: '珠海市香洲区前山消防队',
+        orgType: 'fire_truck',
+        gisX: 113.504055,
+        gisY: 22.24067,
         info: {},
         attrs: {
           vehicles: [

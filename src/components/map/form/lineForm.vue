@@ -181,12 +181,7 @@ const currentLine = computed(() => {
 </script>
 
 <template>
-  <el-form
-    :model="form"
-    label-width="auto"
-    style="max-width: 600px"
-    :class="'card_' + form.uuid"
-  >
+  <el-form :model="form" label-width="auto" style="max-width: 600px" :class="'card_' + form.uuid">
     <el-form-item label="线条:">
       <el-select
         v-model="form.lineStyle"
@@ -206,12 +201,7 @@ const currentLine = computed(() => {
             ></i>
           </span>
         </template>
-        <el-option
-          v-for="item in LINE_FORM_LINE_STYLES"
-          :key="item.value"
-          :label="item.value"
-          :value="item.value"
-        >
+        <el-option v-for="item in LINE_FORM_LINE_STYLES" :key="item.value" :label="item.value" :value="item.value">
           <i
             class="i_option"
             :style="{
@@ -224,12 +214,7 @@ const currentLine = computed(() => {
       </el-select>
     </el-form-item>
     <el-form-item label="颜色:">
-      <el-color-picker
-        v-model="form.color"
-        @change="changeColor"
-        @active-change="changeColor"
-        show-alpha
-      />
+      <el-color-picker v-model="form.color" @change="changeColor" @active-change="changeColor" show-alpha />
     </el-form-item>
     <el-form-item label="线宽:">
       <slider :value="form.width" :min="1" :max="12" @change="changeWidth" />

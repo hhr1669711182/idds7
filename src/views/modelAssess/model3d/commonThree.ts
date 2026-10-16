@@ -11,11 +11,7 @@ import { maModelSetting } from './commonSetting'
  * 经纬度 -> 局部场景坐标（米制缩放后）
  * 与 BIM 模块同名函数算法一致，但读取独立配置
  */
-export function lonLatToLocalCoord(
-  lon: number,
-  lat: number,
-  isVector3 = false,
-): THREE.Vector2 | THREE.Vector3 {
+export function lonLatToLocalCoord(lon: number, lat: number, isVector3 = false): THREE.Vector2 | THREE.Vector3 {
   const baseLon = maModelSetting.basePoint.baseLon
   const baseLat = maModelSetting.basePoint.baseLat
   const dx = (lon - baseLon) * 111319.9
@@ -71,49 +67,57 @@ export function buildMockBuildings(): MockBuildingFeature[] {
     {
       properties: { buildGuid: 'S3', shortName: 'S3 星光百货汇', floor: 14 },
       geometry: {
-        coordinates: [[
-          [cx - delta, cy - delta],
-          [cx + delta, cy - delta],
-          [cx + delta, cy + delta],
-          [cx - delta, cy + delta],
-          [cx - delta, cy - delta],
-        ]],
+        coordinates: [
+          [
+            [cx - delta, cy - delta],
+            [cx + delta, cy - delta],
+            [cx + delta, cy + delta],
+            [cx - delta, cy + delta],
+            [cx - delta, cy - delta],
+          ],
+        ],
       },
     },
     {
       properties: { buildGuid: 'S4', shortName: 'S4 华东民生大楼', floor: 18 },
       geometry: {
-        coordinates: [[
-          [cx + delta * 2, cy - delta],
-          [cx + delta * 4, cy - delta],
-          [cx + delta * 4, cy + delta],
-          [cx + delta * 2, cy + delta],
-          [cx + delta * 2, cy - delta],
-        ]],
+        coordinates: [
+          [
+            [cx + delta * 2, cy - delta],
+            [cx + delta * 4, cy - delta],
+            [cx + delta * 4, cy + delta],
+            [cx + delta * 2, cy + delta],
+            [cx + delta * 2, cy - delta],
+          ],
+        ],
       },
     },
     {
       properties: { buildGuid: 'S5', shortName: 'S5 国贸中心', floor: 22 },
       geometry: {
-        coordinates: [[
-          [cx - delta * 4, cy - delta * 2],
-          [cx - delta * 2, cy - delta * 2],
-          [cx - delta * 2, cy],
-          [cx - delta * 4, cy],
-          [cx - delta * 4, cy - delta * 2],
-        ]],
+        coordinates: [
+          [
+            [cx - delta * 4, cy - delta * 2],
+            [cx - delta * 2, cy - delta * 2],
+            [cx - delta * 2, cy],
+            [cx - delta * 4, cy],
+            [cx - delta * 4, cy - delta * 2],
+          ],
+        ],
       },
     },
     {
       properties: { buildGuid: 'S6', shortName: 'S6 浦江饭店', floor: 8 },
       geometry: {
-        coordinates: [[
-          [cx, cy + delta * 2],
-          [cx + delta * 2, cy + delta * 2],
-          [cx + delta * 2, cy + delta * 4],
-          [cx, cy + delta * 4],
-          [cx, cy + delta * 2],
-        ]],
+        coordinates: [
+          [
+            [cx, cy + delta * 2],
+            [cx + delta * 2, cy + delta * 2],
+            [cx + delta * 2, cy + delta * 4],
+            [cx, cy + delta * 4],
+            [cx, cy + delta * 2],
+          ],
+        ],
       },
     },
   ]

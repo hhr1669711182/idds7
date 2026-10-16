@@ -47,11 +47,7 @@ const run = () => {
   return { count: current.size, output }
 }
 
-const baseline = new Set(
-  existsSync(baselinePath)
-    ? JSON.parse(readFileSync(baselinePath, 'utf8')).errors ?? []
-    : [],
-)
+const baseline = new Set(existsSync(baselinePath) ? (JSON.parse(readFileSync(baselinePath, 'utf8')).errors ?? []) : [])
 
 const { count, output } = run()
 
@@ -75,12 +71,19 @@ if (added.length) {
 }
 
 if (update) {
-  writeFileSync(baselinePath, JSON.stringify({
-    note: 'vue-tsc 既有基线，暂不清理；pre-commit 仅提示不阻塞。修完一批后运行 pnpm lint:baseline:update 收敛',
-    count: current.size,
-    generatedAt: new Date().toISOString().slice(0, 10),
-    errors: [...current].sort(),
-  }, null, 2) + '\n')
+  writeFileSync(
+    baselinePath,
+    JSON.stringify(
+      {
+        note: 'vue-tsc 既有基线，暂不清理；pre-commit 仅提示不阻塞。修完一批后运行 pnpm lint:baseline:update 收敛',
+        count: current.size,
+        generatedAt: new Date().toISOString().slice(0, 10),
+        errors: [...current].sort(),
+      },
+      null,
+      2,
+    ) + '\n',
+  )
   console.log(`[lint-baseline] 基线已更新为 ${current.size} 项`)
   process.exit(0)
 }

@@ -11,4 +11,4 @@ export const VEHICLE_STATUS_TEXT: Record<string, string> = {
   RETURNED: '归队',
   RETURNING: '途中返回',
   UNAVAILABLE: '不可用',
-};
+}

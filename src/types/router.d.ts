@@ -53,9 +53,7 @@ declare module 'vue-router' {
 }
 
 type Component<T = any> =
-  | ReturnType<typeof defineComponent>
-  | (() => Promise<typeof import('*.vue')>)
-  | (() => Promise<T>)
+  ReturnType<typeof defineComponent> | (() => Promise<typeof import('*.vue')>) | (() => Promise<T>)
 
 declare global {
   declare interface AppRouteRecordRaw extends Omit<RouteRecordRaw, 'meta' | 'children'> {
@@ -67,8 +65,7 @@ declare global {
     fullPath?: string
   }
 
-  declare interface AppCustomRouteRecordRaw
-    extends Omit<RouteRecordRaw, 'meta' | 'component' | 'children'> {
+  declare interface AppCustomRouteRecordRaw extends Omit<RouteRecordRaw, 'meta' | 'component' | 'children'> {
     name: string
     meta: RouteMetaCustom
     component: string

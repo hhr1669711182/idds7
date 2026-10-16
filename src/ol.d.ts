@@ -1,1 +1,1 @@
-declare module "ol-ext/*";
+declare module 'ol-ext/*'

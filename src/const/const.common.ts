@@ -7,9 +7,9 @@
  * @FilePath: \ids-gis-web\src\const\const.common.ts
  */
 export const THEME_COLOR = {
-  DAY: "DAY",
-  NIGHT: "NIGHT",
-};
+  DAY: 'DAY',
+  NIGHT: 'NIGHT',
+}
 
 /**
  * 请求成功状态码

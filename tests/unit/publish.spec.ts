@@ -25,16 +25,24 @@ describe('publish 消息发送出口', () => {
     const { MESSAGE_CHANNEL, MESSAGE_EVENT_KEY, MESSAGE_SYSTEM } = await import('@/const/const.message.type')
 
     expect(publishRoutePlanMultiple({ a: 1 })).toBe(true)
-    expect(publishMock).toHaveBeenLastCalledWith(MESSAGE_EVENT_KEY.ROUTE_PLAN_MULTIPLE, { a: 1 }, {
-      system: MESSAGE_SYSTEM.MAP,
-      channel: MESSAGE_CHANNEL.WS,
-    })
+    expect(publishMock).toHaveBeenLastCalledWith(
+      MESSAGE_EVENT_KEY.ROUTE_PLAN_MULTIPLE,
+      { a: 1 },
+      {
+        system: MESSAGE_SYSTEM.MAP,
+        channel: MESSAGE_CHANNEL.WS,
+      },
+    )
 
     expect(publishRoutePlanCancel('r1')).toBe(true)
-    expect(publishMock).toHaveBeenLastCalledWith(MESSAGE_EVENT_KEY.ROUTE_PLAN_CANCEL, { routeId: 'r1' }, {
-      system: MESSAGE_SYSTEM.MAP,
-      channel: MESSAGE_CHANNEL.WS,
-    })
+    expect(publishMock).toHaveBeenLastCalledWith(
+      MESSAGE_EVENT_KEY.ROUTE_PLAN_CANCEL,
+      { routeId: 'r1' },
+      {
+        system: MESSAGE_SYSTEM.MAP,
+        channel: MESSAGE_CHANNEL.WS,
+      },
+    )
   })
 
   it('地址 POI：宿主通道走 POST_MESSAGE，地图 POI 走 WS', async () => {
@@ -42,16 +50,24 @@ describe('publish 消息发送出口', () => {
     const { MESSAGE_CHANNEL, MESSAGE_EVENT_KEY, MESSAGE_SYSTEM } = await import('@/const/const.message.type')
 
     expect(publishAddrPoiPick({ lngLat: [113.93, 22.53] })).toBe(true)
-    expect(publishMock).toHaveBeenLastCalledWith(MESSAGE_EVENT_KEY.ADDR_POI_PICK, { lngLat: [113.93, 22.53] }, {
-      system: MESSAGE_SYSTEM.HOST,
-      channel: MESSAGE_CHANNEL.POST_MESSAGE,
-    })
+    expect(publishMock).toHaveBeenLastCalledWith(
+      MESSAGE_EVENT_KEY.ADDR_POI_PICK,
+      { lngLat: [113.93, 22.53] },
+      {
+        system: MESSAGE_SYSTEM.HOST,
+        channel: MESSAGE_CHANNEL.POST_MESSAGE,
+      },
+    )
 
     expect(publishMapPoiPick({ id: 1 })).toBe(true)
-    expect(publishMock).toHaveBeenLastCalledWith(MESSAGE_EVENT_KEY.MAP_POI_PICK, { id: 1 }, {
-      system: MESSAGE_SYSTEM.MAP,
-      channel: MESSAGE_CHANNEL.WS,
-    })
+    expect(publishMock).toHaveBeenLastCalledWith(
+      MESSAGE_EVENT_KEY.MAP_POI_PICK,
+      { id: 1 },
+      {
+        system: MESSAGE_SYSTEM.MAP,
+        channel: MESSAGE_CHANNEL.WS,
+      },
+    )
   })
 
   it('三维表单：eventKey / system / channel 契约', async () => {
@@ -59,10 +75,14 @@ describe('publish 消息发送出口', () => {
     const { MESSAGE_CHANNEL, MESSAGE_EVENT_KEY, MESSAGE_SYSTEM } = await import('@/const/const.message.type')
 
     expect(publishThreeBuildFormSend({ floor: 2 })).toBe(true)
-    expect(publishMock).toHaveBeenLastCalledWith(MESSAGE_EVENT_KEY.THREE_BUILD_FORM_SEND, { floor: 2 }, {
-      system: MESSAGE_SYSTEM.THREE,
-      channel: MESSAGE_CHANNEL.WS,
-    })
+    expect(publishMock).toHaveBeenLastCalledWith(
+      MESSAGE_EVENT_KEY.THREE_BUILD_FORM_SEND,
+      { floor: 2 },
+      {
+        system: MESSAGE_SYSTEM.THREE,
+        channel: MESSAGE_CHANNEL.WS,
+      },
+    )
   })
 })
 /**

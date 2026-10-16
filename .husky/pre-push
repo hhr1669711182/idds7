@@ -1,0 +1,20 @@
+# pre-push hook
+# 推送前检查：与 pre-commit 保持一致的「提示模式」，不阻塞推送。
+
+# 1) 分支保护：公共分支禁止直推（个人分支 dev-<姓名> 不受限）
+branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+case "$branch" in
+  main | master | dev | test | uat | prod | production | release | hotfix)
+    echo "❌ [pre-push] 禁止直推公共分支 '$branch'，请提交 MR。"
+    exit 1
+    ;;
+esac
+
+# 2) 类型门禁基线检查（仅提示，不阻塞）
+node scripts/check-lint-baseline.mjs || true
+
+# 3) herness 文档体量检查（仅提示，不阻塞）
+node scripts/check-herness-size.mjs || true
+
+exit 0
+

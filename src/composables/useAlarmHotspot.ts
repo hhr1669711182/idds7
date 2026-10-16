@@ -19,11 +19,7 @@ const RED_INCIDENT_STATES = new Set([
   'OPERATION_COMPLETED',
 ])
 
-const BLUE_INCIDENT_STATES = new Set([
-  'RETURNING',
-  'RETURNED',
-  'CLOSED',
-])
+const BLUE_INCIDENT_STATES = new Set(['RETURNING', 'RETURNED', 'CLOSED'])
 
 const resolveColorType = (state?: string): JRAlarmData['colorType'] => {
   if (!state) return 'red'
@@ -43,15 +39,9 @@ const resolveDisasterType = (raw: string): JRAlarmData['type'] => {
   }
 }
 
-type AlarmListRef = Pick<
-  AlarmItem,
-  'incidentState' | 'incidentStateName' | 'createdAt'
->
+type AlarmListRef = Pick<AlarmItem, 'incidentState' | 'incidentStateName' | 'createdAt'>
 
-const toJRAlarmData = (
-  item: DisasterProfileItem,
-  ref: AlarmListRef,
-): JRAlarmData | null => {
+const toJRAlarmData = (item: DisasterProfileItem, ref: AlarmListRef): JRAlarmData | null => {
   if (item.longitude == null || item.latitude == null) return null
   return {
     incidentId: item.incidentId,
@@ -84,15 +74,9 @@ const emptyListResult: PageResult<DisasterProfileItem> = {
 }
 
 export const useAlarmHotspot = () => {
-  const list = useRequest(
-    () => listAlarmMethod({ stateFrom: 'CREATED', stateTo: 'CLOSED' }),
-    { immediate: false },
-  )
+  const list = useRequest(() => listAlarmMethod({ stateFrom: 'CREATED', stateTo: 'CLOSED' }), { immediate: false })
 
-  const detail = useRequest(
-    (incidentIds: string[]) => getAlarmAllDetailMethod(incidentIds),
-    { immediate: false },
-  )
+  const detail = useRequest((incidentIds: string[]) => getAlarmAllDetailMethod(incidentIds), { immediate: false })
 
   list.onSuccess(async (ev) => {
     const data = ev.data as AlarmListResult | undefined

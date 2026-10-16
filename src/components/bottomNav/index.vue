@@ -7,18 +7,18 @@
  * @FilePath: \ids-gis-web\src\components\bottomNav\index.vue
 -->
 <template>
-    <div class="bottom_nav_tab">
-      <div
-        v-for="tab in tabs"
-        :key="tab.name"
-        class="tab_item"
-        :class="{ tab_item_active: tab.name == activeTab }"
-        @click="handleClick(tab)"
-      >
-        <img :src="tab.icon" alt="" />
-        {{ tab.label }}
-      </div>
+  <div class="bottom_nav_tab">
+    <div
+      v-for="tab in tabs"
+      :key="tab.name"
+      class="tab_item"
+      :class="{ tab_item_active: tab.name == activeTab }"
+      @click="handleClick(tab)"
+    >
+      <img :src="tab.icon" alt="" />
+      {{ tab.label }}
     </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -115,5 +115,4 @@ const handleClick = (tab: any) => {
   height: 20px;
 }
 }
-
 </style>

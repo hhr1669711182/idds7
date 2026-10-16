@@ -73,7 +73,12 @@
         <label class="cfg-field">
           <span class="cfg-label">图层组顺序:</span>
           <span class="cfg-inline">
-            <el-select :model-value="currentGroup.order" size="small" :teleported="false" @update:modelValue="setGroupOrder">
+            <el-select
+              :model-value="currentGroup.order"
+              size="small"
+              :teleported="false"
+              @update:modelValue="setGroupOrder"
+            >
               <el-option v-for="n in groupOrderOptions" :key="n" :label="String(n)" :value="n" />
             </el-select>
             <el-switch v-model="currentGroup.visible" size="small" @change="setGroupVisible" />
@@ -123,9 +128,7 @@
 
     <footer class="cfg-footer">
       <el-button size="small" @click="cancel">取消</el-button>
-      <el-button size="small" type="primary" :loading="saving" :disabled="!isDirty" @click="save">
-        保存
-      </el-button>
+      <el-button size="small" type="primary" :loading="saving" :disabled="!isDirty" @click="save"> 保存 </el-button>
     </footer>
   </section>
 </template>

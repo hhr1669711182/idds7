@@ -26,7 +26,7 @@ const handleClear = () => {
 
     vectorLayer && vectorLayer.getSource().clear();
 
-    const esWmsLayer = layers.find((i: { getClassName: () => string }) => 
+    const esWmsLayer = layers.find((i: { getClassName: () => string }) =>
       i.getClassName() === LAYER_NAMES.ES_WMS_LAYER
     );
     if (esWmsLayer) {
@@ -53,63 +53,27 @@ const openBigPanel = () => {
 <template>
   <ul class="Clear_clear__Zy0p7">
     <li @click="openBigPanel">
-      <el-tooltip
-        class="box-item"
-        effect="dark"
-        content="地图操作"
-        placement="left"
-        :offset="20"
-      >
+      <el-tooltip class="box-item" effect="dark" content="地图操作" placement="left" :offset="20">
         <span role="img" class="anticon">
-          <svg
-            width="1em"
-            height="1em"
-            aria-hidden="true"
-            focusable="false"
-            class=""
-          >
+          <svg width="1em" height="1em" aria-hidden="true" focusable="false" class="">
             <use xlink:href="#icon-operate"></use>
           </svg>
         </span>
       </el-tooltip>
     </li>
     <li @click="openSettingModal">
-      <el-tooltip
-        class="box-item"
-        effect="dark"
-        content="设置"
-        placement="left"
-        :offset="20"
-      >
+      <el-tooltip class="box-item" effect="dark" content="设置" placement="left" :offset="20">
         <span role="img" class="anticon">
-          <svg
-            width="1em"
-            height="1em"
-            aria-hidden="true"
-            focusable="false"
-            class=""
-          >
+          <svg width="1em" height="1em" aria-hidden="true" focusable="false" class="">
             <use xlink:href="#icon-set-up"></use>
           </svg>
         </span>
       </el-tooltip>
     </li>
     <li @click="handleClear">
-      <el-tooltip
-        class="box-item"
-        effect="dark"
-        content="清除"
-        placement="left"
-        :offset="20"
-      >
+      <el-tooltip class="box-item" effect="dark" content="清除" placement="left" :offset="20">
         <span role="img" class="anticon">
-          <svg
-            width="1em"
-            height="1em"
-            aria-hidden="true"
-            focusable="false"
-            class=""
-          >
+          <svg width="1em" height="1em" aria-hidden="true" focusable="false" class="">
             <use xlink:href="#icon-delete"></use>
           </svg>
         </span>

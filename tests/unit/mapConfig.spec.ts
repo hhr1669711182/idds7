@@ -28,9 +28,7 @@ describe('config/mapConfig 图层配置', () => {
 
   it('工具栏只暴露 enabled 资源', () => {
     const config = createDefaultMapConfig()
-    const resources = config.layer.groups.flatMap((group) =>
-      group.categories.flatMap((category) => category.resources),
-    )
+    const resources = config.layer.groups.flatMap((group) => group.categories.flatMap((category) => category.resources))
 
     const disabledId = 'gis:v_srvc_water_hydrant'
     const disabledResource = resources.find((resource) => resource.id === disabledId)
@@ -41,7 +39,11 @@ describe('config/mapConfig 图层配置', () => {
       .map((resource) => resource.id)
       .sort()
 
-    expect(getToolbarLayerConfigs(config).map((layer) => layer.id).sort()).toEqual(expected)
+    expect(
+      getToolbarLayerConfigs(config)
+        .map((layer) => layer.id)
+        .sort(),
+    ).toEqual(expected)
   })
 
   it('可见资源映射为勾选的图层 id', () => {
@@ -75,7 +77,9 @@ describe('config/mapConfig 图层配置', () => {
     config.feature.maxZoom = 17
     config.layer.groups.forEach((g) => g.categories.forEach((c) => c.resources.forEach((r) => (r.visible = false))))
 
-    const target = config.layer.groups.flatMap((g) => g.categories.flatMap((c) => c.resources)).find((resource) => resource.enabled)!
+    const target = config.layer.groups
+      .flatMap((g) => g.categories.flatMap((c) => c.resources))
+      .find((resource) => resource.enabled)!
     target.visible = true
 
     await saveMapConfig(config)

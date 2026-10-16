@@ -57,35 +57,13 @@ onMounted(() => {
 </script>
 <template>
   <div class="compass" style="transform: rotate(0deg)">
-    <el-tooltip
-      class="box-item"
-      effect="dark"
-      content="逆时针旋转"
-      placement="left"
-      :offset="10"
-    >
+    <el-tooltip class="box-item" effect="dark" content="逆时针旋转" placement="left" :offset="10">
       <span class="left" @click="handleLeftClick"></span>
     </el-tooltip>
-    <el-tooltip
-      class="box-item"
-      effect="dark"
-      content="复位"
-      placement="top"
-      :offset="10"
-    >
-      <span
-        class="center"
-        @click="handleRecovery"
-        :style="{ transform: `rotate(${rotate}deg)` }"
-      ></span>
+    <el-tooltip class="box-item" effect="dark" content="复位" placement="top" :offset="10">
+      <span class="center" @click="handleRecovery" :style="{ transform: `rotate(${rotate}deg)` }"></span>
     </el-tooltip>
-    <el-tooltip
-      class="box-item"
-      effect="dark"
-      content="顺时针旋转"
-      placement="bottom"
-      :offset="10"
-    >
+    <el-tooltip class="box-item" effect="dark" content="顺时针旋转" placement="bottom" :offset="10">
       <span class="right" @click="handleRightClick"></span>
     </el-tooltip>
   </div>

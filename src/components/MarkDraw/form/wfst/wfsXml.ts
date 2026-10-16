@@ -9,33 +9,33 @@
  * 过滤出一个「写库副本」，geometryName 之外的一律不落库；
  * DescribeFeatureType 不可用（fields 为空）时只写几何，最保守。
  */
-import GML3 from "ol/format/GML3";
-import WFS from "ol/format/WFS";
-import type { WriteTransactionOptions } from "ol/format/WFS";
-import Feature from "ol/Feature";
-import type { FeatureTypeInfo } from "../../utils/featureType";
-import type { CoordArray, MarkDrawLayer } from "../../engine/types";
-import type Geometry from "ol/geom/Geometry";
-import Point from "ol/geom/Point";
-import MultiPoint from "ol/geom/MultiPoint";
-import LineString from "ol/geom/LineString";
-import MultiLineString from "ol/geom/MultiLineString";
-import Polygon from "ol/geom/Polygon";
-import MultiPolygon from "ol/geom/MultiPolygon";
-import { geometryToLngLat, lngLatToMercator } from "../../utils/proj";
+import GML3 from 'ol/format/GML3'
+import WFS from 'ol/format/WFS'
+import type { WriteTransactionOptions } from 'ol/format/WFS'
+import Feature from 'ol/Feature'
+import type { FeatureTypeInfo } from '../../utils/featureType'
+import type { CoordArray, MarkDrawLayer } from '../../engine/types'
+import type Geometry from 'ol/geom/Geometry'
+import Point from 'ol/geom/Point'
+import MultiPoint from 'ol/geom/MultiPoint'
+import LineString from 'ol/geom/LineString'
+import MultiLineString from 'ol/geom/MultiLineString'
+import Polygon from 'ol/geom/Polygon'
+import MultiPolygon from 'ol/geom/MultiPolygon'
+import { geometryToLngLat, lngLatToMercator } from '../../utils/proj'
 
 const buildWFSOptions = (layer: MarkDrawLayer, info: FeatureTypeInfo) => {
   // 注意：OL 的 writeTransaction 读的是 featureType（单数），
   // 写成 featureTypes（复数，读操作才用）会让 getTypeName 拿到 undefined 直接崩。
-  const typeName = layer.typeName.split(":").pop() ?? layer.typeName;
+  const typeName = layer.typeName.split(':').pop() ?? layer.typeName
   const base: Record<string, unknown> = {
     featureNS: info.featureNS ?? `http://www.telewave.com.cn/${layer.workspace}`,
     featureType: typeName,
-    geometryName: info.geomField || "geom",
+    geometryName: info.geomField || 'geom',
     featurePrefix: info.featurePrefix || layer.workspace,
-  };
-  return base as WriteTransactionOptions & { geometryName?: string };
-};
+  }
+  return base as WriteTransactionOptions & { geometryName?: string }
+}
 
 /**
  * 按几何类型把坐标换算成另一个口径的 Geometry。
@@ -43,75 +43,75 @@ const buildWFSOptions = (layer: MarkDrawLayer, info: FeatureTypeInfo) => {
  * （Circle 还要 radius、GeometryCollection 要子几何），反射 constructor 既脆弱又难读。
  */
 const rebuildGeometry = (geometry: Geometry, toLngLat: boolean): Geometry => {
-  const src = geometry as unknown as { getCoordinates(): CoordArray };
-  const raw = src.getCoordinates();
-  const coords = toLngLat ? geometryToLngLat(raw) : (lngLatToMercator(raw) as CoordArray);
+  const src = geometry as unknown as { getCoordinates(): CoordArray }
+  const raw = src.getCoordinates()
+  const coords = toLngLat ? geometryToLngLat(raw) : (lngLatToMercator(raw) as CoordArray)
   // 统一过 unknown 再落具体类型：CoordArray 最深只到三维，MultiPolygon 是四层嵌套，
   // 直接断言会被 TS 判为「无充分重叠」。
-  const asCoords = coords as unknown;
+  const asCoords = coords as unknown
   switch (geometry.getType()) {
-    case "Point":
-      return new Point(asCoords as [number, number]);
-    case "MultiPoint":
-      return new MultiPoint(asCoords as [number, number][]);
-    case "LineString":
-      return new LineString(asCoords as [number, number][]);
-    case "MultiLineString":
-      return new MultiLineString(asCoords as [number, number][][]);
-    case "Polygon":
-      return new Polygon(asCoords as [number, number][][]);
-    case "MultiPolygon":
-      return new MultiPolygon(asCoords as [number, number][][][]);
+    case 'Point':
+      return new Point(asCoords as [number, number])
+    case 'MultiPoint':
+      return new MultiPoint(asCoords as [number, number][])
+    case 'LineString':
+      return new LineString(asCoords as [number, number][])
+    case 'MultiLineString':
+      return new MultiLineString(asCoords as [number, number][][])
+    case 'Polygon':
+      return new Polygon(asCoords as [number, number][][])
+    case 'MultiPolygon':
+      return new MultiPolygon(asCoords as [number, number][][][])
     default:
-      throw new Error("暂不支持将 " + geometry.getType() + " 转为落库坐标系");
+      throw new Error('暂不支持将 ' + geometry.getType() + ' 转为落库坐标系')
   }
-};
+}
 
 /**
  * 生成写库副本：只保留图层真实字段（外键 id / geom / 业务属性）。
  * 不改动原要素，避免污染地图态。
  */
 const toWriteFeature = (feature: Feature, info: FeatureTypeInfo): Feature => {
-  const clone = new Feature();
-  const id = feature.getId();
-  if (id !== undefined) clone.setId(id);
+  const clone = new Feature()
+  const id = feature.getId()
+  if (id !== undefined) clone.setId(id)
   // 几何字段名必须用服务端的真实字段名（DescribeFeatureType 拿到的，如 zone_geom / geom / the_geom），
   // 不能沿用 OL 要素上的默认名 "geometry"：
   // writeUpdate 会读 feature.getGeometryName() 去取对应属性，
   // 名字对不上就抛「No such property: geometry」。
-  clone.setGeometryName(info.geomField || feature.getGeometryName());
+  clone.setGeometryName(info.geomField || feature.getGeometryName())
 
   // 几何：OL 的 GML writer 要求 srsName 与坐标单位一致（写错会被 GeoServer
   // 当成另一个坐标系，报 PointOutsideEnvelopeException）。
   // 我们对外口径统一 4326，所以在序列化这一刻把 3857 几何转成 4326。
-  const geometry = feature.getGeometry();
-  if (geometry) clone.setGeometry(rebuildGeometry(geometry, true));
+  const geometry = feature.getGeometry()
+  if (geometry) clone.setGeometry(rebuildGeometry(geometry, true))
 
   // fields 为空 = DescribeFeatureType 不可用，只写几何，绝不猜字段
-  if (!info.fields.length) return clone;
+  if (!info.fields.length) return clone
 
-  const allowed = new Set(info.fields);
-  const props = feature.getProperties();
+  const allowed = new Set(info.fields)
+  const props = feature.getProperties()
   Object.entries(props).forEach(([key, value]) => {
-    if (!allowed.has(key)) return;
-    if (value === undefined) return;
+    if (!allowed.has(key)) return
+    if (value === undefined) return
     // 几何字段由 geometryName 单独写出，不能再当普通属性写一遍
-    if (key === info.geomField || key === clone.getGeometryName()) return;
-    clone.set(key, value);
-  });
-  return clone;
-};
+    if (key === info.geomField || key === clone.getGeometryName()) return
+    clone.set(key, value)
+  })
+  return clone
+}
 
 const serialize = (
   layer: MarkDrawLayer,
   info: FeatureTypeInfo,
   inserts: Feature[] | null,
   updates: Feature[] | null,
-  deletes: Feature[] | null
+  deletes: Feature[] | null,
 ): string => {
-  const wfs = new WFS(buildWFSOptions(layer, info));
-  const writeInserts = inserts ? inserts.map((f) => toWriteFeature(f, info)) : null;
-  const writeUpdates = updates ? updates.map((f) => toWriteFeature(f, info)) : null;
+  const wfs = new WFS(buildWFSOptions(layer, info))
+  const writeInserts = inserts ? inserts.map((f) => toWriteFeature(f, info)) : null
+  const writeUpdates = updates ? updates.map((f) => toWriteFeature(f, info)) : null
   // 关键 1：writeTransaction 的第 4 个参数必须自带 featureNS / featureType / featurePrefix。
   // 构造函数的选项只服务于 writeGetFeature，事务路径不会去读它 ——
   // 只传 { gmlOptions } 会让 featureType 为 undefined，
@@ -123,23 +123,18 @@ const serialize = (
   // CRS:84 在 OL 里是 enu，不倒序，与 OGC "经度在前" 约定一致。
   const txOptions: WriteTransactionOptions = {
     ...buildWFSOptions(layer, info),
-    gmlOptions: { srsName: "CRS:84" },
-  };
-  const node = wfs.writeTransaction(
-    writeInserts ?? [],
-    writeUpdates ?? [],
-    deletes ?? [],
-    txOptions
-  );
+    gmlOptions: { srsName: 'CRS:84' },
+  }
+  const node = wfs.writeTransaction(writeInserts ?? [], writeUpdates ?? [], deletes ?? [], txOptions)
   // writeTransaction 实际返回 DOM Node，不是字符串。
   // 这里必须按类型判断：Node 对象是 truthy，
   // 用 `(node as string) ?? xml` 这样的假值兜底会把 Node 对象本身返回出去，
   // 上层再交给 alova 就会 JSON.stringify 成 "{}" 发给 GeoServer，
   // 服务端按 XML 解析时直接报
   // 「Unexpected character '{' (code 123) in prolog; expected '<'」。
-  if (typeof node === "string") return node;
-  return new XMLSerializer().serializeToString(node as unknown as Node);
-};
+  if (typeof node === 'string') return node
+  return new XMLSerializer().serializeToString(node as unknown as Node)
+}
 
 /**
  * 只更新几何字段的 WFS-T Update。
@@ -152,100 +147,87 @@ const serialize = (
  * 2. 只提交几何一个 Property —— 物理表的 create_time 是 dateTime、
  *    is_deleted 是 boolean，把整个 properties 回写会有类型丢失和覆盖原值的风险。
  */
-export const buildGeomUpdateXml = (
-  layer: MarkDrawLayer,
-  info: FeatureTypeInfo,
-  features: Feature[]
-): string | null => {
-  const prefix = info.featurePrefix || layer.workspace;
-  const ns = info.featureNS || `http://www.telewave.com.cn/${layer.workspace}`;
-  const typeName = layer.typeName.split(":").pop() ?? layer.typeName;
-  const geomField = info.geomField || "geom";
+export const buildGeomUpdateXml = (layer: MarkDrawLayer, info: FeatureTypeInfo, features: Feature[]): string | null => {
+  const prefix = info.featurePrefix || layer.workspace
+  const ns = info.featureNS || `http://www.telewave.com.cn/${layer.workspace}`
+  const typeName = layer.typeName.split(':').pop() ?? layer.typeName
+  const geomField = info.geomField || 'geom'
 
   // 用 OL 的 GML3 把几何写成标准的 <gml:MultiSurface>（轴序由 CRS:84 决定，不倒序）
-  const gml = new GML3({ srsName: "CRS:84" });
+  const gml = new GML3({ srsName: 'CRS:84' })
 
   const updates = features
     .map((feature) => {
       // 定位方式：物理表图层的主键就是 GeoServer 暴露的 fid（如 juris_zone.<zone_id>），
       // 它不在 properties 里（DescribeFeatureType 不列主键），
       // 所以必须用 ogc:FeatureId，不能用 PropertyIsEqualTo(zone_id) —— 后者匹配不到任何行。
-      const fid = feature.getId();
-      const rawGeometry = feature.getGeometry();
-      if (fid === undefined || fid === null || fid === "") return "";
-      if (!rawGeometry) return "";
+      const fid = feature.getId()
+      const rawGeometry = feature.getGeometry()
+      if (fid === undefined || fid === null || fid === '') return ''
+      if (!rawGeometry) return ''
 
       // 关键：地图内部几何是 3857，落库口径是 4326（WGS84 经纬度）。
       // 必须先 rebuildGeometry 转一道，否则写出去的是 12683411 这样的米制坐标，
       // GeoServer 会报 PointOutsideEnvelopeException: 1.268E7 outside of (-180,180)。
-      const geometry = rebuildGeometry(rawGeometry, true);
+      const geometry = rebuildGeometry(rawGeometry, true)
 
       // writeGeometryElement 是「往已有节点里写」，返回 void，所以先建一个占位容器
-      const holder = document.createElementNS("http://www.opengis.net/gml", "gml:Geometry");
+      const holder = document.createElementNS('http://www.opengis.net/gml', 'gml:Geometry')
       gml.writeGeometryElement(holder, geometry, [
         {
           node: holder,
           gmlVersion: 3,
-          srsName: "CRS:84",
+          srsName: 'CRS:84',
           featureType: typeName,
           featurePrefix: prefix,
           featureNS: ns,
           geometryName: geomField,
         },
-      ]);
+      ])
 
-      const geomChildren = Array.from(holder.childNodes);
-      if (!geomChildren.length) return "";
+      const geomChildren = Array.from(holder.childNodes)
+      if (!geomChildren.length) return ''
 
-      const upd = document.createElementNS("http://www.opengis.net/wfs", "wfs:Update");
-      upd.setAttribute("typeName", `${prefix}:${typeName}`);
+      const upd = document.createElementNS('http://www.opengis.net/wfs', 'wfs:Update')
+      upd.setAttribute('typeName', `${prefix}:${typeName}`)
 
-      const filter = document.createElementNS("http://www.opengis.net/ogc", "ogc:Filter");
-      const featureId = document.createElementNS("http://www.opengis.net/ogc", "ogc:FeatureId");
+      const filter = document.createElementNS('http://www.opengis.net/ogc', 'ogc:Filter')
+      const featureId = document.createElementNS('http://www.opengis.net/ogc', 'ogc:FeatureId')
       // WFS 1.1.0 要求 FeatureId 用 fid 属性，且值是 GeoServer 暴露的完整 fid
-      featureId.setAttribute("fid", String(fid));
-      filter.appendChild(featureId);
-      upd.appendChild(filter);
+      featureId.setAttribute('fid', String(fid))
+      filter.appendChild(featureId)
+      upd.appendChild(filter)
 
-      const prop = document.createElementNS("http://www.opengis.net/wfs", "wfs:Property");
-      const name = document.createElementNS("http://www.opengis.net/wfs", "wfs:Name");
-      name.textContent = geomField;
-      const value = document.createElementNS("http://www.opengis.net/wfs", "wfs:Value");
-      geomChildren.forEach((child) => value.appendChild(child));
-      prop.appendChild(name);
-      prop.appendChild(value);
-      upd.appendChild(prop);
-      return new XMLSerializer().serializeToString(upd);
+      const prop = document.createElementNS('http://www.opengis.net/wfs', 'wfs:Property')
+      const name = document.createElementNS('http://www.opengis.net/wfs', 'wfs:Name')
+      name.textContent = geomField
+      const value = document.createElementNS('http://www.opengis.net/wfs', 'wfs:Value')
+      geomChildren.forEach((child) => value.appendChild(child))
+      prop.appendChild(name)
+      prop.appendChild(value)
+      upd.appendChild(prop)
+      return new XMLSerializer().serializeToString(upd)
     })
-    .filter(Boolean);
+    .filter(Boolean)
 
-  if (!updates.length) return null;
+  if (!updates.length) return null
 
-  const header = `<?xml version="1.0" encoding="UTF-8"?><wfs:Transaction xmlns:wfs="http://www.opengis.net/wfs" xmlns:ogc="http://www.opengis.net/ogc" xmlns:gml="http://www.opengis.net/gml" xmlns:${prefix}="${ns}" service="WFS" version="1.1.0">`;
-  return header + updates.join("") + "</wfs:Transaction>";
-};
-export const buildInsertXml = (
-  layer: MarkDrawLayer,
-  info: FeatureTypeInfo,
-  features: Feature[]
-): string => serialize(layer, info, features, null, null);
+  const header = `<?xml version="1.0" encoding="UTF-8"?><wfs:Transaction xmlns:wfs="http://www.opengis.net/wfs" xmlns:ogc="http://www.opengis.net/ogc" xmlns:gml="http://www.opengis.net/gml" xmlns:${prefix}="${ns}" service="WFS" version="1.1.0">`
+  return header + updates.join('') + '</wfs:Transaction>'
+}
+export const buildInsertXml = (layer: MarkDrawLayer, info: FeatureTypeInfo, features: Feature[]): string =>
+  serialize(layer, info, features, null, null)
 
-export const buildUpdateXml = (
-  layer: MarkDrawLayer,
-  info: FeatureTypeInfo,
-  features: Feature[]
-): string => serialize(layer, info, null, features, null);
+export const buildUpdateXml = (layer: MarkDrawLayer, info: FeatureTypeInfo, features: Feature[]): string =>
+  serialize(layer, info, null, features, null)
 
-export const buildDeleteXml = (
-  layer: MarkDrawLayer,
-  info: FeatureTypeInfo,
-  features: Feature[]
-): string => serialize(layer, info, null, null, features);
+export const buildDeleteXml = (layer: MarkDrawLayer, info: FeatureTypeInfo, features: Feature[]): string =>
+  serialize(layer, info, null, null, features)
 
 export const buildMixedXml = (
   layer: MarkDrawLayer,
   info: FeatureTypeInfo,
   inserts: Feature[],
   updates: Feature[],
-  deletes: Feature[]
-): string => serialize(layer, info, inserts, updates, deletes);
+  deletes: Feature[],
+): string => serialize(layer, info, inserts, updates, deletes)

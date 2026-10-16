@@ -33,12 +33,7 @@ function createFloor(points: THREE.Vector2[], thickness: number, addH: number): 
   return mesh
 }
 
-function createWalls(
-  points: THREE.Vector2[],
-  height: number,
-  thickness: number,
-  addH: number,
-): THREE.Mesh {
+function createWalls(points: THREE.Vector2[], height: number, thickness: number, addH: number): THREE.Mesh {
   // 用 4 面墙（简化为 BoxGeometry 围一圈）
   const group = new THREE.Group()
   for (let i = 0; i < points.length - 1; i++) {
@@ -72,10 +67,7 @@ export interface FloorGroupRefs {
  * 按楼层数堆叠主建筑，每层为一个独立 Group
  * allFloors[i] 对应第 i 层（i 从 0 开始），可通过 .visible 控制显隐
  */
-export function createBuildingByFloors(
-  totalFloors: number,
-  buildHeight: number,
-): FloorGroupRefs {
+export function createBuildingByFloors(totalFloors: number, buildHeight: number): FloorGroupRefs {
   const points = buildMainBuildingPoints()
   const wallHeight = maModelSetting.wallAndFloor.WALL_HEIGHT
   const wallThickness = maModelSetting.wallAndFloor.WALL_THICKNESS
@@ -114,11 +106,7 @@ export function createBuildingByFloors(
  * 根据楼层总数 / 起火层 / 高度（米）调整楼层缩放
  * 用于响应 store 中 realtimeFactors 变化
  */
-export function updateBuildingScale(
-  refs: FloorGroupRefs,
-  totalFloors: number,
-  buildingHeight: number,
-) {
+export function updateBuildingScale(refs: FloorGroupRefs, totalFloors: number, buildingHeight: number) {
   // 简单实现：每层高度 = buildingHeight / totalFloors * 缩放系数
   // 不重建 group，仅更新每个 layerGroup 的 y 缩放
   const scale = buildingHeight / Math.max(1, totalFloors) / 3

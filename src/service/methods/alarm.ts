@@ -62,19 +62,12 @@ export type AlarmListResult = {
 
 //应该使用VITE_ALARM_SERVICE_BASE_URL
 export const listAlarmMethod = (params: AlarmListParams) =>
-  alovaInstance.Get<AlarmListResult, AlarmListParams>(
-    'alarm-client/api/alarm-incidents',
-    {
-      params: params,
-      meta: { cacheFor: 30 * 1000, showError: true }
-    },
-  )
+  alovaInstance.Get<AlarmListResult, AlarmListParams>('alarm-client/api/alarm-incidents', {
+    params: params,
+    meta: { cacheFor: 30 * 1000, showError: true },
+  })
 
-export const getAlarmAllDetailMethod = (
-  incidentIds: string[],
-  currentPage = 1,
-  pageSize = 100000
-) => {
+export const getAlarmAllDetailMethod = (incidentIds: string[], currentPage = 1, pageSize = 100000) => {
   return alovaInstance.Post<PageResult<DisasterProfileItem>, GetAlarmAllDetailDTO>(
     'disaster-profile-client/api/disaster-profiles/page',
     {
@@ -82,6 +75,6 @@ export const getAlarmAllDetailMethod = (
       pageSize,
       query: { incidentIds },
     },
-    { meta: { cacheFor: 30 * 1000, showError: true } }
+    { meta: { cacheFor: 30 * 1000, showError: true } },
   )
 }

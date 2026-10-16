@@ -7,7 +7,7 @@ import * as olProj from 'ol/proj'
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
 import { unByKey } from 'ol/Observable'
-import type { EventsKey } from "ol/events";
+import type { EventsKey } from 'ol/events'
 import { CAR_ICON, getStyle } from '@/baseComponent/amap/featureStyle'
 import { MAP_LAYER_Z_INDEX } from '@/baseComponent/OpenlayersMap/layerOrder'
 
@@ -162,14 +162,9 @@ const buildFakeResponse = (data: unknown, status = 200) =>
     headers: { 'content-type': 'application/json' },
   })
 
-const fakeRequest = (
-  path: string,
-  body: unknown,
-): Promise<Response> => {
+const fakeRequest = (path: string, body: unknown): Promise<Response> => {
   if (path !== FAKE_CAR_PATH) {
-    return Promise.resolve(
-      buildFakeResponse({ message: `未注册的假接口路径: ${path}` }, 404),
-    )
+    return Promise.resolve(buildFakeResponse({ message: `未注册的假接口路径: ${path}` }, 404))
   }
   void body
   return new Promise((resolve) => {
@@ -206,8 +201,7 @@ const populateCarSource = (source: VectorSource, cars: CarItem[]) => {
   })
 }
 
-const isValidExtent = (extent: number[]) =>
-  extent.length === 4 && extent.every((value) => Number.isFinite(value))
+const isValidExtent = (extent: number[]) => extent.length === 4 && extent.every((value) => Number.isFinite(value))
 
 const unwrapEnvelope = async (path: string, body: unknown) => {
   const response = await fakeRequest(path, body)
@@ -241,26 +235,28 @@ export type CarFeaturesManager = {
   destroy: () => void
 }
 
-export const mountCarFeatures = (
-  params: MountCarFeaturesParams,
-): CarFeaturesManager => {
+export const mountCarFeatures = (params: MountCarFeaturesParams): CarFeaturesManager => {
   const source = new VectorSource()
-  const layer = markRaw(new VectorLayer({
-    source,
-    className: 'CAR_LAYER',
-    zIndex: CAR_LAYER_ZINDEX,
-    visible: params.visible ?? false,
-    updateWhileAnimating: true,
-    updateWhileInteracting: true,
-  }))
+  const layer = markRaw(
+    new VectorLayer({
+      source,
+      className: 'CAR_LAYER',
+      zIndex: CAR_LAYER_ZINDEX,
+      visible: params.visible ?? false,
+      updateWhileAnimating: true,
+      updateWhileInteracting: true,
+    }),
+  )
   params.map.addLayer(layer)
 
-  const overlay = markRaw(new Overlay({
-    element: params.popupElement,
-    positioning: 'bottom-center',
-    offset: [0, -28],
-    stopEvent: true,
-  }))
+  const overlay = markRaw(
+    new Overlay({
+      element: params.popupElement,
+      positioning: 'bottom-center',
+      offset: [0, -28],
+      stopEvent: true,
+    }),
+  )
   params.map.addOverlay(overlay)
 
   const closePopup = () => {

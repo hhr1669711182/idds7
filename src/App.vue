@@ -7,14 +7,10 @@
  * @FilePath: \ids-gis-web\src\App.vue
 -->
 <script setup lang="ts">
-import { onBeforeMount, onUnmounted } from "vue";
+import { onBeforeMount } from "vue";
 import IndexModal from "./components/Modals/index.vue";
-import { initMessage } from "@/register/initMessage";
-import { initPageConditionListener } from "./Control/pageCondition";
 
 const container: Element | null = document.querySelector("#svgBase");
-let cleanupMessage: (() => void) | null = null;
-let cleanupPageCondition: (() => void) | null = null;
 
 const fetchSymbols = () => {
   fetch("./icons.svg")
@@ -28,15 +24,6 @@ const fetchSymbols = () => {
 
 onBeforeMount(() => {
   fetchSymbols();
-  cleanupMessage = initMessage();
-  cleanupPageCondition = initPageConditionListener();
-});
-
-onUnmounted(() => {
-  cleanupMessage?.();
-  cleanupMessage = null;
-  cleanupPageCondition?.();
-  cleanupPageCondition = null;
 });
 </script>
 

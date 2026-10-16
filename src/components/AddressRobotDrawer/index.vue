@@ -76,17 +76,19 @@ const candidateCount = computed(() => osm?.candidates?.length ?? 0);
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 13H5v-2h14v2z" /></svg>
               </button>
               <button class="tool" title="关闭" @click="close">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.4L17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z" /></svg>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                  <path d="M19 6.4L17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z" />
+                </svg>
               </button>
             </div>
           </div>
-          <div class="head_text">
-            <span class="quote">"</span>{{ gis.raw_text }}<span class="quote">"</span>
-          </div>
+          <div class="head_text"><span class="quote">"</span>{{ gis.raw_text }}<span class="quote">"</span></div>
           <div class="head_conf">
             <span class="conf_lbl">置信</span>
             <span class="conf_val">{{ ((gis.confidence ?? 0) * 100)?.toFixed(1) ?? 0 }}%</span>
-            <div class="conf_bar"><div class="conf_fill" :style="{ width: Math.min((gis.confidence ?? 0) * 100, 100) + '%' }"></div></div>
+            <div class="conf_bar">
+              <div class="conf_fill" :style="{ width: Math.min((gis.confidence ?? 0) * 100, 100) + '%' }"></div>
+            </div>
           </div>
         </header>
 
@@ -104,7 +106,10 @@ const candidateCount = computed(() => osm?.candidates?.length ?? 0);
             </div>
             <div class="tags">
               <span class="tag">{{ label('anchorType', item.anchor_type, '锚点') }}</span>
-              <span :class="['tag', { tag_green: item.highlight_role === 'final_anchor' }]">{{ label('role', item.highlight_role, '辅助锚点') }}</span>
+              <span
+                :class="['tag', { tag_green: item.highlight_role === 'final_anchor' }]"
+                >{{ label('role', item.highlight_role, '辅助锚点') }}</span
+              >
               <span v-if="item.anchor_id === gis.target_anchor_id" class="tag tag_amber">地图目标</span>
             </div>
           </div>
@@ -123,9 +128,13 @@ const candidateCount = computed(() => osm?.candidates?.length ?? 0);
               <div class="kv-v">
                 {{ (item.anchor_ids ?? []).map((id: any) => nameById.get(id) || id).join(' 至 ') }}
                 <template v-if="item.direction || item.distance">
-                  <template v-if="item.direction">，方向 <span class="rel_dir">{{ label('direction', item.direction, '其他方向') }}</span></template>
+                  <template v-if="item.direction"
+                    >，方向 <span class="rel_dir">{{ label('direction', item.direction, '其他方向') }}</span></template
+                  >
                   <template v-if="item.direction && item.distance">，</template>
-                  <template v-if="item.distance">距离 <span class="rel_dist">{{ item.distance }} 米</span></template>
+                  <template v-if="item.distance"
+                    >距离 <span class="rel_dist">{{ item.distance }} 米</span></template
+                  >
                 </template>
               </div>
             </div>
@@ -138,11 +147,23 @@ const candidateCount = computed(() => osm?.candidates?.length ?? 0);
           <div class="grid">
             <!-- <div class="cell"><div class="cell_lbl">目标</div><div class="cell_val">{{ displayTarget?.name || '无' }}</div></div> -->
             <!-- <div class="cell"><div class="cell_lbl">主锚</div><div class="cell_val">{{ primary?.name || '无' }}</div></div> -->
-            <div class="cell"><div class="cell_lbl">方向</div><div class="cell_val">{{ directionText }}</div></div>
-            <div class="cell"><div class="cell_lbl">距离</div><div class="cell_val">{{ distanceText }}</div></div>
+            <div class="cell">
+              <div class="cell_lbl">方向</div>
+              <div class="cell_val">{{ directionText }}</div>
+            </div>
+            <div class="cell">
+              <div class="cell_lbl">距离</div>
+              <div class="cell_val">{{ distanceText }}</div>
+            </div>
             <!-- <div class="cell cell_w2"><div class="cell_lbl">地图来源</div><div class="cell_val">{{ sourceText }}</div></div> -->
-            <div class="cell"><div class="cell_lbl">地图状态</div><div class="cell_val">{{ mapStatus }}</div></div>
-            <div class="cell"><div class="cell_lbl">候选点</div><div class="cell_val">{{ candidateCount }} 个</div></div>
+            <div class="cell">
+              <div class="cell_lbl">地图状态</div>
+              <div class="cell_val">{{ mapStatus }}</div>
+            </div>
+            <div class="cell">
+              <div class="cell_lbl">候选点</div>
+              <div class="cell_val">{{ candidateCount }} 个</div>
+            </div>
           </div>
           <!-- <div class="kv-list kv-foot">
             <div class="kv"><div class="kv-k">关系</div><div class="kv-v">{{ relationText }}</div></div>
@@ -311,5 +332,3 @@ html[data-theme='NIGHT'] { .drawer { backdrop-filter: blur(8px); } }
 .slide-enter-active, .slide-leave-active { transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1); }
 .slide-enter-from, .slide-leave-to { transform: translateX(100%); }
 </style>
-
-

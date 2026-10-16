@@ -69,21 +69,22 @@ const onFile = (e: Event) => {
     </header>
     <div class="md-importer__row">
       <label class="md-filebtn">
-        <input
-          type="file"
-          accept=".geojson,.json"
-          class="md-filebtn__input"
-          @change="onFile"
-        />
-        <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>
+        <input type="file" accept=".geojson,.json" class="md-filebtn__input" @change="onFile" />
+        <svg viewBox="0 0 24 24" width="14" height="14">
+          <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" />
+        </svg>
         <span>{{ fileName || '选择文件' }}</span>
       </label>
       <button class="md-pbtn md-pbtn--primary" @click="onImport">
-        <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+        <svg viewBox="0 0 24 24" width="14" height="14">
+          <path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+        </svg>
         导入
       </button>
       <button class="md-pbtn" @click="onExport">
-        <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+        <svg viewBox="0 0 24 24" width="14" height="14">
+          <path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+        </svg>
         导出
       </button>
       <button class="md-pbtn md-pbtn--ghost" @click="onClear">清空</button>

@@ -85,7 +85,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  stopRender()  
+  stopRender()
   disposeResource(container);
   window.removeEventListener("resize", handleResize);
 });

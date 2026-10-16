@@ -1,0 +1,52 @@
+# 格式化排除清单
+# 规则来源：AGENTS.md「自动生成文件禁改」+ 构建产物 + 大体积配置数据
+
+# 构建产物
+dist
+dist-lib
+dist-ssr
+
+# 依赖
+node_modules
+
+# lockfile：格式化会破坏依赖树完整性，禁止纳入
+pnpm-lock.yaml
+
+# 自动生成文件（AGENTS.md 明令禁改）
+src/types/auto-imports.d.ts
+src/types/components.d.ts
+
+# Control 旧链闭包：P0 阶段刻意保留的对照基准，36 项人工验收未完成前不动
+# 验收完成并确认清理后再从此处移除
+src/Control
+
+# 补丁目录（patch-package 生成，改后需重新 install）
+patches
+
+# 大体积静态配置数据（非源码，格式化无意义且会产生噪音）
+src/baseComponent/amap/data.json
+src/components/**/data.json
+public/**/*.json
+
+# 3D 模型等二进制/大数据资产：prettier 会误判为 JSON 重排
+*.gltf
+*.gltf.bin
+*.glb
+*.fbx
+
+# 文档目录由人工维护 Markdown 表格与链接，交给 editorconfig 而非 prettier
+herness
+docs
+mds
+.trae
+.anima
+.agnes
+
+# AI 工作台规范文档：已按「存量不改」原则，格式化会破坏既有表格对齐
+*.md
+
+# 测试产物
+tests/__artifacts__
+playwright-report
+test-results
+

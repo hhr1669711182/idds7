@@ -47,28 +47,14 @@ const onReset = () => {
           <span>📐 俯仰角 (Pitch)</span>
           <span class="val">{{ pitchAngle }}°</span>
         </div>
-        <input
-          type="range"
-          min="0"
-          max="80"
-          :value="pitchAngle"
-          :disabled="!is3DReady"
-          @input="onPitch"
-        />
+        <input type="range" min="0" max="80" :value="pitchAngle" :disabled="!is3DReady" @input="onPitch" />
       </div>
       <div class="item">
         <div class="label">
           <span>🧭 方位角 (Rotation)</span>
           <span class="val">{{ rotationAngle }}°</span>
         </div>
-        <input
-          type="range"
-          min="-180"
-          max="180"
-          :value="rotationAngle"
-          :disabled="!is3DReady"
-          @input="onRotation"
-        />
+        <input type="range" min="-180" max="180" :value="rotationAngle" :disabled="!is3DReady" @input="onRotation" />
       </div>
       <button
         class="reset-btn"

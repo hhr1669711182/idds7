@@ -104,7 +104,7 @@ const onDisasterSelect = (item: any) => {
   if (!loc) return;
   endText.value = item?.value || formatTipText(item);
   endCoord.value = loc;
-  
+
   // 地图视口移动逻辑，由父组件通过事件处理或保留原有nav逻辑
   if (props.nav && props.nav.map) {
     props.nav.map.getView().animate({

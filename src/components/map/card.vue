@@ -32,7 +32,7 @@ const handleClose = () => {
 
 const handleSave = () => {
   changeName(form.value.name);
-  
+
   handleClose()
 };
 
@@ -87,20 +87,8 @@ const formComponent = computed(() => {
   <div class="card_panel" v-if="!!showUuid" :key="showUuid">
     <div class="card_header">
       <span>{{ CARD_TITLE[form.type as keyof typeof CARD_TITLE] }}</span>
-      <span
-        role="img"
-        tabindex="-1"
-        class="anticon Head_close__0vFMi"
-        @click="handleClose"
-      >
-        <svg
-          width="1em"
-          height="1em"
-          fill="currentColor"
-          aria-hidden="true"
-          focusable="false"
-          class=""
-        >
+      <span role="img" tabindex="-1" class="anticon Head_close__0vFMi" @click="handleClose">
+        <svg width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false" class="">
           <use xlink:href="#icon-close"></use>
         </svg>
       </span>
@@ -110,11 +98,7 @@ const formComponent = computed(() => {
         <div class="editPanel">
           <el-form :model="form" label-width="auto" style="max-width: 600px">
             <el-form-item label="名称:">
-              <el-input
-                v-model="form.name"
-                maxlength="10"
-                @change="changeName"
-              />
+              <el-input v-model="form.name" maxlength="10" @change="changeName" />
             </el-form-item>
             <el-form-item label="备注:">
               <el-input v-model="form.mark" :rows="2" type="textarea" />

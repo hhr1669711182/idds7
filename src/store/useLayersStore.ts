@@ -8,11 +8,7 @@
  */
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import {
-  DEFAULT_CHECKED_IDS,
-  DEFAULT_TOOLBAR_LAYER_CONFIGS,
-  type LayerConfig,
-} from '@/config/layers'
+import { DEFAULT_CHECKED_IDS, DEFAULT_TOOLBAR_LAYER_CONFIGS, type LayerConfig } from '@/config/layers'
 
 const normalizeLayerIds = (ids: string[], configs: LayerConfig[]) => {
   const layerIdSet = new Set(configs.map((config) => config.id))
@@ -45,10 +41,7 @@ export const useLayersStore = defineStore(
       checkedIds.value = normalizeLayerIds(ids, layerConfigs.value)
     }
 
-    const setLayerConfigs = (
-      configs: LayerConfig[],
-      options: { checkedIds?: string[] } = {},
-    ) => {
+    const setLayerConfigs = (configs: LayerConfig[], options: { checkedIds?: string[] } = {}) => {
       const seen = new Set<string>()
       layerConfigs.value = configs.filter((config) => {
         if (seen.has(config.id)) return false
@@ -80,8 +73,7 @@ export const useLayersStore = defineStore(
 
     const isChecked = (id: string) => visibleIds.value.has(id)
 
-    const getConfig = (id: string): LayerConfig | undefined =>
-      layerConfigs.value.find((config) => config.id === id)
+    const getConfig = (id: string): LayerConfig | undefined => layerConfigs.value.find((config) => config.id === id)
 
     setCheckedIds(checkedIds.value)
 

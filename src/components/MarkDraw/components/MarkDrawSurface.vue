@@ -396,7 +396,9 @@ const startResize = (e: MouseEvent) => {
     <!-- 顶部信息条 -->
     <div class="md-topbar">
       <span class="md-topbar__logo">
-        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 17l5-5 4 4 9-9m0 0v4m0-4h-4"/></svg>
+        <svg viewBox="0 0 24 24" width="16" height="16">
+          <path fill="currentColor" d="M3 17l5-5 4 4 9-9m0 0v4m0-4h-4" />
+        </svg>
       </span>
       <span class="md-topbar__title">地图标绘工具</span>
       <span v-if="currentLayer" class="md-topbar__layer">
@@ -412,16 +414,8 @@ const startResize = (e: MouseEvent) => {
         :title="drawerCollapsed ? '展开面板' : '收起面板'"
       >
         <svg viewBox="0 0 24 24" width="14" height="14">
-          <path
-            v-if="drawerCollapsed"
-            fill="currentColor"
-            d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"
-          />
-          <path
-            v-else
-            fill="currentColor"
-            d="M19 13H5v-2h14z"
-          />
+          <path v-if="drawerCollapsed" fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
+          <path v-else fill="currentColor" d="M19 13H5v-2h14z" />
         </svg>
       </button>
     </div>
@@ -441,33 +435,20 @@ const startResize = (e: MouseEvent) => {
     />
 
     <!-- 量算 / 查询结果条 -->
-    <MarkDrawResultBar
-      :active-tool="activeTool"
-      :measure="measure"
-      @close="measure = null"
-    />
+    <MarkDrawResultBar :active-tool="activeTool" :measure="measure" @close="measure = null" />
 
     <!-- 右侧抽屉 -->
     <transition name="md-drawer">
-      <aside
-        v-show="!drawerCollapsed"
-        class="md-drawer"
-        :style="{ width: drawerSize + 'px' }"
-      >
+      <aside v-show="!drawerCollapsed" class="md-drawer" :style="{ width: drawerSize + 'px' }">
         <div class="md-drawer__grip" @mousedown="startResize" />
         <div class="md-drawer__inner">
           <LayerHierarchyPanel @layer-selected="onLayerSelected" />
-          <FeatureListPanel
-            :engine="engine"
-            :layer="currentLayer"
-            @feature-selected="onFeatureIdSelected"
-          />
+          <FeatureListPanel :engine="engine" :layer="currentLayer" @feature-selected="onFeatureIdSelected" />
           <FeatureEditorPanel :engine="engine" :selected="selected" :layer="currentLayer" />
           <MarkDrawImporter :engine="engine" />
         </div>
       </aside>
     </transition>
-
   </div>
 </template>
 

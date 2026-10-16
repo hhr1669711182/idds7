@@ -177,8 +177,7 @@ export const AMAP_ERROR_CODES = {
   UNKNOWN_ERROR: 'AMAP_UNKNOWN_ERROR',
 } as const
 
-export type AmapErrorCode = typeof AMAP_ERROR_CODES[keyof typeof AMAP_ERROR_CODES]
-
+export type AmapErrorCode = (typeof AMAP_ERROR_CODES)[keyof typeof AMAP_ERROR_CODES]
 
 // ============================================================================
 // amapApi（12 个方法，命名按文档英文路径转 camelCase）
@@ -192,10 +191,7 @@ export const keywordSearch = (params: {
   cityLimit?: boolean
   offset?: number
   page?: number
-}) => alovaMapProxyInstance.Get<PoiFeatureCollection>(
-  '/api/amap/poi/keyword-search',
-  { params },
-)
+}) => alovaMapProxyInstance.Get<PoiFeatureCollection>('/api/amap/poi/keyword-search', { params })
 
 /** POI 2. 周边查询 */
 export const aroundSearch = (params: {
@@ -207,10 +203,7 @@ export const aroundSearch = (params: {
   sortRule?: 'distance' | 'weight'
   offset?: number
   page?: number
-}) => alovaMapProxyInstance.Get<PoiFeatureCollection>(
-  '/api/amap/poi/around-search',
-  { params },
-)
+}) => alovaMapProxyInstance.Get<PoiFeatureCollection>('/api/amap/poi/around-search', { params })
 
 /** POI 3. 多边形查询 */
 export const polygonSearch = (params: {
@@ -219,24 +212,15 @@ export const polygonSearch = (params: {
   types?: string
   offset?: number
   page?: number
-}) => alovaMapProxyInstance.Get<PoiFeatureCollection>(
-  '/api/amap/poi/polygon-search',
-  { params },
-)
+}) => alovaMapProxyInstance.Get<PoiFeatureCollection>('/api/amap/poi/polygon-search', { params })
 
 /** POI 4. 多边形范围详情 */
 export const polygonDetail = (params: { polygon: string }) =>
-  alovaMapProxyInstance.Get<PoiFeatureCollection>(
-    '/api/amap/poi/polygon-detail',
-    { params },
-  )
+  alovaMapProxyInstance.Get<PoiFeatureCollection>('/api/amap/poi/polygon-detail', { params })
 
 /** POI 5. POI 详情 */
 export const detail = (params: { id: string }) =>
-  alovaMapProxyInstance.Get<PoiFeature>(
-    '/api/amap/poi/detail',
-    { params },
-  )
+  alovaMapProxyInstance.Get<PoiFeature>('/api/amap/poi/detail', { params })
 
 /** POI 6. 输入提示 */
 export const inputTips = (params: {
@@ -245,21 +229,11 @@ export const inputTips = (params: {
   type?: string
   city?: string
   location?: string
-}) => alovaMapProxyInstance.Get<PoiFeatureCollection>(
-  '/api/amap/poi/input-tips',
-  { params },
-)
+}) => alovaMapProxyInstance.Get<PoiFeatureCollection>('/api/amap/poi/input-tips', { params })
 
 /** Geocode 1. 逆地理编码 */
-export const regeo = (params: {
-  location: string
-  poiType?: string
-  radius?: number
-  extensions?: 'base' | 'all'
-}) => alovaMapProxyInstance.Get<RegeoData>(
-  '/api/amap/geo/regeo',
-  { params },
-)
+export const regeo = (params: { location: string; poiType?: string; radius?: number; extensions?: 'base' | 'all' }) =>
+  alovaMapProxyInstance.Get<RegeoData>('/api/amap/geo/regeo', { params })
 
 /** Geocode 2. 正地理编码 */
 // export const geocode = (params: {
@@ -272,10 +246,7 @@ export const regeo = (params: {
 
 /** Geocode 3. 地址语义分析（保留 GCJ-02） */
 export const analyzeAddress = (params: { address: string; city?: string }) =>
-  alovaMapProxyInstance.Get<AnalyzeAddressData>(
-    '/api/amap/geo/analyze-address',
-    { params },
-  )
+  alovaMapProxyInstance.Get<AnalyzeAddressData>('/api/amap/geo/analyze-address', { params })
 
 /** Route 1. 驾车路径规划（v3 基础版）；坐标参数为 WGS84，代理负责转为 GCJ-02。 */
 export const driving = (params: {
@@ -288,10 +259,7 @@ export const driving = (params: {
   // avoidroad?: string
   // ferry?: number
   // cartype?: number
-}) => alovaMapProxyInstance.Get<RouteResultResponse>(
-  '/api/amap/route/driving',
-  { params, cacheFor: 0 },
-)
+}) => alovaMapProxyInstance.Get<RouteResultResponse>('/api/amap/route/driving', { params, cacheFor: 0 })
 
 /** Route 2. 驾车路径规划（v5 增强版，含 road_name/step_distance）；坐标参数为 WGS84。 */
 export const drivingV2 = (params: {
@@ -301,33 +269,21 @@ export const drivingV2 = (params: {
   load?: string
   height?: string
   width?: string
-}) => alovaMapProxyInstance.Get<RouteResultResponse>(
-  '/api/amap/route/driving-v2',
-  { params, cacheFor: 0 },
-)
+}) => alovaMapProxyInstance.Get<RouteResultResponse>('/api/amap/route/driving-v2', { params, cacheFor: 0 })
 
 /** Route 3. 多起点、单终点路径规划；origins / destination 为 WGS84 坐标串。 */
-export const multiWaypoint = (params: {
-  origins: string[]
-  destinations: string[]
-}) => {
+export const multiWaypoint = (params: { origins: string[]; destinations: string[] }) => {
   const query = new URLSearchParams()
   // 坐标本身含逗号，必须重复传参而不是逗号分隔，否则会被服务端错误拆分。
-  params.origins.forEach(origin => query.append('origins', origin))
-  params.destinations.forEach(destination => query.append('destinations', destination))
-  return alovaMapProxyInstance.Get<RouteResult[]>(
-    '/api/amap/route/multi-waypoint?' + query.toString(),
-    { cacheFor: 0 },
-  )
+  params.origins.forEach((origin) => query.append('origins', origin))
+  params.destinations.forEach((destination) => query.append('destinations', destination))
+  return alovaMapProxyInstance.Get<RouteResult[]>('/api/amap/route/multi-waypoint?' + query.toString(), { cacheFor: 0 })
 }
 
 /** Weather 1. 天气查询 */
 export const weather = (params: { city: string }) =>
-  alovaMapProxyInstance.Get<AmapWeatherData>(
-    '/api/amap/weather',
-    { params },
-  )
- 
+  alovaMapProxyInstance.Get<AmapWeatherData>('/api/amap/weather', { params })
+
 export const amapApi = {
   keywordSearch,
   aroundSearch,

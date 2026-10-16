@@ -48,10 +48,7 @@ const readStationCoordinate = (feature: WFSFeature): LngLatCoordinate | null => 
  * @param count 返回数量，默认 3
  * @returns 最近队站列表（不含基准队站自身），按距离由近到远排序
  */
-export const queryNearestFireStationsById = async (
-  stationId: string,
-  count = 3,
-): Promise<NearestFireStationInfo[]> => {
+export const queryNearestFireStationsById = async (stationId: string, count = 3): Promise<NearestFireStationInfo[]> => {
   const targetId = String(stationId ?? '').trim()
   if (!targetId) throw new Error('查询最近消防站失败：stationId 不能为空')
 
@@ -68,8 +65,7 @@ export const queryNearestFireStationsById = async (
   const features = (data?.features ?? []) as WFSFeature[]
 
   const origin = readStationCoordinate(
-    features.find((feature) => String(feature?.properties?.id ?? '').trim() === targetId) ??
-      ({} as WFSFeature),
+    features.find((feature) => String(feature?.properties?.id ?? '').trim() === targetId) ?? ({} as WFSFeature),
   )
   if (!origin) throw new Error(`未找到 ID 为 ${targetId} 的消防站`)
 

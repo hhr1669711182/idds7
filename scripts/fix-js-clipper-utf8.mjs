@@ -6,35 +6,35 @@
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\scripts\fix-js-clipper-utf8.mjs
  */
-import fs from "node:fs";
-import path from "node:path";
-import { TextDecoder } from "node:util";
+import fs from 'node:fs'
+import path from 'node:path'
+import { TextDecoder } from 'node:util'
 
-const projectRoot = process.cwd();
-const target = path.join(projectRoot, "node_modules", "js-clipper", "clipper.js");
+const projectRoot = process.cwd()
+const target = path.join(projectRoot, 'node_modules', 'js-clipper', 'clipper.js')
 
 const isStrictUtf8 = (buf) => {
   try {
-    new TextDecoder("utf-8", { fatal: true }).decode(buf);
-    return true;
+    new TextDecoder('utf-8', { fatal: true }).decode(buf)
+    return true
   } catch {
-    return false;
+    return false
   }
-};
+}
 
 if (!fs.existsSync(target)) {
-  process.exit(0);
+  process.exit(0)
 }
 
-const buf = fs.readFileSync(target);
+const buf = fs.readFileSync(target)
 if (isStrictUtf8(buf)) {
-  process.exit(0);
+  process.exit(0)
 }
 
-const text = buf.toString("latin1");
-fs.writeFileSync(target, text, "utf8");
+const text = buf.toString('latin1')
+fs.writeFileSync(target, text, 'utf8')
 
-const after = fs.readFileSync(target);
+const after = fs.readFileSync(target)
 if (!isStrictUtf8(after)) {
-  process.exit(1);
+  process.exit(1)
 }

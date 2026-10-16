@@ -36,20 +36,8 @@ const MapComp = computed(() => {
   <div class="topic_card_panel" v-if="bigPanelType != PANEL_MAP_TYPE.NULL">
     <div class="card_header">
       <span>地图操作</span>
-      <span
-        role="img"
-        tabindex="-1"
-        class="anticon Head_close__0vFMi"
-        @click="hideCard"
-      >
-        <svg
-          width="1em"
-          height="1em"
-          fill="currentColor"
-          aria-hidden="true"
-          focusable="false"
-          class=""
-        >
+      <span role="img" tabindex="-1" class="anticon Head_close__0vFMi" @click="hideCard">
+        <svg width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false" class="">
           <use xlink:href="#icon-close"></use>
         </svg>
       </span>

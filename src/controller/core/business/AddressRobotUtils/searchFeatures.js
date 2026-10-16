@@ -1,18 +1,9 @@
 import GeoJSON from 'ol/format/GeoJSON'
 
-const SUPPORTED_GEOM_TYPES = new Set([
-  'Point',
-  'LineString',
-  'MultiLineString',
-  'Polygon',
-  'MultiPolygon',
-])
+const SUPPORTED_GEOM_TYPES = new Set(['Point', 'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon'])
 
 function isValidGeometry(geom) {
-  return geom
-    && SUPPORTED_GEOM_TYPES.has(geom.type)
-    && Array.isArray(geom.coordinates)
-    && geom.coordinates.length > 0
+  return geom && SUPPORTED_GEOM_TYPES.has(geom.type) && Array.isArray(geom.coordinates) && geom.coordinates.length > 0
 }
 
 function getFeatureId(feature) {
@@ -110,11 +101,18 @@ function pushFromCollection(rawFeatures, seen, collection, data, candidateIds) {
 function pushEntityGeocodeCandidates(rawFeatures, seen, entity, data, candidateIds) {
   entity?.geocode_candidates?.forEach((item) => {
     pushFeature(rawFeatures, seen, item.geojson, data, candidateIds)
-    pushExtraGeometry(rawFeatures, seen, item.attributes?.geom, {
-      role: 'anchor_candidate',
-      name: item.name,
-      source_id: item.source_id,
-    }, data, candidateIds)
+    pushExtraGeometry(
+      rawFeatures,
+      seen,
+      item.attributes?.geom,
+      {
+        role: 'anchor_candidate',
+        name: item.name,
+        source_id: item.source_id,
+      },
+      data,
+      candidateIds,
+    )
   })
 }
 
@@ -128,24 +126,38 @@ function inspectEntityGeocodeCandidates(rawFeatures, seen, data, candidateIds) {
 function pushEntityFeatures(rawFeatures, seen, entity, data, candidateIds) {
   if (!entity) return
   pushFeature(rawFeatures, seen, entity.geojson, data, candidateIds)
-  pushExtraGeometry(rawFeatures, seen, entity.attributes?.geom, {
-    role: entity.geojson?.properties?.role || 'anchor',
-    name: entity.matched_name || entity.name,
-    source_id: entity.source_id,
-    anchor_id: entity.anchor_id,
-  }, data, candidateIds)
+  pushExtraGeometry(
+    rawFeatures,
+    seen,
+    entity.attributes?.geom,
+    {
+      role: entity.geojson?.properties?.role || 'anchor',
+      name: entity.matched_name || entity.name,
+      source_id: entity.source_id,
+      anchor_id: entity.anchor_id,
+    },
+    data,
+    candidateIds,
+  )
   pushEntityGeocodeCandidates(rawFeatures, seen, entity, data, candidateIds)
 }
 
 function pushCandidateFeatures(rawFeatures, seen, candidates, data, candidateIds) {
   candidates?.forEach((item) => {
     pushFeature(rawFeatures, seen, item.geojson, data, candidateIds)
-    pushExtraGeometry(rawFeatures, seen, item.attributes?.geom, {
-      role: 'candidate',
-      name: item.name,
-      source_id: item.source_id,
-      id: item.id,
-    }, data, candidateIds)
+    pushExtraGeometry(
+      rawFeatures,
+      seen,
+      item.attributes?.geom,
+      {
+        role: 'candidate',
+        name: item.name,
+        source_id: item.source_id,
+        id: item.id,
+      },
+      data,
+      candidateIds,
+    )
   })
 }
 
@@ -177,25 +189,38 @@ export function collectSearchGeoJsonFeatures(data) {
   }
 
   if (rawFeatures.length === 0 && data.target_anchor?.longitude != null && data.target_anchor?.latitude != null) {
-    pushFeature(rawFeatures, seen, {
-      type: 'Feature',
-      id: data.target_anchor.source_id,
-      geometry: {
-        type: 'Point',
-        coordinates: [Number(data.target_anchor.longitude), Number(data.target_anchor.latitude)],
+    pushFeature(
+      rawFeatures,
+      seen,
+      {
+        type: 'Feature',
+        id: data.target_anchor.source_id,
+        geometry: {
+          type: 'Point',
+          coordinates: [Number(data.target_anchor.longitude), Number(data.target_anchor.latitude)],
+        },
+        properties: {
+          role: 'anchor',
+          name: data.target_anchor.matched_name || data.target_anchor.name,
+          anchor_id: data.target_anchor.anchor_id,
+        },
       },
-      properties: {
+      data,
+      candidateIds,
+    )
+    pushExtraGeometry(
+      rawFeatures,
+      seen,
+      data.target_anchor.attributes?.geom,
+      {
         role: 'anchor',
         name: data.target_anchor.matched_name || data.target_anchor.name,
+        source_id: data.target_anchor.source_id,
         anchor_id: data.target_anchor.anchor_id,
       },
-    }, data, candidateIds)
-    pushExtraGeometry(rawFeatures, seen, data.target_anchor.attributes?.geom, {
-      role: 'anchor',
-      name: data.target_anchor.matched_name || data.target_anchor.name,
-      source_id: data.target_anchor.source_id,
-      anchor_id: data.target_anchor.anchor_id,
-    }, data, candidateIds)
+      data,
+      candidateIds,
+    )
   }
 
   if (rawFeatures.length === 0) {

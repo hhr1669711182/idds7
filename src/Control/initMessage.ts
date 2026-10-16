@@ -45,7 +45,9 @@ export const initMessage = () => {
     const handlers = createMapMessageHandlers()
     const stageGate = createMessageStageGate()
     const mockBridge = createMockCallLocationBridge()
-    cleanups.push(() => stageGate.dispose(), msg.setIngressGate(stageGate.accept)) 
+    // @migration-retained：旧装配仅保留对照，准入已迁至 App 级 messageStagePolicy。
+    // cleanups.push(() => stageGate.dispose(), msg.setIngressGate(stageGate.accept))
+    cleanups.push(() => stageGate.dispose())
 
     cleanups.push(msg.subscribe(MESSAGE_EVENT_KEY.ALARM_PROFILE_SYNC, handlers.onAlarmProfileSync))
     cleanups.push(msg.subscribe(MESSAGE_EVENT_KEY.MAP_LOCATE_CALL, handlers.onLocateCall))

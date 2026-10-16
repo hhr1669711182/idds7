@@ -6,11 +6,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { maModelSetting } from './commonSetting'
 import { createWhiteBuildings } from './createWhiteBuildings'
-import {
-  createBuildingByFloors,
-  updateBuildingScale,
-  type FloorGroupRefs,
-} from './createBuildingByFloors'
+import { createBuildingByFloors, updateBuildingScale, type FloorGroupRefs } from './createBuildingByFloors'
 import { loadFireTruck, loadFireFighter, loadFireHydrant } from './createFireFacilities'
 import { createFireSprite, createSmokeSprites } from './generateFireSprite'
 import { createTrappedMarker, directionToAngle } from './createTrappedMarkers'
@@ -54,12 +50,7 @@ export async function initScene(
   scene.fog = new THREE.Fog(0x0a0e1a, 8, 20)
 
   // ---------- Camera ----------
-  const camera = new THREE.PerspectiveCamera(
-    55,
-    container.clientWidth / Math.max(1, container.clientHeight),
-    0.1,
-    1000,
-  )
+  const camera = new THREE.PerspectiveCamera(55, container.clientWidth / Math.max(1, container.clientHeight), 0.1, 1000)
   const pos = maModelSetting.cameraInit
   camera.position.set(pos.x, pos.y, pos.z)
   camera.lookAt(0, 1, 0)
@@ -374,11 +365,7 @@ export function setSelectedTrapped(refs: ModelAssessSceneRefs, uuid: string | nu
 }
 
 /** 更新楼层总数 / 建筑高度 */
-export function updateBuildingDimensions(
-  refs: ModelAssessSceneRefs,
-  totalFloors: number,
-  buildingHeight: number,
-) {
+export function updateBuildingDimensions(refs: ModelAssessSceneRefs, totalFloors: number, buildingHeight: number) {
   refs.totalFloors = totalFloors
   refs.buildingHeight = buildingHeight
   updateBuildingScale(refs.floorRefs, totalFloors, buildingHeight)

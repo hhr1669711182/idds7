@@ -1,4 +1,4 @@
-﻿﻿﻿﻿import { markRaw } from 'vue'
+﻿import { markRaw } from 'vue'
 import type Map from 'ol/Map'
 import Feature from 'ol/Feature'
 import VectorLayer from 'ol/layer/Vector'
@@ -40,11 +40,11 @@ const SSRK_LAYER_ZINDEX = 100
 // 颜色渐变插值：蓝色 → 青色 → 绿色 → 黄色 → 红色 (0-1000)
 const interpolateColor = (value: number, max: number = 1000): [number, number, number] => {
   const stops = [
-    { pos: 0, color: [0, 0, 255] },      // 蓝色
+    { pos: 0, color: [0, 0, 255] }, // 蓝色
     { pos: 0.25, color: [0, 255, 255] }, // 青色
-    { pos: 0.5, color: [0, 128, 0] },   // 绿色
+    { pos: 0.5, color: [0, 128, 0] }, // 绿色
     { pos: 0.75, color: [255, 255, 0] }, // 黄色
-    { pos: 1, color: [255, 0, 0] },      // 红色
+    { pos: 1, color: [255, 0, 0] }, // 红色
   ]
 
   const ratio = Math.min(1, Math.max(0, value / max))
@@ -142,8 +142,7 @@ const populateSSRKSource = (source: VectorSource, data: SSRKFeatureCollection) =
   })
 }
 
-const isValidExtent = (extent: number[]) =>
-  extent.length === 4 && extent.every((value) => Number.isFinite(value))
+const isValidExtent = (extent: number[]) => extent.length === 4 && extent.every((value) => Number.isFinite(value))
 
 export type MountSSRKFeaturesParams = {
   map: Map
@@ -160,9 +159,7 @@ export type SSRKFeaturesManager = {
   destroy: () => void
 }
 
-export const mountSSRKFeatures = (
-  params: MountSSRKFeaturesParams,
-): SSRKFeaturesManager => {
+export const mountSSRKFeatures = (params: MountSSRKFeaturesParams): SSRKFeaturesManager => {
   const source = new VectorSource()
   const layer = markRaw(
     new VectorLayer({
@@ -174,7 +171,7 @@ export const mountSSRKFeatures = (
       updateWhileInteracting: true,
     }),
   )
-  layer.set('id', TEMP_FRONTEND_LAYER_IDS.SSRK);
+  layer.set('id', TEMP_FRONTEND_LAYER_IDS.SSRK)
   params.map.addLayer(layer)
   let destroyed = false
   let pending: Promise<void> | null = null
@@ -185,9 +182,14 @@ export const mountSSRKFeatures = (
   const fetch = (): Promise<void> => {
     if (destroyed) return Promise.resolve()
     if (pending) return pending
-    pending = geoserverApi.getWFSFeatures({ typeName: 'gis:view_realtime_population', maxFeatures: 1000 })
-      .then((data) => { setData(data) })
-      .finally(() => { pending = null })
+    pending = geoserverApi
+      .getWFSFeatures({ typeName: 'gis:view_realtime_population', maxFeatures: 1000 })
+      .then((data) => {
+        setData(data)
+      })
+      .finally(() => {
+        pending = null
+      })
     return pending
   }
 

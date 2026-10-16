@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  bd09ToGcj02,
-  gcj02ToBd09,
-  gcj02ToWgs84,
-  wgs84ToGcj02,
-} from '@/utils/coordTransform'
+import { bd09ToGcj02, gcj02ToBd09, gcj02ToWgs84, wgs84ToGcj02 } from '@/utils/coordTransform'
 
 const expectClose = (actual: number, expected: number, tolerance = 1e-9) => {
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance)

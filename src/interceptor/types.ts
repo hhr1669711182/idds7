@@ -8,6 +8,7 @@
  */
 
 import type { MessageEventKey } from '@/const/const.message.type'
+import type { MessageMetadata } from '@/types/message'
 
 /** 订阅规则：与 MESSAGE_SUBSCRIBE_TOPIC 同构 */
 export interface SubscribeRule {
@@ -29,14 +30,14 @@ export interface InterceptorContext {
   system: string
   raw: unknown
   eventKey?: string
-  meta?: Record<string, unknown>
+  meta?: MessageMetadata
 }
 
 /** 单条标准化消息（拦截器链最终产物） */
-export interface NormalizedMessage {
+export interface NormalizedMessage<T = unknown> {
   eventKey: MessageEventKey
-  data: unknown
-  meta?: Record<string, unknown>
+  data: T
+  meta?: MessageMetadata
 }
 
 /** 拦截器输出 */
@@ -44,7 +45,7 @@ export interface InterceptorOutput {
   matched: boolean
   data?: unknown
   eventKey?: string
-  meta?: Record<string, unknown>
+  meta?: MessageMetadata
   results?: NormalizedMessage[]
   stop?: boolean
 }
@@ -54,6 +55,7 @@ export interface MessageInterceptor {
   id: string
   priority: number
   enabled?: boolean
+  fallback?: boolean
   describe?: string
   /** 订阅规则：与 MESSAGE_SUBSCRIBE_TOPIC 入参完全一致 */
   subscribe: SubscribeRule

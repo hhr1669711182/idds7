@@ -13,17 +13,13 @@
 
 import type { MessageInterceptor, NormalizedMessage, SubscribeRule } from '../types'
 import { normalize, type NormalizeResult } from '../unwrap'
-import { locateCallDispatcher } from './dispatchers/locateCall'
-import { addressRobotDispatcher } from './dispatchers/addressRobot'
+import { normalizeBusinessFrames } from './business'
 
 /** 业务识别：命中即返回对应 NormalizedMessage 列表；不命中返回 null */
 export type SeatDispatcher = (m: NormalizeResult) => NormalizedMessage[] | null
 
 /** SEAT 二次分发规则登记表 */
-const seatDispatchers: SeatDispatcher[] = [
-  locateCallDispatcher,
-  addressRobotDispatcher,
-]
+const seatDispatchers: SeatDispatcher[] = []
 
 /** SEAT 订阅配置：模块加载时为空，由 install 注入 */
 let currentSubscribe: SubscribeRule = { type: 'SEAT', dispatch: 'multi' }
@@ -32,6 +28,8 @@ export const setSeatSubscribe = (rule: SubscribeRule) => {
 }
 
 const transform: MessageInterceptor['transform'] = (ctx) => {
+  const normalized = normalizeBusinessFrames(ctx.raw)
+  if (normalized.length) return { matched: true, results: normalized, stop: true }
   const m = normalize(ctx.raw)
   if (!m) return { matched: false }
 
@@ -46,10 +44,12 @@ const transform: MessageInterceptor['transform'] = (ctx) => {
 
 export const seatInterceptor: MessageInterceptor = {
   id: 'topic:seat',
-  priority: 150,
+  priority: 50,
   describe: 'SEAT 通道二次分发',
   // getter：实时读取模块变量，避免 subscribe 被快照成旧值
-  get subscribe() { return currentSubscribe },
+  get subscribe() {
+    return currentSubscribe
+  },
   transform,
 }
 

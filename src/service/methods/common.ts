@@ -6,13 +6,7 @@ export type DictItem = {
 }
 
 export const getDictMethod = (type: string) =>
-  alovaInstance.Get<DictItem[]>(
-    `/common/dict/${type}`,
-    { meta: { cacheFor: 10 * 60 * 1000, showError: false } }
-  )
+  alovaInstance.Get<DictItem[]>(`/common/dict/${type}`, { meta: { cacheFor: 10 * 60 * 1000, showError: false } })
 
 export const getConfigMethod = (key: string) =>
-  alovaInstance.Get<unknown>(
-    `/common/config/${key}`,
-    { meta: { cacheFor: 10 * 60 * 1000, showError: false } }
-  )
+  alovaInstance.Get<unknown>(`/common/config/${key}`, { meta: { cacheFor: 10 * 60 * 1000, showError: false } })

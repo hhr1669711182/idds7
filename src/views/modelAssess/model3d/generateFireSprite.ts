@@ -64,11 +64,7 @@ export function createFireSprite(group: THREE.Group, heightY: number): THREE.Spr
  * @param level '轻度 (Light)' | '中度 (Medium)' | '重度 (Heavy)'
  * @param heightY y 坐标
  */
-export function createSmokeSprites(
-  group: THREE.Group,
-  level: string,
-  heightY: number,
-): THREE.Sprite[] {
+export function createSmokeSprites(group: THREE.Group, level: string, heightY: number): THREE.Sprite[] {
   const map: Record<string, { count: number; opacity: number; size: number }> = {
     '轻度 (Light)': { count: 2, opacity: 0.35, size: 0.5 },
     '中度 (Medium)': { count: 4, opacity: 0.55, size: 0.7 },

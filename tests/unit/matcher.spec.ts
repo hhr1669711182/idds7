@@ -23,7 +23,9 @@ describe('interceptor/matcher 订阅匹配', () => {
   })
 
   it('第 1 级：sub.key 为 null 时 topics 命中即通过（泛匹配）', () => {
-    expect(matchSubscription(ctx({ topics: [{ type: 'SEAT', key: 'WHATEVER' }] }), { type: 'SEAT', key: null })).toBe(true)
+    expect(matchSubscription(ctx({ topics: [{ type: 'SEAT', key: 'WHATEVER' }] }), { type: 'SEAT', key: null })).toBe(
+      true,
+    )
   })
 
   it('第 1 级：topics 大小写不敏感，订阅 rule 也按大写比对', () => {
@@ -87,6 +89,8 @@ describe('interceptor/matcher 订阅匹配', () => {
   })
 
   it('sub.type 为 undefined（脏配置）时不命中任何非 CUSTOM 规则', () => {
-    expect(matchSubscription(ctx({ topics: [{ type: 'CUSTOM' }] }), { type: undefined as unknown as string })).toBe(false)
+    expect(matchSubscription(ctx({ topics: [{ type: 'CUSTOM' }] }), { type: undefined as unknown as string })).toBe(
+      false,
+    )
   })
 })

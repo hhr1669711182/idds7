@@ -8,21 +8,17 @@
  */
 declare global {
   interface Window {
-    Live2D: any;
-    loadlive2d: any;
+    Live2D: any
+    loadlive2d: any
   }
 
-  var module: any;
-  var exports: any;
-  function require(path: string): any;
+  var module: any
+  var exports: any
+  function require(path: string): any
 }
 
-
 declare type AxiosContentType =
-  | 'application/json'
-  | 'application/x-www-form-urlencoded'
-  | 'multipart/form-data'
-  | 'text/plain'
+  'application/json' | 'application/x-www-form-urlencoded' | 'multipart/form-data' | 'text/plain'
 
 declare type AxiosMethod = 'get' | 'post' | 'delete' | 'put'
 
@@ -42,9 +38,9 @@ declare interface IResponse<T = any> {
   data: T extends any ? T : T & any
 }
 
-declare module "../../../public/publicLink.js" {
+declare module '../../../public/publicLink.js' {
   export const publicLink: {
-    d25: string;
-    d3: string;
-  };
+    d25: string
+    d3: string
+  }
 }

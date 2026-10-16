@@ -6,10 +6,10 @@
  * @Description: 面板状态管理store
  * @FilePath: \ids-gis-web\src\store\usePanelStore.ts
  */
-import { defineStore } from "pinia";
-import { PANEL_TYPES, PANEL_MAP_TYPE } from "../const";
+import { defineStore } from 'pinia'
+import { PANEL_TYPES, PANEL_MAP_TYPE } from '../const'
 
-export const usePanelStore = defineStore("PanelStore", () => {
+export const usePanelStore = defineStore('PanelStore', () => {
   const state = reactive({
     type: PANEL_TYPES.NULL,
     bigPanelType: PANEL_MAP_TYPE.NULL,
@@ -21,30 +21,29 @@ export const usePanelStore = defineStore("PanelStore", () => {
     circleCenter: [] as number[],
   })
 
-
   const setPanelType = (type: string) => {
-    state.type = type;
+    state.type = type
   }
   const setBigPanelType = (type: string) => {
-    state.bigPanelType = type;
+    state.bigPanelType = type
   }
   const setConfigOpen = (open: boolean) => {
-    state.configOpen = open;
+    state.configOpen = open
   }
   const setSsrkPanelOpen = (open: boolean) => {
-    state.ssrkPanelOpen = open;
+    state.ssrkPanelOpen = open
   }
   const setCircleQueryTool = (tool: any) => {
-    state.circleQueryTool = tool ?? null;
-    state.circleOpen = true;
+    state.circleQueryTool = tool ?? null
+    state.circleOpen = true
   }
   const clearCircleQueryTool = () => {
-    state.circleQueryTool = null;
-    state.circleOpen = false;
+    state.circleQueryTool = null
+    state.circleOpen = false
   }
 
   const setCircleCenter = (center: number[]) => {
-    state.circleCenter = center;
+    state.circleCenter = center
   }
 
   return {
@@ -57,4 +56,4 @@ export const usePanelStore = defineStore("PanelStore", () => {
     clearCircleQueryTool,
     setCircleCenter,
   }
-});
+})

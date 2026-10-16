@@ -11,11 +11,7 @@ import { makeTextSprite } from './createFireFacilities'
  * 在主建筑外某个位置生成受困人员标牌组（红立方体 + 文字精灵）
  * 返回标牌 Group，外部管理显隐与拾取
  */
-export function createTrappedMarker(
-  item: TrappedFloorItem,
-  totalFloors: number,
-  index: number,
-): THREE.Group {
+export function createTrappedMarker(item: TrappedFloorItem, totalFloors: number, index: number): THREE.Group {
   const group = new THREE.Group()
   group.userData = {
     type: 'trappedMarker',

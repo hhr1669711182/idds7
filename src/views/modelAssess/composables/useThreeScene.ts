@@ -7,10 +7,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { maModelSetting } from '../model3d/commonSetting'
 import { createWhiteBuildings } from '../model3d/createWhiteBuildings'
-import {
-  createBuildingByFloors,
-  type FloorGroupRefs,
-} from '../model3d/createBuildingByFloors'
+import { createBuildingByFloors, type FloorGroupRefs } from '../model3d/createBuildingByFloors'
 import { loadFireTruck, loadFireFighter, loadFireHydrant } from '../model3d/createFireFacilities'
 import { createFireSprite, createSmokeSprites } from '../model3d/generateFireSprite'
 import { directionToAngle } from '../model3d/createTrappedMarkers'
@@ -27,10 +24,7 @@ import {
   type NavPath,
 } from '../model3d/createRouteAnimation'
 import { useDispatchStore } from '@/store/useDispatchStore'
-import {
-  createBuildingAnnotations,
-  type BuildingAnnotationRefs,
-} from '../model3d/createBuildingAnnotations'
+import { createBuildingAnnotations, type BuildingAnnotationRefs } from '../model3d/createBuildingAnnotations'
 import type { TrappedFloorItem, MasterAlarm, RealtimeFactors } from '@/const/const.modelAssess'
 
 /** 拾取事件数据 */
@@ -354,7 +348,7 @@ export function useThreeScene(opts: UseThreeSceneOptions) {
         // vehicleY 默认 GROUND_Y（贴地 0.02）
       })
     }
-    const plan = planData ?? (opts.routePlan ?? (useDispatchStore().navPathPlanData as NavPathPlanData))
+    const plan = planData ?? opts.routePlan ?? (useDispatchStore().navPathPlanData as NavPathPlanData)
     if (!plan || Object.keys(plan).length === 0) {
       console.warn('[useThreeScene] 暂无路线数据，无法播放')
       return
@@ -406,11 +400,7 @@ export function useThreeScene(opts: UseThreeSceneOptions) {
       : new THREE.Vector3().addVectors(box.min, box.max).multiplyScalar(0.5)
 
     // 相机放在建筑点外侧、俯视 45°，抬高一点确保不被地面挡住
-    cam.position.set(
-      target.x + radius * 1.4,
-      target.y + Math.max(radius * 0.9, 1.5),
-      target.z + radius * 1.4,
-    )
+    cam.position.set(target.x + radius * 1.4, target.y + Math.max(radius * 0.9, 1.5), target.z + radius * 1.4)
     cam.lookAt(target.x, target.y + 0.3, target.z)
     ctl.target.set(target.x, target.y + 0.3, target.z)
     ctl.update()
@@ -528,14 +518,24 @@ export function useThreeScene(opts: UseThreeSceneOptions) {
     // 重建
     list.forEach((item) => {
       const group = new THREE.Group()
-      group.userData = { type: 'trappedPerson', uuid: item.uuid, floor: item.floor, direction: item.direction, count: item.count }
+      group.userData = {
+        type: 'trappedPerson',
+        uuid: item.uuid,
+        floor: item.floor,
+        direction: item.direction,
+        count: item.count,
+      }
       const person = createPersonMesh()
       const y = (item.floor / Math.max(1, totalFloors)) * totalFloors * maModelSetting.floorDisplayHeight + 0.15
       person.position.y = y
       person.traverse((c) => ((c as any).userData = { ...group.userData }))
       group.add(person)
       // 文字标牌
-      const label = makeTextSprite(`${item.floor}F ${item.direction} ${item.count}人`, '#ffffff', 'rgba(255,48,48,0.85)')
+      const label = makeTextSprite(
+        `${item.floor}F ${item.direction} ${item.count}人`,
+        '#ffffff',
+        'rgba(255,48,48,0.85)',
+      )
       label.position.set(0, y + 0.25, 0)
       label.userData = { ...group.userData }
       group.add(label)

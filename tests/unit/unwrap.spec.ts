@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isPlainObject, normalize } from '@/interceptor/unwrap'
+import { isPlainObject, normalize, unwrapMessageFrames } from '@/interceptor/unwrap'
 
 /**
  * 消息归一（通用层）契约：
@@ -72,5 +72,20 @@ describe('interceptor/unwrap 消息体归一', () => {
     expect(normalize('message')).toBeNull()
     expect(normalize(123)).toBeNull()
     expect(normalize([])).toBeNull()
+  })
+
+  it.each([
+    { notifyType: { toString: null } },
+    { notifySubType: { toString: null } },
+    { notifyTypeDto: { notifyType: { toString: null } } },
+    { topics: [{ type: { toString: null } }] },
+    { topics: [{ type: 'CUSTOM', customType: { toString: null } }] },
+    { topics: [{ type: 'CUSTOM', key: { toString: null } }] },
+  ])('Given 无法转字符串的路由字段 %j When 批量解包 Then 仅隔离坏帧并保留合法兄弟', (badFrame) => {
+    const first = { content: { callId: 'first' } }
+    const last = { content: { callId: 'last' } }
+    expect(normalize(badFrame)).toBeNull()
+    const result = unwrapMessageFrames([first, badFrame, last])
+    expect(result.map((frame) => frame.value)).toEqual([first, last])
   })
 })

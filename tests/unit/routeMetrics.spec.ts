@@ -22,13 +22,9 @@ describe('amap/routeMetrics 轨迹里程指标', () => {
     expect(metrics.distanceIndexMeters[0]).toBe(0)
     expect(metrics.totalDistanceMeters).toBeGreaterThan(2220)
     expect(metrics.totalDistanceMeters).toBeLessThan(2228)
-    expect(Math.round(metrics.lastMileStartDistanceMeters)).toBe(
-      Math.round(metrics.totalDistanceMeters - 1000),
-    )
+    expect(Math.round(metrics.lastMileStartDistanceMeters)).toBe(Math.round(metrics.totalDistanceMeters - 1000))
     expect(metrics.lastMileStartPoint).toBeTruthy()
-    expect(
-      Math.abs(distanceMeters(metrics.lastMileStartPoint!, longRoute[1]) - 1000),
-    ).toBeLessThan(2)
+    expect(Math.abs(distanceMeters(metrics.lastMileStartPoint!, longRoute[1]) - 1000)).toBeLessThan(2)
   })
 
   it('短路径（不足 1000m）：最后一公里起点退化为路径起点', () => {

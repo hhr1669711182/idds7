@@ -76,9 +76,9 @@ describe('service/methods/dispatchVehicles 调派车辆契约', () => {
     it('车辆必须 1—200 个、vehicleId 有效且不重复', () => {
       expect(() => validateDispatchRequest({ ...base, vehicles: [] })).toThrow(/1—200/)
       expect(() => validateDispatchRequest({ ...base, vehicles: [{ vehicleId: '' }] })).toThrow(/1—200/)
-      expect(
-        () => validateDispatchRequest({ ...base, vehicles: [{ vehicleId: 'V1' }, { vehicleId: 'V1' }] }),
-      ).toThrow(/1—200/)
+      expect(() => validateDispatchRequest({ ...base, vehicles: [{ vehicleId: 'V1' }, { vehicleId: 'V1' }] })).toThrow(
+        /1—200/,
+      )
     })
 
     it('合法请求通过校验', () => {

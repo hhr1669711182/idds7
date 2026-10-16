@@ -10,17 +10,20 @@ import {
   type MessageEventKey,
   type MessageSystem,
 } from '@/const/const.message.type'
-import type { MessageEnvelope } from '@/types/message'
+import type { MessageEnvelope, MessageMetadata } from '@/types/message'
+import { createLogger } from '@/utils/logger'
 import { WebSocketClient, type WebSocketOptions } from '@/hooks/useWebSocket'
 import { BroadcastChannelClient, type BroadcastChannelOptions } from '@/hooks/useBroadcastChannel'
 import { interceptorRegistry, installDefaultInterceptors } from '@/interceptor'
 
 type AnyRecord = Record<string, any>
+const log = createLogger('message-handler')
 
 type PersistedMessageState = {
   inbox: Record<string, MessageEnvelope<any>[]>
   outbox: Record<string, MessageEnvelope<any>[]>
   lastBySystem: Record<string, MessageEnvelope<any> | null>
+  lastByEventKey: Record<string, MessageEnvelope<unknown> | null>
 }
 
 type RuntimeState = {
@@ -32,7 +35,7 @@ type Subscription = {
   id: string
   eventKey: string
   system?: MessageSystem
-  callback: (envelope: MessageEnvelope) => void
+  callback: (envelope: MessageEnvelope) => unknown
 }
 
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
@@ -77,7 +80,7 @@ export type PublishOptions = {
   system: MessageSystem
   channel: MessageChannel
   targetSystem?: MessageSystem
-  meta?: Record<string, any>
+  meta?: MessageMetadata
   targetOrigin?: string
   iframe?: () => HTMLIFrameElement | null | undefined
 }
@@ -96,6 +99,7 @@ export const useMessageStore = defineStore(
       inbox: {},
       outbox: {},
       lastBySystem: {},
+      lastByEventKey: {},
     })
 
     const runtime = reactive<RuntimeState>({
@@ -137,6 +141,7 @@ export const useMessageStore = defineStore(
     const recordInbox = (system: MessageSystem, msg: MessageEnvelope<any>) => {
       push(persisted.inbox, system, msg)
       persisted.lastBySystem[system] = msg
+      persisted.lastByEventKey[msg.eventKey] = msg
     }
 
     const recordOutbox = (system: MessageSystem, msg: MessageEnvelope<any>) => {
@@ -145,24 +150,37 @@ export const useMessageStore = defineStore(
 
     const triggerSubscriptions = (eventKey: string, system: MessageSystem, envelope: MessageEnvelope) => {
       const list = subscriptions.get(eventKey) ?? []
-      list.forEach(sub => {
+      list.forEach((sub) => {
         if (!sub.system || sub.system === system) {
-          try { sub.callback(envelope) } catch { /* 不阻塞其他订阅者 */ }
+          const report = (error: unknown) =>
+            log.error('业务消息处理失败', {
+              eventKey,
+              system,
+              subscriptionId: sub.id,
+              error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : error,
+            })
+          try {
+            Promise.resolve(sub.callback(envelope)).catch(report)
+          } catch (error) {
+            report(error)
+          }
         }
       })
     }
 
-    const dispatch = (eventKey: MessageEventKey, data: any, system: MessageSystem, channel: MessageChannel, meta?: AnyRecord) => {
+    const dispatch = (
+      eventKey: MessageEventKey,
+      data: unknown,
+      system: MessageSystem,
+      channel: MessageChannel,
+      meta?: MessageMetadata,
+    ) => {
       const envelope = createEnvelope(system, channel, eventKey, data, { meta })
       recordInbox(system, envelope)
       triggerSubscriptions(eventKey, system, envelope)
     }
 
-    const subscribe = (
-      eventKey: string,
-      callback: (envelope: MessageEnvelope) => void,
-      system?: MessageSystem,
-    ) => {
+    const subscribe = (eventKey: string, callback: (envelope: MessageEnvelope) => unknown, system?: MessageSystem) => {
       const id = uid()
       const sub: Subscription = { id, eventKey, system, callback }
       const list = subscriptions.get(eventKey) ?? []
@@ -173,14 +191,23 @@ export const useMessageStore = defineStore(
 
     const unsubscribe = (id: string, eventKey: string) => {
       const list = subscriptions.get(eventKey) ?? []
-      subscriptions.set(eventKey, list.filter(s => s.id !== id))
+      subscriptions.set(
+        eventKey,
+        list.filter((s) => s.id !== id),
+      )
     }
 
     /**
      * 入口：拦截器链 -> 多结果分发
      * 拦截器未命中时按 Envelope / Legacy 兼容路径回退。
      */
-    const ingest = (raw: any, channel: MessageChannel, system: MessageSystem, meta?: AnyRecord) => {
+    const receive = (
+      raw: any,
+      channel: MessageChannel,
+      system: MessageSystem,
+      meta?: MessageMetadata,
+      acceptLegacy = true,
+    ) => {
       ensureInterceptors()
 
       if (isEnvelope(raw)) {
@@ -197,16 +224,20 @@ export const useMessageStore = defineStore(
 
       const normalized = interceptorRegistry.run(raw, channel, system)
       if (normalized.length) {
-        normalized.forEach(item => {
-          dispatch(item.eventKey, item.data, system, channel, { ...meta, ...(item.meta ?? {}) })
+        normalized.forEach((item) => {
+          dispatch(item.eventKey, item.data, system, channel, { ...(raw?.meta ?? {}), ...meta, ...(item.meta ?? {}) })
         })
         return
       }
 
+      if (!acceptLegacy) return
       const legacy = normalizeLegacy(raw)
       if (!legacy.eventKey) return
-      dispatch(legacy.eventKey, legacy.data, system, channel, meta)
+      dispatch(legacy.eventKey, legacy.data, system, channel, { ...(raw?.meta ?? {}), ...meta })
     }
+
+    const ingest = (raw: unknown, channel: MessageChannel, system: MessageSystem, meta?: MessageMetadata) =>
+      receive(raw, channel, system, meta)
 
     const bindParent = (options: BindPostMessageOptions) => {
       const system = options.system ?? MESSAGE_SYSTEM.HOST
@@ -238,7 +269,7 @@ export const useMessageStore = defineStore(
         },
         onMessage: (d, e) => {
           if (d === undefined || d === null) return
-          ingest(d, MESSAGE_CHANNEL.WS, system, { readyState: client.ws?.readyState })
+          receive(d, MESSAGE_CHANNEL.WS, system, { readyState: client.ws?.readyState }, false)
           options.socketOptions?.onMessage?.(d, e)
         },
         onError: (e) => {
@@ -281,6 +312,7 @@ export const useMessageStore = defineStore(
     }
 
     const publish = <T>(eventKey: MessageEventKey, data: T, options: PublishOptions) => {
+      if (options.channel === MESSAGE_CHANNEL.HTTP) return false
       const msg = createEnvelope(options.system, options.channel, eventKey, data, {
         targetSystem: options.targetSystem,
         meta: options.meta,
@@ -315,6 +347,16 @@ export const useMessageStore = defineStore(
       persisted.inbox[system] = []
       persisted.outbox[system] = []
       persisted.lastBySystem[system] = null
+      for (const [eventKey, envelope] of Object.entries(persisted.lastByEventKey)) {
+        if (envelope?.system === system) delete persisted.lastByEventKey[eventKey]
+      }
+    }
+
+    const getLastByEventKey = <T = unknown>(eventKey: string): MessageEnvelope<T> | null =>
+      (persisted.lastByEventKey[eventKey] as MessageEnvelope<T> | undefined | null) ?? null
+
+    const clearLastByEventKey = (eventKey: string) => {
+      delete persisted.lastByEventKey[eventKey]
     }
 
     const disconnectSystem = (system: MessageSystem) => {
@@ -344,13 +386,15 @@ export const useMessageStore = defineStore(
       subscribe,
       unsubscribe,
       clearSystem,
+      getLastByEventKey,
+      clearLastByEventKey,
       disconnectSystem,
     }
   },
   {
     persist: {
       storage: piniaSession,
-      pick: ['inbox', 'outbox', 'lastBySystem'],
+      pick: ['inbox', 'outbox', 'lastBySystem', 'lastByEventKey'],
     },
   },
 )

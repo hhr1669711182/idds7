@@ -102,7 +102,9 @@ export const useMessageStore = defineStore(
     let ingressGate: ((eventKey: string, deliver: () => void) => void) | undefined
     const setIngressGate = (gate: typeof ingressGate) => {
       ingressGate = gate
-      return () => { if (ingressGate === gate) ingressGate = undefined }
+      return () => {
+        if (ingressGate === gate) ingressGate = undefined
+      }
     }
 
     const push = (bucket: Record<string, MessageEnvelope<any>[]>, key: string, msg: MessageEnvelope<any>) => {
@@ -143,11 +145,7 @@ export const useMessageStore = defineStore(
       push(persisted.outbox, system, msg)
     }
 
-    const subscribe = (
-      eventKey: string,
-      callback: (envelope: MessageEnvelope) => void,
-      system?: MessageSystem,
-    ) => {
+    const subscribe = (eventKey: string, callback: (envelope: MessageEnvelope) => void, system?: MessageSystem) => {
       const id = uid()
       const sub: Subscription = { id, eventKey, system, callback }
       const list = subscriptions.get(eventKey) ?? []
@@ -158,7 +156,10 @@ export const useMessageStore = defineStore(
 
     const unsubscribe = (id: string, eventKey: string) => {
       const list = subscriptions.get(eventKey) ?? []
-      subscriptions.set(eventKey, list.filter(s => s.id !== id))
+      subscriptions.set(
+        eventKey,
+        list.filter((s) => s.id !== id),
+      )
     }
 
     /**
@@ -193,9 +194,11 @@ export const useMessageStore = defineStore(
 
     const triggerSubscriptions = (eventKey: string, system: MessageSystem, envelope: MessageEnvelope) => {
       const list = subscriptions.get(eventKey) ?? []
-      list.forEach(sub => {
+      list.forEach((sub) => {
         if (!sub.system || sub.system === system) {
-          try { sub.callback(envelope) } catch (error) {
+          try {
+            sub.callback(envelope)
+          } catch (error) {
             // 不阻塞其他订阅者，但不能隐藏业务处理失败的原因。
             console.error('[message-handler] 业务消息处理失败', { eventKey, error })
           }
@@ -233,7 +236,7 @@ export const useMessageStore = defineStore(
         },
         onMessage: (d, e) => {
           // const { payload } = d;
-         
+
           /**  消息传递状态添加       **/
           if (d === 'pong') return
 
@@ -241,24 +244,23 @@ export const useMessageStore = defineStore(
 
           // 临时实现，特殊性拦截 地址机器人数据
           if (d?.notifyType === 'addressbot' && d?.customContent?.event_type === 'AddressLocationUpdated') {
-            return ingest({ eventKey: MESSAGE_EVENT_KEY.ADDRESS_ROBOT_GIS_SEARCH, data: d.customContent }, MESSAGE_CHANNEL.WS, system)
+            return ingest(
+              { eventKey: MESSAGE_EVENT_KEY.ADDRESS_ROBOT_GIS_SEARCH, data: d.customContent },
+              MESSAGE_CHANNEL.WS,
+              system,
+            )
           }
 
           const positions = normalizePositionFrames(d)
           if (positions.length) {
             positions.forEach((position) => {
-              ingest(
-                { eventKey: position.eventKey, data: position.data },
-                MESSAGE_CHANNEL.WS,
-                system,
-                {
-                  readyState: client.ws?.readyState,
-                  ...position.meta,
-                },
-              )
+              ingest({ eventKey: position.eventKey, data: position.data }, MESSAGE_CHANNEL.WS, system, {
+                readyState: client.ws?.readyState,
+                ...position.meta,
+              })
             })
             options.socketOptions?.onMessage?.(
-              positions.length === 1 ? positions[0].data : positions.map(item => item.data),
+              positions.length === 1 ? positions[0].data : positions.map((item) => item.data),
               e,
             )
             return
@@ -267,20 +269,13 @@ export const useMessageStore = defineStore(
           const carLocations = normalizeCarLocationFrames(d)
           if (carLocations.length) {
             carLocations.forEach((location) => {
-              ingest(
-                { eventKey: location.eventKey, data: location.data },
-                MESSAGE_CHANNEL.WS,
-                system,
-                {
-                  readyState: client.ws?.readyState,
-                  ...location.meta,
-                },
-              )
+              ingest({ eventKey: location.eventKey, data: location.data }, MESSAGE_CHANNEL.WS, system, {
+                readyState: client.ws?.readyState,
+                ...location.meta,
+              })
             })
             options.socketOptions?.onMessage?.(
-              carLocations.length === 1
-                ? carLocations[0].data
-                : carLocations.map(item => item.data),
+              carLocations.length === 1 ? carLocations[0].data : carLocations.map((item) => item.data),
               e,
             )
             return
@@ -288,59 +283,44 @@ export const useMessageStore = defineStore(
 
           const alarmCall = normalizeAlarmCallFrame(d)
           if (alarmCall) {
-            ingest(
-              { eventKey: alarmCall.eventKey, data: alarmCall.data },
-              MESSAGE_CHANNEL.WS,
-              system,
-              {
-                readyState: client.ws?.readyState,
-                ...alarmCall.meta,
-              },
-            )
+            ingest({ eventKey: alarmCall.eventKey, data: alarmCall.data }, MESSAGE_CHANNEL.WS, system, {
+              readyState: client.ws?.readyState,
+              ...alarmCall.meta,
+            })
             options.socketOptions?.onMessage?.(alarmCall.data, e)
             return
           }
 
           const alarmState = normalizeAlarmStateFrame(d)
           if (alarmState) {
-            ingest(
-              { eventKey: alarmState.eventKey, data: alarmState.data },
-              MESSAGE_CHANNEL.WS,
-              system,
-              {
-                readyState: client.ws?.readyState,
-                ...alarmState.meta,
-              },
-            )
+            ingest({ eventKey: alarmState.eventKey, data: alarmState.data }, MESSAGE_CHANNEL.WS, system, {
+              readyState: client.ws?.readyState,
+              ...alarmState.meta,
+            })
             options.socketOptions?.onMessage?.(alarmState.data, e)
             return
           }
 
           const addressUpdated = normalizeAddressUpdatedFrame(d)
           if (addressUpdated) {
-            ingest(
-              { eventKey: addressUpdated.eventKey, data: addressUpdated.data },
-              MESSAGE_CHANNEL.WS,
-              system,
-              { readyState: client.ws?.readyState },
-            )
+            ingest({ eventKey: addressUpdated.eventKey, data: addressUpdated.data }, MESSAGE_CHANNEL.WS, system, {
+              readyState: client.ws?.readyState,
+            })
             options.socketOptions?.onMessage?.(addressUpdated.data, e)
             return
           }
 
           const payload = d?.payload ?? (d?.eventType ? d : null)
-           /**  消息传递状态添加 **/
-
+          /**  消息传递状态添加 **/
 
           if (!payload) return
-        //  let data = { ...payload, eventKey: payload.eventType ?? '' }
-        //   console.log('2233', data, e)
+          //  let data = { ...payload, eventKey: payload.eventType ?? '' }
+          //   console.log('2233', data, e)
 
-        //  ingest(data, MESSAGE_CHANNEL.WS, system, { readyState: (client.ws as any)?.readyState })
+          //  ingest(data, MESSAGE_CHANNEL.WS, system, { readyState: (client.ws as any)?.readyState })
 
-
-          const data = { ...payload, eventKey: payload.eventType ?? payload.eventKey ?? '' }//T1事件id添加
-          ingest(data, MESSAGE_CHANNEL.WS, system, { readyState: client.ws?.readyState })//T1事件id添加
+          const data = { ...payload, eventKey: payload.eventType ?? payload.eventKey ?? '' } //T1事件id添加
+          ingest(data, MESSAGE_CHANNEL.WS, system, { readyState: client.ws?.readyState }) //T1事件id添加
           options.socketOptions?.onMessage?.(data, e)
         },
         onError: (e) => {

@@ -23,11 +23,14 @@ export interface KVStorage {
   clear(): Promise<void>
 }
 
-const encode = (v: unknown): string =>
-  typeof v === 'string' ? v : JSON.stringify(v)
+const encode = (v: unknown): string => (typeof v === 'string' ? v : JSON.stringify(v))
 const decode = <T = unknown>(raw: string | null): T | null => {
   if (raw === null) return null
-  try { return JSON.parse(raw) as T } catch { return raw as unknown as T }
+  try {
+    return JSON.parse(raw) as T
+  } catch {
+    return raw as unknown as T
+  }
 }
 
 /* ------------------------------ localStorage / sessionStorage 实现 ------------------------------ */
@@ -54,10 +57,18 @@ const makeLSStorage = (namespace: string, store: Storage | undefined): KVStorage
   const s: StorageLike = (store as unknown as StorageLike) ?? fallback
 
   return {
-    async get(k)        { return decode(s.getItem(fk(k))) },
-    async set(k, v)     { s.setItem(fk(k), encode(v)) },
-    async remove(k)     { s.removeItem(fk(k)) },
-    async has(k)        { return s.getItem(fk(k)) !== null },
+    async get(k) {
+      return decode(s.getItem(fk(k)))
+    },
+    async set(k, v) {
+      s.setItem(fk(k), encode(v))
+    },
+    async remove(k) {
+      s.removeItem(fk(k))
+    },
+    async has(k) {
+      return s.getItem(fk(k)) !== null
+    },
     async keys() {
       const out: string[] = []
       for (let i = 0; i < s.length; i++) {
@@ -110,31 +121,31 @@ const makeIDBStorage = (namespace: string): KVStorage => {
   return {
     async get<T = unknown>(k: string): Promise<T | null> {
       const db = await dbP
-      return (await idbTx<unknown>(db, 'readonly', s => s.get(fk(k)))) as T | null
+      return (await idbTx<unknown>(db, 'readonly', (s) => s.get(fk(k)))) as T | null
     },
     async set(k, v) {
       const db = await dbP
-      await idbTx(db, 'readwrite', s => s.put(v, fk(k)))
+      await idbTx(db, 'readwrite', (s) => s.put(v, fk(k)))
     },
     async remove(k) {
       const db = await dbP
-      await idbTx(db, 'readwrite', s => s.delete(fk(k)))
+      await idbTx(db, 'readwrite', (s) => s.delete(fk(k)))
     },
     async has(k) {
       const db = await dbP
-      const key = await idbTx<IDBValidKey | undefined>(db, 'readonly', s => s.getKey(fk(k)))
+      const key = await idbTx<IDBValidKey | undefined>(db, 'readonly', (s) => s.getKey(fk(k)))
       return key !== undefined
     },
     async keys() {
       const db = await dbP
-      const all = await idbTx<IDBValidKey[]>(db, 'readonly', s => s.getAllKeys())
+      const all = await idbTx<IDBValidKey[]>(db, 'readonly', (s) => s.getAllKeys())
       return all
         .filter((k): k is string => typeof k === 'string' && k.startsWith(prefix))
-        .map(k => k.slice(prefix.length))
+        .map((k) => k.slice(prefix.length))
     },
     async clear() {
       const db = await dbP
-      await idbTx(db, 'readwrite', s => s.clear())
+      await idbTx(db, 'readwrite', (s) => s.clear())
     },
   }
 }
@@ -159,19 +170,15 @@ export const storage = createStorage('app', 'local')
 
 export const STORAGE_KEYS = {
   userSession: 'session',
-  scaleUnit:   'scale_unit',
-  mapConfig:   'map_config',
-  amapKey:     'AMAP_WEBSERVICE_KEY',
-  openTabs:    'OPEN_TABS',
+  scaleUnit: 'scale_unit',
+  mapConfig: 'map_config',
+  amapKey: 'AMAP_WEBSERVICE_KEY',
+  openTabs: 'OPEN_TABS',
 } as const
 
 /* ------------------------------ 跨标签页订阅 ------------------------------ */
 
-export const subscribe = (
-  key: string,
-  cb: (next: unknown) => void,
-  namespace = 'app',
-): (() => void) => {
+export const subscribe = (key: string, cb: (next: unknown) => void, namespace = 'app'): (() => void) => {
   if (typeof globalThis === 'undefined' || !globalThis.localStorage) return () => {}
   const fullKey = `${namespace}:${key}`
   const handler = (e: StorageEvent) => {

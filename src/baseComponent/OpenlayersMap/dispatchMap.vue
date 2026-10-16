@@ -67,7 +67,6 @@ import {
 } from '@/baseComponent/OpenlayersMap/mountPolygonLayer.ts'
 import { createSpecialMapMock, type SpecialMapMock } from '@/baseComponent/OpenlayersMap/specialMapMock.ts'
 import { createIncidentRelocate, type IncidentRelocate } from '@/baseComponent/OpenlayersMap/incidentRelocate.ts'
-import { consumePendingSpecialMapRender } from '@/Control/mockCallLocationBridge'
 import { Fill, Stroke, Style } from "ol/style";
 import { getStyle, MAP_ICON_SRC } from '@/baseComponent/amap/featureStyle'
 import {
@@ -95,21 +94,19 @@ import {
   queryIncidentNearbyResources,
 } from '@/controller/core/business/IncidentNearbyResourceQuery'
 import { IncidentVideoOverlayController } from '@/controller/core/business/IncidentVideoOverlayController'
-import {
-  parseSharedMapStage,
-  SEAT_SHARED_STATE_KEY,
-  SEAT_SHARED_STATE_MOCK_KEY,
-} from '@/Control/seatSharedState'
-import { resetAddressUpdatedCache } from '@/Control/incidentLocationMessage'
-import { MESSAGE_EVENT_KEY } from '@/const/const.message.type'
+import { getSharedMapStage } from '@/controller/core/io/messageStagePolicy'
+import { useUserStore } from '@/store/useUserStore'
+import { getBusinessMessageRuntime } from '@/controller/core/io/BusinessMessageRuntime'
+import { createBusinessMapPort } from './businessMapPort'
+import { MESSAGE_EVENT_KEY, MOCK_CALL_LOCATION_ID } from '@/const/const.message.type'
 import { useMessageStore } from '@/store/useMessageStore'
 import {
   INCOMING_CALL_FOCUS_ZOOM,
   usePendingCallLocationStore,
 } from '@/store/usePendingCallLocationStore'
 import { GenericController } from '@/controller/core/generic'
-import { CallController } from '@/controller/core/business/CallController'
-import type { SharedDispatchVehicleMock } from '@/Control/mockCallLocationBridge'
+import type { CallController } from '@/controller/core/business/CallController'
+import type { SharedDispatchVehicleMock } from '@/composables/useMockCallLocationBridge'
 // import {
 //   mountIncomingCallFeatures,
 //   type IncomingCallFeaturesManager,
@@ -232,6 +229,10 @@ let jrAlarmManager: TempFrontendLayerManager | null = null;
 /** 画像地址变更（警情定位）点位图层：数据来自 useIncidentLocationStore，始终可见 */
 const incidentLocationStore = useIncidentLocationStore();
 const messageStore = useMessageStore();
+const userStore = useUserStore();
+const businessRuntime = getBusinessMessageRuntime();
+let detachBusinessMap: (() => void) | null = null;
+let mockMapGeneration = 0;
 const pendingCallLocationStore = usePendingCallLocationStore();
 let callLocationGenericController: GenericController | null = null;
 let callLocationController: CallController | null = null;
@@ -700,7 +701,7 @@ const syncBaseSourceLayer = () => {
     baseSourceMaxZoom = maxZoom;
     applyFeatureZoomLimits();
   }));
-  
+
   baseLayer.setSource(source);
   if (overviewLayer) overviewLayer.setSource(source);
 };
@@ -880,7 +881,7 @@ watch(
   () => incidentLocationStore.focusRequest,
   (req) => {
     if (!req || !incidentLocationManager || !map) return;
-    incidentLocationStore.consumeFocus();
+    incidentLocationStore.consumeFocus(req.seq);
     focusMapView(map, req);
   },
 );
@@ -1084,7 +1085,6 @@ const updateMapZoomLevel = () => {
   }
 };
 
-const mapMessageUnsubscribers: Array<() => void> = [];
 
 // 解析动态配置（支持数组与对象），优先 data 字段
 const configList = Array.isArray(amapData)
@@ -1289,15 +1289,9 @@ let mockDispatchState: {
 
 /** 解析模拟调派的警情终点（优先级：routePlanRequest → 已规划路线终点 → mock 坐标） */
 const resolveMockDestination = (): LngLat | undefined => {
-  let mockDestination: LngLat | undefined;
-  try {
-    const mock = JSON.parse(localStorage.getItem(SEAT_SHARED_STATE_MOCK_KEY) || "null");
-    const lng = Number(mock?.callLocation?.lng);
-    const lat = Number(mock?.callLocation?.lat);
-    if (Number.isFinite(lng) && Number.isFinite(lat)) mockDestination = [lng, lat];
-  } catch {
-    // 非法 mock 数据由桥接层统一忽略，这里仅不采用坐标兜底。
-  }
+  const call = pendingCallLocationStore.getActive();
+  const mockDestination: LngLat | undefined = call?.id === MOCK_CALL_LOCATION_ID
+    ? [call.longitude, call.latitude] : undefined;
   return (
     incidentLocationStore.routePlanRequest?.destination
     ?? (lastRoutePlanResults[0]?.fullPath?.slice(-1)[0] as LngLat | undefined)
@@ -1471,14 +1465,20 @@ const handleSecondaryDispatch = (
 
 const receiveMockDispatchVehicles = async (vehicles: SharedDispatchVehicleMock[]) => {
   if (!Array.isArray(vehicles) || !vehicles.length || !nav || !map) return;
+  const planner = nav;
+  const mapInstance = map;
+  const generation = routeVideoGeneration;
+  const isCurrent = (taskGeneration: number) => nav === planner && map === mapInstance
+    && taskGeneration === routeVideoGeneration;
 
   // 调派可能与地址规划同时到达，等待当前地址候选完成再锁定选择。
   while (pendingRoutePlan) {
     const task = pendingRoutePlan;
     await task;
+    if (!isCurrent(generation)) return;
     if (pendingRoutePlan === task) break;
   }
-  if (!nav || !map) return;
+  if (!isCurrent(generation)) return;
   const destination = resolveMockDestination();
   if (!destination) {
     console.warn("[dispatchMap] 模拟调派缺少警情点坐标，跳过");
@@ -1501,14 +1501,14 @@ const receiveMockDispatchVehicles = async (vehicles: SharedDispatchVehicleMock[]
 
   // 首次调派：立即收起所有备选，只保留当前选中的路线。
   if (routePreviewStations.value.length) {
-    nav.renderRoutesOnly(routePreviewStations.value.map(getSelectedRoute)
+    planner.renderRoutesOnly(routePreviewStations.value.map(getSelectedRoute)
       .filter((route): route is RouteAlternative => !!route).map(route => route.result), false);
   }
   resetRouteVideoPlayback();
   const playbackGeneration = routeVideoGeneration;
 
   const stationStartCoords = await resolveStationCoordinates(vehicles, playbackGeneration);
-  if (playbackGeneration !== routeVideoGeneration) return;
+  if (!isCurrent(playbackGeneration)) return;
 
   const uniqueStationIds = [
     ...new Set(
@@ -1545,7 +1545,6 @@ const receiveMockDispatchVehicles = async (vehicles: SharedDispatchVehicleMock[]
   });
 
   // 按 stationId 复用已选方案；未参与预览的队站才补查默认时间最短方案。
-  const planner = nav;
   let selectedRoutes: RouteAlternative[];
   try {
     selectedRoutes = await Promise.all(uniqueStationIds.map(async (sid, index) =>
@@ -1553,25 +1552,26 @@ const receiveMockDispatchVehicles = async (vehicles: SharedDispatchVehicleMock[]
         ?? (await planner.fetchRouteAlternatives(origins[index], destination))[0],
     ));
   } catch (error) {
+    if (!isCurrent(playbackGeneration)) return;
     console.warn('[dispatchMap] 调派路线获取失败', error);
     ElMessage.warning('部分调派队站暂无可用路线，请重试');
     // 调派未成功：清除队站图标门控，恢复非调派期图层规则
     clearMockDispatchStationIcons();
-    if (nav === planner && playbackGeneration === routeVideoGeneration) {
+    if (isCurrent(playbackGeneration)) {
       routePreviewVisible.value = routePreviewStations.value.length > 0;
       planner.renderRouteAlternatives(routePreviewStations.value);
     }
     return;
   }
-  if (nav !== planner || playbackGeneration !== routeVideoGeneration) return;
+  if (!isCurrent(playbackGeneration)) return;
   const results = selectedRoutes.map(route => route.result);
   const metrics = selectedRoutes.map(route => route.metrics);
   const etaSeconds = selectedRoutes.map(route => route.etaSeconds);
 
   // 第一步：先渲染路线并适配视图（fit 全路线 extent，先看到整条路）
-  nav.renderRoutesOnly(results);
-  nav.setRouteVideoCheckpoints(results, metrics, (event) => {
-    playRouteVideoCheckpoint(event, playbackGeneration);
+  planner.renderRoutesOnly(results);
+  planner.setRouteVideoCheckpoints(results, metrics, (event) => {
+    if (isCurrent(playbackGeneration)) playRouteVideoCheckpoint(event, playbackGeneration);
   });
 
   // 记录活跃模拟调派状态（stationId → routeIndex，与 origins/results 顺序一致）
@@ -1589,10 +1589,10 @@ const receiveMockDispatchVehicles = async (vehicles: SharedDispatchVehicleMock[]
 
   const startTracking = () => {
     // 调派车辆消息即确认选线并启动跟踪，无需额外等待阶段消息。
-      if (playbackGeneration !== routeVideoGeneration) return;
+      if (!isCurrent(playbackGeneration)) return;
       // 路线已上图、视野已定位，启动动画时不再 fit 全路线，避免视野跳回
-      nav?.startRouteVehicleAnimation(results, metrics, etaSeconds, false);
-      nav?.setRouteVehicleGroups(
+      planner.startRouteVehicleAnimation(results, metrics, etaSeconds, false);
+      planner.setRouteVehicleGroups(
         uniqueStationIds.map((sid) => vehicles.filter(
           (vehicle) => String(vehicle.stationId ?? "").trim() === sid,
         )),
@@ -1608,9 +1608,10 @@ const receiveMockDispatchVehicles = async (vehicles: SharedDispatchVehicleMock[]
 
   // 分步调度：计时器触发后即从清理列表移除，避免误清复用 ID
   const schedule = (delay: number, fn: () => void) => {
+    if (!isCurrent(playbackGeneration)) return;
     const id = window.setTimeout(() => {
       mockTrackingTimers = mockTrackingTimers.filter((t) => t !== id);
-      fn();
+      if (isCurrent(playbackGeneration)) fn();
     }, delay);
     mockTrackingTimers.push(id);
   };
@@ -1619,7 +1620,7 @@ const receiveMockDispatchVehicles = async (vehicles: SharedDispatchVehicleMock[]
   if (stationLngLat) {
     // 第二步：等路径视野适配完成（fit 300ms）后，再定位至首车起点 zoom:16
     schedule(350, () => {
-      map?.getView().animate({
+      mapInstance.getView().animate({
         center: olProj.fromLonLat(stationLngLat),
         zoom: 16,
         duration: 400,
@@ -1632,8 +1633,6 @@ const receiveMockDispatchVehicles = async (vehicles: SharedDispatchVehicleMock[]
   }
 };
 
-let mockDispatchUnsubscribe: (() => void) | null = null;
-let mockDispatchQueue: Promise<void> = Promise.resolve();
 let mockSpecialMapUnsubscribers: Array<() => void> = [];
 
 type TipItem = {
@@ -2025,21 +2024,11 @@ const initMap = () => {
   map = mapInstance;
   applyFeatureZoomLimits();
   emit("setMap", mapInstance);
-  // 调派页使用与问询页相同的来电粗定位绘制逻辑，并从活动缓存恢复定位圈。
   callLocationGenericController = new GenericController(mapInstance);
-  callLocationController = new CallController(callLocationGenericController);
-  const activeCallLocation = pendingCallLocationStore.getActive();
-  const hasSlotCoordinate = Object.values(incidentLocationStore.markers)
-    .some((entry) => entry.coordinateSource === 'slotChanges');
-  if (activeCallLocation && !hasSlotCoordinate) {
-    callLocationController.locateCall(activeCallLocation);
-  } else if (activeCallLocation) {
-    // 有警情 marker 说明有效 slotChanges 坐标已先于地图挂载到达。
-    pendingCallLocationStore.consume(activeCallLocation.id);
-  }
+  callLocationController = businessRuntime.business.call;
   updateMapZoomLevel();
   if (!mapInstance) return;
-  
+
   zoomLevelChangeKey = mapInstance
     .getView()
     .on("change:resolution", updateMapZoomLevel);
@@ -2245,9 +2234,7 @@ const initMap = () => {
     // 刷新恢复门控：dispatch / dispatchTrack 阶段（/dispatch1 且业务状态为
     // 调派或调派跟踪）允许持久化点位上图；其他阶段清空缓存，避免旧警情残留。
     // dispatchTrack 需保留警情定位数据以供模拟调派跟踪复用路线起点/终点。
-    const stage = parseSharedMapStage(
-      localStorage.getItem(SEAT_SHARED_STATE_KEY),
-    );
+    const stage = getSharedMapStage(userStore.rawState, userStore.MapMode);
     if (stage !== "dispatch" && stage !== "dispatchTrack") {
       incidentLocationStore.clearAll();
     }
@@ -2331,24 +2318,13 @@ const initMap = () => {
     // 消息先于地图挂载到达：消费积压的定位请求
     const pending = incidentLocationStore.focusRequest;
     if (pending) {
-      incidentLocationStore.consumeFocus();
+      incidentLocationStore.consumeFocus(pending.seq);
       focusMapView(map, pending);
     }
 
     // 刷新恢复：持久化点位已直接上图，异步重建辖区面/队站过滤/路径规划等派生数据
     incidentLocationStore.restoreOnMapMount();
   }
-
-  // dispatch 状态下继续响应定位更新/挂断；切页本身不清除定位圈。
-  mapMessageUnsubscribers.push(
-    messageStore.subscribe(MESSAGE_EVENT_KEY.MAP_LOCATE_CALL, (envelope) => {
-      pendingCallLocationStore.queue(envelope.data);
-      callLocationController?.locateCall(envelope.data);
-    }),
-    messageStore.subscribe(MESSAGE_EVENT_KEY.MAP_LOCATE_CALL_REMOVE, () => {
-      // dispatch 中来电结束也继续保留，等待 slotChanges 的正式坐标替换。
-    }),
-  );
 
   syncLayers(dispatchCheckedIds.value);
 
@@ -2358,24 +2334,60 @@ const initMap = () => {
   // 消息先于地图挂载到达时，按周边资源范围圈 store 现状对消防栓/重点单位 WMS 图层补做过滤
   syncResourceLayersOverride();
 
-  // 跨路由导航场景：mode=flood 从 /map 触发时消息会丢失，
-  // 导航到 /dispatch1 后 dispatchMap 挂载，在此消费 pending 标志触发渲染
-  if (consumePendingSpecialMapRender()) {
-    specialMapActive = true;
-    lastRoutePlanResults = [];
-    callLocationController?.clearLocateCalls();
-    incidentLocationStore.clearAll();
-    clearNav();
-    carManager?.setVisible(false);
-    fireManager?.setVisible(false);
-    incidentLocationManager?.setVisible(false);
-    primaryStationManager?.setVisible(false);
-    // incidentZoneManager?.setVisible(false); // 辖区图层已禁用
-    specialMapMock?.clear();
-    routePreviewStations.value = [];
-    routePreviewVisible.value = false;
-    console.info('[dispatchMap] 特殊地图已清空，等待 disasterSite 触发渲染');
-  }
+  const attachment = createBusinessMapPort(callLocationGenericController!);
+  detachBusinessMap = businessRuntime.attachMap(attachment.port, {
+    kind: 'dispatch',
+    dispose: attachment.dispose,
+    mock: {
+      render: () => {
+        mockMapGeneration += 1;
+        specialMapActive = true;
+        lastRoutePlanResults = [];
+        callLocationController?.clearLocateCalls();
+        incidentLocationStore.clearAll();
+        clearNav();
+        carManager?.setVisible(false);
+        fireManager?.setVisible(false);
+        incidentLocationManager?.setVisible(false);
+        primaryStationManager?.setVisible(false);
+        specialMapMock?.clear();
+        routePreviewStations.value = [];
+        routePreviewVisible.value = false;
+      },
+      disasterSite: async () => {
+        const owner = specialMapMock;
+        const generation = mockMapGeneration;
+        if (!owner) return;
+        callLocationController?.clearLocateCalls();
+        const stations = await owner.render();
+        if (owner !== specialMapMock || generation !== mockMapGeneration) return;
+        routePreviewStations.value = stations;
+        routePreviewLoading.value = false;
+        routePreviewVisible.value = true;
+      },
+      simulate: async () => {
+        const owner = specialMapMock;
+        const generation = mockMapGeneration;
+        routePreviewVisible.value = false;
+        await owner?.simulate();
+        if (owner !== specialMapMock || generation !== mockMapGeneration) return;
+        routePreviewVisible.value = false;
+      },
+      clear: () => {
+        mockMapGeneration += 1;
+        resetRouteVideoPlayback();
+        clearMockTrackingTimers();
+        specialMapActive = false;
+        specialMapMock?.clear();
+        routePreviewStations.value = [];
+        routePreviewVisible.value = false;
+      },
+      dispatchVehicles: async data => {
+        if (!Array.isArray(data)) return;
+        await receiveMockDispatchVehicles(data as SharedDispatchVehicleMock[]);
+      },
+    },
+  });
 
   trafficTool = new TrafficTools(map);
   trafficTool.setVisible(baseSourceStore.trafficVisible);
@@ -2385,6 +2397,9 @@ const initMap = () => {
  * 清理资源
  */
 const cleanup = () => {
+  mockMapGeneration += 1;
+  detachBusinessMap?.();
+  detachBusinessMap = null;
   resetRouteVideoPlayback();
   if (zoomLevelChangeKey) {
     unByKey(zoomLevelChangeKey);
@@ -2421,12 +2436,6 @@ const cleanup = () => {
   primaryStationManager?.destroy();
   primaryStationManager = null;
   renderedPrimaryStations.clear();
-  // 清空 store 中残留的警情点位/辖区/队站过滤声明，避免离开调派页后再次上图
-  // （与 DispatchT1 卸载时清理路径规划/队站的行为保持一致）
-  incidentLocationStore.clearAll();
-  // 同步清空画像地址消息的 slots 增量缓存（内存 + sessionStorage），
-  // 防止下次进入调派页沿用旧警情的槽位快照
-  resetAddressUpdatedCache();
   /* 辖区图层已禁用，无需 destroy/clear
   incidentZoneManager?.destroy();
   incidentZoneManager = null;
@@ -2485,84 +2494,6 @@ onMounted(() => {
     initMap();
   });
   document.addEventListener("click", handleDocumentClick, true);
-  // 受理席模拟调派写入 seat-shared-state-mock 的 dispatchVehicles（桥接为本地消息）
-  mockDispatchUnsubscribe = messageStore.subscribe(
-    MESSAGE_EVENT_KEY.MOCK_DISPATCH_VEHICLES,
-    (envelope) => {
-      const seq = incidentLocationStore.routePlanRequest?.seq;
-      mockDispatchQueue = mockDispatchQueue.then(async () => {
-        if (seq !== incidentLocationStore.routePlanRequest?.seq || !nav) return;
-        await receiveMockDispatchVehicles(envelope.data as SharedDispatchVehicleMock[]);
-      }).catch(error => console.warn('[dispatchMap] 调派处理失败', error));
-    },
-  );
-
-  // 受理席模拟特殊地图：mode=flood → 只负责清空已有业务渲染和旧特殊地图数据
-  mockSpecialMapUnsubscribers.push(
-    messageStore.subscribe(MESSAGE_EVENT_KEY.MOCK_SPECIAL_MAP_RENDER, () => {
-      if (!specialMapMock) return;
-      specialMapActive = true;
-      lastRoutePlanResults = [];
-      callLocationController?.clearLocateCalls();
-      incidentLocationStore.clearAll();
-      clearNav();
-      carManager?.setVisible(false);
-      fireManager?.setVisible(false);
-      incidentLocationManager?.setVisible(false);
-      // incidentZoneManager?.setVisible(false); // 辖区图层已禁用
-      specialMapMock.clear();
-      routePreviewStations.value = [];
-      routePreviewVisible.value = false;
-    }),
-  );
-
-  // 受理席模拟特殊地图：disasterSite 有值 → 渲染假数据+路径规划
-  mockSpecialMapUnsubscribers.push(
-    messageStore.subscribe(MESSAGE_EVENT_KEY.MOCK_SPECIAL_MAP_DISASTER_SITE, async () => {
-      if (!specialMapMock) return;
-      // 渲染灾害点前先清除来电定位点位及圈
-      callLocationController?.clearLocateCalls();
-      const stations = await specialMapMock.render();
-      routePreviewStations.value = stations;
-      routePreviewLoading.value = false;
-      routePreviewVisible.value = true;
-    }),
-  );
-
-  // 受理席模拟特殊地图：flood.dispatchCommand 存在且非空 → 车辆沿选中路径模拟运行
-  // simulate 内部会等渲染完成（同批 mode/flood.dispatchCommand）或自动先渲染
-  // async + 尾部再关面板：RENDER handler 的 await render() 完成后会设 visible=true，
-  // 此处等 simulate 完成后再关一次，确保面板最终关闭
-  mockSpecialMapUnsubscribers.push(
-    messageStore.subscribe(MESSAGE_EVENT_KEY.MOCK_SPECIAL_MAP_SIMULATE, async () => {
-      routePreviewVisible.value = false;
-      await specialMapMock?.simulate().catch((error) =>
-        console.warn("[dispatchMap] 特殊地图模拟运行失败", error),
-      );
-      routePreviewVisible.value = false;
-    }),
-  );
-
-  // 退出特灾模式：清除特殊地图上图数据（含来电定位点位及圈）
-  mockSpecialMapUnsubscribers.push(
-    messageStore.subscribe(MESSAGE_EVENT_KEY.MOCK_SPECIAL_MAP_CLEAR, () => {
-      specialMapActive = false;
-      // 来电定位优先清除，避免后续步骤异常中断导致点位/圈残留
-      try {
-        callLocationController?.clearLocateCalls();
-      } catch (error) {
-        console.warn('[dispatchMap] 退出特灾模式清除来电定位失败', error);
-      }
-      try {
-        specialMapMock?.clear();
-      } catch (error) {
-        console.warn('[dispatchMap] 退出特灾模式清除特殊地图图层失败', error);
-      }
-      routePreviewStations.value = [];
-      routePreviewVisible.value = false;
-    }),
-  );
-
   // 受理席警情二次定位：传入警情 id + BroadcastChannel 关联标识，激活地图选点交互
   mockSpecialMapUnsubscribers.push(
     messageStore.subscribe(MESSAGE_EVENT_KEY.MOCK_INCIDENT_RELOCATE, (envelope) => {
@@ -2573,12 +2504,9 @@ onMounted(() => {
     }),
   );
 
-  // 跨路由导航场景的 pending 消费已移至 initMap 末尾（specialMapMock 创建之后）
 });
 
 onUnmounted(() => {
-  mockDispatchUnsubscribe?.();
-  mockDispatchUnsubscribe = null;
   mockSpecialMapUnsubscribers.splice(0).forEach((unsubscribe) => unsubscribe());
   specialMapActive = false;
   specialMapMock?.clear();
@@ -2586,7 +2514,6 @@ onUnmounted(() => {
   incidentRelocate?.dispose();
   incidentRelocate = null;
   clearMockTrackingTimers();
-  mapMessageUnsubscribers.splice(0).forEach((unsubscribe) => unsubscribe());
   cleanup();
   document.removeEventListener("click", handleDocumentClick, true);
 });
@@ -2614,9 +2541,7 @@ onUnmounted(() => {
     <div ref="firePopupRef" class="fire_popup" v-show="firePopupVisible">
       <div class="fire_popup_header">
         <div class="fire_popup_title">{{ fireSelected?.title }}</div>
-        <button class="fire_popup_close" type="button" @click="closeFirePopup">
-          ×
-        </button>
+        <button class="fire_popup_close" type="button" @click="closeFirePopup">×</button>
       </div>
       <div class="fire_popup_body">
         <div v-if="fireSelected?.address" class="fire_popup_row">
@@ -2629,9 +2554,7 @@ onUnmounted(() => {
         </div>
         <div class="fire_popup_row">
           <span class="fire_popup_k">坐标</span>
-          <span class="fire_popup_v">
-            {{ fireSelected?.lng }}, {{ fireSelected?.lat }}
-          </span>
+          <span class="fire_popup_v"> {{ fireSelected?.lng }}, {{ fireSelected?.lat }} </span>
         </div>
       </div>
     </div>
@@ -2649,24 +2572,13 @@ onUnmounted(() => {
     </div>
 
     <!-- 警情详情固定弹窗（居中 Modal，小弹窗点"警情详情"打开） -->
-    <IncidentDetailDialog
-      v-model="incidentDetailVisible"
-      :data="incidentDetailData"
-    />
+    <IncidentDetailDialog v-model="incidentDetailVisible" :data="incidentDetailData" />
 
     <!-- 在线车辆弹窗 -->
     <div ref="carPopupRef" class="car_popup" v-show="carPopupVisible">
       <div class="car_popup_header">
-        <div class="car_popup_title">
-          {{ carSelected?.plateNo }} - {{ carSelected?.team }}
-        </div>
-        <button
-          class="car_popup_close"
-          type="button"
-          @click="carPopupVisible = false"
-        >
-          ×
-        </button>
+        <div class="car_popup_title">{{ carSelected?.plateNo }} - {{ carSelected?.team }}</div>
+        <button class="car_popup_close" type="button" @click="carPopupVisible = false">×</button>
       </div>
       <div class="car_popup_body">
         <div class="car_popup_row">
@@ -3155,7 +3067,7 @@ onUnmounted(() => {
   button {
    display: inline-block;
   }
-  
+
 }
 
 .ol-overviewmap:not(.ol-collapsed) button {

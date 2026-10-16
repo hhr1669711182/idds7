@@ -70,12 +70,7 @@ const onTileClick = (item: ToolbarItem) => {
 </script>
 
 <template>
-  <div
-    v-if="toolbarItems.length"
-    class="dispatch1-layer-toolbar"
-    role="toolbar"
-    aria-label="Dispatch1 图层工具栏"
-  >
+  <div v-if="toolbarItems.length" class="dispatch1-layer-toolbar" role="toolbar" aria-label="Dispatch1 图层工具栏">
     <button
       v-for="item in toolbarItems"
       :key="item.id"

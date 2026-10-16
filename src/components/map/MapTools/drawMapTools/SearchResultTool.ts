@@ -1,28 +1,28 @@
-import { markRaw } from "vue";
-import ImageLayer from "ol/layer/Image";
-import ImageWMS from "ol/source/ImageWMS";
-import VectorLayer from "ol/layer/Vector";
-import VectorSource from "ol/source/Vector";
-import Feature from "ol/Feature";
-import { Point, LineString } from "ol/geom";
-import { Style, Circle as StyleCircle, Stroke, Fill, Icon } from "ol/style";
-import { fromLonLat } from "ol/proj";
-import type Map from "ol/Map";
+import { markRaw } from 'vue'
+import ImageLayer from 'ol/layer/Image'
+import ImageWMS from 'ol/source/ImageWMS'
+import VectorLayer from 'ol/layer/Vector'
+import VectorSource from 'ol/source/Vector'
+import Feature from 'ol/Feature'
+import { Point, LineString } from 'ol/geom'
+import { Style, Circle as StyleCircle, Stroke, Fill, Icon } from 'ol/style'
+import { fromLonLat } from 'ol/proj'
+import type Map from 'ol/Map'
 
-import { geoserverApi } from "@/service/geoserver";
-import { LAYER_NAMES } from "@/baseComponent/OpenlayersMap/layers";
-import { getSVGForSrcById } from "@/utils";
+import { geoserverApi } from '@/service/geoserver'
+import { LAYER_NAMES } from '@/baseComponent/OpenlayersMap/layers'
+import { getSVGForSrcById } from '@/utils'
 
-import { isOlMap } from "@/utils/mapTool";
-import { cssVar, themeAccent, withAlpha } from "@/utils/themeColor";
-import type { ResourceFilterSet } from "@/types/search";
-import startImg from "@/components/map/assets/start.svg";
-import endImg from "@/components/map/assets/end.svg";
+import { isOlMap } from '@/utils/mapTool'
+import { cssVar, themeAccent, withAlpha } from '@/utils/themeColor'
+import type { ResourceFilterSet } from '@/types/search'
+import startImg from '@/components/map/assets/start.svg'
+import endImg from '@/components/map/assets/end.svg'
 
 /** Direction arrow along the route, pointing from start to end */
 const DIRECTION_ARROW_SVG = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#ffffff" stroke="#1f2933" stroke-width="1.5" d="M12 2 L20 20 L12 15.5 L4 20 Z"/></svg>`,
-)}`;
+)}`
 /** A congestion segment along the route, used for per-segment coloring */
 export interface RouteCongestionSegment {
   /** WGS84 coordinates for this segment */
@@ -33,8 +33,7 @@ export interface RouteCongestionSegment {
 
 /**
 /** Path line color, aligned with the existing path planning tool (routePlan.vue) */
-const ROUTE_LINE_COLOR = "#25C2F2";
-
+const ROUTE_LINE_COLOR = '#25C2F2'
 
 /**
  * 高德路况等级 → 颜色。高德 tmcs.status 是数字编码：
@@ -42,33 +41,33 @@ const ROUTE_LINE_COLOR = "#25C2F2";
  * 同时兼容返回中文/英文文案的情况。
  */
 const congestionColor = (status: string | number): string => {
-  const raw = String(status ?? "").trim();
-  const key = raw.toUpperCase();
+  const raw = String(status ?? '').trim()
+  const key = raw.toUpperCase()
   // 优先按数字编码匹配
   switch (raw) {
-    case "1":
-      return "#3BA55D";
-    case "2":
-      return "#F2C744";
-    case "3":
-      return "#F08A24";
-    case "4":
-    case "5":
-      return "#E64545";
+    case '1':
+      return '#3BA55D'
+    case '2':
+      return '#F2C744'
+    case '3':
+      return '#F08A24'
+    case '4':
+    case '5':
+      return '#E64545'
     default:
-      break;
+      break
   }
-  if (key.includes("严重") || key.includes("极度") || key.includes("SEVERE")) return "#E64545";
-  if (key.includes("拥堵") || key.includes("CONGEST")) return "#F08A24";
-  if (key.includes("缓行") || key.includes("SLOW")) return "#F2C744";
-  if (key.includes("畅通") || key.includes("SMOOTH")) return "#3BA55D";
-  return themeAccent(ROUTE_LINE_COLOR);
-};
+  if (key.includes('严重') || key.includes('极度') || key.includes('SEVERE')) return '#E64545'
+  if (key.includes('拥堵') || key.includes('CONGEST')) return '#F08A24'
+  if (key.includes('缓行') || key.includes('SLOW')) return '#F2C744'
+  if (key.includes('畅通') || key.includes('SMOOTH')) return '#3BA55D'
+  return themeAccent(ROUTE_LINE_COLOR)
+}
 export interface SearchResultToolOptions {
-  map: Map;
+  map: Map
   /** 聚焦时的目标 zoom（缺省按当前 zoom + 2） */
-  focusZoom?: number;
-  focusPadding?: number[];
+  focusZoom?: number
+  focusPadding?: number[]
 }
 
 /**
@@ -80,32 +79,32 @@ export interface SearchResultToolOptions {
  * - 地址 POI / 列表点选：前端渲染少量要素（点 + 路径线），提供聚焦特效。
  */
 export class SearchResultTool {
-  private map: Map;
-  private options: Required<Pick<SearchResultToolOptions, "focusZoom" | "focusPadding">>;
+  private map: Map
+  private options: Required<Pick<SearchResultToolOptions, 'focusZoom' | 'focusPadding'>>
 
-  private wmsLayer!: ImageLayer<ImageWMS>;
-  private focusLayer!: VectorLayer<VectorSource>;
-  private routeLayer!: VectorLayer<VectorSource>;
-  private endpointLayer!: VectorLayer<VectorSource>;
-  private focusPulseTimer: ReturnType<typeof setInterval> | null = null;
-  private focusPulseFeature: Feature | null = null;
+  private wmsLayer!: ImageLayer<ImageWMS>
+  private focusLayer!: VectorLayer<VectorSource>
+  private routeLayer!: VectorLayer<VectorSource>
+  private endpointLayer!: VectorLayer<VectorSource>
+  private focusPulseTimer: ReturnType<typeof setInterval> | null = null
+  private focusPulseFeature: Feature | null = null
 
   constructor(options: SearchResultToolOptions) {
     // MapStore 的 map 初值是空对象 / null，必须校验后再建层
     if (!isOlMap(options.map)) {
-      throw new TypeError("[SearchResultTool] options.map 不是有效的 OpenLayers Map 实例");
+      throw new TypeError('[SearchResultTool] options.map 不是有效的 OpenLayers Map 实例')
     }
-    this.map = options.map;
+    this.map = options.map
     this.options = {
       focusZoom: options.focusZoom ?? 17,
       focusPadding: options.focusPadding ?? [80, 80, 80, 80],
-    };
-    this.initLayers();
+    }
+    this.initLayers()
   }
 
   /** 供调用方比对是否为同一个地图实例（路由切换会重建） */
   getMap(): Map {
-    return this.map;
+    return this.map
   }
 
   private initLayers() {
@@ -115,14 +114,14 @@ export class SearchResultTool {
         className: LAYER_NAMES.SEARCH_FOCUS_LAYER,
         zIndex: 120,
       }),
-    );
+    )
     this.routeLayer = markRaw(
       new VectorLayer({
         source: markRaw(new VectorSource()),
         className: LAYER_NAMES.SEARCH_ROUTE_LAYER,
         zIndex: 110,
       }),
-    );
+    )
 
     // The start/end markers have their own layer; showRoute() only clears the path layer
     this.endpointLayer = markRaw(
@@ -131,57 +130,57 @@ export class SearchResultTool {
         className: LAYER_NAMES.SEARCH_ROUTE_ENDPOINT_LAYER,
         zIndex: 130,
       }),
-    );
+    )
 
-    this.map.addLayer(this.routeLayer);
-    this.map.addLayer(this.endpointLayer);
-    this.map.addLayer(this.focusLayer);
+    this.map.addLayer(this.routeLayer)
+    this.map.addLayer(this.endpointLayer)
+    this.map.addLayer(this.focusLayer)
   }
 
   /** WMS 资源出图：LAYERS 逗号拼接，CQL_FILTER 分号分隔且顺序一一对应 */
   showResources(filter: ResourceFilterSet) {
-    const { typeNames, filters } = filter;
+    const { typeNames, filters } = filter
     if (!typeNames.length) {
-      this.clearResources();
-      return;
+      this.clearResources()
+      return
     }
 
     const params = {
-      LAYERS: typeNames.join(","),
-      VERSION: "1.1.0",
-      FORMAT: "image/png",
+      LAYERS: typeNames.join(','),
+      VERSION: '1.1.0',
+      FORMAT: 'image/png',
       TRANSPARENT: true,
-      CQL_FILTER: filters.join(";"),
-    };
+      CQL_FILTER: filters.join(';'),
+    }
 
     if (!this.wmsLayer) {
       this.wmsLayer = markRaw(
         new ImageLayer({
           source: markRaw(
             new ImageWMS({
-              url: geoserverApi.getWMSServiceUrl("gis"),
+              url: geoserverApi.getWMSServiceUrl('gis'),
               params,
-              serverType: "geoserver",
-              crossOrigin: "anonymous",
+              serverType: 'geoserver',
+              crossOrigin: 'anonymous',
               ratio: 1.5,
             }),
           ),
           className: LAYER_NAMES.ES_WMS_LAYER,
           zIndex: 100,
         }),
-      ) as ImageLayer<ImageWMS>;
-      this.map.addLayer(this.wmsLayer);
-      return;
+      ) as ImageLayer<ImageWMS>
+      this.map.addLayer(this.wmsLayer)
+      return
     }
 
     // 已存在则只更新参数，避免重建图层造成闪烁
-    this.wmsLayer.getSource()?.updateParams(params);
+    this.wmsLayer.getSource()?.updateParams(params)
   }
 
   /** 无检索结果时显式返回空图，而不是保留上一次的过滤结果 */
   clearResources() {
-    if (!this.wmsLayer) return;
-    this.wmsLayer.getSource()?.updateParams({ CQL_FILTER: "1=0" });
+    if (!this.wmsLayer) return
+    this.wmsLayer.getSource()?.updateParams({ CQL_FILTER: '1=0' })
   }
 
   /**
@@ -189,58 +188,58 @@ export class SearchResultTool {
    * 条数受高德单页限制（≤20），前端渲染无压力。
    */
   showAddressPoints(lngLats: [number, number][]) {
-    const source = this.focusLayer.getSource();
-    source?.clear();
-    this.stopPulse();
+    const source = this.focusLayer.getSource()
+    source?.clear()
+    this.stopPulse()
 
     lngLats.forEach((lngLat, index) => {
-      if (!lngLat) return;
+      if (!lngLat) return
       const feature = new Feature({
         id: `search-address-${index}`,
         geometry: new Point(fromLonLat(lngLat)),
-      });
+      })
       feature.setStyle(
         new Style({
           image: new Icon({
-            src: getSVGForSrcById({ symbolId: "icon-poi-1", color: themeAccent() }),
+            src: getSVGForSrcById({ symbolId: 'icon-poi-1', color: themeAccent() }),
             anchor: [0.5, 1],
             scale: 1,
           }),
         }),
-      );
-      source?.addFeature(feature);
-    });
+      )
+      source?.addFeature(feature)
+    })
 
-    if (lngLats.length) this.fitTo(lngLats);
+    if (lngLats.length) this.fitTo(lngLats)
   }
 
   /** 列表点选定位：单点聚焦 + 脉冲特效 */
   focusPoint(lngLat: [number, number] | null) {
-    const source = this.focusLayer.getSource();
-    source?.clear();
-    this.stopPulse();
-    if (!lngLat) return;
+    const source = this.focusLayer.getSource()
+    source?.clear()
+    this.stopPulse()
+    if (!lngLat) return
 
     // 地址标点固定显示，聚焦圈单独作为脉冲图层元素，避免脉冲重绘覆盖标点图标
-    const marker = new Feature({ geometry: new Point(fromLonLat(lngLat)) });
+    const marker = new Feature({ geometry: new Point(fromLonLat(lngLat)) })
     marker.setStyle(
       new Style({
         image: new Icon({
-          src: getSVGForSrcById({ symbolId: "icon-poi-1", color: themeAccent() }),
+          src: getSVGForSrcById({ symbolId: 'icon-poi-1', color: themeAccent() }),
           anchor: [0.5, 1],
           scale: 1,
         }),
         zIndex: 3,
       }),
-    );
-    source?.addFeature(marker);
+    )
+    source?.addFeature(marker)
 
-    const focusFeature = new Feature({ geometry: new Point(fromLonLat(lngLat)) });
-    focusFeature.setStyle(this.createFocusStyle(10, 0.45));
-    source?.addFeature(focusFeature);
+    const focusFeature = new Feature({ geometry: new Point(fromLonLat(lngLat)) })
+    focusFeature.setStyle(this.createFocusStyle(10, 0.45))
+    source?.addFeature(focusFeature)
 
-    this.startPulse(focusFeature);
-    this.fitTo([lngLat]);
+    this.startPulse(focusFeature)
+    this.fitTo([lngLat])
   }
 
   private createFocusStyle(radius: number, opacity: number) {
@@ -248,10 +247,10 @@ export class SearchResultTool {
       zIndex: 2,
       image: new StyleCircle({
         radius,
-        stroke: new Stroke({ color: cssVar("--text-primary", "#ffffff"), width: 3 }),
+        stroke: new Stroke({ color: cssVar('--text-primary', '#ffffff'), width: 3 }),
         fill: new Fill({ color: withAlpha(themeAccent(), opacity) }),
       }),
-    });
+    })
   }
 
   /**
@@ -262,94 +261,94 @@ export class SearchResultTool {
    * 现改为定时器驱动：动画结束后不再回调 setStyle，只保留固定样式的聚焦圈。
    */
   private startPulse(feature: Feature) {
-    this.stopPulse();
-    this.focusPulseFeature = feature;
+    this.stopPulse()
+    this.focusPulseFeature = feature
 
-    const startedAt = performance.now();
-    const duration = 1000;
+    const startedAt = performance.now()
+    const duration = 1000
 
     this.focusPulseTimer = setInterval(() => {
-      const elapsed = performance.now() - startedAt;
+      const elapsed = performance.now() - startedAt
       if (elapsed >= duration || !this.focusLayer) {
         // 动画结束：先落定固定样式，再停表；stopPulse 会清空 focusPulseFeature
         if (this.focusPulseFeature && this.focusLayer) {
-          feature.setStyle(this.createFocusStyle(12, 0.28));
-          this.focusLayer.changed();
+          feature.setStyle(this.createFocusStyle(12, 0.28))
+          this.focusLayer.changed()
         }
-        this.stopPulse();
-        return;
+        this.stopPulse()
+        return
       }
 
       // 1 秒内做 2 个完整脉冲：半径 8→28 往复，透明度同步起伏
-      const progress = elapsed / duration;
-      const phase = (progress * 2) % 1;
-      const wave = Math.sin(phase * Math.PI);
-      feature.setStyle(this.createFocusStyle(8 + wave * 20, 0.45 + wave * 0.35));
-      this.focusLayer.changed();
-    }, 1000 / 30);
+      const progress = elapsed / duration
+      const phase = (progress * 2) % 1
+      const wave = Math.sin(phase * Math.PI)
+      feature.setStyle(this.createFocusStyle(8 + wave * 20, 0.45 + wave * 0.35))
+      this.focusLayer.changed()
+    }, 1000 / 30)
   }
 
   private stopPulse() {
     if (this.focusPulseTimer) {
-      clearInterval(this.focusPulseTimer);
-      this.focusPulseTimer = null;
+      clearInterval(this.focusPulseTimer)
+      this.focusPulseTimer = null
     }
-    this.focusPulseFeature = null;
+    this.focusPulseFeature = null
   }
 
   /**
    * 路径线。segments 用于按拥堵等级分段着色；缺省时整条线用主题强调色。
    */
   showRoute(coords: [number, number][], segments?: RouteCongestionSegment[]) {
-    const source = this.routeLayer.getSource();
-    source?.clear();
-    if (!coords || coords.length < 2) return;
+    const source = this.routeLayer.getSource()
+    source?.clear()
+    if (!coords || coords.length < 2) return
 
     if (!segments || segments.length < 1) {
       const feature = new Feature({
         geometry: new LineString(coords.map((lngLat) => fromLonLat(lngLat))),
-      });
-      feature.setStyle(this.routeLineStyle());
-      source?.addFeature(feature);
-      this.drawRouteArrows(coords);
-      return;
+      })
+      feature.setStyle(this.routeLineStyle())
+      source?.addFeature(feature)
+      this.drawRouteArrows(coords)
+      return
     }
 
     // 按拥堵等级分段：每段独立 Feature + 独立颜色，段边界轻微重叠避免缝隙
     segments.forEach((segment) => {
-      if (!segment.coords || segment.coords.length < 2) return;
+      if (!segment.coords || segment.coords.length < 2) return
       const feature = new Feature({
         geometry: new LineString(segment.coords.map((lngLat) => fromLonLat(lngLat))),
-      });
+      })
       feature.setStyle(
         new Style({
           stroke: new Stroke({ color: congestionColor(segment.status), width: 5 }),
           zIndex: 1,
         }),
-      );
-      source?.addFeature(feature);
-    });
-    this.drawRouteArrows(coords);
+      )
+      source?.addFeature(feature)
+    })
+    this.drawRouteArrows(coords)
   }
 
   /**
    * 需求 3：在路径线上按固定像素间隔绘制方向箭头，指示起点→终点行进方向
    */
   private drawRouteArrows(coords: [number, number][]) {
-    const source = this.routeLayer.getSource();
-    if (!source || coords.length < 2) return;
-    const line = new LineString(coords.map((lngLat) => fromLonLat(lngLat)));
-    const length = line.getLength();
-    if (!Number.isFinite(length) || length <= 0) return;
-    const arrowCount = Math.min(60, Math.max(3, Math.round(length / 2000)));
-    const pixelCount = arrowCount;
+    const source = this.routeLayer.getSource()
+    if (!source || coords.length < 2) return
+    const line = new LineString(coords.map((lngLat) => fromLonLat(lngLat)))
+    const length = line.getLength()
+    if (!Number.isFinite(length) || length <= 0) return
+    const arrowCount = Math.min(60, Math.max(3, Math.round(length / 2000)))
+    const pixelCount = arrowCount
     for (let i = 1; i < pixelCount; i++) {
-      const fraction = i / pixelCount;
-      const point = line.getCoordinateAt(fraction);
-      const before = line.getCoordinateAt(Math.max(0, fraction - 0.004));
-      const after = line.getCoordinateAt(Math.min(1, fraction + 0.004));
-      const rotation = (Math.atan2(after[1] - before[1], after[0] - before[0]) * 180) / Math.PI;
-      const feature = new Feature({ geometry: new Point(point) });
+      const fraction = i / pixelCount
+      const point = line.getCoordinateAt(fraction)
+      const before = line.getCoordinateAt(Math.max(0, fraction - 0.004))
+      const after = line.getCoordinateAt(Math.min(1, fraction + 0.004))
+      const rotation = (Math.atan2(after[1] - before[1], after[0] - before[0]) * 180) / Math.PI
+      const feature = new Feature({ geometry: new Point(point) })
       feature.setStyle(
         new Style({
           image: new Icon({
@@ -363,8 +362,8 @@ export class SearchResultTool {
           }),
           zIndex: 2,
         }),
-      );
-      source.addFeature(feature);
+      )
+      source.addFeature(feature)
     }
   }
   /** Path line style: consistent with the existing route planning tool (routePlan.vue) */
@@ -372,7 +371,7 @@ export class SearchResultTool {
     return new Style({
       stroke: new Stroke({ color: themeAccent(ROUTE_LINE_COLOR), width: 5 }),
       zIndex: 1,
-    });
+    })
   }
 
   /**
@@ -380,12 +379,12 @@ export class SearchResultTool {
    * Independent layer from the path line; drawing a route does not clear the markers.
    */
   showRouteEndpoints(start: [number, number] | null, end: [number, number] | null) {
-    const source = this.endpointLayer.getSource();
-    if (!source) return;
-    source.clear();
+    const source = this.endpointLayer.getSource()
+    if (!source) return
+    source.clear()
     const mark = (lngLat: [number, number] | null, img: string) => {
-      if (!lngLat) return;
-      const feature = new Feature({ geometry: new Point(fromLonLat(lngLat)) });
+      if (!lngLat) return
+      const feature = new Feature({ geometry: new Point(fromLonLat(lngLat)) })
       feature.setStyle(
         new Style({
           image: new Icon({
@@ -395,73 +394,73 @@ export class SearchResultTool {
           }),
           zIndex: 3,
         }),
-      );
-      source.addFeature(feature);
-    };
-    mark(start, startImg);
-    mark(end, endImg);
+      )
+      source.addFeature(feature)
+    }
+    mark(start, startImg)
+    mark(end, endImg)
   }
 
   /** Clear only the endpoint markers; the route line and focus effects are unaffected */
   clearRouteEndpoints() {
-    this.endpointLayer?.getSource()?.clear();
+    this.endpointLayer?.getSource()?.clear()
   }
   /** Fit all points into the viewport without animation offset (used when selecting the end point) */
   fitPoints(lngLats: [number, number][]) {
-    this.fitTo(lngLats);
+    this.fitTo(lngLats)
   }
 
   private fitTo(lngLats: [number, number][]) {
-    const valid = lngLats.filter((c) => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]));
-    if (!valid.length) return;
-    const points = valid.map((lngLat) => fromLonLat(lngLat));
-    const xs = points.map((p) => p[0]);
-    const ys = points.map((p) => p[1]);
+    const valid = lngLats.filter((c) => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+    if (!valid.length) return
+    const points = valid.map((lngLat) => fromLonLat(lngLat))
+    const xs = points.map((p) => p[0])
+    const ys = points.map((p) => p[1])
     const extent: [number, number, number, number] = [
       Math.min(...xs),
       Math.min(...ys),
       Math.max(...xs),
       Math.max(...ys),
-    ];
+    ]
     this.map.getView().fit(extent, {
       padding: this.options.focusPadding as [number, number, number, number],
       duration: 400,
       maxZoom: this.options.focusZoom,
-    });
+    })
   }
 
   clearFocus() {
-    this.focusLayer?.getSource()?.clear();
-    this.stopPulse();
+    this.focusLayer?.getSource()?.clear()
+    this.stopPulse()
   }
 
   clearRoute() {
-    this.routeLayer?.getSource()?.clear();
-    this.endpointLayer?.getSource()?.clear();
+    this.routeLayer?.getSource()?.clear()
+    this.endpointLayer?.getSource()?.clear()
   }
 
   clear() {
-    this.clearFocus();
-    this.clearRoute();
-    this.clearResources();
+    this.clearFocus()
+    this.clearRoute()
+    this.clearResources()
   }
 
   /** 幂等销毁：允许重复调用，也允许在地图实例已被替换后调用 */
   destroy() {
-    this.stopPulse();
+    this.stopPulse()
     const detach = (layer?: { dispose?: () => void } | null) => {
-      if (!layer) return;
-      if (isOlMap(this.map)) this.map.removeLayer(layer as never);
-      layer.dispose?.();
-    };
-    this.wmsLayer?.getSource()?.dispose?.();
-    detach(this.wmsLayer);
-    detach(this.focusLayer);
-    detach(this.routeLayer);
-    detach(this.endpointLayer);
-    this.wmsLayer = null as unknown as ImageLayer<ImageWMS>;
-    this.focusLayer = null as unknown as VectorLayer<VectorSource>;
-    this.routeLayer = null as unknown as VectorLayer<VectorSource>;
-    this.endpointLayer = null as unknown as VectorLayer<VectorSource>;
+      if (!layer) return
+      if (isOlMap(this.map)) this.map.removeLayer(layer as never)
+      layer.dispose?.()
+    }
+    this.wmsLayer?.getSource()?.dispose?.()
+    detach(this.wmsLayer)
+    detach(this.focusLayer)
+    detach(this.routeLayer)
+    detach(this.endpointLayer)
+    this.wmsLayer = null as unknown as ImageLayer<ImageWMS>
+    this.focusLayer = null as unknown as VectorLayer<VectorSource>
+    this.routeLayer = null as unknown as VectorLayer<VectorSource>
+    this.endpointLayer = null as unknown as VectorLayer<VectorSource>
   }
 }

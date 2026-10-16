@@ -6,6 +6,22 @@
  * @Description: 消防调派队站信息、车辆选择及调派操作面板。
  * @FilePath: src\baseComponent\OpenlayersMap\DispatchT1.vue
 -->
+<script lang="ts">
+import { useUserStore } from '@/store/useUserStore';
+import type { DispatchT1State as DispatchSnapshot } from './DispatchT1';
+
+const trackingFocusStates = new WeakMap<ReturnType<typeof useUserStore>, { context: string; done: boolean }>();
+
+declare global {
+  interface Window {
+    simulateDispatchCoordinate?: (
+      longitude: number,
+      latitude: number,
+    ) => Promise<Readonly<DispatchSnapshot> | null>;
+  }
+}
+</script>
+
 <script setup lang="ts">
 import {
   computed,
@@ -24,13 +40,11 @@ import { unByKey } from 'ol/Observable';
 import type { EventsKey } from 'ol/events';
 import { useDispatchT1Store, isStandbyVehicleStatus } from '@/store/useDispatchT1Store';//T1调派状态
 import { useDispatch1MapStore } from '@/store/useDispatch1MapStore';//T1调派状态
-import { useMessageStore } from '@/store/useMessageStore';
-import { MESSAGE_EVENT_KEY } from '@/const/const.message.type';
+import { getBusinessMessageRuntime } from '@/controller/core/io/BusinessMessageRuntime';
 import { VEHICLE_STATUS_TEXT } from '@/const/const.business.type';
 import type {
   CarLocationBatch,
-  CarLocationPoint,
-} from '@/Control/carLocationMessage';
+} from '@/controller/core/protocol/LegacyMessageProtocol';
 import { geoserverApi } from '@/service/geoserver';
 import { useFireStations } from '@/composables/useFireStations';
 import {
@@ -41,7 +55,7 @@ import {
   type DispatchT1VehicleCommand,
   type DispatchT1WebSocketData,
 } from './DispatchT1';
-import { whenDispatchTrack } from '@/Control/seatSharedState';
+import { getSharedMapStage } from '@/utils/seatSharedState';
 
 const props = defineProps<{
   map: OlMap | null;
@@ -57,18 +71,11 @@ const emit = defineEmits<{
   close: [];
 }>();
 
-declare global {
-  interface Window {
-    simulateDispatchCoordinate?: (
-      longitude: number,
-      latitude: number,
-    ) => Promise<Readonly<DispatchT1State> | null>;
-  }
-}
-
 const dispatchT1Store = useDispatchT1Store();
 const dispatch1MapStore = useDispatch1MapStore();
-const messageStore = useMessageStore();
+const userStore = useUserStore();
+const realtimeFocus = trackingFocusStates.get(userStore) ?? { context: '', done: false };
+trackingFocusStates.set(userStore, realtimeFocus);
 const state = computed<DispatchT1State>(() => dispatchT1Store.$state);
 const service = shallowRef<DispatchT1 | null>(null);
 const stationPopupRef = ref<HTMLElement | null>(null);
@@ -85,11 +92,27 @@ let hydrantClickKey: EventsKey | null = null;
 let hydrantRequestVersion = 0;
 let pendingWebSocketData: DispatchT1WebSocketData | null = null;
 let vehicleLocationUnsubscribe: (() => void) | null = null;
-const pendingVehicleLocations = new Map<string, CarLocationPoint>();
-// 首次收到实时车辆定位后，以第一辆车当前点位为中心缩放至 zoom:16（仅执行一次）
-let firstRealtimeZoomDone = false;
-// 当 phase 切换为 dispatchTrack 时重置 firstRealtimeZoomDone，使新一轮跟踪再次触发首次缩放
-let resetZoomOnDispatchTrackDispose: (() => void) | null = null;
+watch(
+  () => userStore.sessionEpoch,
+  () => {
+    pendingWebSocketData = null;
+    service.value?.reset();
+  },
+  { flush: 'sync' },
+);
+watch(
+  () => JSON.stringify([
+    userStore.sessionEpoch,
+    getSharedMapStage(userStore.rawState, userStore.MapMode),
+    userStore.currentAlarm?.incidentId ?? null,
+  ]),
+  (context) => {
+    if (realtimeFocus.context === context) return;
+    realtimeFocus.context = context;
+    realtimeFocus.done = false;
+  },
+  { immediate: true, flush: 'sync' },
+);
 
 const HYDRANT_LAYER = 'gis:env_fire_water';
 
@@ -148,6 +171,9 @@ const createService = (map: OlMap) => {
     onDispatch: async (command) => emit('dispatch', command),
   });
   service.value = instance;
+  vehicleLocationUnsubscribe = getBusinessMessageRuntime().attachTracking((data) => {
+    if (service.value === instance) receiveVehicleLocations(data);
+  });
   void nextTick(() => {
     // ensureStationOverlay(); 车辆列表弹窗当前阶段注释调先
     ensureHydrantQuery();
@@ -157,13 +183,11 @@ const createService = (map: OlMap) => {
     pendingWebSocketData = null;
     void receiveWebSocket(data);
   }
-  if (pendingVehicleLocations.size) {
-    instance.updateVehicleLocations({ datas: [...pendingVehicleLocations.values()] });
-    pendingVehicleLocations.clear();
-  }
 };
 
 const destroyService = () => {
+  vehicleLocationUnsubscribe?.();
+  vehicleLocationUnsubscribe = null;
   hydrantRequestVersion += 1;
   if (hydrantClickKey) {
     unByKey(hydrantClickKey);
@@ -359,27 +383,37 @@ const updateStationOverlay = () => {
 
 const receiveWebSocket = async (data: DispatchT1WebSocketData) => {
   console.info('[DispatchT1] 地图组件已收到警情', { mapReady: Boolean(service.value) });
-  if (!service.value) {
+  const instance = service.value;
+  if (!instance) {
     pendingWebSocketData = data;
     return null;
   }
+  const epoch = userStore.sessionEpoch;
+  const isCurrent = () => service.value === instance && userStore.sessionEpoch === epoch;
   try {
-    const result = await service.value.handleWebSocketMessage(data);
+    const result = await instance.handleWebSocketMessage(data);
+    if (!isCurrent()) return null;
     emit('querySuccess', result);
     return result;
   } catch (error) {
+    if (!isCurrent()) return null;
     emit('error', error);
     throw error;
   }
 };
 
 const simulateCoordinate = async (longitude: number, latitude: number) => {
-  if (!service.value) throw new Error('地图尚未初始化');
+  const instance = service.value;
+  if (!instance) throw new Error('地图尚未初始化');
+  const epoch = userStore.sessionEpoch;
+  const isCurrent = () => service.value === instance && userStore.sessionEpoch === epoch;
   try {
-    const result = await service.value.simulateCoordinate(longitude, latitude);
+    const result = await instance.simulateCoordinate(longitude, latitude);
+    if (!isCurrent()) return null;
     emit('querySuccess', result);
     return result;
   } catch (error) {
+    if (!isCurrent()) return null;
     emit('error', error);
     throw error;
   }
@@ -390,7 +424,7 @@ const receiveVehicleLocations = (batch: CarLocationBatch) => {
   if (!batch || !Array.isArray(batch.datas)) return 0;
 
   // 首次收到实时定位：以第一个有效点位为中心缩放至 zoom:16
-  if (!firstRealtimeZoomDone) {
+  if (!realtimeFocus.done) {
     const first = batch.datas.find(
       (p) => Number.isFinite(p.longitude) && Number.isFinite(p.latitude),
     );
@@ -402,16 +436,12 @@ const receiveVehicleLocations = (batch: CarLocationBatch) => {
         map.getView().getProjection(),
       );
       map.getView().animate({ center, zoom: 16 });
-      firstRealtimeZoomDone = true;
+      realtimeFocus.done = true;
     }
   }
 
   if (service.value) return service.value.updateVehicleLocations(batch);
 
-  batch.datas.forEach((point) => {
-    const key = String(point.plateNumber || point.carId || '').trim().toUpperCase();
-    if (key) pendingVehicleLocations.set(key, point);
-  });
   return 0;
 };
 
@@ -499,24 +529,11 @@ onMounted(() => {
   ensureHydrantQuery();
   // 预加载主管队站 WFS 数据用于车辆所属机构反查（单例缓存，失败不阻塞调派面板）
   void loadFireStations().catch(() => undefined);
-  vehicleLocationUnsubscribe = messageStore.subscribe(
-    MESSAGE_EVENT_KEY.TRACKING_VEHICLE_GPS_UPDATE,
-    (envelope) => receiveVehicleLocations(envelope.data as CarLocationBatch),
-  );
-  // 进入 dispatchTrack 阶段时重置首次缩放标记，使新一轮跟踪可再次触发
-  resetZoomOnDispatchTrackDispose = whenDispatchTrack(() => {
-    firstRealtimeZoomDone = false;
-  });
   window.simulateDispatchCoordinate = simulateCoordinate;
   // console.info('[DispatchT1] 坐标模拟入口已注册');
 });
 
 onBeforeUnmount(() => {
-  vehicleLocationUnsubscribe?.();
-  vehicleLocationUnsubscribe = null;
-  resetZoomOnDispatchTrackDispose?.();
-  resetZoomOnDispatchTrackDispose = null;
-  pendingVehicleLocations.clear();
   if (window.simulateDispatchCoordinate === simulateCoordinate) {
     delete window.simulateDispatchCoordinate;
   }
@@ -563,10 +580,7 @@ defineExpose({
 
   <div style="display: none;" ref="stationPopupRef" class="dispatch-station-popup">
     <template v-if="activeStation">
-      <header
-        class="station-popup-header"
-        :class="{ primary: activeStation.role === 'primary' }"
-      >
+      <header class="station-popup-header" :class="{ primary: activeStation.role === 'primary' }">
         <div>
           <span class="role-tag">
             {{ activeStation.role === 'primary' ? '主管' : '支撑' }}
@@ -595,7 +609,7 @@ defineExpose({
           :disabled="vehicle.dispatched || !isVehicleSelectable(vehicle)
             || activeStation.vehiclesLoading || state.status === 'dispatching'"
           @change="toggleVehicle(activeStation.id, vehicle.id, $event)"
-        >
+        />
         <span class="vehicle-content">
           <strong>{{ vehicle.name }}</strong>
           <div class="vehicle-meta-grid">
@@ -604,7 +618,9 @@ defineExpose({
               {{ vehicle.dispatched ? '已调派' : vehicleStatusText(vehicle) }}
             </small>
             <small>所属机构：{{ vehicleOrgName(vehicle) }}</small>
-            <small>类型：{{ vehicle.type || '暂无' }} · 高度：{{ vehicle.vehicleHeightMeters == null ? '暂无' : `${vehicle.vehicleHeightMeters} 米` }}</small>
+            <small
+              >类型：{{ vehicle.type || '暂无' }} · 高度：{{ vehicle.vehicleHeightMeters == null ? '暂无' : `${vehicle.vehicleHeightMeters} 米` }}</small
+            >
             <small>预计到达：{{ vehicleEtaText(vehicle, activeStation) }}</small>
           </div>
         </span>
@@ -626,11 +642,7 @@ defineExpose({
         <button type="button" aria-label="关闭" @click="closeHydrantPopup">×</button>
       </header>
       <div class="hydrant-popup-body">
-        <div
-          v-for="row in hydrantInfo.rows"
-          :key="row.label"
-          class="hydrant-popup-row"
-        >
+        <div v-for="row in hydrantInfo.rows" :key="row.label" class="hydrant-popup-row">
           <span>{{ row.label }}</span>
           <strong>{{ row.value }}</strong>
         </div>
@@ -638,13 +650,10 @@ defineExpose({
     </template>
   </div>
 
-  <div v-if="state.status === 'querying'" class="dispatch-query-status">
-    正在查询主管队站、辖区和支撑队站...
-  </div>
+  <div v-if="state.status === 'querying'" class="dispatch-query-status">正在查询主管队站、辖区和支撑队站...</div>
   <!-- <div v-else-if="state.error" class="dispatch-query-status error-message">
     {{ state.error }}
   </div> -->
-
 </template>
 
 <style scoped>

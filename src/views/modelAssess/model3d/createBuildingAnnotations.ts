@@ -18,7 +18,7 @@ import * as THREE from 'three'
 import { makeTextSprite } from './createFireFacilities'
 
 /** 主建筑角点 4 个角的 x/z 偏移（与 createBuildingByFloors 中 buildMainBuildingPoints 一致） */
-const BUILDING_HALF_WIDTH = (0.0001 * 111319.9) / 100  // ≈ 0.1113 m
+const BUILDING_HALF_WIDTH = (0.0001 * 111319.9) / 100 // ≈ 0.1113 m
 const BUILDING_HALF_DEPTH = BUILDING_HALF_WIDTH
 /** 单层显示厚度（与 maModelSetting.floorDisplayHeight 一致） */
 const FLOOR_DISPLAY_HEIGHT = 0.12
@@ -55,12 +55,7 @@ export interface BuildingAnnotationRefs {
 }
 
 /* -------- 工具：用多段短直线模拟虚线（WebGL LineBasicMaterial 不支持 linewidth） -------- */
-function makeDashedLine(
-  start: THREE.Vector3,
-  end: THREE.Vector3,
-  color: number,
-  dashCount = 6,
-): THREE.Group {
+function makeDashedLine(start: THREE.Vector3, end: THREE.Vector3, color: number, dashCount = 6): THREE.Group {
   const g = new THREE.Group()
   const totalLen = start.distanceTo(end)
   if (totalLen < 1e-6) return g
@@ -117,14 +112,12 @@ function disposeSubtree(obj: THREE.Object3D) {
 /**
  * 在主建筑附近创建一组标注，返回 refs 供外部动态更新
  */
-export function createBuildingAnnotations(
-  opts: BuildingAnnotationOpts,
-): BuildingAnnotationRefs {
+export function createBuildingAnnotations(opts: BuildingAnnotationOpts): BuildingAnnotationRefs {
   const totalFloors = opts.totalFloors > 0 ? opts.totalFloors : 32
   const totalRealHeightM = opts.totalRealHeightM > 0 ? opts.totalRealHeightM : 96
   const marks = opts.heightMarks ?? [30, 50, 70, 90]
   const displayHeight = totalFloors * FLOOR_DISPLAY_HEIGHT
-  const meterToUnit = displayHeight / totalRealHeightM  // 1m = meterToUnit 单位
+  const meterToUnit = displayHeight / totalRealHeightM // 1m = meterToUnit 单位
   const floorToY = (floor: number) => (floor / Math.max(1, totalFloors)) * displayHeight
 
   const root = new THREE.Group()
@@ -138,12 +131,7 @@ export function createBuildingAnnotations(
   marks.forEach((m) => {
     const y = m * meterToUnit
     // 水平虚线
-    const line = makeDashedLine(
-      new THREE.Vector3(scaleLineEndX, y, 0),
-      new THREE.Vector3(scaleX, y, 0),
-      0x66aaff,
-      5,
-    )
+    const line = makeDashedLine(new THREE.Vector3(scaleLineEndX, y, 0), new THREE.Vector3(scaleX, y, 0), 0x66aaff, 5)
     heightScaleGroup.add(line)
     // 文字标签（蓝底白字）
     const label = makeTextSprite(`${m}m`, '#ffffff', 'rgba(74,144,217,0.95)')
@@ -215,19 +203,10 @@ export function createBuildingAnnotations(
     const y = floorToY(floor)
     const realM = ((floor / Math.max(1, totalFloors)) * totalRealHeightM).toFixed(0)
     // 外框（红色 8 段线框）
-    fireBox = makeFloorBox(
-      BUILDING_HALF_WIDTH * 2.05,
-      BUILDING_HALF_DEPTH * 2.05,
-      y,
-      0xff3030,
-    )
+    fireBox = makeFloorBox(BUILDING_HALF_WIDTH * 2.05, BUILDING_HALF_DEPTH * 2.05, y, 0xff3030)
     root.add(fireBox)
     // callout 标签（红底白字）
-    fireLabel = makeTextSprite(
-      `起火层: ${floor}F / 约${realM}m`,
-      '#ffffff',
-      'rgba(255,48,48,0.95)',
-    )
+    fireLabel = makeTextSprite(`起火层: ${floor}F / 约${realM}m`, '#ffffff', 'rgba(255,48,48,0.95)')
     fireLabel.position.set(BUILDING_HALF_WIDTH + 0.7, y + 0.1, 0)
     fireLabel.scale.set(0.65, 0.22, 1)
     root.add(fireLabel)
@@ -248,11 +227,7 @@ export function createBuildingAnnotations(
   const dirRadius = Math.max(BUILDING_HALF_WIDTH, BUILDING_HALF_DEPTH) + 0.35
   CORNER_DIRECTIONS.forEach(({ label, angle }) => {
     const sprite = makeTextSprite(label, '#ffffff', 'rgba(74,144,217,0.85)')
-    sprite.position.set(
-      Math.cos(angle) * dirRadius,
-      0.08,
-      Math.sin(angle) * dirRadius,
-    )
+    sprite.position.set(Math.cos(angle) * dirRadius, 0.08, Math.sin(angle) * dirRadius)
     sprite.scale.set(0.24, 0.16, 1)
     dirGroup.add(sprite)
   })

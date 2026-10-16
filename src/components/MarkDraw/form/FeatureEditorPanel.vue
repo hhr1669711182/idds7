@@ -425,21 +425,9 @@ const onDelete = async () => {
       </div>
       <div class="md-editor__row md-editor__row--style">
         <label class="md-editor__label">颜色</label>
-        <input
-          type="color"
-          class="md-color"
-          v-model="colorText"
-          :disabled="!writable"
-        />
+        <input type="color" class="md-color" v-model="colorText" :disabled="!writable" />
         <label class="md-editor__label md-editor__label--sm">宽度</label>
-        <input
-          type="number"
-          class="md-num"
-          min="1"
-          max="20"
-          v-model.number="widthNum"
-          :disabled="!writable"
-        />
+        <input type="number" class="md-num" min="1" max="20" v-model.number="widthNum" :disabled="!writable" />
         <label class="md-editor__label md-editor__label--sm">透明度</label>
         <input
           type="number"
@@ -455,25 +443,13 @@ const onDelete = async () => {
         <div class="md-editor__geom-head">
           <span class="md-editor__label">几何</span>
           <div class="md-editor__geom-modes">
-            <button
-              class="md-editor__mode"
-              :class="{ active: geomMode === 'readonly' }"
-              @click="geomMode = 'readonly'"
-            >
+            <button class="md-editor__mode" :class="{ active: geomMode === 'readonly' }" @click="geomMode = 'readonly'">
               经纬度预览
             </button>
-            <button
-              class="md-editor__mode"
-              :class="{ active: geomMode === 'lnglat' }"
-              @click="geomMode = 'lnglat'"
-            >
+            <button class="md-editor__mode" :class="{ active: geomMode === 'lnglat' }" @click="geomMode = 'lnglat'">
               编辑经纬度
             </button>
-            <button
-              class="md-editor__mode"
-              :class="{ active: geomMode === 'raw' }"
-              @click="geomMode = 'raw'"
-            >
+            <button class="md-editor__mode" :class="{ active: geomMode === 'raw' }" @click="geomMode = 'raw'">
               编辑 3857
             </button>
           </div>
@@ -489,11 +465,7 @@ const onDelete = async () => {
         <div v-if="geomMode !== 'readonly'" class="md-editor__geom-tip">
           修改后失焦即同步到地图（仅内存态，不落库）；点「保存（WFS-T）」才写入数据库 geom 字段。
         </div>
-        <button
-          v-if="geomMode !== 'readonly' && geomDirty"
-          class="md-editor__geom-revert"
-          @click="revertGeomFromText"
-        >
+        <button v-if="geomMode !== 'readonly' && geomDirty" class="md-editor__geom-revert" @click="revertGeomFromText">
           放弃几何改动
         </button>
         <div v-else-if="isFenceLayer(layer)" class="md-editor__geom-tip md-editor__geom-tip--fence">
@@ -502,11 +474,18 @@ const onDelete = async () => {
       </div>
       <div class="md-editor__actions">
         <button class="md-pbtn md-pbtn--primary" @click="onSave" :disabled="!canSave">
-          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zM12 19a3 3 0 110-6 3 3 0 010 6zm3-10H5V5h10v4z"/></svg>
+          <svg viewBox="0 0 24 24" width="14" height="14">
+            <path
+              fill="currentColor"
+              d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zM12 19a3 3 0 110-6 3 3 0 010 6zm3-10H5V5h10v4z"
+            />
+          </svg>
           保存（WFS-T）
         </button>
         <button class="md-pbtn md-pbtn--danger" @click="onDelete" :disabled="!writable">
-          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M6 19a2 2 0 002 2h8a2 2 0 002-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          <svg viewBox="0 0 24 24" width="14" height="14">
+            <path fill="currentColor" d="M6 19a2 2 0 002 2h8a2 2 0 002-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+          </svg>
           删除
         </button>
       </div>

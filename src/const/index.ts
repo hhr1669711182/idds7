@@ -7,14 +7,14 @@
  * @FilePath: \ids-gis-web\src\const\index.ts
  */
 
-export * from "./const.common.ts";
+export * from './const.common.ts'
 
-export * from "./const.map.ts";
+export * from './const.map.ts'
 
-export * from "./const.modals.ts";
+export * from './const.modals.ts'
 
-export * from "./const.panel.ts";
+export * from './const.panel.ts'
 
-export * from "./const.message.type.ts";
+export * from './const.message.type.ts'
 
-export * from "./const.business.type.ts";
+export * from './const.business.type.ts'

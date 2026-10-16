@@ -22,15 +22,7 @@ export type GisUnclosedIncident = {
    * 或简写（fire/rescue/society）；服务端未识别时返回 other 或 null。
    * 401 降级样例使用完整 code 口径。
    */
-  incidentType:
-    | 'fire_rescue'
-    | 'fire'
-    | 'emergency_rescue'
-    | 'rescue'
-    | 'social_aid'
-    | 'society'
-    | 'other'
-    | null
+  incidentType: 'fire_rescue' | 'fire' | 'emergency_rescue' | 'rescue' | 'social_aid' | 'society' | 'other' | null
   /** 灾害画像提供的类型展示名；没有正式值时为 null */
   incidentTypeName: string | null
   /** 由生命周期 incidentState 按附录 A 转换，列表不返回未知态 */
@@ -88,12 +80,7 @@ export type GisUnclosedIncidentList = {
     /** 明确 alarmTime 当前固定取自生命周期 createdAt */
     alarmTimeSource: 'createdAt'
     /** 因后端协议缺失而统一置 null 的字段名 */
-    sourceGaps: Array<
-      | 'leadOfficerPhone'
-      | 'communicatorPhone'
-      | 'burningMaterial'
-      | 'keyUnitName'
-    >
+    sourceGaps: Array<'leadOfficerPhone' | 'communicatorPhone' | 'burningMaterial' | 'keyUnitName'>
     /** 降级、异常数据或防御性过滤的可定位诊断串；不是业务状态 */
     sourceErrors?: string[]
   }
@@ -109,12 +96,9 @@ export type UnclosedIncidentsQuery = {
 
 /** GET /bff-client/api/v1/gis/unclosed-incidents?kind=unclosed */
 export const getUnclosedIncidentsMethod = (params?: UnclosedIncidentsQuery) =>
-  alovaInstance.Get<GisUnclosedIncidentList, UnclosedIncidentsQuery>(
-    '/bff-client/api/v1/gis/unclosed-incidents',
-    {
-      params: params ?? { kind: 'unclosed' },
-      // 每次重新显示图层都获取最新警情，禁用 Alova 响应缓存。
-      cacheFor: 0,
-     // meta: { showError: true },
-    },
-  )
+  alovaInstance.Get<GisUnclosedIncidentList, UnclosedIncidentsQuery>('/bff-client/api/v1/gis/unclosed-incidents', {
+    params: params ?? { kind: 'unclosed' },
+    // 每次重新显示图层都获取最新警情，禁用 Alova 响应缓存。
+    cacheFor: 0,
+    // meta: { showError: true },
+  })

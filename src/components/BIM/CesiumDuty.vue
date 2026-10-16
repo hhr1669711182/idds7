@@ -131,7 +131,7 @@ const loadBuildingData = async () => {
     xmlns:wfs="http://www.opengis.net/wfs"
     xmlns:ogc="http://www.opengis.net/ogc"
     xmlns:gml="http://www.opengis.net/gml">
-    <wfs:Query typeName="${layerName}">    
+    <wfs:Query typeName="${layerName}">
     </wfs:Query>
     </wfs:GetFeature>`;
 

@@ -7,7 +7,7 @@ import {
   GRID_LAYER,
   LAYER_NAMES,
 } from "../../../baseComponent/OpenlayersMap/layers";
-import SwipeControl from "../../../Control/Swiper";
+import SwipeControl from "@/baseComponent/OpenlayersMap/SwipeControl";
 
 const mapStore = useMapStore();
 

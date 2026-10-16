@@ -29,7 +29,7 @@ const GROUND_Y = 0.02
  * 建筑对角线半径 ≈ 0.16，加上 GLB 消防车长度（0.15 scale × ~6m）≈ 0.9 单位的一半 ≈ 0.45，
  * 0.50 保证车辆最前端贴着建筑体外侧、整体不侵入建筑体。
  */
-const PARKING_DISTANCE = 0.50
+const PARKING_DISTANCE = 0.5
 
 /** 经纬度点 */
 export type LngLat = [number, number]
@@ -67,8 +67,8 @@ export function computePathLocalPoints(
   let localPts: THREE.Vector3[]
   if (!isNaN(pathBaseLon) && !isNaN(pathBaseLat)) {
     localPts = reversed.map(([lon, lat]) => {
-      const dx = (lon - pathBaseLon) * 111319.9 / 100
-      const dy = (lat - pathBaseLat) * 111319.9 / 100
+      const dx = ((lon - pathBaseLon) * 111319.9) / 100
+      const dy = ((lat - pathBaseLat) * 111319.9) / 100
       return new THREE.Vector3(dx, GROUND_Y, dy)
     })
   } else {
@@ -142,18 +142,10 @@ export function buildWaterSourceMarker(waterSource: THREE.Vector3): THREE.Group 
     const a0 = (i / 6) * Math.PI * 2
     const a1 = ((i + 0.5) / 6) * Math.PI * 2
     ringSegs.push(
-      new THREE.Vector3(
-        waterSource.x + Math.cos(a0) * RING_R,
-        GROUND_Y + 0.005,
-        waterSource.z + Math.sin(a0) * RING_R,
-      ),
+      new THREE.Vector3(waterSource.x + Math.cos(a0) * RING_R, GROUND_Y + 0.005, waterSource.z + Math.sin(a0) * RING_R),
     )
     ringSegs.push(
-      new THREE.Vector3(
-        waterSource.x + Math.cos(a1) * RING_R,
-        GROUND_Y + 0.005,
-        waterSource.z + Math.sin(a1) * RING_R,
-      ),
+      new THREE.Vector3(waterSource.x + Math.cos(a1) * RING_R, GROUND_Y + 0.005, waterSource.z + Math.sin(a1) * RING_R),
     )
   }
   const ringGeo = new THREE.BufferGeometry().setFromPoints(ringSegs)
@@ -168,10 +160,7 @@ export function buildWaterSourceMarker(waterSource: THREE.Vector3): THREE.Group 
 }
 
 /** 创建消防车位标识（黄色虚线矩形 + "🚒 消防车位" 文字，贴地平面） */
-export function buildParkingSpotMarker(
-  parkingSpot: THREE.Vector3,
-  approachFromDir: THREE.Vector3,
-): THREE.Group {
+export function buildParkingSpotMarker(parkingSpot: THREE.Vector3, approachFromDir: THREE.Vector3): THREE.Group {
   const g = new THREE.Group()
   g.name = 'parkingSpotMarker'
   const LENGTH = 0.42
@@ -282,10 +271,7 @@ interface CreateOpts {
 /**
  * 创建一个路线动画系统，挂载在指定 group 下
  */
-export function createRouteAnimationSystem(
-  parent: THREE.Group,
-  opts: CreateOpts = {},
-): RouteAnimationController {
+export function createRouteAnimationSystem(parent: THREE.Group, opts: CreateOpts = {}): RouteAnimationController {
   const { useRealModel = true, defaultDurationMs = 8000, vehicleY = GROUND_Y } = opts
 
   const routes: RouteVisual[] = []
@@ -328,11 +314,11 @@ export function createRouteAnimationSystem(
       curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5)
     }
     const tubularSegments = Math.max(8, points.length * 4)
-    const tubeRadius = 0.08  // 加大管径（原 0.015 太细，几乎看不见）
+    const tubeRadius = 0.08 // 加大管径（原 0.015 太细，几乎看不见）
     const tube = new THREE.TubeGeometry(curve, tubularSegments, tubeRadius, 8, false)
     const mat = new THREE.MeshBasicMaterial({
       color: 0x22ff66,
-      transparent: false,  // 不透明，避免被其他透明物体遮挡
+      transparent: false, // 不透明，避免被其他透明物体遮挡
     })
     const mesh = new THREE.Mesh(tube, mat)
     mesh.userData = { type: 'routeLine' }
@@ -388,8 +374,8 @@ export function createRouteAnimationSystem(
   function buildParkingMarker(spot: THREE.Vector3, approachFromDir: THREE.Vector3): THREE.Group {
     const g = new THREE.Group()
     // 长边沿接近方向（车头朝向停车位入口），短边垂直于接近方向
-    const LENGTH = 0.42  // 沿接近方向（车头-车尾方向）
-    const WIDTH = 0.24   // 垂直于接近方向
+    const LENGTH = 0.42 // 沿接近方向（车头-车尾方向）
+    const WIDTH = 0.24 // 垂直于接近方向
     // 水平面上，垂直于 approachFromDir 的切向
     const tangent = new THREE.Vector3(-approachFromDir.z, 0, approachFromDir.x)
     if (tangent.lengthSq() < 1e-6) tangent.set(1, 0, 0)
@@ -402,12 +388,7 @@ export function createRouteAnimationSystem(
         .clone()
         .add(approachFromDir.clone().multiplyScalar(sx * halfL))
         .add(tangent.clone().multiplyScalar(sz * halfW))
-    const corners = [
-      mkCorner(1, 1),
-      mkCorner(1, -1),
-      mkCorner(-1, -1),
-      mkCorner(-1, 1),
-    ]
+    const corners = [mkCorner(1, 1), mkCorner(1, -1), mkCorner(-1, -1), mkCorner(-1, 1)]
     // 4 条边，每条用 6 段黄色虚线
     for (let i = 0; i < 4; i++) {
       g.add(makeDashedLine(corners[i], corners[(i + 1) % 4], 0xffcc00, 6, GROUND_Y + 0.005))
@@ -453,7 +434,7 @@ export function createRouteAnimationSystem(
       try {
         const gltf = await loadGLTF(`${maModelSetting.assetBase}/xf_fire_truck.glb`)
         const m = gltf.scene as THREE.Object3D
-        m.scale.setScalar(0.15)  // 加大（原 0.06 太小）
+        m.scale.setScalar(0.15) // 加大（原 0.06 太小）
         m.userData = { type: 'fireTruck', name: '消防车' }
         return m
       } catch {
@@ -483,11 +464,7 @@ export function createRouteAnimationSystem(
       const p1 = r.points[idx]
       const p2 = r.points[idx + 1]
       // 位置：按 frac 线性插值
-      v.position.set(
-        p1.x + (p2.x - p1.x) * frac,
-        vehicleY,
-        p1.z + (p2.z - p1.z) * frac,
-      )
+      v.position.set(p1.x + (p2.x - p1.x) * frac, vehicleY, p1.z + (p2.z - p1.z) * frac)
       // 朝向：看向下一段（车头对齐 +x，减 π/2）
       v.rotation.y = computeHeadingY(p1, p2)
       r.progress = tGlobal
@@ -603,11 +580,7 @@ export function createRouteAnimationSystem(
     routes.forEach((r) => {
       if (!r.vehicle || r.points.length === 0) return
       r.vehicle.position.set(r.points[0].x, vehicleY, r.points[0].z)
-      r.vehicle.rotation.set(
-        0,
-        r.points.length >= 2 ? computeHeadingY(r.points[0], r.points[1]) : 0,
-        0,
-      )
+      r.vehicle.rotation.set(0, r.points.length >= 2 ? computeHeadingY(r.points[0], r.points[1]) : 0, 0)
       r.progress = 0
     })
     start()

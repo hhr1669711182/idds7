@@ -1,12 +1,13 @@
-@import "ol/ol.css";
-@import "ol-ext/dist/ol-ext.css";
+@import 'ol/ol.css';
+@import 'ol-ext/dist/ol-ext.css';
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -61,16 +62,16 @@ html, body {
   html {
     font-size: 13px;
   }
-  
+
   .anticon {
     font-size: 20px;
   }
-  
+
   /* 适配移动端的通用样式 */
   .mobile-hidden {
     display: none !important;
   }
-  
+
   /* 确保地图占满屏幕 */
   #map {
     position: fixed;
@@ -80,37 +81,37 @@ html, body {
     bottom: 0;
     z-index: 1;
   }
-  
+
   /* 移动端控件适配 */
   .ol-control {
     background-color: rgba(255, 255, 255, 0.9) !important;
     border: 1px solid #ddd !important;
   }
-  
+
   .ol-control button {
     font-size: 16px !important;
   }
-  
+
   /* 避免移动端点击延迟 */
   * {
     -webkit-tap-highlight-color: transparent;
   }
-  
+
   /* 优化滚动体验 */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
-  
+
   ::-webkit-scrollbar-track {
     background: #f1f1f1;
   }
-  
+
   ::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 3px;
   }
-  
+
   ::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
   }
@@ -121,7 +122,7 @@ html, body {
   html {
     font-size: 12px;
   }
-  
+
   .anticon {
     font-size: 18px;
   }
@@ -135,7 +136,7 @@ html, body {
     border-top: none;
     border-bottom: 1px solid #f0f0f0;
   }
-  
+
   .mobile-menu-panel {
     bottom: auto;
     top: 60px;
@@ -148,11 +149,11 @@ html, body {
   .mobile-toolbar {
     display: none;
   }
-  
+
   .drag-panel {
     display: none;
   }
-  
+
   #map {
     position: static;
     height: 100vh;

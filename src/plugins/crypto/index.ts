@@ -3,24 +3,11 @@ import CryptoJS from 'crypto-js'
 export type WordArray = CryptoJS.lib.WordArray
 
 export type SymmetricAlg = 'AES' | 'DES' | 'TripleDES' | 'Rabbit' | 'RC4' | 'RC4Drop'
-export type HashAlg =
-  | 'MD5'
-  | 'SHA1'
-  | 'SHA224'
-  | 'SHA256'
-  | 'SHA384'
-  | 'SHA512'
-  | 'RIPEMD160'
+export type HashAlg = 'MD5' | 'SHA1' | 'SHA224' | 'SHA256' | 'SHA384' | 'SHA512' | 'RIPEMD160'
 
 export type Encoder = 'Utf8' | 'Hex' | 'Base64' | 'Latin1' | 'Utf16' | 'Utf16LE' | 'Utf16BE'
 export type CipherMode = 'CBC' | 'CFB' | 'CTR' | 'OFB' | 'ECB'
-export type CipherPadding =
-  | 'Pkcs7'
-  | 'Iso97971'
-  | 'AnsiX923'
-  | 'Iso10126'
-  | 'ZeroPadding'
-  | 'NoPadding'
+export type CipherPadding = 'Pkcs7' | 'Iso97971' | 'AnsiX923' | 'Iso10126' | 'ZeroPadding' | 'NoPadding'
 
 export type KeyType = 'passphrase' | 'raw'
 export type EncryptOutput = 'openssl' | 'json'
@@ -183,11 +170,7 @@ export class CryptoSuite {
     return hmacFn(text, key).toString(CryptoSuite.getEncoder(outputEncoding))
   }
 
-  public pbkdf2(
-    password: string,
-    salt: string | WordArray,
-    options: KdfOptions = {},
-  ): string {
+  public pbkdf2(password: string, salt: string | WordArray, options: KdfOptions = {}): string {
     const keySize = options.keySize ?? 256 / 32
     const iterations = options.iterations ?? 10000
     const hasher = CryptoSuite.getHasher(options.hasher ?? 'SHA256')
@@ -196,11 +179,7 @@ export class CryptoSuite {
     return derived.toString(CryptoSuite.getEncoder(options.outputEncoding ?? 'Hex'))
   }
 
-  public evpKdf(
-    password: string,
-    salt: string | WordArray,
-    options: KdfOptions = {},
-  ): string {
+  public evpKdf(password: string, salt: string | WordArray, options: KdfOptions = {}): string {
     const keySize = options.keySize ?? 256 / 32
     const iterations = options.iterations ?? 1
     const hasher = CryptoSuite.getHasher(options.hasher ?? 'MD5')

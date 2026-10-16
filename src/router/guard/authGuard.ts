@@ -21,7 +21,7 @@ export const setupAuthGuard = (router: Router) => {
     if (isWhiteRoute(to.path)) return true
 
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth === true)
-    
+
     if (!requiresAuth) return true
     if (hasToken()) return true
 

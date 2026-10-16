@@ -25,7 +25,7 @@ export interface WMSFeatureInfoParams {
   height?: number
   x: number
   y: number
-  srs?: string  // 'EPSG:4326' | 'EPSG:3857'
+  srs?: string // 'EPSG:4326' | 'EPSG:3857'
   info_format?: string
   feature_count?: number
   cql_filter?: string
@@ -62,7 +62,7 @@ export const geoserverApi = {
         version: '1.1.0',
         request: 'DescribeFeatureType',
         outputFormat: 'application/json',
-        ...params, 
+        ...params,
       },
     })
   },

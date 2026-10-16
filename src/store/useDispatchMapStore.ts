@@ -6,33 +6,33 @@
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\store\useDispatchMapStore.ts
  */
-import { defineStore } from "pinia";
-import { markRaw, toRaw } from "vue";
-import { Map } from "ol";
+import { defineStore } from 'pinia'
+import { markRaw, toRaw } from 'vue'
+import { Map } from 'ol'
 
 export interface DispatchMapState {
-  map: Map | null;
-  checkedIds: string[];
+  map: Map | null
+  checkedIds: string[]
 }
 
-export const useDispatchMapStore = defineStore("dispatchMapStore", {
+export const useDispatchMapStore = defineStore('dispatchMapStore', {
   state: (): DispatchMapState => {
     return {
       map: null,
-      checkedIds: ["gis:view_res_org_dept", "gis:view_juris_zone"],
-    };
+      checkedIds: ['gis:view_res_org_dept', 'gis:view_juris_zone'],
+    }
   },
 
   actions: {
     setMap(val: Map) {
-      this.map = markRaw(toRaw(val));
+      this.map = markRaw(toRaw(val))
     },
     setCheckedIds(ids: string[]) {
-      this.checkedIds = ids;
+      this.checkedIds = ids
     },
   },
   persist: {
     storage: sessionStorage,
     pick: ['checkedIds'],
   },
-});
+})

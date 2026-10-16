@@ -19,12 +19,9 @@ const RED_UNCLOSED_STATES = new Set<GisOpenState>([
   'operation_completed',
 ])
 
-const resolveColorType = (state: GisOpenState): 'red' | 'blue' =>
-  RED_UNCLOSED_STATES.has(state) ? 'red' : 'blue'
+const resolveColorType = (state: GisOpenState): 'red' | 'blue' => (RED_UNCLOSED_STATES.has(state) ? 'red' : 'blue')
 
-const resolveType = (
-  incidentType: GisUnclosedIncident['incidentType'],
-): JRAlarmData['type'] => {
+const resolveType = (incidentType: GisUnclosedIncident['incidentType']): JRAlarmData['type'] => {
   switch (incidentType) {
     case 'fire_rescue':
     case 'fire':
@@ -50,12 +47,7 @@ const resolveType = (
 const toJRAlarmData = (item: GisUnclosedIncident): JRAlarmData | null => {
   const lng = Number(item.longitude)
   const lat = Number(item.latitude)
-  if (
-    item.longitude == null ||
-    item.latitude == null ||
-    !Number.isFinite(lng) ||
-    !Number.isFinite(lat)
-  ) {
+  if (item.longitude == null || item.latitude == null || !Number.isFinite(lng) || !Number.isFinite(lat)) {
     return null
   }
   return {
@@ -154,14 +146,11 @@ const isUnauthorized = (err: unknown): boolean => {
 
 /** 未结案警情图层数据源：GET /api/v1/gis/unclosed-incidents?kind=unclosed */
 export const useUnclosedIncidents = () => {
-  const list = useRequest(
-    () => getUnclosedIncidentsMethod({ kind: 'unclosed' }),
-    { immediate: false },
-  )
+  const list = useRequest(() => getUnclosedIncidentsMethod({ kind: 'unclosed' }), { immediate: false })
 
   /** 开发环境 401 时降级为样例假数据，其余情况取 BFF 原始记录 */
   const records = computed<GisUnclosedIncident[]>(() => {
-      console.log('total未结案警情数据')
+    console.log('total未结案警情数据')
 
     // if (import.meta.env.DEV && list.error.value && isUnauthorized(list.error.value)) {
     //   return [...FAKE_UNCLOSED_INCIDENTS]
@@ -171,9 +160,7 @@ export const useUnclosedIncidents = () => {
 
   /** 供地图矢量层消费的点要素数据 */
   const alarms = computed<JRAlarmData[]>(() =>
-    records.value
-      .map((item) => toJRAlarmData(item))
-      .filter((d): d is JRAlarmData => d !== null),
+    records.value.map((item) => toJRAlarmData(item)).filter((d): d is JRAlarmData => d !== null),
   )
 
   const fetch = () => list.send()

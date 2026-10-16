@@ -7,7 +7,7 @@
  * @FilePath: \OpenlayersMap\src\views\test\index.vue
 -->
 <template>
-<div id="map-dd" class="map-container"></div>
+  <div id="map-dd" class="map-container"></div>
 </template>
 
 <script setup lang="ts">
@@ -33,9 +33,6 @@ onMounted(() => {
 //    container: '#map',
 //   });
 // });
-
-
-
 </script>
 
 <style scoped>

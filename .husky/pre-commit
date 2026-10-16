@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # 1) 类型门禁基线检查（仅提示，不阻塞提交）
 #    现有 vue-tsc 报错为历史基线，暂不清理、暂不限制。
 #    若后续要接入 CI 严格门禁，在 CI 中设置 LINT_BASELINE_STRICT=1 即可。

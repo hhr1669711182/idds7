@@ -8,7 +8,7 @@
  * 图层坐标系均为 EPSG:4326 / WGS-84，入参经纬度顺序为 [经度, 纬度]。
  * @FilePath: src/controller/core/business/IncidentStationQuery.ts
  */
-import { getDistance } from 'ol/sphere'
+import { distance } from '@turf/turf'
 import { geoserverApi } from '@/service/geoserver'
 
 /** 消防站图层（gis:view_res_org_dept），几何字段 geom */
@@ -89,8 +89,7 @@ type WFSFeature = {
 }
 
 /** CQL 字符串字面量转义（单引号双写） */
-export const cqlLiteral = (value: string): string =>
-  `'${String(value).replace(/'/g, "''")}'`
+export const cqlLiteral = (value: string): string => `'${String(value).replace(/'/g, "''")}'`
 
 /**
  * 查询消防站 WFS 要素（gis:view_res_org_dept）。
@@ -123,7 +122,7 @@ export const queryNearbyStationFeatures = async (
 ): Promise<any[]> => {
   const [longitude, latitude] = coordinate
   const maxFeatures = options?.maxFeatures ?? DEFAULT_NEARBY_MAX_FEATURES
-   const viewparams = `longitude:${longitude};latitude:${latitude};limit:${5}`;
+  const viewparams = `longitude:${longitude};latitude:${latitude};limit:${5}`
   const data = await geoserverApi.getWFSFeatures(
     {
       typeName: 'gis:view_sys_org_limit',
@@ -138,9 +137,12 @@ export const queryNearbyStationFeatures = async (
   // 过滤坐标无效或不可调派的要素
   const validFeatures = (data?.features ?? []).filter((feature: WFSFeature) => {
     const properties = feature?.properties ?? {}
-    const DEPT_TYPES = ['4','5','6','7']; // 可调派队站类型
-    return properties.longitude !== undefined && properties.latitude !== undefined
-     && DEPT_TYPES.includes(properties.dept_type ?? '')
+    const DEPT_TYPES = ['4', '5', '6', '7'] // 可调派队站类型
+    return (
+      properties.longitude !== undefined &&
+      properties.latitude !== undefined &&
+      DEPT_TYPES.includes(properties.dept_type ?? '')
+    )
   })
   return validFeatures
 }
@@ -149,10 +151,7 @@ export const queryNearbyStationFeatures = async (
  * 将 WFS 队站要素转为候选列表，按与参照点的球面距离升序排序。
  * 已删除（is_deleted）或坐标无效的要素被跳过；同 ID 只保留距离更近的。
  */
-export const toStationCandidates = (
-  features: any[],
-  reference: Coordinate,
-): StationCandidate[] => {
+export const toStationCandidates = (features: any[], reference: Coordinate): StationCandidate[] => {
   const unique = new Map<string, StationCandidate>()
   for (const feature of features) {
     const properties = feature?.properties ?? {}
@@ -168,7 +167,7 @@ export const toStationCandidates = (
       name: String(properties.org_name ?? properties.name ?? '未命名消防站'),
       address: String(properties.org_address ?? properties.address ?? '暂无地址'),
       coordinate,
-      distanceMeters: getDistance(reference, coordinate),
+      distanceMeters: distance(reference, coordinate, { units: 'meters' }),
     }
     const current = unique.get(id)
     if (!current || candidate.distanceMeters < current.distanceMeters) {
@@ -222,9 +221,7 @@ export const dedupeCandidatesByCoordinate = (
  * @param coordinate 点位 [经度, 纬度]（EPSG:4326）
  * @returns 所有命中辖区的 stationId / zoneName / geometry；未命中返回空数组
  */
-export const queryJurisdictionAtPoint = async (
-  coordinate: Coordinate,
-): Promise<IncidentJurisdiction[]> => {
+export const queryJurisdictionAtPoint = async (coordinate: Coordinate): Promise<IncidentJurisdiction[]> => {
   const [longitude, latitude] = coordinate
   if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
     throw new Error('查询辖区失败：经纬度无效')
@@ -271,14 +268,10 @@ export const queryJurisdictionAtPoint = async (
  * @param stationIds 队站 ID 列表（对应 zone_id）
  * @returns Map<stationId, geometry>，未命中的 ID 不包含在结果中
  */
-export const queryJurisdictionsByStationIds = async (
-  stationIds: string[],
-): Promise<Map<string, GeoJSON.Geometry>> => {
+export const queryJurisdictionsByStationIds = async (stationIds: string[]): Promise<Map<string, GeoJSON.Geometry>> => {
   const result = new Map<string, GeoJSON.Geometry>()
   if (!stationIds.length) return result
-  const cqlFilter = stationIds
-    .map((id) => `zone_id=${cqlLiteral(id)}`)
-    .join(' OR ')
+  const cqlFilter = stationIds.map((id) => `zone_id=${cqlLiteral(id)}`).join(' OR ')
   const data = await geoserverApi.getWFSFeatures(
     {
       typeName: JURISDICTION_LAYER_NAME,
@@ -322,14 +315,10 @@ export const expandSupportRadius = (
  * @param stationIds 队站 ID 列表（对应 gis:view_res_org_dept.id）
  * @returns Map<stationId, [经度, 纬度]>，未命中的 ID 不包含在结果中
  */
-export const queryStationCoordinatesByIds = async (
-  stationIds: string[],
-): Promise<Map<string, Coordinate>> => {
+export const queryStationCoordinatesByIds = async (stationIds: string[]): Promise<Map<string, Coordinate>> => {
   const result = new Map<string, Coordinate>()
   if (!stationIds.length) return result
-  const cqlFilter = stationIds
-    .map((id) => `id=${cqlLiteral(id)}`)
-    .join(' OR ')
+  const cqlFilter = stationIds.map((id) => `id=${cqlLiteral(id)}`).join(' OR ')
   const data = await geoserverApi.getWFSFeatures(
     {
       typeName: STATION_LAYER_NAME,
@@ -392,7 +381,7 @@ export const queryIncidentStations = async (
   let primary: StationCandidate | null = null // 主管队站
   let incidentJurisdiction: IncidentJurisdiction | null = null // 报警点命中辖区
   let jurisdictionQueried = false // 是否已按点位命中辖区反查主管队站
-  let primaryFeatures; // 主管队站（点）要素
+  let primaryFeatures // 主管队站（点）要素
   if (forcedPrimaryStationId) {
     // 1. 消息强制主管：按 id 精准查找（主管站可能离警情点较远）
     primaryFeatures = await queryStationFeatures(forcedPrimaryStationId)
@@ -412,10 +401,10 @@ export const queryIncidentStations = async (
     jurisdictionQueried = true
     const incidentJurisdictions = await queryJurisdictionAtPoint(incidentCoordinate)
     incidentJurisdiction = incidentJurisdictions[0] ?? null
-    if(incidentJurisdiction && incidentJurisdiction.stationId){
+    if (incidentJurisdiction && incidentJurisdiction.stationId) {
       // 3.1 按点位命中辖区反查主管队站（辖区 zone_id 即主管队站 id）
       primaryFeatures = await queryStationFeatures(incidentJurisdiction?.stationId)
-      if(primaryFeatures && primaryFeatures.length){
+      if (primaryFeatures && primaryFeatures.length) {
         // primary 必须包含位置信息：坐标无效的要素会被 toStationCandidates 过滤
         const candidates = toStationCandidates(primaryFeatures, incidentCoordinate)
         primary = candidates[0] ?? null
@@ -443,7 +432,7 @@ export const queryIncidentStations = async (
     .filter((station) => station.id !== primary.id)
     .map((station) => ({
       ...station,
-      distanceMeters: getDistance(primary.coordinate, station.coordinate),
+      distanceMeters: distance(primary.coordinate, station.coordinate, { units: 'meters' }),
     }))
     .sort((a, b) => a.distanceMeters - b.distanceMeters)
 
@@ -461,9 +450,11 @@ export const queryIncidentStations = async (
   //   jurisdictions.set(primary.id, incidentJurisdiction.geometry)
   // }
 
-  if (firstNearbyFeature && primary.id !== firstNearbyId
-    && !expanded.stations.some((s) => s.id === firstNearbyId)) {
-    console.info('[queryIncidentStations] nearbyFeatures 第一个队站未进入 primary/support，地图上不会使用和渲染', firstNearbyFeature)
+  if (firstNearbyFeature && primary.id !== firstNearbyId && !expanded.stations.some((s) => s.id === firstNearbyId)) {
+    console.info(
+      '[queryIncidentStations] nearbyFeatures 第一个队站未进入 primary/support，地图上不会使用和渲染',
+      firstNearbyFeature,
+    )
   }
 
   return {

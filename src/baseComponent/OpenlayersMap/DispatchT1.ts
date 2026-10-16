@@ -6,42 +6,32 @@
  * @Description: 消防调派的队站查询、辖区绘制、路径规划及车辆实时定位模块。
  * @FilePath: src\baseComponent\OpenlayersMap\DispatchT1.ts
  */
-import Feature from 'ol/Feature';
-import OlMap from 'ol/Map';
-import type { EventsKey } from 'ol/events';
-import { boundingExtent } from 'ol/extent';
-import LineString from 'ol/geom/LineString';
-import Point from 'ol/geom/Point';
-import VectorLayer from 'ol/layer/Vector';
-import { unByKey } from 'ol/Observable';
-import { fromLonLat, transform } from 'ol/proj';
-import TileWMS from 'ol/source/TileWMS';
-import VectorSource from 'ol/source/Vector';
-import { asArray } from 'ol/color';
-import { Fill, Stroke, Style } from 'ol/style';
-import { MAP_LAYER_Z_INDEX } from './layerOrder';
+import Feature from 'ol/Feature'
+import OlMap from 'ol/Map'
+import type { EventsKey } from 'ol/events'
+import { boundingExtent } from 'ol/extent'
+import LineString from 'ol/geom/LineString'
+import Point from 'ol/geom/Point'
+import VectorLayer from 'ol/layer/Vector'
+import { unByKey } from 'ol/Observable'
+import { fromLonLat, transform } from 'ol/proj'
+import TileWMS from 'ol/source/TileWMS'
+import VectorSource from 'ol/source/Vector'
+import { asArray } from 'ol/color'
+import { Fill, Stroke, Style } from 'ol/style'
+import { MAP_LAYER_Z_INDEX } from './layerOrder'
 import {
   buildRouteDirectionFeatures,
   buildTmcFeatures,
   fetchDrivingRoutes,
   type AmapDrivingResult,
   type AmapTmcStatus,
-} from '@/baseComponent/amap/useAmapTools';
-import {
-  createRouteLineStyle,
-  getStyle,
-  MAP_ICON_SRC,
-} from '@/baseComponent/amap/featureStyle';
-import { DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS } from '@/baseComponent/OpenlayersMap/FeatureClickQuery';
-import {
-  mountPolygonLayer,
-  type PolygonLayerManager,
-} from '@/baseComponent/OpenlayersMap/mountPolygonLayer';
-import type { CarLocationBatch } from '@/Control/carLocationMessage';
-import {
-  createVehicleManager,
-  type VehicleManager,
-} from '@/controller/core/business/vehicleManager.ts';
+} from '@/baseComponent/amap/useAmapTools'
+import { createRouteLineStyle, getStyle, MAP_ICON_SRC } from '@/baseComponent/amap/featureStyle'
+import { DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS } from '@/baseComponent/OpenlayersMap/FeatureClickQuery'
+import { mountPolygonLayer, type PolygonLayerManager } from '@/baseComponent/OpenlayersMap/mountPolygonLayer'
+import type { CarLocationBatch } from '@/controller/core/protocol/LegacyMessageProtocol'
+import { createVehicleManager, type VehicleManager } from './VehicleRenderer'
 import {
   DispatchController1,
   createDispatchInitialState,
@@ -54,10 +44,8 @@ import {
   type DispatchVehicleCommand,
   type DispatchVehicleState,
   type DispatchWorkflowStatus,
-} from '@/controller/core/business/DispatchController1';
-import {
-  geoserverApi,
-} from '@/service/geoserver';
+} from '@/controller/core/business/DispatchController1'
+import { geoserverApi } from '@/service/geoserver'
 import {
   listDispatchVehicles,
   dispatchVehiclesBatch,
@@ -66,7 +54,7 @@ import {
   queryDispatchFormation,
   DISPATCH_FORMATION_VERSION,
   type DispatchVehiclesRequest,
-} from '@/service/methods/dispatchVehicles';
+} from '@/service/methods/dispatchVehicles'
 import {
   STATION_LAYER_NAME as DISPATCH_T1_STATION_LAYER,
   JURISDICTION_LAYER_NAME as DISPATCH_T1_JURISDICTION_LAYER,
@@ -75,116 +63,111 @@ import {
   queryIncidentStations,
   type StationCandidate,
   type Coordinate,
-} from '@/controller/core/business/IncidentStationQuery';
+} from '@/controller/core/business/IncidentStationQuery'
 import {
   DISPATCH_T1_STATION_OWNER,
   useIncidentLocationStore,
   useStationLayerStore,
-} from '@/store/useIncidentLocationStore';
-import {
-  INCOMING_CALL_FOCUS_ZOOM,
-  usePendingCallLocationStore,
-} from '@/store/usePendingCallLocationStore';
+} from '@/store/useIncidentLocationStore'
+import { INCOMING_CALL_FOCUS_ZOOM, usePendingCallLocationStore } from '@/store/usePendingCallLocationStore'
 
-export { DISPATCH_T1_STATION_LAYER, DISPATCH_T1_JURISDICTION_LAYER };
+export { DISPATCH_T1_STATION_LAYER, DISPATCH_T1_JURISDICTION_LAYER }
 
-const ROUTE_COLORS = ['#dc2626', '#2563eb', '#7c3aed', '#0891b2'];
+const ROUTE_COLORS = ['#dc2626', '#2563eb', '#7c3aed', '#0891b2']
 
-export type DispatchT1StationRole = DispatchStationRole;
-export type DispatchT1RouteStatus = DispatchRouteStatus;
-export type DispatchT1WorkflowStatus = DispatchWorkflowStatus;
-export type DispatchT1Incident = DispatchIncidentState;
-export type DispatchT1Vehicle = DispatchVehicleState;
-export type DispatchT1Station = DispatchStationState;
-export type DispatchT1State = DispatchFlowState;
+export type DispatchT1StationRole = DispatchStationRole
+export type DispatchT1RouteStatus = DispatchRouteStatus
+export type DispatchT1WorkflowStatus = DispatchWorkflowStatus
+export type DispatchT1Incident = DispatchIncidentState
+export type DispatchT1Vehicle = DispatchVehicleState
+export type DispatchT1Station = DispatchStationState
+export type DispatchT1State = DispatchFlowState
 
 export interface DispatchT1AlarmProfileData {
-  incidentId?: string;
-  disaster_address?: string;
-  longitude?: number;
-  latitude?: number;
-  disaster_type?: string;
-  incidentState?: string;
-  incidentStateName?: string;
-  fireBrigade?: any[];
-  [key: string]: any;
+  incidentId?: string
+  disaster_address?: string
+  longitude?: number
+  latitude?: number
+  disaster_type?: string
+  incidentState?: string
+  incidentStateName?: string
+  fireBrigade?: any[]
+  [key: string]: any
 }
 
 export interface DispatchT1EventMessage {
-  eventType?: string;
-  data?: DispatchT1AlarmProfileData;
-  [key: string]: any;
+  eventType?: string
+  data?: DispatchT1AlarmProfileData
+  [key: string]: any
 }
 
 export type DispatchT1WebSocketData =
   | DispatchT1AlarmProfileData
   | DispatchT1EventMessage
   | {
-      label?: string;
-      eventId?: string;
-      delayMs?: number;
-      payload?: DispatchT1EventMessage;
-      [key: string]: any;
-    };
+      label?: string
+      eventId?: string
+      delayMs?: number
+      payload?: DispatchT1EventMessage
+      [key: string]: any
+    }
 
-export type DispatchT1VehicleCommand = DispatchVehicleCommand;
+export type DispatchT1VehicleCommand = DispatchVehicleCommand
 
 export interface DispatchT1Options {
-  amapKey?: string;
-  isLayerVisible?: (layerId: string) => boolean;
-  onDispatch?: (
-    command: DispatchT1VehicleCommand,
-  ) => void | Promise<void>;
+  amapKey?: string
+  isLayerVisible?: (layerId: string) => boolean
+  onDispatch?: (command: DispatchT1VehicleCommand) => void | Promise<void>
   /** 辖区查询完成（主管/支撑队站及辖区已定稿）回调，可用于在查询阶段结束后触发现场视频等 UI 展示。 */
-  onQueryComplete?: (incident: DispatchT1Incident) => void;
+  onQueryComplete?: (incident: DispatchT1Incident) => void
 }
 
-export type DispatchT1StateListener = DispatchStateListener;
+export type DispatchT1StateListener = DispatchStateListener
 
 /** 辖区面图层渲染项，供 mountPolygonLayer 消费 */
 type JurisdictionItem = {
-  key: string;
-  geometry: GeoJSON.Geometry;
-  role: DispatchT1StationRole;
-};
+  key: string
+  geometry: GeoJSON.Geometry
+  role: DispatchT1StationRole
+}
 
-export const createDispatchT1InitialState = createDispatchInitialState;
+export const createDispatchT1InitialState = createDispatchInitialState
 
 /**
  * 独立消防调派地图模块。
  * 本文件负责查询、地图事件、绘制与算路，流程状态由 DispatchController1 管理。
  */
 export class DispatchT1 {
-  private readonly stateController = new DispatchController1();
-  private readonly routeVersions = new globalThis.Map<string, number>();
-  private readonly knownStationNames = new Set<string>();
-  private stationFeaturesPromise: Promise<any[]> | null = null;
-  private genericPopupObserver: MutationObserver | null = null;
-  private genericFeaturePopupSuppressed = false;
-  private requestVersion = 0;
-  private dispatchPending = false;
+  private readonly stateController = new DispatchController1()
+  private readonly routeVersions = new globalThis.Map<string, number>()
+  private readonly knownStationNames = new Set<string>()
+  private stationFeaturesPromise: Promise<any[]> | null = null
+  private genericPopupObserver: MutationObserver | null = null
+  private genericFeaturePopupSuppressed = false
+  private requestVersion = 0
+  private dispatchPending = false
   /** 本次业务操作的幂等键；同一警情同一次调派的重试复用，成功/换新警情后重置 */
-  private commandId: string | null = null;
-  private clickKey: EventsKey | null = null;
+  private commandId: string | null = null
+  private clickKey: EventsKey | null = null
   /** 车辆实时定位与模拟跟踪逻辑（车牌/车辆ID索引表、最新定位缓存、动画句柄）均封装在该闭包内 */
-  private readonly vehicleManager!: VehicleManager;
+  private readonly vehicleManager!: VehicleManager
 
   /**
    * 仅用于构造 WMS GetFeatureInfo URL，不加入地图。
    * 队站显示统一复用地图侧唯一的 gis:view_res_org_dept WMS 图层（由 store 驱动过滤）。
    */
-  private readonly stationQuerySource: TileWMS;
-  private showAllJurisdictions = false;
-  private jurisdictionManager!: PolygonLayerManager<JurisdictionItem>;
+  private readonly stationQuerySource: TileWMS
+  private showAllJurisdictions = false
+  private jurisdictionManager!: PolygonLayerManager<JurisdictionItem>
   /** 当前已渲染的辖区项（key = stationId） */
-  private readonly renderedJurisdictions = new globalThis.Map<string, JurisdictionItem>();
-  private readonly routeSource = new VectorSource();
-  private readonly routeLayer: VectorLayer<VectorSource>;
-  private readonly vehicleSource = new VectorSource();
-  private readonly vehicleLayer: VectorLayer<VectorSource>;
+  private readonly renderedJurisdictions = new globalThis.Map<string, JurisdictionItem>()
+  private readonly routeSource = new VectorSource()
+  private readonly routeLayer: VectorLayer<VectorSource>
+  private readonly vehicleSource = new VectorSource()
+  private readonly vehicleLayer: VectorLayer<VectorSource>
   /** 主管队站独立图标图层（zhu.png），每次查询仅渲染当前主管一个点位 */
-  private readonly primaryStationSource = new VectorSource();
-  private readonly primaryStationLayer: VectorLayer<VectorSource>;
+  private readonly primaryStationSource = new VectorSource()
+  private readonly primaryStationLayer: VectorLayer<VectorSource>
 
   constructor(
     private readonly map: OlMap,
@@ -200,7 +183,7 @@ export class DispatchT1 {
       },
       serverType: 'geoserver',
       crossOrigin: 'anonymous',
-    });
+    })
 
     /* 辖区图层已禁用（主管/支撑辖区渲染逻辑注释）
     this.jurisdictionManager = mountPolygonLayer<JurisdictionItem>({
@@ -219,22 +202,19 @@ export class DispatchT1 {
       zIndex: MAP_LAYER_Z_INDEX.route,
       updateWhileAnimating: true,
       updateWhileInteracting: true,
-      style: (feature) => createRouteLineStyle(
-        String(feature.get('color') ?? '#2563eb'),
-        6,
-      ),
+      style: (feature) => createRouteLineStyle(String(feature.get('color') ?? '#2563eb'), 6),
       properties: { name: 'dispatch_t1_routes' },
-    });
+    })
 
-    this.map.addLayer(this.routeLayer);
+    this.map.addLayer(this.routeLayer)
     this.vehicleLayer = new VectorLayer({
       source: this.vehicleSource,
       zIndex: MAP_LAYER_Z_INDEX.vehicle,
       updateWhileAnimating: true,
       updateWhileInteracting: true,
       properties: { name: 'dispatch_t1_vehicles' },
-    });
-    this.map.addLayer(this.vehicleLayer);
+    })
+    this.map.addLayer(this.vehicleLayer)
 
     // 主管队站独立图标图层（zhu.png）：盖在消防站图层之上、车辆图层之下，始终可见
     this.primaryStationLayer = new VectorLayer({
@@ -242,35 +222,37 @@ export class DispatchT1 {
       className: DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS,
       zIndex: MAP_LAYER_Z_INDEX.incident,
       properties: { name: 'dispatch_t1_primary_station' },
-    });
-    this.map.addLayer(this.primaryStationLayer);
+    })
+    this.map.addLayer(this.primaryStationLayer)
 
-    this.bindStationClick();
-    this.observeGenericStationPopups();
-    this.hideGenericFeaturePopups();
+    this.bindStationClick()
+    this.observeGenericStationPopups()
+    this.hideGenericFeaturePopups()
     this.vehicleManager = createVehicleManager({
       routeSource: this.routeSource,
       vehicleSource: this.vehicleSource,
       getState: () => this.getState(),
-    });
-    void this.getStationFeatures().then(() => {
-      this.hideGenericFeaturePopups();
-    }).catch((error) => {
-      console.warn('[DispatchT1] 预加载消防站数据失败', error);
-    });
+    })
+    void this.getStationFeatures()
+      .then(() => {
+        this.hideGenericFeaturePopups()
+      })
+      .catch((error) => {
+        console.warn('[DispatchT1] 预加载消防站数据失败', error)
+      })
   }
 
   public subscribe(listener: DispatchT1StateListener): () => void {
-    return this.stateController.subscribe(listener);
+    return this.stateController.subscribe(listener)
   }
 
   public getState(): Readonly<DispatchT1State> {
-    return this.stateController.getState();
+    return this.stateController.getState()
   }
 
   /** 使用消息服务推送的 WGS84 实时坐标更新已调派车辆。 */
   public updateVehicleLocations(batch: CarLocationBatch): number {
-    return this.vehicleManager.updateVehicleLocations(batch);
+    return this.vehicleManager.updateVehicleLocations(batch)
   }
 
   /**
@@ -279,28 +261,25 @@ export class DispatchT1 {
    * 返回成功启动模拟的车辆数量。
    */
   public simulateVehicleTracking(): number {
-    return this.vehicleManager.simulateVehicleTracking();
+    return this.vehicleManager.simulateVehicleTracking()
   }
 
   /** 专用要素弹窗显示期间，隐藏通用要素弹窗，避免同一点出现两个弹窗。 */
   public setGenericFeaturePopupSuppressed(suppressed: boolean): void {
-    this.genericFeaturePopupSuppressed = suppressed;
-    if (suppressed) this.hideGenericFeaturePopups();
+    this.genericFeaturePopupSuppressed = suppressed
+    if (suppressed) this.hideGenericFeaturePopups()
   }
 
-  public async handleWebSocketMessage(
-    message: DispatchT1WebSocketData,
-  ): Promise<Readonly<DispatchT1State>> {
-    const wrappedMessage = 'payload' in message && message.payload
-      ? message.payload
-      : message;
-    const data = 'data' in wrappedMessage && wrappedMessage.data
-      ? wrappedMessage.data
-      : wrappedMessage as DispatchT1AlarmProfileData;
-    const longitude = Number(data.longitude);
-    const latitude = Number(data.latitude);
+  public async handleWebSocketMessage(message: DispatchT1WebSocketData): Promise<Readonly<DispatchT1State>> {
+    const wrappedMessage = 'payload' in message && message.payload ? message.payload : message
+    const data =
+      'data' in wrappedMessage && wrappedMessage.data
+        ? wrappedMessage.data
+        : (wrappedMessage as DispatchT1AlarmProfileData)
+    const longitude = Number(data.longitude)
+    const latitude = Number(data.latitude)
     if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
-      throw new Error('警情数据缺少有效的 longitude/latitude 坐标');
+      throw new Error('警情数据缺少有效的 longitude/latitude 坐标')
     }
     return this.queryByCoordinate({
       incident: {
@@ -318,13 +297,10 @@ export class DispatchT1 {
       },
       fireBrigade: data.fireBrigade ?? [],
       showAllJurisdictions: String(data.incidentState ?? '').toUpperCase() === 'CREATED',
-    });
+    })
   }
 
-  public async simulateCoordinate(
-    longitude: number,
-    latitude: number,
-  ): Promise<Readonly<DispatchT1State>> {
+  public async simulateCoordinate(longitude: number, latitude: number): Promise<Readonly<DispatchT1State>> {
     return this.handleWebSocketMessage({
       incidentId: `MOCK-${Date.now()}`,
       longitude,
@@ -336,7 +312,7 @@ export class DispatchT1 {
       formationId: 'MOCK-MANUAL-FORMATION',
       formationVersion: 0,
       fireBrigade: [],
-    });
+    })
   }
 
   /**
@@ -357,16 +333,16 @@ export class DispatchT1 {
    * @throws 队站/辖区查询失败、指定主管队站在地图中不存在等错误（过期请求除外，静默返回最新状态）。
    */
   public async queryByCoordinate(data: {
-    incident: DispatchT1Incident;
-    fireBrigade?: any[];
-    showAllJurisdictions?: boolean;
+    incident: DispatchT1Incident
+    fireBrigade?: any[]
+    showAllJurisdictions?: boolean
   }): Promise<Readonly<DispatchT1State>> {
-    const version = ++this.requestVersion;
+    const version = ++this.requestVersion
     // 新警情/新画像进入，上一轮调派命令上下文作废，重试幂等键随之失效。
-    this.commandId = null;
-    this.showAllJurisdictions = data.showAllJurisdictions === true;
-    this.clearRenderedResults();
-    this.stateController.beginQuery(data.incident);
+    this.commandId = null
+    this.showAllJurisdictions = data.showAllJurisdictions === true
+    this.clearRenderedResults()
+    this.stateController.beginQuery(data.incident)
     // 警情点位统一写入警情定位 store（与画像地址变更共用同一矢量点位图层），
     // 视图飞行仍由本模块控制；地址后续被画像消息修正时，同一要素原位更新。
     useIncidentLocationStore().upsertIncidentFromAlarm({
@@ -374,7 +350,7 @@ export class DispatchT1 {
       lng: data.incident.longitude,
       lat: data.incident.latitude,
       address: data.incident.address,
-    });
+    })
     // 报警点先进入视野，队站/辖区请求不能阻塞位置展示。
     this.map.getView().animate({
       center: transform(
@@ -382,73 +358,57 @@ export class DispatchT1 {
         'EPSG:4326',
         this.map.getView().getProjection(),
       ),
-      zoom: usePendingCallLocationStore().getActive()
-        ? INCOMING_CALL_FOCUS_ZOOM
-        : 14,
+      zoom: usePendingCallLocationStore().getActive() ? INCOMING_CALL_FOCUS_ZOOM : 14,
       duration: 400,
-    });
+    })
     console.info('[DispatchT1] 已定位警情，开始查询队站辖区', {
       incidentId: data.incident.id,
-    });
+    })
 
     try {
       // 调派编队与队站辖区相互独立，提前并行发起，避免阻塞首屏定位。
-      const formationPromise = queryDispatchFormation(data.incident.id);
-      this.assertCurrent(version);
+      const formationPromise = queryDispatchFormation(data.incident.id)
+      this.assertCurrent(version)
 
-      const incidentCoordinate: Coordinate = [
-        data.incident.longitude,
-        data.incident.latitude,
-      ];
+      const incidentCoordinate: Coordinate = [data.incident.longitude, data.incident.latitude]
       // 队站/辖区查询的纯业务逻辑统一下沉到 IncidentStationQuery；
       // 此处只负责传入主管判定策略，复用同一份实现。
       const result = await queryIncidentStations(incidentCoordinate, {
         primaryStationId: data.incident.primaryStationId,
         showAllJurisdictions: data.showAllJurisdictions,
-      });
-      this.assertCurrent(version);
+      })
+      this.assertCurrent(version)
 
       // 本流程不传 forcedPrimaryStationId，不走可空精简路径，primary 必有值，仅做类型收窄
-      const primary = result.primary;
-      if (!primary) throw new Error('未查询到有效消防站');
+      const primary = result.primary
+      if (!primary) throw new Error('未查询到有效消防站')
 
-      const selected = [primary, ...result.support];
+      const selected = [primary, ...result.support]
       // 辖区查询结果已禁用：toStation 第三参数传 undefined，不携带辖区面
-      const primaryStation = this.toStation(
-        primary,
-        'primary',
-        undefined,
-      );
-      const supportStations = result.support.map((station) =>
-        this.toStation(
-          station,
-          'support',
-          undefined,
-        ),
-      );
+      const primaryStation = this.toStation(primary, 'primary', undefined)
+      const supportStations = result.support.map((station) => this.toStation(station, 'support', undefined))
 
       // 以编队接口的权威值覆盖 WS 画像/前端占位；缺失会在调派校验阶段明确拦截。
       try {
-        const formation = await formationPromise;
-        data.incident.formationId = formation.formationId;
-        data.incident.formationVersion = formation.formationVersion;
+        const formation = await formationPromise
+        data.incident.formationId = formation.formationId
+        data.incident.formationVersion = formation.formationVersion
       } catch (formationError) {
-        console.warn('[DispatchT1] 调派编队查询失败，调派将不可用', formationError);
+        console.warn('[DispatchT1] 调派编队查询失败，调派将不可用', formationError)
       }
+
+      this.assertCurrent(version)
 
       this.stateController.completeQuery({
         incident: data.incident,
         primaryStation,
         supportStations,
         searchRadiusMeters: result.searchRadiusMeters,
-      });
-      this.showStations(selected, incidentCoordinate);
+      })
+      this.showStations(selected, incidentCoordinate)
       // 主管队站以独立 zhu.png 图标渲染，并声明主管 id 供地图侧从全量消防站图层排除
-      this.renderPrimaryStation(primary);
-      useStationLayerStore().setPrimaryStations(
-        DISPATCH_T1_STATION_OWNER,
-        [primary.id],
-      );
+      this.renderPrimaryStation(primary)
+      useStationLayerStore().setPrimaryStations(DISPATCH_T1_STATION_OWNER, [primary.id])
       /* 辖区渲染已禁用（主管/支撑辖区不再上图）
       this.drawJurisdiction(primaryStation);
       if (this.showAllJurisdictions) {
@@ -461,39 +421,39 @@ export class DispatchT1 {
       // [primaryStation, ...supportStations].forEach((station) => {
       //   void this.planRoute(station);
       // });
-      void this.planRoute(primaryStation);
+      void this.planRoute(primaryStation)
       console.info('[DispatchT1] 辖区查询完成', {
         primaryJurisdiction: Boolean(primaryStation.jurisdiction),
-        supportJurisdictions: supportStations.filter(station => station.jurisdiction).length,
-      });
+        supportJurisdictions: supportStations.filter((station) => station.jurisdiction).length,
+      })
       // 辖区查询完成后触发现场视频等查询阶段后的 UI 展示（若调用方配置了回调）。
-      this.options.onQueryComplete?.(data.incident);
-      this.hideGenericFeaturePopups();
+      this.options.onQueryComplete?.(data.incident)
+      this.hideGenericFeaturePopups()
       // 主管队站车辆随查询结果预取；支撑队站车辆延后到弹窗展开时加载。
-      await this.loadStationVehicles(result.primary?.id || '');
-      return this.getState();
+      await this.loadStationVehicles(result.primary?.id || '')
+      return this.getState()
     } catch (error) {
       // 被新查询取代的在途请求静默处理，仅当前请求标记失败并上抛。
-      if (version !== this.requestVersion) return this.getState();
-      this.stateController.fail(this.errorMessage(error, '消防站查询失败'));
-      throw error;
+      if (version !== this.requestVersion) return this.getState()
+      this.stateController.fail(this.errorMessage(error, '消防站查询失败'))
+      throw error
     }
   }
 
   public activateStation(stationId: string): Readonly<DispatchT1State> {
-    const station = this.stateController.activateStation(stationId);
-    if (!station) return this.getState();
-    void this.loadStationVehicles(stationId);
-    return this.getState();
+    const station = this.stateController.activateStation(stationId)
+    if (!station) return this.getState()
+    void this.loadStationVehicles(stationId)
+    return this.getState()
   }
 
   public async loadStationVehicles(stationId: string): Promise<void> {
-    const state = this.getState();
-    const station = state.stations.find(item => item.id === stationId);
-    if (!station || station.vehiclesLoading || this.dispatchPending) return;
+    const state = this.getState()
+    const station = state.stations.find((item) => item.id === stationId)
+    if (!station || station.vehiclesLoading || this.dispatchPending) return
     // 现阶段隐藏车辆列表弹窗，待后续优化
     // const version = this.requestVersion;
-    this.stateController.setStationVehicles(stationId, null);
+    this.stateController.setStationVehicles(stationId, null)
     // try {
     //   const vehicles = await listDispatchVehicles(state.incident?.id || '', stationId); // 'f7742190d975473790fb816861846b2e'
     //   if (version !== this.requestVersion) return;
@@ -522,19 +482,15 @@ export class DispatchT1 {
     vehicleId: string,
     selected: boolean,
   ): Promise<Readonly<DispatchT1State>> {
-    const result = this.stateController.selectVehicle(
-      stationId,
-      vehicleId,
-      selected,
-    );
-    if (!result) return this.getState();
+    const result = this.stateController.selectVehicle(stationId, vehicleId, selected)
+    if (!result) return this.getState()
     if (result.shouldPlanRoute) {
-      await this.planRoute(result.station);
+      await this.planRoute(result.station)
     } else if (result.shouldRemoveRoute) {
-      this.cancelRoute(result.station.id);
-      this.removeRoute(result.station.id);
+      this.cancelRoute(result.station.id)
+      this.removeRoute(result.station.id)
     }
-    return this.getState();
+    return this.getState()
   }
 
   /**
@@ -550,125 +506,130 @@ export class DispatchT1 {
    * @throws 编队查询失败、请求体校验失败或后端确认失败时上抛错误。
    */
   public async dispatchSelectedVehicles(): Promise<DispatchT1VehicleCommand | null> {
-    if (this.dispatchPending) return null;
-    const incident = this.getState().incident;
+    if (this.dispatchPending) return null
+    const incident = this.getState().incident
     // 从各队站勾选状态聚合本次调派命令（车辆清单等），无勾选时返回 null。
-    const command = this.stateController.beginDispatch();
-    if (!command || !incident) return null;
-    const version = this.requestVersion;
+    const command = this.stateController.beginDispatch()
+    if (!command || !incident) return null
+    const version = this.requestVersion
     // 调派编队优先用面板加载阶段预取的值；缺失时现场懒加载，保证调派前一定拿到 formationId。
     if (!incident.formationId?.trim()) {
       try {
-        const formation = await queryDispatchFormation(incident.id);
-        incident.formationId = formation.formationId;
-        incident.formationVersion = formation.formationVersion;
+        const formation = await queryDispatchFormation(incident.id)
+        incident.formationId = formation.formationId
+        incident.formationVersion = formation.formationVersion
       } catch (formationError) {
-        this.stateController.fail(this.errorMessage(formationError, '调派编队查询失败'));
-        throw formationError;
+        this.stateController.fail(this.errorMessage(formationError, '调派编队查询失败'))
+        throw formationError
       }
     }
     // 同一业务操作首次提交时生成 commandId；失败后重新选择再提交仍复用，直到成功或换新警情。
-    if (!this.commandId) this.commandId = createCommandId();
-    const formationVersion = incident.formationVersion;
+    if (!this.commandId) this.commandId = createCommandId()
+    const formationVersion = incident.formationVersion
     // 组装 confirm 契约请求体；formationVersion 非法时回落到固定兜底值 1。
     const payload: DispatchVehiclesRequest = {
       incidentId: incident.id,
       commandId: this.commandId,
       formationId: incident.formationId || '',
-      formationVersion: typeof formationVersion === 'number' && Number.isFinite(formationVersion) && formationVersion >= 0
-        ? formationVersion
-        : DISPATCH_FORMATION_VERSION,
-      vehicles: command.vehicles.map(vehicle => ({
+      formationVersion:
+        typeof formationVersion === 'number' && Number.isFinite(formationVersion) && formationVersion >= 0
+          ? formationVersion
+          : DISPATCH_FORMATION_VERSION,
+      vehicles: command.vehicles.map((vehicle) => ({
         vehicleId: vehicle.vehicleId,
         ...(vehicle.stationId ? { stationId: vehicle.stationId } : {}),
       })),
-    };
+    }
     // 标记请求是否已真正发出：已发出后失败需要回滚本地状态并刷新车辆列表。
-    let submitted = false;
+    let submitted = false
     try {
-      validateDispatchRequest(payload);
-      this.dispatchPending = true;
-      submitted = true;
-      const result = await dispatchVehiclesBatch(payload);
+      validateDispatchRequest(payload)
+      this.dispatchPending = true
+      submitted = true
+      const result = await dispatchVehiclesBatch(payload)
       // 请求期间已换新警情/重置：不再回写状态，但后端已确认的命令仍返回给调用方。
-      if (version !== this.requestVersion) return command;
-      this.stateController.completeDispatch(command, result);
+      if (version !== this.requestVersion) return command
+      this.stateController.completeDispatch(command, result)
       // 调派已被后端确认，后续再次调派属于新业务操作，需要新的幂等键。
-      this.commandId = null;
+      this.commandId = null
     } catch (error) {
-      this.dispatchPending = false;
+      this.dispatchPending = false
       if (version === this.requestVersion) {
-        this.stateController.fail(this.errorMessage(error, '车辆调派失败'));
+        this.stateController.fail(this.errorMessage(error, '车辆调派失败'))
         if (submitted) {
           // 已发出的请求失败：本地勾选可能与后端实际状态不一致，先撤销调派态再重新拉取车辆实况。
-          this.stateController.cancelDispatch();
-          await Promise.all([...new Set(command.vehicles.map(item => item.stationId))]
-            .map(id => this.loadStationVehicles(id)));
-          if (version === this.requestVersion) this.stateController.fail(`${this.errorMessage(error, '车辆调派失败')}；车辆列表已刷新，请核实方案状态后重新选择，勿直接重复提交。`);
+          this.stateController.cancelDispatch()
+          await Promise.all(
+            [...new Set(command.vehicles.map((item) => item.stationId))].map((id) => this.loadStationVehicles(id)),
+          )
+          if (version === this.requestVersion)
+            this.stateController.fail(
+              `${this.errorMessage(error, '车辆调派失败')}；车辆列表已刷新，请核实方案状态后重新选择，勿直接重复提交。`,
+            )
         }
       }
-      throw error;
+      throw error
     } finally {
-      this.dispatchPending = false;
+      this.dispatchPending = false
     }
     // 地图展示异常不应把服务端已确认的调派标记为失败。
     try {
       // 进入调派：被调派队站只保留选中方案，移除立案预览的其余候选路线。
-      const dispatchedStationIds = [...new Set(
-        command.vehicles
-          .map((item) => String(item.stationId ?? '').trim())
-          .filter(Boolean),
-      )];
-      this.pruneAlternativeRoutes(dispatchedStationIds);
-      this.vehicleManager.registerDispatchedVehicles(command);
-      await this.options.onDispatch?.(command);
-    } catch (error) { console.warn('[DispatchT1] 调派成功，展示更新失败', error); }
-    return command;
+      const dispatchedStationIds = [
+        ...new Set(command.vehicles.map((item) => String(item.stationId ?? '').trim()).filter(Boolean)),
+      ]
+      this.pruneAlternativeRoutes(dispatchedStationIds)
+      this.vehicleManager.registerDispatchedVehicles(command)
+      await this.options.onDispatch?.(command)
+    } catch (error) {
+      console.warn('[DispatchT1] 调派成功，展示更新失败', error)
+    }
+    return command
   }
 
   /** 取消本次调派，保留火情、队站和辖区，只清除车辆、路线及勾选状态。 */
   public cancelDispatch(): Readonly<DispatchT1State> {
-    if (this.dispatchPending) return this.getState();
+    if (this.dispatchPending) return this.getState()
     this.routeVersions.forEach((version, stationId) => {
-      this.routeVersions.set(stationId, version + 1);
-    });
-    this.vehicleManager.clearTrackedVehicles();
-    this.vehicleSource.clear();
-    this.routeSource.clear();
-    this.stateController.cancelDispatch();
-    return this.getState();
+      this.routeVersions.set(stationId, version + 1)
+    })
+    this.vehicleManager.clearTrackedVehicles()
+    this.vehicleSource.clear()
+    this.routeSource.clear()
+    this.stateController.cancelDispatch()
+    return this.getState()
   }
 
   public reset(): void {
-    this.requestVersion += 1;
-    this.commandId = null;
-    this.clearRenderedResults();
-    this.stateController.reset();
+    this.requestVersion += 1
+    this.commandId = null
+    this.clearRenderedResults()
+    this.stateController.reset()
   }
 
   public destroy(): void {
-    this.genericPopupObserver?.disconnect();
-    this.genericPopupObserver = null;
+    this.genericPopupObserver?.disconnect()
+    this.genericPopupObserver = null
     if (this.clickKey) {
-      unByKey(this.clickKey);
-      this.clickKey = null;
+      unByKey(this.clickKey)
+      this.clickKey = null
     }
-    this.reset();
-    this.stateController.destroy();
+    this.reset()
+    this.stateController.destroy()
     /* 辖区图层已禁用，无需 destroy
     this.jurisdictionManager.destroy();
     */
-    this.map.removeLayer(this.routeLayer);
-    this.map.removeLayer(this.vehicleLayer);
-    this.map.removeLayer(this.primaryStationLayer);
+    this.map.removeLayer(this.routeLayer)
+    this.map.removeLayer(this.vehicleLayer)
+    this.map.removeLayer(this.primaryStationLayer)
   }
 
   private async planRoute(station: DispatchT1Station): Promise<void> {
-    const incident = this.getState().incident;
-    if (!incident || station.routeStatus === 'planning') return;
-    const version = (this.routeVersions.get(station.id) ?? 0) + 1;
-    this.routeVersions.set(station.id, version);
-    this.stateController.setRoutePlanning(station.id);
+    const incident = this.getState().incident
+    if (!incident || station.routeStatus === 'planning') return
+    const version = (this.routeVersions.get(station.id) ?? 0) + 1
+    this.routeVersions.set(station.id, version)
+    this.stateController.setRoutePlanning(station.id)
 
     try {
       // 立案阶段：strategy=11 返回多条候选路线，全部渲染；首条为选中方案（面板里程/ETA 与车辆模拟路径以它为准）。
@@ -676,115 +637,107 @@ export class DispatchT1 {
         origin: [station.longitude, station.latitude],
         destination: [incident.longitude, incident.latitude],
         extensions: 'all',
-      });
-      if (this.routeVersions.get(station.id) !== version) return;
+      })
+      if (this.routeVersions.get(station.id) !== version) return
       const results: AmapDrivingResult[] = fetched.filter(
         (result) => result.fullPath.length >= 2 && result.distanceMeters > 0,
-      );
-      const selected = results[0];
-      if (!selected) throw new Error('未获取到可用路线');
+      )
+      const selected = results[0]
+      if (!selected) throw new Error('未获取到可用路线')
 
-      this.removeRouteFeatures(station.id);
+      this.removeRouteFeatures(station.id)
       results.forEach((result, planIndex) => {
-        const alternative = planIndex > 0;
-        const projectedPath = result.fullPath.map((point) => fromLonLat(point));
-        const tmcFeatures = buildTmcFeatures(result.tmcs);
+        const alternative = planIndex > 0
+        const projectedPath = result.fullPath.map((point) => fromLonLat(point))
+        const tmcFeatures = buildTmcFeatures(result.tmcs)
         if (tmcFeatures.length) {
           tmcFeatures.forEach((feature, index) => {
-            const status = (feature.get('tmcStatus') ?? 'unknown') as AmapTmcStatus;
-            const style = getStyle('tmcLine', { status, width: 6 });
-            feature.setId(`dispatch_t1_route_${station.id}_p${planIndex}_${index}`);
-            feature.set('stationId', station.id);
-            feature.set('routePlanIndex', planIndex);
-            feature.set('routeAlternative', alternative);
+            const status = (feature.get('tmcStatus') ?? 'unknown') as AmapTmcStatus
+            const style = getStyle('tmcLine', { status, width: 6 })
+            feature.setId(`dispatch_t1_route_${station.id}_p${planIndex}_${index}`)
+            feature.set('stationId', station.id)
+            feature.set('routePlanIndex', planIndex)
+            feature.set('routeAlternative', alternative)
             // 候选方案半透明置底，避免与选中路线等权重叠。
-            feature.setStyle(alternative ? this.dimRouteStyle(style) : style);
-          });
-          this.routeSource.addFeatures(tmcFeatures);
+            feature.setStyle(alternative ? this.dimRouteStyle(style) : style)
+          })
+          this.routeSource.addFeatures(tmcFeatures)
         } else {
           const feature = new Feature({
             geometry: new LineString(projectedPath),
-          });
-          feature.setId(`dispatch_t1_route_${station.id}_p${planIndex}_0`);
-          feature.set('stationId', station.id);
-          feature.set('routePlanIndex', planIndex);
-          feature.set('routeAlternative', alternative);
+          })
+          feature.setId(`dispatch_t1_route_${station.id}_p${planIndex}_0`)
+          feature.set('stationId', station.id)
+          feature.set('routePlanIndex', planIndex)
+          feature.set('routeAlternative', alternative)
           if (alternative) {
-            feature.setStyle(this.dimRouteStyle(createRouteLineStyle(this.routeColor(station.id), 6)));
+            feature.setStyle(this.dimRouteStyle(createRouteLineStyle(this.routeColor(station.id), 6)))
           } else {
-            feature.set('color', this.routeColor(station.id));
+            feature.set('color', this.routeColor(station.id))
           }
-          this.routeSource.addFeature(feature);
+          this.routeSource.addFeature(feature)
         }
         // 车辆模拟与方向箭头都以选中方案的完整路径为准，避免 TMC 分段方向不统一。
         if (!alternative) {
           const routePathFeature = new Feature({
             geometry: new LineString(projectedPath),
-          });
-          routePathFeature.setId(`dispatch_t1_route_${station.id}_path`);
-          routePathFeature.set('stationId', station.id);
-          routePathFeature.set('routePlanIndex', 0);
-          routePathFeature.set('dispatchRoutePath', true);
-          routePathFeature.setStyle([]);
-          this.routeSource.addFeature(routePathFeature);
+          })
+          routePathFeature.setId(`dispatch_t1_route_${station.id}_path`)
+          routePathFeature.set('stationId', station.id)
+          routePathFeature.set('routePlanIndex', 0)
+          routePathFeature.set('dispatchRoutePath', true)
+          routePathFeature.setStyle([])
+          this.routeSource.addFeature(routePathFeature)
         }
         // 箭头按方案分别生成并随方案裁剪；共享路段重叠的箭头坐标一致，视觉无差异。
-        const directionFeatures = buildRouteDirectionFeatures([projectedPath]);
+        const directionFeatures = buildRouteDirectionFeatures([projectedPath])
         directionFeatures.forEach((feature) => {
-          feature.set('stationId', station.id);
-          feature.set('routePlanIndex', planIndex);
-          feature.set('routeAlternative', alternative);
-        });
-        this.routeSource.addFeatures(directionFeatures);
-      });
-      this.stateController.setRouteReady(
-        station.id,
-        selected.distanceMeters,
-        selected.durationSeconds,
-      );
+          feature.set('stationId', station.id)
+          feature.set('routePlanIndex', planIndex)
+          feature.set('routeAlternative', alternative)
+        })
+        this.routeSource.addFeatures(directionFeatures)
+      })
+      this.stateController.setRouteReady(station.id, selected.distanceMeters, selected.durationSeconds)
     } catch (error) {
-      if (this.routeVersions.get(station.id) !== version) return;
-      this.stateController.setRouteError(
-        station.id,
-        this.errorMessage(error, '路径规划失败'),
-      );
+      if (this.routeVersions.get(station.id) !== version) return
+      this.stateController.setRouteError(station.id, this.errorMessage(error, '路径规划失败'))
     }
   }
 
   private bindStationClick(): void {
     this.clickKey = this.map.on('singleclick', async (event) => {
       // 未进入调派时由通用队站弹窗处理点击，不查询辖区边界。
-      if (!this.getState().incident) return;
+      if (!this.getState().incident) return
       // 立案查询中：队站图层由 store 强制过滤显示主管+支撑，无候选时不响应点击
-      if (!this.getState().stations.length) return;
+      if (!this.getState().stations.length) return
       // 主管以独立 zhu.png 矢量图标上图（WMS 像素反查可能落空）：
       // 先按像素命中主管要素，命中则直接展开主管详情，与点支撑队站行为一致
       const primaryHit = this.map.forEachFeatureAtPixel(
         event.pixel,
-        (feature, layer) =>
-          layer === this.primaryStationLayer ? feature : undefined,
+        (feature, layer) => (layer === this.primaryStationLayer ? feature : undefined),
         { hitTolerance: 6 },
-      ) as Feature | undefined;
+      ) as Feature | undefined
       if (primaryHit) {
-        const stationId = String(primaryHit.get('stationId') ?? '').trim();
-        if (stationId) this.activateStation(stationId);
-        return;
+        const stationId = String(primaryHit.get('stationId') ?? '').trim()
+        if (stationId) this.activateStation(stationId)
+        return
       }
       try {
-        const view = this.map.getView();
+        const view = this.map.getView()
         // stationQuerySource 不挂载到地图，仅用于拼装 GetFeatureInfo 请求参数
         const url = this.stationQuerySource.getFeatureInfoUrl(
           event.coordinate,
           view.getResolution() ?? 0,
           view.getProjection(),
           { INFO_FORMAT: 'application/json', FEATURE_COUNT: 1 },
-        );
-        if (!url) return;
+        )
+        if (!url) return
         // 立案查询中只允许点中本次的主管/支撑队站，过滤条件与地图 WMS 图层一致
-        const dispatchCqlFilter = this.getState().stations
-          .map((station) => `id=${cqlLiteral(station.id)}`)
-          .join(' OR ');
-        const urlObject = new URL(url, window.location.origin);
+        const dispatchCqlFilter = this.getState()
+          .stations.map((station) => `id=${cqlLiteral(station.id)}`)
+          .join(' OR ')
+        const urlObject = new URL(url, window.location.origin)
         const data = await geoserverApi.getWMSFeatureInfo('gis', {
           layers: DISPATCH_T1_STATION_LAYER,
           query_layers: DISPATCH_T1_STATION_LAYER,
@@ -796,13 +749,13 @@ export class DispatchT1 {
           cql_filter: dispatchCqlFilter || '1=1',
           feature_count: 1,
           srs: view.getProjection().getCode(),
-        });
-        const stationId = String(data?.features?.[0]?.properties?.id ?? '');
-        if (stationId) this.activateStation(stationId);
+        })
+        const stationId = String(data?.features?.[0]?.properties?.id ?? '')
+        if (stationId) this.activateStation(stationId)
       } catch (error) {
-        console.error('[DispatchT1] 点击消防站失败', error);
+        console.error('[DispatchT1] 点击消防站失败', error)
       }
-    });
+    })
   }
 
   /**
@@ -810,66 +763,65 @@ export class DispatchT1 {
    * 队站点击由 DispatchT1 接管，通用要素弹窗全部隐藏。
    */
   private observeGenericStationPopups(): void {
-    const target = this.map.getTargetElement();
-    if (!target || typeof MutationObserver === 'undefined') return;
+    const target = this.map.getTargetElement()
+    if (!target || typeof MutationObserver === 'undefined') return
     this.genericPopupObserver = new MutationObserver(() => {
-      this.hideGenericFeaturePopups();
-    });
+      this.hideGenericFeaturePopups()
+    })
     this.genericPopupObserver.observe(target, {
       childList: true,
       characterData: true,
       subtree: true,
-    });
+    })
   }
 
   private hideGenericFeaturePopups(): void {
-    const dispatchStarted = Boolean(this.getState().incident);
-    const stationNamesReady = this.knownStationNames.size > 0;
+    const dispatchStarted = Boolean(this.getState().incident)
+    const stationNamesReady = this.knownStationNames.size > 0
 
-    this.map.getOverlays().getArray().forEach((overlay) => {
-      const element = overlay.getElement();
-      if (!element || element.querySelector('.dispatch-station-popup')
-        || element.dataset.stationPopup === 'true') return;
-      const popup = element.querySelector('.overlay_popup');
-      if (!popup) return;
+    this.map
+      .getOverlays()
+      .getArray()
+      .forEach((overlay) => {
+        const element = overlay.getElement()
+        if (!element || element.querySelector('.dispatch-station-popup') || element.dataset.stationPopup === 'true')
+          return
+        const popup = element.querySelector('.overlay_popup')
+        if (!popup) return
 
-      if (dispatchStarted || this.genericFeaturePopupSuppressed) {
-        overlay.setPosition(undefined);
-        return;
-      }
+        if (dispatchStarted || this.genericFeaturePopupSuppressed) {
+          overlay.setPosition(undefined)
+          return
+        }
 
-      // 队站目录尚在加载时先保留，加载完成后会再次执行过滤。
-      if (!stationNamesReady) return;
-      const popupText = this.normalizeName(popup.textContent);
-      const isStationPopup = [...this.knownStationNames].some(
-        (name) => popupText.includes(name),
-      );
-      if (!isStationPopup) overlay.setPosition(undefined);
-    });
+        // 队站目录尚在加载时先保留，加载完成后会再次执行过滤。
+        if (!stationNamesReady) return
+        const popupText = this.normalizeName(popup.textContent)
+        const isStationPopup = [...this.knownStationNames].some((name) => popupText.includes(name))
+        if (!isStationPopup) overlay.setPosition(undefined)
+      })
   }
 
   private getStationFeatures(): Promise<any[]> {
     if (!this.stationFeaturesPromise) {
-      this.stationFeaturesPromise = queryStationFeatures().then((features) => {
-        for (const feature of features) {
-          const properties = feature?.properties ?? {};
-          const names = [
-            properties.org_name,
-            properties.simple_org_name,
-            properties.name,
-          ];
-          for (const name of names) {
-            const normalized = this.normalizeName(name);
-            if (normalized) this.knownStationNames.add(normalized);
+      this.stationFeaturesPromise = queryStationFeatures()
+        .then((features) => {
+          for (const feature of features) {
+            const properties = feature?.properties ?? {}
+            const names = [properties.org_name, properties.simple_org_name, properties.name]
+            for (const name of names) {
+              const normalized = this.normalizeName(name)
+              if (normalized) this.knownStationNames.add(normalized)
+            }
           }
-        }
-        return features;
-      }).catch((error) => {
-        this.stationFeaturesPromise = null;
-        throw error;
-      });
+          return features
+        })
+        .catch((error) => {
+          this.stationFeaturesPromise = null
+          throw error
+        })
     }
-    return this.stationFeaturesPromise;
+    return this.stationFeaturesPromise
   }
 
   private toStation(
@@ -890,7 +842,7 @@ export class DispatchT1 {
       jurisdictionVisible: false,
       routeStatus: 'idle',
       vehicles: [],
-    };
+    }
   }
 
   /* 辖区渲染已禁用（主管/支撑辖区不再上图）
@@ -910,27 +862,25 @@ export class DispatchT1 {
    * 将本次主管+支撑队站写入共享队站图层 store（地图侧对唯一 WMS 消防站图层
    * 做 CQL 过滤并强制显示），同时把视野缩放到警情点与候选队站范围。
    */
-  private showStations(
-    stations: StationCandidate[],
-    incidentCoordinate: Coordinate,
-  ): void {
+  private showStations(stations: StationCandidate[], incidentCoordinate: Coordinate): void {
     useStationLayerStore().setStations(
       DISPATCH_T1_STATION_OWNER,
       stations.map((station) => station.id),
-    );
+    )
     // 来电粗定位仍有效时，前面的定位动画已经把视图放到 17 级。
     // 此处只更新队站图层，不再用异步 fit 覆盖视图；用户之后仍可自由手动缩放。
-    if (usePendingCallLocationStore().getActive()) return;
-    const projection = this.map.getView().getProjection().getCode();
+    if (usePendingCallLocationStore().getActive()) return
+    const projection = this.map.getView().getProjection().getCode()
     const extent = boundingExtent(
-      [incidentCoordinate, ...stations.map((station) => station.coordinate)]
-        .map((coordinate) => transform(coordinate, 'EPSG:4326', projection)),
-    );
+      [incidentCoordinate, ...stations.map((station) => station.coordinate)].map((coordinate) =>
+        transform(coordinate, 'EPSG:4326', projection),
+      ),
+    )
     this.map.getView().fit(extent, {
       padding: [90, 90, 90, 430],
       duration: 600,
       maxZoom: 14,
-    });
+    })
   }
 
   /**
@@ -938,53 +888,55 @@ export class DispatchT1 {
    * 重复查询/换新火情时先清空再绘制，保证图上仅有一个主管点。
    */
   private renderPrimaryStation(primary: StationCandidate): void {
-    this.primaryStationSource.clear();
+    this.primaryStationSource.clear()
     const feature = new Feature({
       geometry: new Point(fromLonLat(primary.coordinate)),
-    });
-    feature.set('stationId', primary.id);
+    })
+    feature.set('stationId', primary.id)
     // 点击主管图标时供 FeatureClickQuery 直接渲染与支撑队站一致的弹窗（无需 WMS 反查）
     feature.set('data', {
       stationId: primary.id,
       name: primary.name,
       address: primary.address,
-    });
+    })
     feature.setStyle(
       getStyle('icon', {
         iconSrc: MAP_ICON_SRC.primaryStation,
         scale: 0.9,
         anchor: [0.5, 0.5],
       }),
-    );
-    this.primaryStationSource.addFeature(feature);
+    )
+    this.primaryStationSource.addFeature(feature)
   }
 
   private clearRenderedResults(): void {
-    this.vehicleManager.clearTrackedVehicles();
-    this.vehicleSource.clear();
-    this.routeVersions.clear();
-    this.routeSource.clear();
-    this.primaryStationSource.clear();
+    this.vehicleManager.clearTrackedVehicles()
+    this.vehicleSource.clear()
+    this.routeVersions.clear()
+    this.routeSource.clear()
+    this.primaryStationSource.clear()
     /* 辖区图层已禁用，无需清空
     this.renderedJurisdictions.clear();
     this.jurisdictionManager.setData([]);
     */
     // 释放本模块对共享 WMS 消防站图层的过滤声明，恢复图层开关控制
-    useStationLayerStore().clearOwner(DISPATCH_T1_STATION_OWNER);
+    useStationLayerStore().clearOwner(DISPATCH_T1_STATION_OWNER)
   }
 
   private removeRoute(stationId: string): void {
-    this.removeRouteFeatures(stationId);
-    this.stateController.clearRoute(stationId);
+    this.removeRouteFeatures(stationId)
+    this.stateController.clearRoute(stationId)
   }
 
   private removeRouteFeatures(stationId: string): void {
-    this.routeSource.getFeatures()
-      .filter((feature) => !feature.get('dispatchVehicle') && (
-        feature.get('stationId') === stationId
-        || feature.getId() === `dispatch_t1_route_${stationId}`
-      ))
-      .forEach((feature) => this.routeSource.removeFeature(feature));
+    this.routeSource
+      .getFeatures()
+      .filter(
+        (feature) =>
+          !feature.get('dispatchVehicle') &&
+          (feature.get('stationId') === stationId || feature.getId() === `dispatch_t1_route_${stationId}`),
+      )
+      .forEach((feature) => this.routeSource.removeFeature(feature))
   }
 
   /**
@@ -992,39 +944,39 @@ export class DispatchT1 {
    * 移除立案阶段半透明预览的其余候选路线及其方向箭头。
    */
   private pruneAlternativeRoutes(stationIds: Iterable<string>): void {
-    const targets = new Set(stationIds);
-    this.routeSource.getFeatures()
-      .filter((feature) => feature.get('routeAlternative') === true
-        && targets.has(String(feature.get('stationId') ?? '')))
-      .forEach((feature) => this.routeSource.removeFeature(feature));
+    const targets = new Set(stationIds)
+    this.routeSource
+      .getFeatures()
+      .filter(
+        (feature) => feature.get('routeAlternative') === true && targets.has(String(feature.get('stationId') ?? '')),
+      )
+      .forEach((feature) => this.routeSource.removeFeature(feature))
   }
 
   /** 候选路线样式：克隆原样式后描边透明度降到 70% 并置底，与选中方案区分。 */
   private dimRouteStyle(style: Style | Style[]): Style | Style[] {
     const styles = (Array.isArray(style) ? style : [style]).map((item) => {
-      const copy = item.clone();
-      const stroke = copy.getStroke();
-      const color = stroke?.getColor();
+      const copy = item.clone()
+      const stroke = copy.getStroke()
+      const color = stroke?.getColor()
       if (stroke && color) {
-        const rgba = asArray(color as string | number[]).slice();
-        rgba[3] = (rgba[3] ?? 1) * 0.7;//路线透明度，0~1，0为全透明，1为不透明
-        stroke.setColor(rgba);
+        const rgba = asArray(color as string | number[]).slice()
+        rgba[3] = (rgba[3] ?? 1) * 0.7 //路线透明度，0~1，0为全透明，1为不透明
+        stroke.setColor(rgba)
       }
-      copy.setZIndex((copy.getZIndex() ?? 0) - 10);
-      return copy;
-    });
-    return Array.isArray(style) ? styles : styles[0];
+      copy.setZIndex((copy.getZIndex() ?? 0) - 10)
+      return copy
+    })
+    return Array.isArray(style) ? styles : styles[0]
   }
 
   private cancelRoute(stationId: string): void {
-    this.routeVersions.set(stationId, (this.routeVersions.get(stationId) ?? 0) + 1);
+    this.routeVersions.set(stationId, (this.routeVersions.get(stationId) ?? 0) + 1)
   }
 
   private routeColor(stationId: string): string {
-    const index = this.getState().stations.findIndex(
-      (station) => station.id === stationId,
-    );
-    return ROUTE_COLORS[Math.max(0, index) % ROUTE_COLORS.length];
+    const index = this.getState().stations.findIndex((station) => station.id === stationId)
+    return ROUTE_COLORS[Math.max(0, index) % ROUTE_COLORS.length]
   }
 
   /* 辖区样式已禁用（主管/支撑辖区不再上图）
@@ -1042,14 +994,16 @@ export class DispatchT1 {
   */
 
   private assertCurrent(version: number): void {
-    if (version !== this.requestVersion) throw new Error('查询已被新的火情替换');
+    if (version !== this.requestVersion) throw new Error('查询已被新的火情替换')
   }
 
   private normalizeName(value: unknown): string {
-    return String(value ?? '').replace(/\s+/g, '').toLowerCase();
+    return String(value ?? '')
+      .replace(/\s+/g, '')
+      .toLowerCase()
   }
 
   private errorMessage(error: unknown, fallback: string): string {
-    return error instanceof Error && error.message ? error.message : fallback;
+    return error instanceof Error && error.message ? error.message : fallback
   }
 }

@@ -4,18 +4,9 @@
  */
 import { defineStore } from 'pinia'
 import { reactive, toRefs, computed } from 'vue'
-import type {
-  SimilarAlarmCardItem,
-  MasterAlarm,
-  RealtimeFactors,
-  TrappedFloorItem,
-} from '@/const/const.modelAssess'
+import type { SimilarAlarmCardItem, MasterAlarm, RealtimeFactors, TrappedFloorItem } from '@/const/const.modelAssess'
 import type { LayerTabKey } from '@/const/const.modelAssess'
-import {
-  SIMILAR_CARDS_MOCK,
-  MASTER_ALARM_MOCK,
-  TRAPPED_FLOORS_MOCK,
-} from '@/views/modelAssess/mock'
+import { SIMILAR_CARDS_MOCK, MASTER_ALARM_MOCK, TRAPPED_FLOORS_MOCK } from '@/views/modelAssess/mock'
 
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -23,7 +14,7 @@ export const useModelAssessStore = defineStore('modelAssessStore', () => {
   /* ---------------------- state ---------------------- */
   const state = reactive({
     /** 顶部 4 张相似警情卡片 */
-    similarCards: [...SIMILAR_CARDS_MOCK.sort((a,b) => b.similarity - a.similarity)] as SimilarAlarmCardItem[],
+    similarCards: [...SIMILAR_CARDS_MOCK.sort((a, b) => b.similarity - a.similarity)] as SimilarAlarmCardItem[],
     /** 主警情（COMMAND MASTER） */
     masterAlarm: { ...MASTER_ALARM_MOCK } as MasterAlarm,
     /** 实时要素判研（可编辑） */
@@ -64,9 +55,7 @@ export const useModelAssessStore = defineStore('modelAssessStore', () => {
   })
 
   /* ---------------------- computed ---------------------- */
-  const trappedTotal = computed(() =>
-    state.trappedFloors.reduce((sum, item) => sum + (item.count || 0), 0),
-  )
+  const trappedTotal = computed(() => state.trappedFloors.reduce((sum, item) => sum + (item.count || 0), 0))
 
   const similarCount = computed(() => state.similarCards.length)
 
@@ -104,10 +93,7 @@ export const useModelAssessStore = defineStore('modelAssessStore', () => {
   }
 
   /* ---------------------- 实时要素判研 ---------------------- */
-  const updateFactor = <K extends keyof RealtimeFactors>(
-    key: K,
-    value: RealtimeFactors[K],
-  ) => {
+  const updateFactor = <K extends keyof RealtimeFactors>(key: K, value: RealtimeFactors[K]) => {
     state.realtimeFactors[key] = value
   }
 

@@ -12,29 +12,21 @@ import adapterFetch from 'alova/fetch'
 import { AppError, ERROR_CODES } from './error'
 import { appEnv } from '@/config/env'
 import { AMAP_ERROR_CODES } from '@/apis/amap'
-import { getSharedAccessToken } from '@/Control/seatSharedState'
 
+/**
+ * 高德代理实例：只转发第三方开放能力，不注入任何席位凭证。
+ * 凭证统一由主实例 alova.ts 经 service/authHeaders 注入，两者互不共享头部逻辑。
+ */
 export const alovaMapProxyInstance = createAlova({
   baseURL: appEnv.amapApiBaseUrl,
   statesHook: VueHook,
   requestAdapter: adapterFetch(),
   cacheLogger: false,
-  async beforeRequest(method) {
-    const token = getSharedAccessToken()
-    // if (token) {
-    //   method.config.headers['Authorization'] = `Bearer ${token}`
-    //   method.config.headers['clientid'] = 'ids-seat-web'
-    // }
-  },
   responded: {
     onSuccess: async (response) => {
       if (!(response instanceof Response)) return response as any
       if (!response.ok) {
-        throw new AppError(
-          AMAP_ERROR_CODES.NETWORK_ERROR,
-          response.status,
-          `HTTP ${response.status}`,
-        )
+        throw new AppError(AMAP_ERROR_CODES.NETWORK_ERROR, response.status, `HTTP ${response.status}`)
       }
       const text = await response.text()
       if (!text.trim()) {
@@ -59,12 +51,11 @@ export const alovaMapProxyInstance = createAlova({
       return body
     },
     onError: async (err, method) => {
-      const appErr = err instanceof AppError
-        ? err
-        : new AppError(AMAP_ERROR_CODES.UNKNOWN_ERROR, undefined, (err as Error)?.message)
+      const appErr =
+        err instanceof AppError ? err : new AppError(AMAP_ERROR_CODES.UNKNOWN_ERROR, undefined, (err as Error)?.message)
       const meta = (method?.config?.meta ?? {}) as { silent?: boolean; showError?: boolean }
       if (meta.silent || meta.showError === false) throw appErr
       throw appErr
     },
-  }
+  },
 })

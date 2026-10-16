@@ -106,7 +106,6 @@ onUnmounted(() => {
 
 <template>
   <OpenlayersMap ref="openLayersMapRef" @setMap="getMap">
-
     <tlp />
     <trp />
 
@@ -126,8 +125,7 @@ onUnmounted(() => {
     <circleQueryPanel />
   </OpenlayersMap>
 
-    <brp />
-
+  <brp />
 </template>
 
 <style scoped>

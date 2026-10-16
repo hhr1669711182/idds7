@@ -232,9 +232,9 @@ const writeFrame = (socket, data) => {
 const broadcastIncomingCall = (useLegacy = false) => {
   const payload = useLegacy
     ? createLegacyIncomingCallPayload()
-    : createIncomingCallPayload(tickDeviceState(ensureDeviceState(
-        NANSHA_DEVICES[Math.floor(Math.random() * NANSHA_DEVICES.length)],
-      )))
+    : createIncomingCallPayload(
+        tickDeviceState(ensureDeviceState(NANSHA_DEVICES[Math.floor(Math.random() * NANSHA_DEVICES.length)])),
+      )
   clients.forEach((socket) => {
     if (!writeFrame(socket, payload)) {
       clients.delete(socket)
@@ -322,14 +322,16 @@ server.on('upgrade', (req, socket) => {
     .update(`${websocketKey}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`)
     .digest('base64')
 
-  socket.write([
-    'HTTP/1.1 101 Switching Protocols',
-    'Upgrade: websocket',
-    'Connection: Upgrade',
-    `Sec-WebSocket-Accept: ${acceptKey}`,
-    '',
-    '',
-  ].join('\r\n'))
+  socket.write(
+    [
+      'HTTP/1.1 101 Switching Protocols',
+      'Upgrade: websocket',
+      'Connection: Upgrade',
+      `Sec-WebSocket-Accept: ${acceptKey}`,
+      '',
+      '',
+    ].join('\r\n'),
+  )
 
   clients.add(socket)
 
@@ -417,7 +419,9 @@ const shutdown = (signal) => {
 
 server.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Run "npm run mock:server:restart" to clean the old mock server first.`)
+    console.error(
+      `Port ${PORT} is already in use. Run "npm run mock:server:restart" to clean the old mock server first.`,
+    )
     process.exit(1)
   }
 

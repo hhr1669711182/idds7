@@ -49,9 +49,7 @@ export type MountPointLayerOptions<T> = {
  * 通用点位图层工厂：挂载矢量图层 + 可选 popup overlay + 点击命中，
  * 支持按 key 增量 upsert/remove。
  */
-export const mountPointLayer = <T>(
-  params: MountPointLayerOptions<T>,
-): PointLayerManager<T> => {
+export const mountPointLayer = <T>(params: MountPointLayerOptions<T>): PointLayerManager<T> => {
   const {
     map,
     items,

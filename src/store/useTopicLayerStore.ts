@@ -1,12 +1,12 @@
-import { defineStore } from "pinia";
+import { defineStore } from 'pinia'
 
-export const useTopicLayerStore = defineStore("topicLayerStore", {
+export const useTopicLayerStore = defineStore('topicLayerStore', {
   state: () => {
-    return { visible: false };
+    return { visible: false }
   },
   actions: {
     setVisible(visible: boolean) {
-      this.visible = visible;
+      this.visible = visible
     },
   },
-});
+})

@@ -9,7 +9,7 @@
 /**
  * commitlint 配置文件
  * 基于 @commitlint/config-conventional 规范
- * 
+ *
  * 格式: <type>(<scope>): <subject>
  * 示例: feat(component): 添加用户登录组件
  */
@@ -21,19 +21,19 @@ export default {
       2,
       'always',
       [
-        'feat',     // 新功能
-        'fix',      // 修复 bug
-        'docs',     // 文档变更
-        'style',    // 代码格式（不影响功能）
+        'feat', // 新功能
+        'fix', // 修复 bug
+        'docs', // 文档变更
+        'style', // 代码格式（不影响功能）
         'refactor', // 重构（不是修复也不是新功能）
-        'perf',     // 性能优化
-        'test',     // 测试相关
-        'build',    // 构建系统或依赖变化
-        'ci',       // CI 配置
-        'chore',    // 其他修改（不涉及 src 文件）
-        'revert',   // 回滚
-        'wip',      // 开发中（工作进行中）
-        'hotfix',   // 热修复
+        'perf', // 性能优化
+        'test', // 测试相关
+        'build', // 构建系统或依赖变化
+        'ci', // CI 配置
+        'chore', // 其他修改（不涉及 src 文件）
+        'revert', // 回滚
+        'wip', // 开发中（工作进行中）
+        'hotfix', // 热修复
       ],
     ],
     // type 大小写

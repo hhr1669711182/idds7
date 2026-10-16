@@ -18,8 +18,7 @@
  * 面要素（辖区/建筑）用 @turf/centroid 算质心后参与距离排序与坐标回传。
  * @FilePath: src/controller/core/business/IncidentNearbyResourceQuery.ts
  */
-import { getDistance } from 'ol/sphere'
-import { centroid, circle as turfCircle } from '@turf/turf'
+import { centroid, circle as turfCircle, distance } from '@turf/turf'
 import { geoserverApi } from '@/service/geoserver'
 import type { Coordinate } from './IncidentStationQuery'
 
@@ -61,6 +60,7 @@ export type NearbyResource = {
 
 /** 警情点周边资源查询结果（各自按距离升序） */
 export type IncidentNearbyResourceResult = {
+  complete: boolean
   /** 半径内消防栓 */
   fireHydrants: NearbyResource[]
   /** 半径内重点单位 */
@@ -92,10 +92,7 @@ type WFSFeature = {
 }
 
 /** 从要素属性中按候选字段名取第一个非空字符串 */
-const pickString = (
-  properties: Record<string, any>,
-  candidates: string[],
-): string | null => {
+const pickString = (properties: Record<string, any>, candidates: string[]): string | null => {
   for (const key of candidates) {
     const value = properties?.[key]
     if (value !== undefined && value !== null && String(value).trim() !== '') {
@@ -152,9 +149,7 @@ export const buildGeodesicCircleWkt = (
     steps,
     units: 'kilometers',
   })
-  const ring = circlePoly.geometry.coordinates[0]
-    .map(([lng, lat]) => `${lng} ${lat}`)
-    .join(', ')
+  const ring = circlePoly.geometry.coordinates[0].map(([lng, lat]) => `${lng} ${lat}`).join(', ')
   return `POLYGON((${ring}))`
 }
 
@@ -162,11 +157,7 @@ export const buildGeodesicCircleWkt = (
  * 拼接单个范围圈的 CQL INTERSECTS 条件（带 SRID=4326 前缀强制 lon/lat 轴序）。
  * 导出供地图侧 WMS 图层 CQL_FILTER 复用，保证 WFS/WMS 过滤口径一致。
  */
-export const buildCircleIntersectsCql = (
-  geomField: string,
-  coordinate: Coordinate,
-  radiusMeters: number,
-): string =>
+export const buildCircleIntersectsCql = (geomField: string, coordinate: Coordinate, radiusMeters: number): string =>
   `INTERSECTS(${geomField},SRID=4326;${buildGeodesicCircleWkt(coordinate, radiusMeters)})`
 
 /**
@@ -227,7 +218,7 @@ export const toNearbyResources = (
       name: pickString(properties, nameFields) ?? '未命名',
       address: pickString(properties, addressFields),
       coordinate,
-      distanceMeters: getDistance(reference, coordinate),
+      distanceMeters: distance(reference, coordinate, { units: 'meters' }),
       feature: feature as Record<string, any>,
     }
     const current = unique.get(id)
@@ -249,12 +240,7 @@ export const queryNearbyFireHydrants = async (
   radiusMeters: number = DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
   maxFeatures: number = DEFAULT_RESOURCE_MAX_FEATURES,
 ): Promise<NearbyResource[]> => {
-  const features = await queryFeaturesWithin(
-    FIRE_HYDRANT_LAYER_NAME,
-    coordinate,
-    radiusMeters,
-    maxFeatures,
-  )
+  const features = await queryFeaturesWithin(FIRE_HYDRANT_LAYER_NAME, coordinate, radiusMeters, maxFeatures)
   return toNearbyResources(features, coordinate, 'fireHydrant', ['water_name', 'symc', 'name'], ['address', 'sydz'])
 }
 
@@ -269,12 +255,7 @@ export const queryNearbyKeyEnterprises = async (
   radiusMeters: number = DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
   maxFeatures: number = DEFAULT_RESOURCE_MAX_FEATURES,
 ): Promise<NearbyResource[]> => {
-  const features = await queryFeaturesWithin(
-    KEY_ENTERPRISE_LAYER_NAME,
-    coordinate,
-    radiusMeters,
-    maxFeatures,
-  )
+  const features = await queryFeaturesWithin(KEY_ENTERPRISE_LAYER_NAME, coordinate, radiusMeters, maxFeatures)
   return toNearbyResources(features, coordinate, 'keyEnterprise', ['dept_name', 'name'], ['address_cn', 'address'])
 }
 
@@ -312,13 +293,15 @@ export const queryNearbyBuildings = async (
   radiusMeters: number = DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,
   maxFeatures: number = DEFAULT_RESOURCE_MAX_FEATURES,
 ): Promise<NearbyResource[]> => {
-  const features = await queryFeaturesWithin(
-    BUILDING_LAYER_NAME,
+  const features = await queryFeaturesWithin(BUILDING_LAYER_NAME, coordinate, radiusMeters, maxFeatures)
+  return toNearbyResources(
+    features,
     coordinate,
-    radiusMeters,
-    maxFeatures,
+    'building',
+    ['building_name', 'short_name'],
+    ['address_name'],
+    ['building_id'],
   )
-  return toNearbyResources(features, coordinate, 'building', ['building_name', 'short_name'], ['address_name'], ['building_id'])
 }
 
 /**
@@ -381,6 +364,9 @@ export const queryIncidentNearbyResources = async (
   }
 
   return {
+    complete: [hydrantResult, enterpriseResult, zoneResult, buildingResult].every(
+      (result) => result.status === 'fulfilled',
+    ),
     fireHydrants: hydrantResult.status === 'fulfilled' ? hydrantResult.value : [],
     keyEnterprises: enterpriseResult.status === 'fulfilled' ? enterpriseResult.value : [],
     jurisZones: zoneResult.status === 'fulfilled' ? zoneResult.value : [],

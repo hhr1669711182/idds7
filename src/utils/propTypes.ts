@@ -10,13 +10,13 @@ const newPropTypes = createTypes({
   string: undefined,
   number: undefined,
   object: undefined,
-  integer: undefined
+  integer: undefined,
 }) as PropTypes
 
 class propTypes extends newPropTypes {
   static get style() {
     return toValidableType('style', {
-      type: [String, Object]
+      type: [String, Object],
     })
   }
 }

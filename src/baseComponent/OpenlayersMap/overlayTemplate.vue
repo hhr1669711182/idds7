@@ -2,9 +2,7 @@
   <div class="overlay_popup" v-show="visible">
     <div class="overlay_popup_header">
       <div class="overlay_popup_title">{{ title }}</div>
-      <button class="overlay_popup_close" type="button" @click="$emit('close')">
-        ×
-      </button>
+      <button class="overlay_popup_close" type="button" @click="$emit('close')">×</button>
     </div>
     <div class="overlay_popup_body">
       <slot />

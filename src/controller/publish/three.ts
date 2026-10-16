@@ -6,11 +6,7 @@
 
 import { useMessageStore } from '@/store/useMessageStore'
 import type { FixedPublishOptions } from './types.ts'
-import {
-  MESSAGE_CHANNEL,
-  MESSAGE_EVENT_KEY,
-  MESSAGE_SYSTEM,
-} from '@/const/const.message.type'
+import { MESSAGE_CHANNEL, MESSAGE_EVENT_KEY, MESSAGE_SYSTEM } from '@/const/const.message.type'
 
 /** 本文件固定发送配置：三维系统走 WebSocket 通道 */
 const OPTS: FixedPublishOptions = {

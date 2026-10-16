@@ -6,7 +6,7 @@ import router from '@/router'
 import { ElMessage } from 'element-plus'
 import { appEnv } from '@/config/env'
 import { AppError, DEFAULT_MESSAGES, ERROR_CODES, toAppError, type AppErrorMeta } from './error'
-import { getSharedAccessToken } from '@/Control/seatSharedState'
+import { applyAuthHeaders } from './authHeaders'
 
 const baseURL = appEnv.apiBaseUrl
 
@@ -15,13 +15,15 @@ if (appEnv.useMock) {
   const mockFiles = import.meta.glob('./mock/**/*.ts', { eager: true })
   const mockGroups: any[] = Object.values(mockFiles).flatMap((module: any) => [
     ...(module.default ? [module.default] : []),
-    ...Object.keys(module).filter(k => k !== 'default').map(k => module[k])
+    ...Object.keys(module)
+      .filter((k) => k !== 'default')
+      .map((k) => module[k]),
   ])
   requestAdapter = mockGroups.length
     ? createAlovaMockAdapter(mockGroups, {
         delay: 500,
         httpAdapter: adapterFetch(),
-        enable: true
+        enable: true,
       })
     : adapterFetch()
 } else {
@@ -36,13 +38,12 @@ type ApiEnvelope<T> = {
   timestamp: number
 }
 
-const getMethodMeta = (method: any): AppErrorMeta =>
-  (method?.config?.meta as AppErrorMeta) ?? {}
+const getMethodMeta = (method: any): AppErrorMeta => (method?.config?.meta as AppErrorMeta) ?? {}
 
 const handleUnauthorized = () => {
   // dev 环境下，不处理未授权错误
   if (import.meta.env.DEV) return
-  // 凭证由 seat-shared-state 持有（受理席侧写入），地图屏不自行清除
+  // 凭证由 useUserStore 持有（受理席侧共享键写入），地图屏不自行清除
   // router.push('/login')
   const currentProtocol = window.location.protocol
   const currentHost = window.location.host
@@ -57,11 +58,7 @@ const showError = (method: any, err: AppError) => {
 }
 
 const throwInvalidResponse = (status?: number) =>
-  new AppError(
-    ERROR_CODES.INVALID_RESPONSE,
-    status,
-    DEFAULT_MESSAGES.INVALID_RESPONSE
-  )
+  new AppError(ERROR_CODES.INVALID_RESPONSE, status, DEFAULT_MESSAGES.INVALID_RESPONSE)
 
 export const alovaInstance = createAlova({
   baseURL,
@@ -69,13 +66,7 @@ export const alovaInstance = createAlova({
   requestAdapter,
   cacheLogger: false,
   async beforeRequest(method) {
-    const token = getSharedAccessToken() ??     
-    'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJXeHdlX1BaMEhkdHdpNnNHUDNZQlIyT3JFN0FxZnNHcGFhRFZZcURNX3VBIn0.eyJleHAiOjE3OTE0MjE0MDAsImlhdCI6MTc4ODgyOTQwMCwianRpIjoiYzcyYmE0MWEtZWU3Yy00YTIyLTgzOGQtZDIzMTkyMDgyMzg0IiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLWlkcy1kZXYudGVsZXdhdmUudGVjaC9hdXRoL3JlYWxtcy9pZHMiLCJzdWIiOiJlODM4ZGYxZi1lYjlmLTQxMGQtOGEwMS1kYTE2YTgzNWI1MGEiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJpZHMtc2VhdC13ZWIiLCJzZXNzaW9uX3N0YXRlIjoiZTExMDI0ZmUtYmQ3Yy00NDcxLThmM2EtMWU1ZDNmZjE2YWVmIiwiYWNyIjoiMSIsInNjb3BlIjoicHJvZmlsZSBlbWFpbCIsInNpZCI6ImUxMTAyNGZlLWJkN2MtNDQ3MS04ZjNhLTFlNWQzZmYxNmFlZiIsImVtcElkIjoiOThjOWQxNWRhYjI3NGNiNWE3NzgyOTI3YThmZTNiODkiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInByZWZlcnJlZF91c2VybmFtZSI6ImNoZW54aWFuZ3FpIiwiZW1haWwiOiIxMzgwMDEzNzk5OUBxcS5jb20ifQ.EeQsVz004tr73VMTycAgcECvr1oSBYJIdor9sVsRYN1mfMzoSppkcDplvXeXEBfh1rFGscUypvrjO8FEbvD03ykSIqNqx8OZhUZv9r2My4sbGFx_cip_6_W2uv7Xoyc3HOJmkUnJIJ6YvUNDCPnOGARS35Q3LBoxp18NbzFx56P3UILbepjMV86_w1roDEKgnjjbfrRkeqvYP9tEZbEtgPsbbFYg7CnZVYI1YklMt7Csmv5YKTMZBEZcIZMExMh4y41aI7h51LvMbPtaTj-U9GoEe6lbr7CwDZ0lCBVyW-OAqm-yDGVE4a9G6zelFo1av6eghUjZO2B-_J6nbQWB9A'
-    // 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJXeHdlX1BaMEhkdHdpNnNHUDNZQlIyT3JFN0FxZnNHcGFhRFZZcURNX3VBIn0.eyJleHAiOjE3ODM3NjczMzYsImlhdCI6MTc4MTE3NTMzNiwianRpIjoiNzUwZWZlYjMtYzk2Zi00YmI3LWExNDUtYTExNjVjMjAyZGQ2IiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLWlkcy1kZXYudGVsZXdhdmUudGVjaC9hdXRoL3JlYWxtcy9pZHMiLCJzdWIiOiJmZmQ3YTYyMi00NTgxLTQ0M2UtYmNjNi1jMmI0OTIwNGE0MWEiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJpZHMtc2VhdC13ZWIiLCJzZXNzaW9uX3N0YXRlIjoiZDJiN2QzZGUtMzI4My00OTg4LWExZTAtN2E4N2MxN2RjMWY5IiwiYWNyIjoiMSIsInNjb3BlIjoicHJvZmlsZSBlbWFpbCIsInNpZCI6ImQyYjdkM2RlLTMyODMtNDk4OC1hMWUwLTdhODdjMTdkYzFmOSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwicHJlZmVycmVkX3VzZXJuYW1lIjoiY2Fvd2VudGFpMSIsImVtYWlsIjoiMTM4MDAyMzgwMDFAcXEuY29tIn0.qV35Pe4cczN0DJ7pJGN39heFNrr5XCAWo0HS4LzXodOiE5oZRtN3nLik08wCR-Atu1LH0uB7ssVVyLRVYK2n8fq2yQqFHAVzNPx-SgEFhNcQ4zCgoemwaxOdZq_sBAMdBjT7gudqiELDzKZfui2VgUKgdX1Av469SRy8ZVysIFETZyRHS5lgmy-KCiictGkn3gfoSBmiWoB2ueOlcbcEMhW7H4aYg_ai6oMgpRQ0HZ3PgrNMaQdCHFTWSL6sebZFFX1lQa6JpxX0Q9t2sU98y2msB-Kkgssz2pB4JGB6xvuqK3ySio-dUvI_oHKYOMyshlbA8LbcDcEh790me9VD1w'
-    if (token) {
-      method.config.headers['Authorization'] = `Bearer ${token}`
-      method.config.headers['clientid'] = 'ids-seat-web'
-    }
+    applyAuthHeaders(method.config.headers)
   },
   responded: {
     onSuccess: async (response) => {
@@ -86,11 +77,7 @@ export const alovaInstance = createAlova({
         throw new AppError(ERROR_CODES.UNAUTHORIZED, 401)
       }
       if (!response.ok) {
-        throw new AppError(
-          ERROR_CODES.HTTP_ERROR,
-          response.status,
-          `HTTP ${response.status}`
-        )
+        throw new AppError(ERROR_CODES.HTTP_ERROR, response.status, `HTTP ${response.status}`)
       }
 
       const text = await response.text()
@@ -106,12 +93,7 @@ export const alovaInstance = createAlova({
       const env = body as ApiEnvelope<unknown>
       if (env && typeof env === 'object' && 'success' in env) {
         if (env.success) return env.data
-        throw new AppError(
-          ERROR_CODES.BIZ_ERROR,
-          response.status,
-          env.message,
-          env.code
-        )
+        throw new AppError(ERROR_CODES.BIZ_ERROR, response.status, env.message, env.code)
       }
       return body
     },
@@ -124,8 +106,8 @@ export const alovaInstance = createAlova({
       }
       showError(method, appErr)
       throw appErr
-    }
-  }
+    },
+  },
 })
 
 export type { ApiEnvelope }

@@ -20,14 +20,14 @@ export interface UseExtentResult {
 }
 
 export const transformExtent = (extent: Extent, coordSys = 'EPSG:4326') => {
-  return olProj.transformExtent(
-    extent,
-    'EPSG:4326',
-    'EPSG:3857'
-  )
+  return olProj.transformExtent(extent, 'EPSG:4326', 'EPSG:3857')
 }
 
-export const useExtent = (map: Map, extent: Extent, options: { mode?: 'flex' | 'fixed', enabled?: boolean } = {}): UseExtentResult => {
+export const useExtent = (
+  map: Map,
+  extent: Extent,
+  options: { mode?: 'flex' | 'fixed'; enabled?: boolean } = {},
+): UseExtentResult => {
   let isListening = false
   let { mode = 'flex', enabled = true } = options
   extent = transformExtent(extent)
@@ -84,10 +84,7 @@ export const useExtent = (map: Map, extent: Extent, options: { mode?: 'flex' | '
       view.setCenter(newCenter)
 
       // 限制缩放层级:visible > limit 时拉回
-      const maxAllowedResolution: number = Math.max(
-        (maxX - minX) / size[0],
-        (maxY - minY) / size[1]
-      )
+      const maxAllowedResolution: number = Math.max((maxX - minX) / size[0], (maxY - minY) / size[1])
 
       if (resolution > maxAllowedResolution) {
         view.setZoom((view.getZoomForResolution(maxAllowedResolution) || ZOOM.INIT || 0) + 0.1)
@@ -108,10 +105,7 @@ export const useExtent = (map: Map, extent: Extent, options: { mode?: 'flex' | '
   const clampCoordinate = (coordinate: [number, number]): [number, number] => {
     const [x, y] = coordinate
     const [minX, minY, maxX, maxY] = extent
-    return [
-      Math.max(minX, Math.min(maxX, x)),
-      Math.max(minY, Math.min(maxY, y)),
-    ]
+    return [Math.max(minX, Math.min(maxX, x)), Math.max(minY, Math.min(maxY, y))]
   }
 
   // 获取当前范围

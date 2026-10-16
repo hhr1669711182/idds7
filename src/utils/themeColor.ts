@@ -9,51 +9,51 @@
 
 /** 读取 :root 上的 CSS 变量值；读不到时返回兜底色 */
 export const cssVar = (name: string, fallback: string): string => {
-  if (typeof window === "undefined" || !document?.documentElement) return fallback;
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name);
-  const trimmed = value.trim();
-  return trimmed ? trimmed : fallback;
-};
+  if (typeof window === 'undefined' || !document?.documentElement) return fallback
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name)
+  const trimmed = value.trim()
+  return trimmed ? trimmed : fallback
+}
 
 /** 当前主题标识（DAY / NIGHT），与 const.common 的 THEME_COLOR 对齐 */
-export type ThemeName = "DAY" | "NIGHT";
+export type ThemeName = 'DAY' | 'NIGHT'
 
 export const getThemeName = (): ThemeName => {
-  if (typeof document === "undefined") return "NIGHT";
-  return (document.documentElement.getAttribute("data-theme") as ThemeName) || "NIGHT";
-};
+  if (typeof document === 'undefined') return 'NIGHT'
+  return (document.documentElement.getAttribute('data-theme') as ThemeName) || 'NIGHT'
+}
 
 /** 当前是否夜间模式 */
-export const isNightTheme = (): boolean => getThemeName() === "NIGHT";
+export const isNightTheme = (): boolean => getThemeName() === 'NIGHT'
 
 /** 检索/路径规划统一强调色：夜间走 --accent-cyan，白天同样是 --accent-cyan */
-export const themeAccent = (fallback = "#25C2F2"): string => cssVar("--accent-cyan", fallback);
+export const themeAccent = (fallback = '#25C2F2'): string => cssVar('--accent-cyan', fallback)
 
 /**
  * 把 hex / rgb 颜色加透明度，用于脉冲光晕这类需要 alpha 的场景。
  * 支持 #rgb、#rrggbb、rgba(...)、rgb(...)；无法解析时原样返回。
  */
 export const withAlpha = (color: string, alpha: number): string => {
-  const value = color.trim();
-  const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value);
+  const value = color.trim()
+  const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value)
   if (hexMatch) {
-    const hex = hexMatch[1];
+    const hex = hexMatch[1]
     const full =
       hex.length === 3
         ? hex
-            .split("")
+            .split('')
             .map((char) => char + char)
-            .join("")
-        : hex;
-    const r = parseInt(full.slice(0, 2), 16);
-    const g = parseInt(full.slice(2, 4), 16);
-    const b = parseInt(full.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            .join('')
+        : hex
+    const r = parseInt(full.slice(0, 2), 16)
+    const g = parseInt(full.slice(2, 4), 16)
+    const b = parseInt(full.slice(4, 6), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
   }
-  const rgbMatch = /^rgba?\(([^)]+)\)$/i.exec(value);
+  const rgbMatch = /^rgba?\(([^)]+)\)$/i.exec(value)
   if (rgbMatch) {
-    const parts = rgbMatch[1].split(",").map((part) => part.trim());
-    if (parts.length >= 3) return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${alpha})`;
+    const parts = rgbMatch[1].split(',').map((part) => part.trim())
+    if (parts.length >= 3) return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${alpha})`
   }
-  return value;
-};
+  return value
+}

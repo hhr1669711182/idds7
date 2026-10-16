@@ -10,6 +10,7 @@
 | [_流程规范.md](_流程规范.md) | 测试工作流与门禁 | 规范 |
 | [测试用例/编写规范.md](测试用例/编写规范.md) | 用例编写规范与模板 | 规范 |
 | [测试报告/编写规范.md](测试报告/编写规范.md) | 报告编写规范与模板 | 规范 |
+| [测试报告/Control走线迁移-P1自动化回归报告.md](测试报告/Control走线迁移-P1自动化回归报告.md) | P1实现、916固定输入回放、全量回归及验证边界 | 自动化通过，人工待验收 |
 | 测试策略.md | 项目级测试策略 | 待补充 |
 
 ## 测试资产
@@ -18,7 +19,7 @@
 |------|------|------|
 | `tests/harness/README.md` | **测试契约真相源**：四要素 + GIS 专用契约 + 覆盖率策略 | 规范 |
 | `tests/harness/setup.ts` | 全局 setup（ResizeObserver / matchMedia / mock 清理） | 代码 |
-| `tests/unit/**/*.spec.ts` | 单元 + 集成测试（14 个文件） | 代码 |
+| `tests/unit/**/*.spec.ts` | 单元 + 集成测试，数量以 runner 实测为准 | 代码 |
 | `tests/components/**/*.spec.ts` | 组件测试（jsdom + @vue/test-utils） | 代码 |
 | `tests/e2e/**/*.spec.ts` | E2E 冒烟（Playwright） | 代码 |
 | `tests/fixtures/**` | 可复用测试数据 | 代码 |
@@ -28,7 +29,7 @@
 ## 自动化命令
 
 ```bash
-pnpm test              # 单元 + 组件（16 文件 / 86 用例）
+pnpm test              # 单元 + 组件（当前结果见测试报告）
 pnpm test:coverage     # 覆盖率（产物在 tests/__artifacts__/coverage）
 pnpm test:ui           # Vitest UI
 pnpm e2e               # Playwright 冒烟（独立拉起 dev server）

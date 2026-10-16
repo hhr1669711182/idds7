@@ -87,9 +87,7 @@ export const useSearchPanelStore = defineStore(
       activeTab.value === 'address' ? addressResults.value : resourceResults.value,
     )
 
-    const hasResults = computed(
-      () => addressResults.value.items.length > 0 || resourceResults.value.items.length > 0,
-    )
+    const hasResults = computed(() => addressResults.value.items.length > 0 || resourceResults.value.items.length > 0)
 
     const canPlan = computed(() => !!routeForm.value.start.lngLat && !!routeForm.value.end.lngLat)
 
@@ -110,10 +108,7 @@ export const useSearchPanelStore = defineStore(
     }
 
     /** 纯文本检索：两源并行，默认落在地址信息 tab */
-    const runKeywordSearch = async (
-      keyword: string,
-      viewport?: [number, number, number, number],
-    ) => {
+    const runKeywordSearch = async (keyword: string, viewport?: [number, number, number, number]) => {
       const text = keyword.trim()
       if (!text) {
         clearResults()
@@ -149,21 +144,21 @@ export const useSearchPanelStore = defineStore(
      */
     const runViewSearch = async (typeName: string, keyword?: string) => {
       selectedView.value = typeName
-      queryText.value = keyword ?? ""
+      queryText.value = keyword ?? ''
       loading.value = true
       searchError.value = null
       searchPanelCollapsed.value = false
       try {
         // 资源源：按视图 id 精确查询该图层全部资源
         const resourceParams: SearchQueryParams = {
-          keyword: "",
+          keyword: '',
           typeName,
           maxFeatures: SEARCH_MAX_FEATURES,
         }
         const { resource, filter } = await runSearch(resourceParams)
 
         // 地址源：用视图中文名做模糊检索，让两个 tab 都有数据可切换
-        const text = (keyword ?? "").trim()
+        const text = (keyword ?? '').trim()
         let address: SearchResultBucket = emptyBucket()
         if (text) {
           try {
@@ -182,21 +177,17 @@ export const useSearchPanelStore = defineStore(
         activeFilter.value = filter
         // 有地址结果落地址 tab，否则落资源 tab（需求：默认展示消防资源）
         // 需求：选中视图选项后默认展示消防资源 tab，地址 tab 也保留数据可切换
-        activeTab.value = "resource"
+        activeTab.value = 'resource'
       } catch (error) {
-        console.warn("[useSearchPanelStore] runViewSearch failed:", error)
-        searchError.value = "视图检索失败，请稍后重试"
+        console.warn('[useSearchPanelStore] runViewSearch failed:', error)
+        searchError.value = '视图检索失败，请稍后重试'
       } finally {
         loading.value = false
       }
     }
 
     /** 圈选检索：按圈选中心与半径查询资源列表，并把 WMS 条件交给调用方上图 */
-    const runCircleSearch = async (
-      center: [number, number],
-      radiusMeters: number,
-      typeNames: string[],
-    ) => {
+    const runCircleSearch = async (center: [number, number], radiusMeters: number, typeNames: string[]) => {
       loading.value = true
       searchError.value = null
       try {
@@ -277,11 +268,7 @@ export const useSearchPanelStore = defineStore(
       syncRouteHistory()
     }
 
-    const setRouteEndpoint = (
-      which: 'start' | 'end',
-      text: string,
-      lngLat: [number, number] | null,
-    ) => {
+    const setRouteEndpoint = (which: 'start' | 'end', text: string, lngLat: [number, number] | null) => {
       routeForm.value[which] = { text, lngLat }
       syncRouteHistory()
     }

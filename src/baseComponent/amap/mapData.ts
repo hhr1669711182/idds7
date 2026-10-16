@@ -1,16 +1,16 @@
 export type ZhxfStationData = {
-  id: string;
-  lng: number;
-  lat: number;
-  title: string;
-  address: string;
-  phone?: string;
-  deviceTotal: number;
-  deviceOnline: number;
-  deviceGoouts: number;
+  id: string
+  lng: number
+  lat: number
+  title: string
+  address: string
+  phone?: string
+  deviceTotal: number
+  deviceOnline: number
+  deviceGoouts: number
   /** AMap=历史高德校准静态数据；WFS=GeoServer gis:view_res_org_dept（EPSG:4326） */
-  source: "AMap" | "WFS";
-};
+  source: 'AMap' | 'WFS'
+}
 
 /* ============================================================================
  * 历史：临时前端主管队站静态数据（已停用，保留备查，确认无回滚需要后可整体删除）
@@ -135,7 +135,7 @@ export type ZhxfStationData = {
  *   rawZhxfdzXYList.map(fromGcj02Data);
  * ============================================================================ */
 
-export type JRAlarmStatus = "接警" | "调派" | "途中" | "处置" | "归队";
+export type JRAlarmStatus = '接警' | '调派' | '途中' | '处置' | '归队'
 
 export type JRAlarmData = {
   incidentId: string

@@ -9,8 +9,7 @@ export interface WMSLayerOptions {
   opacity: number
 }
 
-const getLayerWMSUrl = (config: LayerConfig) =>
-  config.wmsUrl || geoserverApi.getWMSServiceUrl(config.workspace)
+const getLayerWMSUrl = (config: LayerConfig) => config.wmsUrl || geoserverApi.getWMSServiceUrl(config.workspace)
 
 const buildFeatureInfoParams = (
   config: LayerConfig,

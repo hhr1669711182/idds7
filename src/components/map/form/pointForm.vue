@@ -97,27 +97,11 @@ const handleClickImgOptions = ({
 </script>
 
 <template>
-  <el-form
-    :model="form"
-    label-width="auto"
-    style="max-width: 600px"
-    :class="'card_' + form.uuid"
-  >
+  <el-form :model="form" label-width="auto" style="max-width: 600px" :class="'card_' + form.uuid">
     <el-form-item label="符号集合:">
       <div class="icon_container">
-        <span
-          @click="handleClickDefault"
-          id="defaultIcon"
-          :class="{ active: form.symbolId == DEFAULT_SYMBOL_ID }"
-        >
-          <svg
-            width="26px"
-            height="26px"
-            fill="red"
-            aria-hidden="true"
-            focusable="false"
-            class=""
-          >
+        <span @click="handleClickDefault" id="defaultIcon" :class="{ active: form.symbolId == DEFAULT_SYMBOL_ID }">
+          <svg width="26px" height="26px" fill="red" aria-hidden="true" focusable="false" class="">
             <use xlink:href="#icon-symbol-one"></use>
           </svg>
           <span>默认</span>
@@ -139,22 +123,10 @@ const handleClickImgOptions = ({
       </div>
     </el-form-item>
     <el-form-item label="符号颜色:">
-      <el-color-picker
-        v-model="form.color"
-        @change="changeColor"
-        @active-change="changeColor"
-        show-alpha
-      />
+      <el-color-picker v-model="form.color" @change="changeColor" @active-change="changeColor" show-alpha />
     </el-form-item>
     <el-form-item label="符号大小:">
-      <el-input-number
-        v-model="form.size"
-        :step="1"
-        :precision="0"
-        :max="50"
-        :min="16"
-        @change="changeSize"
-      />
+      <el-input-number v-model="form.size" :step="1" :precision="0" :max="50" :min="16" @change="changeSize" />
     </el-form-item>
     <el-form-item label="显示名称:">
       <el-switch v-model="form.showName" @change="changeShowName" />

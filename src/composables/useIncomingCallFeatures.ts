@@ -1,5 +1,5 @@
 import { markRaw } from 'vue'
-import type OlMap from 'ol/Map'//地图冲突修改
+import type OlMap from 'ol/Map' //地图冲突修改
 // import type Map from 'ol/Map
 import Overlay from 'ol/Overlay'
 import Feature from 'ol/Feature'
@@ -31,7 +31,7 @@ export type IncomingCallData = {
   accuracyRadius: number
   status: IncomingCallStatus
   updatedAt: string
-  address?: string//地址字段添加
+  address?: string //地址字段添加
 }
 
 export type IncomingCallEnvelope = {
@@ -44,7 +44,7 @@ export type IncomingCallEnvelope = {
   accuracyRadius?: number
   status?: IncomingCallStatus
   updatedAt?: string
-  address?: string//地址字段添加
+  address?: string //地址字段添加
 }
 
 const LOCATION_TYPE_LABELS: Record<IncomingCallLocationType, string> = {
@@ -138,9 +138,15 @@ const POPUP_STYLE_CSS = [
   '  font-weight:600;',
   '  letter-spacing:0.04em;',
   '}',
-  '.' + POPUP_CLASS + '_status.online{background:rgba(30,209,255,0.18);color:#1ed1ff;border:1px solid rgba(30,209,255,0.5);}',
-  '.' + POPUP_CLASS + '_status.offline{background:rgba(122,134,147,0.18);color:#9ba6b3;border:1px solid rgba(122,134,147,0.5);}',
-  '.' + POPUP_CLASS + '_status.lost{background:rgba(255,82,82,0.18);color:#ff7a7a;border:1px solid rgba(255,82,82,0.5);}',
+  '.' +
+    POPUP_CLASS +
+    '_status.online{background:rgba(30,209,255,0.18);color:#1ed1ff;border:1px solid rgba(30,209,255,0.5);}',
+  '.' +
+    POPUP_CLASS +
+    '_status.offline{background:rgba(122,134,147,0.18);color:#9ba6b3;border:1px solid rgba(122,134,147,0.5);}',
+  '.' +
+    POPUP_CLASS +
+    '_status.lost{background:rgba(255,82,82,0.18);color:#ff7a7a;border:1px solid rgba(255,82,82,0.5);}',
   '.' + POPUP_CLASS + '_close{',
   '  width:22px;height:22px;',
   '  border:0;border-radius:4px;',
@@ -231,27 +237,74 @@ const buildPopupHtml = (data: IncomingCallData): string => {
   const statusClass = data.status
   const radius = Number.isFinite(data.accuracyRadius) ? data.accuracyRadius : DEFAULT_ACCURACY_RADIUS_METER
   return (
-    '<div class="' + POPUP_CLASS + '_card">' +
-    '<div class="' + POPUP_CLASS + '_header">' +
-    '<span class="' + POPUP_CLASS + '_kicker">目标终端定位</span>' +
-    '<span class="' + POPUP_CLASS + '_status ' + statusClass + '">' + escapeHtml(statusLabel) + '</span>' +
-    '<button class="' + POPUP_CLASS + '_close" data-action="close" type="button" aria-label="关闭">×</button>' +
+    '<div class="' +
+    POPUP_CLASS +
+    '_card">' +
+    '<div class="' +
+    POPUP_CLASS +
+    '_header">' +
+    '<span class="' +
+    POPUP_CLASS +
+    '_kicker">目标终端定位</span>' +
+    '<span class="' +
+    POPUP_CLASS +
+    '_status ' +
+    statusClass +
+    '">' +
+    escapeHtml(statusLabel) +
+    '</span>' +
+    '<button class="' +
+    POPUP_CLASS +
+    '_close" data-action="close" type="button" aria-label="关闭">×</button>' +
     '</div>' +
-    '<div class="' + POPUP_CLASS + '_body">' +
-    '<div class="' + POPUP_CLASS + '_row"><span class="k">设备号码 (MSISDN)</span><span class="v">' + escapeHtml(data.phone || '—') + '</span></div>' +
-    '<div class="' + POPUP_CLASS + '_row"><span class="k">主叫号码</span><span class="v">' + escapeHtml(data.caller || '—') + '</span></div>' +
-   
+    '<div class="' +
+    POPUP_CLASS +
+    '_body">' +
+    '<div class="' +
+    POPUP_CLASS +
+    '_row"><span class="k">设备号码 (MSISDN)</span><span class="v">' +
+    escapeHtml(data.phone || '—') +
+    '</span></div>' +
+    '<div class="' +
+    POPUP_CLASS +
+    '_row"><span class="k">主叫号码</span><span class="v">' +
+    escapeHtml(data.caller || '—') +
+    '</span></div>' +
     /*来电定位、接警问询T1消息订阅修改*/
     (data.address
-      ? '<div class="' + POPUP_CLASS + '_row"><span class="k">定位地址</span><span class="v">' + escapeHtml(data.address) + '</span></div>'
+      ? '<div class="' +
+        POPUP_CLASS +
+        '_row"><span class="k">定位地址</span><span class="v">' +
+        escapeHtml(data.address) +
+        '</span></div>'
       : '') +
-       /*来电定位、接警问询T1消息订阅修改*/
+    /*来电定位、接警问询T1消息订阅修改*/
 
-    '<div class="' + POPUP_CLASS + '_row"><span class="k">经度 (Longitude)</span><span class="v">' + escapeHtml(formatLng(data.lng)) + '</span></div>' +
-    '<div class="' + POPUP_CLASS + '_row"><span class="k">纬度 (Latitude)</span><span class="v">' + escapeHtml(formatLat(data.lat)) + '</span></div>' +
-    '<div class="' + POPUP_CLASS + '_row"><span class="k">定位类型</span><span class="v">' + escapeHtml(locationTypeLabel) + '</span></div>' +
-    '<div class="' + POPUP_CLASS + '_row"><span class="k">定位精度</span><span class="v">粗定位 半径约 ' + escapeHtml(radius) + ' m</span></div>' +
-    '<div class="' + POPUP_CLASS + '_row"><span class="k">最后更新</span><span class="v">' + escapeHtml(data.updatedAt) + '</span></div>' +
+    '<div class="' +
+    POPUP_CLASS +
+    '_row"><span class="k">经度 (Longitude)</span><span class="v">' +
+    escapeHtml(formatLng(data.lng)) +
+    '</span></div>' +
+    '<div class="' +
+    POPUP_CLASS +
+    '_row"><span class="k">纬度 (Latitude)</span><span class="v">' +
+    escapeHtml(formatLat(data.lat)) +
+    '</span></div>' +
+    '<div class="' +
+    POPUP_CLASS +
+    '_row"><span class="k">定位类型</span><span class="v">' +
+    escapeHtml(locationTypeLabel) +
+    '</span></div>' +
+    '<div class="' +
+    POPUP_CLASS +
+    '_row"><span class="k">定位精度</span><span class="v">粗定位 半径约 ' +
+    escapeHtml(radius) +
+    ' m</span></div>' +
+    '<div class="' +
+    POPUP_CLASS +
+    '_row"><span class="k">最后更新</span><span class="v">' +
+    escapeHtml(data.updatedAt) +
+    '</span></div>' +
     '</div>' +
     '</div>'
   )
@@ -316,18 +369,17 @@ const normalizeEnvelope = (raw: unknown): IncomingCallData | null => {
     lng,
     lat,
     locationType,
-    accuracyRadius: Number.isFinite(accuracyRadius) && accuracyRadius > 0
-      ? accuracyRadius
-      : DEFAULT_ACCURACY_RADIUS_METER,
+    accuracyRadius:
+      Number.isFinite(accuracyRadius) && accuracyRadius > 0 ? accuracyRadius : DEFAULT_ACCURACY_RADIUS_METER,
     status,
     updatedAt: env.updatedAt ?? env.updated_at ?? dayjs().format('YYYY-MM-DD HH:mm:ss'),
-    address: env.address == null ? undefined : String(env.address),//地址字段添加
+    address: env.address == null ? undefined : String(env.address), //地址字段添加
   }
 }
 
 export type MountIncomingCallFeaturesParams = {
   // map?: Map
-  map?: OlMap//地图冲突修改
+  map?: OlMap //地图冲突修改
   visible?: boolean
   onError?: (error: unknown) => void
 }
@@ -358,19 +410,23 @@ export const mountIncomingCallFeatures = (
   const pointSource = new VectorSource()
   const circleSource = new VectorSource()
 
-  const circleLayer = markRaw(new VectorLayer({
-    source: circleSource,
-    className: 'INCOMING_CALL_CIRCLE_LAYER',
-    zIndex: CIRCLE_LAYER_ZINDEX,
-    visible: params.visible ?? true,
-  }))
+  const circleLayer = markRaw(
+    new VectorLayer({
+      source: circleSource,
+      className: 'INCOMING_CALL_CIRCLE_LAYER',
+      zIndex: CIRCLE_LAYER_ZINDEX,
+      visible: params.visible ?? true,
+    }),
+  )
 
-  const layer = markRaw(new VectorLayer({
-    source: pointSource,
-    className: 'INCOMING_CALL_POINT_LAYER',
-    zIndex: POINT_LAYER_ZINDEX,
-    visible: params.visible ?? true,
-  }))
+  const layer = markRaw(
+    new VectorLayer({
+      source: pointSource,
+      className: 'INCOMING_CALL_POINT_LAYER',
+      zIndex: POINT_LAYER_ZINDEX,
+      visible: params.visible ?? true,
+    }),
+  )
 
   map.addLayer(circleLayer)
   map.addLayer(layer)
@@ -379,12 +435,14 @@ export const mountIncomingCallFeatures = (
   const popupElement = document.createElement('div')
   popupElement.className = POPUP_CLASS
 
-  const overlay = markRaw(new Overlay({
-    element: popupElement,
-    positioning: 'bottom-center',
-    offset: [0, -28],
-    stopEvent: true,
-  }))
+  const overlay = markRaw(
+    new Overlay({
+      element: popupElement,
+      positioning: 'bottom-center',
+      offset: [0, -28],
+      stopEvent: true,
+    }),
+  )
   map.addOverlay(overlay)
 
   const onCloseButtonClick = (event: Event) => {
@@ -512,11 +570,9 @@ export const mountIncomingCallFeatures = (
     const existingPoint = pointSource.getFeatureById(data.callId) as Feature | null
     if (existingPoint) {
       existingPoint.set('data', data)
-      ;(existingPoint.getGeometry() as Point).setCoordinates(
-        olProj.fromLonLat([data.lng, data.lat]),
-      )
+      ;(existingPoint.getGeometry() as Point).setCoordinates(olProj.fromLonLat([data.lng, data.lat]))
       const currentTween = callPulseTweens.get(data.callId)
-      const currentScale = currentTween ? (currentTween.targets()[0] as any)?.scale ?? 1 : 1
+      const currentScale = currentTween ? ((currentTween.targets()[0] as any)?.scale ?? 1) : 1
       existingPoint.setStyle(makePointStyle(data.status, currentScale))
     } else {
       pointSource.addFeature(renderPointFeature(data))

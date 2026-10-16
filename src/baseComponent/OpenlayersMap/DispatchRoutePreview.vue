@@ -17,18 +17,28 @@ const routeColorClass = (preferences: RoutePreference[]) => {
     <header><span class="route-symbol">♧</span> 接警处置台路线预览</header>
     <div class="station-list">
       <section v-for="station in stations" :key="station.stationId" class="station-route-group">
-      <div class="station-title">起点：{{ station.stationName }}<span> · 终点：当前警情点</span></div>
-      <p v-if="loading && !station.alternatives.length" class="route-loading" role="status">正在获取候选路线…</p>
-      <p v-else-if="station.error" class="route-error">{{ station.error }}</p>
-      <div v-else role="radiogroup" :aria-label="`${station.stationName}路线选择`">
-        <button v-for="(route, index) in station.alternatives" :key="route.id" type="button"
-          role="radio" :aria-checked="station.selectedId === route.id"
-          :class="['route-choice', routeColorClass(route.preferences), { selected: station.selectedId === route.id }]"
-          @click="$emit('select', station.stationId, route.id)">
-          <span class="route-label"><i />{{ route.preferences.length ? route.preferences.map(key => ROUTE_PREFERENCE_LABELS[key]).join(' / ') : `备选路线 ${index + 1}` }}</span>
-          <span class="route-metrics">{{ Math.ceil(route.etaSeconds / 60) }} 分钟 · {{ (route.result.distanceMeters / 1000).toFixed(1) }} km</span>
-        </button>
-      </div>
+        <div class="station-title">起点：{{ station.stationName }}<span> · 终点：当前警情点</span></div>
+        <p v-if="loading && !station.alternatives.length" class="route-loading" role="status">正在获取候选路线…</p>
+        <p v-else-if="station.error" class="route-error">{{ station.error }}</p>
+        <div v-else role="radiogroup" :aria-label="`${station.stationName}路线选择`">
+          <button
+            v-for="(route, index) in station.alternatives"
+            :key="route.id"
+            type="button"
+            role="radio"
+            :aria-checked="station.selectedId === route.id"
+            :class="['route-choice', routeColorClass(route.preferences), { selected: station.selectedId === route.id }]"
+            @click="$emit('select', station.stationId, route.id)"
+          >
+            <span class="route-label"
+              ><i />{{ route.preferences.length ? route.preferences.map(key => ROUTE_PREFERENCE_LABELS[key]).join(' / ') : `备选路线 ${index + 1}` }}</span
+            >
+            <span class="route-metrics"
+              >{{ Math.ceil(route.etaSeconds / 60) }} 分钟 ·
+              {{ (route.result.distanceMeters / 1000).toFixed(1) }} km</span
+            >
+          </button>
+        </div>
       </section>
     </div>
   </aside>

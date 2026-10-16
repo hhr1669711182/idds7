@@ -1,13 +1,13 @@
-import { defineStore } from "pinia";
-import { MODAL_NULL } from "../const/const.modals";
+import { defineStore } from 'pinia'
+import { MODAL_NULL } from '../const/const.modals'
 
-export const useModalStore = defineStore("modalStore", {
+export const useModalStore = defineStore('modalStore', {
   state: () => {
-    return { type: MODAL_NULL };
+    return { type: MODAL_NULL }
   },
   actions: {
     setModalType(type: string) {
-      this.type = type;
+      this.type = type
     },
   },
-});
+})

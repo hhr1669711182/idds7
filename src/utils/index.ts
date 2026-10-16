@@ -1,10 +1,10 @@
-export * from "./mitt.ts";
+export * from './mitt.ts'
 
-export * from "./svgTools.ts";
+export * from './svgTools.ts'
 
-export * from "./mapTool.ts";
+export * from './mapTool.ts'
 
-export * from "./crypto.ts";
+export * from './crypto.ts'
 
-export * from "./coordTransform.ts";
-export * from "./clipboard.ts";
+export * from './coordTransform.ts'
+export * from './clipboard.ts'

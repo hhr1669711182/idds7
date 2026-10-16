@@ -294,28 +294,16 @@ const popupConfirmHandle = () => {
     <div :class="{ active: btnState }" @click="() => confirmHandle()">完成</div>
   </div>
 
-  <div
-    class="point_route_popup"
-    ref="popup"
-    v-show="PathResult && PathResult.length"
-  >
+  <div class="point_route_popup" ref="popup" v-show="PathResult && PathResult.length">
     <p class="head">路线</p>
     <div>
       <div class="item">
         <div>名称</div>
-        <el-input
-          v-model="form.name"
-          style="width: 240px"
-          placeholder="输入路径名称"
-        />
+        <el-input v-model="form.name" style="width: 240px" placeholder="输入路径名称" />
       </div>
       <div class="item">
         <div>备注</div>
-        <el-input
-          v-model="form.mark"
-          style="width: 240px"
-          placeholder="输入路线附加信息"
-        />
+        <el-input v-model="form.mark" style="width: 240px" placeholder="输入路线附加信息" />
       </div>
     </div>
     <div class="footer">

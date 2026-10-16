@@ -19,5 +19,5 @@ export const alovaGeoInstance = createAlova({
     } catch {
       return text
     }
-  }
+  },
 })

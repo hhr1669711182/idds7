@@ -45,48 +45,28 @@ const pickNonEmptyString = (...values: unknown[]): string => {
  * 服务本身为 EPSG:4326，坐标无需再做 GCJ-02 转换；
  * 优先取属性表中的 longitude/latitude，缺失时回退点几何坐标。
  */
-export const normalizeFireStation = (
-  feature: WFSFeature,
-): ZhxfStationData | null => {
+export const normalizeFireStation = (feature: WFSFeature): ZhxfStationData | null => {
   const properties = feature?.properties ?? {}
   if (properties.is_deleted === true) return null
 
   const coordinates = feature?.geometry?.coordinates
-  const lng = pickFiniteNumber(
-    properties.longitude,
-    properties.gisX,
-    coordinates?.[0],
-  )
-  const lat = pickFiniteNumber(
-    properties.latitude,
-    properties.gisY,
-    coordinates?.[1],
-  )
+  const lng = pickFiniteNumber(properties.longitude, properties.gisX, coordinates?.[0])
+  const lat = pickFiniteNumber(properties.latitude, properties.gisY, coordinates?.[1])
   if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null
 
   const id = pickNonEmptyString(properties.id, feature?.id)
   if (!id) return null
 
-  const phone = pickNonEmptyString(
-    properties.contacter_phone,
-    properties.dispatch_phone,
-    properties.phone,
-  )
+  const phone = pickNonEmptyString(properties.contacter_phone, properties.dispatch_phone, properties.phone)
 
   return {
     id,
     lng,
     lat,
     title:
-      pickNonEmptyString(
-        properties.org_name,
-        properties.simple_org_name,
-        properties.org_simple,
-        properties.name,
-      ) || '未命名消防站',
-    address:
-      pickNonEmptyString(properties.org_address, properties.address) ||
-      '暂无地址',
+      pickNonEmptyString(properties.org_name, properties.simple_org_name, properties.org_simple, properties.name) ||
+      '未命名消防站',
+    address: pickNonEmptyString(properties.org_address, properties.address) || '暂无地址',
     phone: phone || undefined,
     deviceTotal: pickFiniteNumber(properties.device_total) || 0,
     deviceOnline: pickFiniteNumber(properties.device_online) || 0,
@@ -96,9 +76,7 @@ export const normalizeFireStation = (
 }
 
 /** 直接请求 WFS 获取主管队站列表 */
-export const fetchFireStations = async (
-  maxFeatures = 1000,
-): Promise<ZhxfStationData[]> => {
+export const fetchFireStations = async (maxFeatures = 1000): Promise<ZhxfStationData[]> => {
   const data = (await geoserverApi.getWFSFeatures(
     {
       typeName: FIRE_STATION_TYPE_NAME,
@@ -109,9 +87,7 @@ export const fetchFireStations = async (
     'gis',
   )) as WFSFeatureCollection
 
-  return (data?.features ?? [])
-    .map(normalizeFireStation)
-    .filter((item): item is ZhxfStationData => item !== null)
+  return (data?.features ?? []).map(normalizeFireStation).filter((item): item is ZhxfStationData => item !== null)
 }
 
 // 跨组件共享同一份队站数据与请求（NavPanel / map / dispatchMap 复用缓存）
@@ -172,9 +148,7 @@ export const useFireStations = () => {
   }
 
   /** 确保队站已加载后，返回距目标点最近的队站 */
-  const getNearestFireStation = async (
-    target: [number, number],
-  ): Promise<NearestFireStation | null> => {
+  const getNearestFireStation = async (target: [number, number]): Promise<NearestFireStation | null> => {
     const list = loaded.value ? stations.value : await load()
     return findNearestFireStation(target, list)
   }

@@ -129,24 +129,10 @@ onMounted(() => {
 <template>
   <div class="container">
     <div class="setPanel">
-      <el-select
-        v-model="textFamily"
-        placeholder="选择字体"
-        style="width: 200px; margin-right: 15px"
-      >
-        <el-option
-          v-for="item in options"
-          :key="item.value"
-          :label="item.label"
-          :value="item.value"
-        >
-        </el-option>
+      <el-select v-model="textFamily" placeholder="选择字体" style="width: 200px; margin-right: 15px">
+        <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value"> </el-option>
       </el-select>
-      <el-input
-        v-model="text"
-        placeholder="输入文字"
-        style="width: 120px; margin-right: 15px"
-      ></el-input>
+      <el-input v-model="text" placeholder="输入文字" style="width: 120px; margin-right: 15px"></el-input>
       <el-button type="primary" @click="handleRenderText">确认</el-button>
     </div>
     <div id="canvas">

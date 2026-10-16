@@ -40,9 +40,7 @@ export type MountPolygonLayerOptions<T> = {
 /**
  * 通用面图层工厂：挂载矢量面图层，支持按 key 增量 upsert/remove。
  */
-export const mountPolygonLayer = <T>(
-  params: MountPolygonLayerOptions<T>,
-): PolygonLayerManager<T> => {
+export const mountPolygonLayer = <T>(params: MountPolygonLayerOptions<T>): PolygonLayerManager<T> => {
   const {
     map,
     items,

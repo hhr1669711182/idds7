@@ -20,10 +20,10 @@ import { ElMessageBox } from 'element-plus'
 import { useIncidentLocationStore } from '@/store/useIncidentLocationStore'
 import { useMessageStore } from '@/store/useMessageStore'
 import type { MessageEnvelope } from '@/types/message'
-import type { AddressUpdatedData } from '@/Control/incidentLocationMessage'
+import type { AddressUpdatedData } from '@/controller/core/protocol/IncidentLocationProtocol'
 import type { AmapRealtimeNav } from '@/baseComponent/amap/useAmapTools'
 import { MESSAGE_CHANNEL, MESSAGE_EVENT_KEY, MESSAGE_SYSTEM } from '@/const/const.message.type'
-import { getGisPointChannel } from '@/Control/gisPointChannel'
+import { getGisPointChannel } from '@/composables/useGisPointSelection'
 
 const RELOCATE_SKETCH_LAYER_CLASS = 'incident-relocate-sketch'
 const RELOCATE_SKETCH_Z_INDEX = 9999
@@ -63,18 +63,20 @@ export const createIncidentRelocate = (mapInstance: OlMap, nav: AmapRealtimeNav)
   const ensureSketchLayer = () => {
     if (sketchLayer) return
     const source = markRaw(new VectorSource({ wrapX: false }))
-    sketchLayer = markRaw(new VectorLayer({
-      source,
-      className: RELOCATE_SKETCH_LAYER_CLASS,
-      zIndex: RELOCATE_SKETCH_Z_INDEX,
-      style: new Style({
-        image: new CircleStyle({
-          radius: 8,
-          fill: new Fill({ color: '#1890ff' }),
-          stroke: new Stroke({ color: '#fff', width: 2 }),
+    sketchLayer = markRaw(
+      new VectorLayer({
+        source,
+        className: RELOCATE_SKETCH_LAYER_CLASS,
+        zIndex: RELOCATE_SKETCH_Z_INDEX,
+        style: new Style({
+          image: new CircleStyle({
+            radius: 8,
+            fill: new Fill({ color: '#1890ff' }),
+            stroke: new Stroke({ color: '#fff', width: 2 }),
+          }),
         }),
       }),
-    }))
+    )
     mapInstance.addLayer(sketchLayer)
   }
 
@@ -85,11 +87,18 @@ export const createIncidentRelocate = (mapInstance: OlMap, nav: AmapRealtimeNav)
 
   /** 停止选点：移除 Draw 交互、清空临时图层、关闭待确认弹窗、重置状态 */
   const stop = () => {
-    if (resultRetryTimer) { clearInterval(resultRetryTimer); resultRetryTimer = null }
+    if (resultRetryTimer) {
+      clearInterval(resultRetryTimer)
+      resultRetryTimer = null
+    }
     // 若确认弹窗仍打开（受理席取消/ACK 到达打断选点），强制关闭，避免用户误点"是"继续提交
     if (hasPendingConfirm) {
       hasPendingConfirm = false
-      try { ElMessageBox.close() } catch { /* ignore */ }
+      try {
+        ElMessageBox.close()
+      } catch {
+        /* ignore */
+      }
     }
     if (draw) {
       mapInstance.removeInteraction(draw)
@@ -105,13 +114,7 @@ export const createIncidentRelocate = (mapInstance: OlMap, nav: AmapRealtimeNav)
    * 回传受理席：经 BroadcastChannel 发送 PICK_RESULT（gis-point-selection 协议）。
    * 1.5s 重试直至收到 ACK（APPLIED/FAILED/CANCEL 由 gisPointChannel 统一处理并停止重试）。
    */
-  const sendPickResult = (
-    token: RelocateToken,
-    incidentId: string,
-    lng: number,
-    lat: number,
-    address: string,
-  ) => {
+  const sendPickResult = (token: RelocateToken, incidentId: string, lng: number, lat: number, address: string) => {
     const pointInfo = { x: String(lng), y: String(lat), address }
     const send = () => {
       try {
@@ -143,16 +146,9 @@ export const createIncidentRelocate = (mapInstance: OlMap, nav: AmapRealtimeNav)
    * 必须走 handlers 而非直接调 store：直接调 store 会跳过 clearAll，
    * 导致上一次（如 WS ADDRESS_UPDATED 路径）的点位和圆残留，且新点位圆不显示。
    */
-  const executeDispatchLocationFlow = (
-    incidentId: string,
-    lng: number,
-    lat: number,
-    address: string | null,
-  ) => {
+  const executeDispatchLocationFlow = (incidentId: string, lng: number, lat: number, address: string | null) => {
     const currentVersion = incidentLocationStore.versions[incidentId]
-    const nextVersion = typeof currentVersion === 'number' && currentVersion > 0
-      ? currentVersion + 1
-      : 1
+    const nextVersion = typeof currentVersion === 'number' && currentVersion > 0 ? currentVersion + 1 : 1
 
     const envelope: MessageEnvelope<AddressUpdatedData> = {
       id: `relocate-${incidentId}-${Date.now()}`,
@@ -176,12 +172,9 @@ export const createIncidentRelocate = (mapInstance: OlMap, nav: AmapRealtimeNav)
       },
     }
     // 经 ingest 投递：走阶段门控 → handlers.onAddressUpdated（clearAll + addressCache）→ store.onAddressUpdated
-    msg.ingest(
-      envelope,
-      MESSAGE_CHANNEL.BROADCAST_CHANNEL,
-      MESSAGE_SYSTEM.IDS_SEAT_WEB,
-      { source: 'incident-relocate' },
-    )
+    msg.ingest(envelope, MESSAGE_CHANNEL.BROADCAST_CHANNEL, MESSAGE_SYSTEM.IDS_SEAT_WEB, {
+      source: 'incident-relocate',
+    })
   }
 
   /**
@@ -223,11 +216,7 @@ export const createIncidentRelocate = (mapInstance: OlMap, nav: AmapRealtimeNav)
       const geom = e.feature?.getGeometry()
       if (!geom) return
       const coord = geom.getFirstCoordinate()
-      const [lng, lat] = transform(
-        coord,
-        mapInstance.getView().getProjection(),
-        'EPSG:4326',
-      )
+      const [lng, lat] = transform(coord, mapInstance.getView().getProjection(), 'EPSG:4326')
       if (!Number.isFinite(lng) || !Number.isFinite(lat)) return
 
       isConfirming = true
@@ -236,24 +225,26 @@ export const createIncidentRelocate = (mapInstance: OlMap, nav: AmapRealtimeNav)
         `确定将警情定位到此位置吗？\n经度: ${lng.toFixed(6)}\n纬度: ${lat.toFixed(6)}`,
         '警情二次定位',
         { confirmButtonText: '是', cancelButtonText: '否', type: 'info' },
-      ).then(async () => {
-        // 点击"是"：逆地址解析 → 回传受理席 → 执行原 dispatch 阶段警情定位流程
-        hasPendingConfirm = false
-        if (activeIncidentId) {
-          // 逆地址解析失败不阻断定位流程，地址置空
-          const address = await nav.reverseGeocode([lng, lat]).catch(() => null)
-          if (activeToken) {
-            sendPickResult(activeToken, activeIncidentId, lng, lat, address ?? '')
+      )
+        .then(async () => {
+          // 点击"是"：逆地址解析 → 回传受理席 → 执行原 dispatch 阶段警情定位流程
+          hasPendingConfirm = false
+          if (activeIncidentId) {
+            // 逆地址解析失败不阻断定位流程，地址置空
+            const address = await nav.reverseGeocode([lng, lat]).catch(() => null)
+            if (activeToken) {
+              sendPickResult(activeToken, activeIncidentId, lng, lat, address ?? '')
+            }
+            executeDispatchLocationFlow(activeIncidentId, lng, lat, address)
           }
-          executeDispatchLocationFlow(activeIncidentId, lng, lat, address)
-        }
-        stop()
-      }).catch(() => {
-        // 点击"否"（或被受理席 ACK/取消强制关闭）：清除已绘点，继续选点
-        hasPendingConfirm = false
-        clearSketch()
-        isConfirming = false
-      })
+          stop()
+        })
+        .catch(() => {
+          // 点击"否"（或被受理席 ACK/取消强制关闭）：清除已绘点，继续选点
+          hasPendingConfirm = false
+          clearSketch()
+          isConfirming = false
+        })
     })
     mapInstance.addInteraction(draw)
     console.info('[incident-relocate] 已启动选点模式', { incidentId })

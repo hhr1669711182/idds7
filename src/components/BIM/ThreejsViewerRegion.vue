@@ -2,7 +2,7 @@
   <div class="full-screen-div">
     <!-- Three.js 画布容器 -->
     <div ref="container" class="three-canvas"></div>
-    <div class="fire-detail-card"> 
+    <div class="fire-detail-card">
       <div class="card-header">
         <div>
           <div class="building-title">🔥 {{ formData.buildingName }}</div>
@@ -17,8 +17,14 @@
         <div class="info-row">
           <label class="label">楼层总数</label>
           <div class="input-wrapper">
-            <input type="number" class="input-field" v-model.number="formData.floor" min="1" :max="formData.totalFloor"
-              @change="handleFloorChange" />
+            <input
+              type="number"
+              class="input-field"
+              v-model.number="formData.floor"
+              min="1"
+              :max="formData.totalFloor"
+              @change="handleFloorChange"
+            />
             <span class="suffix">/ {{ formData.totalFloor }} 层</span>
           </div>
         </div>
@@ -27,8 +33,14 @@
         <div class="info-row">
           <label class="label">起火楼层</label>
           <div class="input-wrapper">
-            <input type="number" class="input-field" v-model.number="formData.floor" min="1" :max="formData.totalFloor"
-              @change="handleFloorChange" />
+            <input
+              type="number"
+              class="input-field"
+              v-model.number="formData.floor"
+              min="1"
+              :max="formData.totalFloor"
+              @change="handleFloorChange"
+            />
             <span class="suffix">/ {{ formData.totalFloor }} 层</span>
           </div>
         </div>
@@ -37,8 +49,13 @@
         <div class="info-row">
           <label class="label">被困人数</label>
           <div class="input-wrapper">
-            <input type="number" class="input-field" v-model.number="formData.trapped" @change="handleTrappedChange"
-              min="0" />
+            <input
+              type="number"
+              class="input-field"
+              v-model.number="formData.trapped"
+              @change="handleTrappedChange"
+              min="0"
+            />
             <span class="suffix">人</span>
           </div>
         </div>
@@ -48,10 +65,10 @@
           <label class="label">烟雾情况</label>
           <div class="select-wrapper">
             <select class="select-field" v-model="formData.smoke" @change="handleSmokeChange">
-              <option value=0>无</option>
-              <option value=1>少量</option>
-              <option value=2>中度</option>
-              <option value=3>浓重</option>
+              <option value="0">无</option>
+              <option value="1">少量</option>
+              <option value="2">中度</option>
+              <option value="3">浓重</option>
             </select>
             <span class="arrow-icon">▼</span>
           </div>
@@ -114,7 +131,7 @@ const toggleCard = () => {
 }
 
 const controlMicroRegion = async (data) => {
-  await updateThree(allFloors, dispatchStore, route, data);  
+  await updateThree(allFloors, dispatchStore, route, data);
 
 }
 
@@ -173,7 +190,7 @@ onDeactivated(() => {
 onMounted(async () => {
   if (container.value) {
     allFloors=[]
-    await initThree(container, allFloors, dispatchStore, route);  
+    await initThree(container, allFloors, dispatchStore, route);
     formData.value.totalFloor =  allFloors.length
     formData.value.floor =  allFloors.length
     updateFireBuilding(formData.value.floor - 1, allFloors)
@@ -183,7 +200,7 @@ onMounted(async () => {
 
 
 onUnmounted(() => {
-  stopRender()  
+  stopRender()
   disposeResource(container);
   window.removeEventListener("resize", handleResize);
 });

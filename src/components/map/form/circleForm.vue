@@ -72,17 +72,17 @@ const changeWidth = (width) => {
 </script>
 
 <template>
-    <el-form :model="form" label-width="auto" style="max-width: 600px" :class="'card_' + form.uuid">
-        <el-form-item label="颜色:">
-            <el-color-picker v-model="form.color" @change="changeColor" @active-change="changeColor" show-alpha />
-        </el-form-item>
-        <el-form-item label="透明度:">
-            <slider :value="form.opacity" :min="1" :step="1" :max="100" @change="changeOpacity" />
-        </el-form-item>
-        <el-form-item label="轮廓宽:">
-            <slider :value="form.width" :min="1" :max="12" @change="changeWidth" />
-        </el-form-item>
-    </el-form>
+  <el-form :model="form" label-width="auto" style="max-width: 600px" :class="'card_' + form.uuid">
+    <el-form-item label="颜色:">
+      <el-color-picker v-model="form.color" @change="changeColor" @active-change="changeColor" show-alpha />
+    </el-form-item>
+    <el-form-item label="透明度:">
+      <slider :value="form.opacity" :min="1" :step="1" :max="100" @change="changeOpacity" />
+    </el-form-item>
+    <el-form-item label="轮廓宽:">
+      <slider :value="form.width" :min="1" :max="12" @change="changeWidth" />
+    </el-form-item>
+  </el-form>
 </template>
 
 <style scoped>

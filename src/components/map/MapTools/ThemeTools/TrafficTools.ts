@@ -6,20 +6,20 @@
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\components\map\MapTools\ThemeTools\TrafficTools.ts
  */
-import Map from "ol/Map";
-import TileLayer from "ol/layer/Tile.js";
-import XYZ from "ol/source/XYZ.js";
+import Map from 'ol/Map'
+import TileLayer from 'ol/layer/Tile.js'
+import XYZ from 'ol/source/XYZ.js'
 
-import { createAmapLayer } from "@/baseComponent/tools/amap";
+import { createAmapLayer } from '@/baseComponent/tools/amap'
 
 export class TrafficTools {
-  map: Map;
-  trafficLayer: TileLayer<XYZ> | null = null;
-  visible: boolean = false;
+  map: Map
+  trafficLayer: TileLayer<XYZ> | null = null
+  visible: boolean = false
 
   constructor(map: Map) {
-    this.map = map;
-    this.create();
+    this.map = map
+    this.create()
   }
 
   create() {
@@ -28,21 +28,21 @@ export class TrafficTools {
         mapType: 'traffic',
         visible: false,
       })
-        this.map.addLayer(this.trafficLayer);
+      this.map.addLayer(this.trafficLayer)
     }
   }
 
   setVisible(visible: boolean) {
-    this.visible = visible;
+    this.visible = visible
     if (this.trafficLayer) {
-      this.trafficLayer.setVisible(visible);
+      this.trafficLayer.setVisible(visible)
     }
   }
 
   remove() {
     if (this.trafficLayer) {
-      this.map.removeLayer(this.trafficLayer);
-      this.trafficLayer = null;
+      this.map.removeLayer(this.trafficLayer)
+      this.trafficLayer = null
     }
   }
 }
