@@ -4,6 +4,7 @@ import * as turf from '@turf/turf'
 import { lonLatToLocalCoord, loadGLTF } from './commonThree.js'
 import { commonSetting } from './commonSetting.js'
 import { createClearTextSprite } from './createAroundFacilities.js'
+import { assetUrls } from '@/const/assetPaths'
 
 const WALL_HEIGHT = commonSetting.wallAndFloor.WALL_HEIGHT
 const WALL_THICKNESS = commonSetting.wallAndFloor.WALL_THICKNESS
@@ -212,7 +213,7 @@ function offsetPolygon(points, offsetDistance) {
 
 async function loadExtinguisher(floor) {
   const addH = floor * (FLOOR_THICKNESS + WALL_HEIGHT)
-  const gltf = await loadGLTF('/model3d/xf_extinguisher.glb')
+  const gltf = await loadGLTF(assetUrls.extinguisher)
   const model = gltf.scene
   // model.scale.setScalar(0.0002);
   model.scale.set(0.00025, 0.0002, 0.00025) // 缩放模型（根据实际大小调整）

@@ -33,8 +33,9 @@ const displayZoom = computed(() => {
   top: calc(100% - 180px);
   left: 0.5em;
   z-index: 60;
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.4);
+  border-radius: var(--radius-md);
+  background-color: var(--widget-bg);
+  backdrop-filter: blur(var(--glass-blur));
   pointer-events: auto;
 }
 
@@ -45,24 +46,11 @@ const displayZoom = computed(() => {
   width: 36px;
   height: 36px;
   margin: 1px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   border: 0;
-  background-color: #fff;
-  color: #666666;
+  background-color: var(--panel-bg-solid);
+  color: var(--text-secondary);
   font: bold 1.14em/1.375em sans-serif;
-}
-
-html[data-theme="NIGHT"] {
-  .zoom_level_control {
-    background-color: #1a1f2e;
-    /* border: 1px solid var(--panel-border);
-    backdrop-filter: blur(4px);
-    border-radius: 4px; */
-  }
-  .zoom_level_value {
-    background-color: #1a1f2e;
-    color: #fff;
-  }
 }
 
 :global(.is-mobile) .zoom_level_control {

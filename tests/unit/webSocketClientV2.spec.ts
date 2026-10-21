@@ -93,6 +93,29 @@ describe('V2 WebSocketClient：Given 鉴权与重连 Then 不再对 denied 无�
     client.disconnect()
   })
 
+  it('Given 未配置 connectAuth When 连接打开 Then 沿用「打开即用」：立即回调 onOpen 并发送 initSend', () => {
+    const onOpen = vi.fn()
+    const client = new WebSocketClient('ws://host/ws', {
+      onOpen,
+      initSend: [{ action: 'subscribe', topic: 'legacy/8001' }],
+    })
+    const socket = FakeWebSocket.instances[0]!
+    socket.open()
+    expect(onOpen).toHaveBeenCalledOnce()
+    expect(JSON.parse(socket.sent[0] as string)).toEqual({ action: 'subscribe', topic: 'legacy/8001' })
+    client.disconnect()
+  })
+
+  it('Given 无鉴权模式 When 收到 action 帧 Then 仍按业务帧透传给 onMessage', () => {
+    const onMessage = vi.fn()
+    const client = new WebSocketClient('ws://host/ws', { onMessage })
+    const socket = FakeWebSocket.instances[0]!
+    socket.open()
+    socket.emit({ action: 'connected' })
+    expect(onMessage).toHaveBeenCalledOnce()
+    client.disconnect()
+  })
+
   it('Given 订阅回执 When ok 与 denied 到达 Then 分别回调且鉴权前不回调 onOpen', () => {
     const onOpen = vi.fn()
     const onReady = vi.fn()

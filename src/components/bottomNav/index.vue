@@ -23,9 +23,9 @@
 
 <script setup lang="ts">
 import { useTabsStore } from "@/store";
-import ljImg from "@/assets/svg/lj.svg";
-import xcImg from "@/assets/svg/xc.svg";
-import zjImg from "@/assets/svg/jz.svg";
+import ljImg from "@/assets/icons-svg/lj.svg";
+import xcImg from "@/assets/icons-svg/xc.svg";
+import zjImg from "@/assets/icons-svg/jz.svg";
 const tabsStore = useTabsStore();
 const { activeTab } = storeToRefs(tabsStore);
 const tabs = ref([
@@ -73,7 +73,7 @@ const handleClick = (tab: any) => {
   pointer-events: none;
   width: 100%;
   height: 40px;
-  background: url("@/assets/bottomBg.png") center no-repeat;
+  background: url("@/assets/ui/buttons/bottomBg.png") center no-repeat;
   background-size: 100% 100%;
 
   flex: 1;
@@ -91,7 +91,7 @@ const handleClick = (tab: any) => {
     PingFang SC;
   font-weight: 500;
   font-size: 14px;
-  color: #ffffff;
+  color: var(--text-primary);
   line-height: 20px;
   text-align: left;
   font-style: normal;

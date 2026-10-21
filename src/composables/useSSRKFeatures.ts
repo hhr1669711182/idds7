@@ -1,4 +1,4 @@
-﻿import { markRaw } from 'vue'
+import { markRaw } from 'vue'
 import type Map from 'ol/Map'
 import Feature from 'ol/Feature'
 import VectorLayer from 'ol/layer/Vector'
@@ -7,8 +7,8 @@ import { Style, Fill, Stroke, Text } from 'ol/style'
 import GeoJSON from 'ol/format/GeoJSON'
 import { usePanelStore } from '@/store/usePanelStore'
 import { TEMP_FRONTEND_LAYER_IDS } from '@/baseComponent/OpenlayersMap/layers'
-import { geoserverApi } from '@/service/geoserver'
-// import ssrkData from '@/data/ssrk.json'
+import { geoserverApi } from '@/apis/geoserver'
+// import ssrkData from '@/assets/geo/ssrk.json'
 
 export type SSRKItem = {
   zone_id: string

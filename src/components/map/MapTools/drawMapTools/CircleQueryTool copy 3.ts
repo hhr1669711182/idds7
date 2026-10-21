@@ -1,4 +1,4 @@
-﻿import { markRaw, toRaw } from 'vue'
+import { markRaw, toRaw } from 'vue'
 import { Draw, Modify } from 'ol/interaction'
 // import TileLayer from "ol/layer/Tile";
 // import TileWMS from "ol/source/TileWMS";
@@ -16,7 +16,7 @@ import { Style, Stroke, Fill } from 'ol/style'
 import { unByKey } from 'ol/Observable'
 import { EventsKey } from 'ol/events'
 import Overlay from 'ol/Overlay'
-import { geoserverApi } from '@/service/geoserver'
+import { geoserverApi } from '@/apis/geoserver'
 import Collection from 'ol/Collection'
 import { LAYER_NAMES } from '@/baseComponent/OpenlayersMap/layers'
 

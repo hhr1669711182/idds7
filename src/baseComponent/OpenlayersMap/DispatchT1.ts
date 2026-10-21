@@ -27,7 +27,7 @@ import {
   type AmapDrivingResult,
   type AmapTmcStatus,
 } from '@/baseComponent/amap/useAmapTools'
-import { createRouteLineStyle, getStyle, MAP_ICON_SRC } from '@/baseComponent/amap/featureStyle'
+import { createRouteLineStyle, getStyle, MAP_ICON_SRC } from '@/baseComponent/OpenlayersMap/style'
 import { DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS } from '@/baseComponent/OpenlayersMap/FeatureClickQuery'
 import { mountPolygonLayer, type PolygonLayerManager } from '@/baseComponent/OpenlayersMap/mountPolygonLayer'
 import type { CarLocationBatch } from '@/controller/core/protocol/LegacyMessageProtocol'
@@ -45,7 +45,7 @@ import {
   type DispatchVehicleState,
   type DispatchWorkflowStatus,
 } from '@/controller/core/business/DispatchController1'
-import { geoserverApi } from '@/service/geoserver'
+import { geoserverApi } from '@/apis/geoserver'
 import {
   listDispatchVehicles,
   dispatchVehiclesBatch,
@@ -54,7 +54,7 @@ import {
   queryDispatchFormation,
   DISPATCH_FORMATION_VERSION,
   type DispatchVehiclesRequest,
-} from '@/service/methods/dispatchVehicles'
+} from '@/apis/dispatchVehicles'
 import {
   STATION_LAYER_NAME as DISPATCH_T1_STATION_LAYER,
   JURISDICTION_LAYER_NAME as DISPATCH_T1_JURISDICTION_LAYER,

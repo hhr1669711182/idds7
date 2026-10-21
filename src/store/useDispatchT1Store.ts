@@ -69,7 +69,7 @@ export interface DispatchFlowState {
   canDispatch: boolean
   searchRadiusMeters: number
   error?: string
-  dispatchResult?: import('@/service/methods/dispatchVehicles').DispatchConfirmResult
+  dispatchResult?: import('@/apis/dispatchVehicles').DispatchConfirmResult
 }
 
 export interface DispatchVehicleCommand {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import OLMap from 'ol/Map'
 import View from 'ol/View'
 import * as olProj from 'ol/proj'
@@ -114,6 +114,6 @@ onUnmounted(() => {
 .mini-map-container {
   width: 100%;
   height: 100%;
-  background: #e6ebf5;
+  background: var(--ma-text);
 }
 </style>

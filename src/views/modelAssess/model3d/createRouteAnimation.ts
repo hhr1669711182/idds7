@@ -16,8 +16,8 @@
  */
 import * as THREE from 'three'
 import { lonLatToLocalCoord, loadGLTF } from './commonThree'
-import { maModelSetting } from './commonSetting'
 import { makeTextSprite } from './createFireFacilities'
+import { assetUrls } from '@/const/assetPaths'
 
 /* -----------------------------------------------------------------------
  * 常量
@@ -432,7 +432,7 @@ export function createRouteAnimationSystem(parent: THREE.Group, opts: CreateOpts
   async function buildVehicle(): Promise<THREE.Object3D> {
     if (useRealModel) {
       try {
-        const gltf = await loadGLTF(`${maModelSetting.assetBase}/xf_fire_truck.glb`)
+        const gltf = await loadGLTF(assetUrls.fireTruck)
         const m = gltf.scene as THREE.Object3D
         m.scale.setScalar(0.15) // 加大（原 0.06 太小）
         m.userData = { type: 'fireTruck', name: '消防车' }

@@ -4,7 +4,7 @@ import {
   getIncidentLocationContextKey,
   normalizeIncidentLocationContent,
   readIncidentLocationContext,
-} from '@/service/incidentLocation'
+} from '@/utils/incidentLocation'
 import { getSharedMapStage } from '@/utils/seatSharedState'
 import { normalizePositionFrames } from '@/interceptor/transforms/position'
 import {

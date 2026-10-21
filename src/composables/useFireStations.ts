@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { getDistance } from 'ol/sphere'
-import { geoserverApi } from '@/service/geoserver'
+import { geoserverApi } from '@/apis/geoserver'
 import type { ZhxfStationData } from '@/baseComponent/amap/mapData'
 
 /** 主管队站 WFS 图层（GeoServer 发布，坐标系 EPSG:4326 / WGS-84） */

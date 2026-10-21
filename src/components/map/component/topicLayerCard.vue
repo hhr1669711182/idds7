@@ -10,12 +10,12 @@ import {
   TimeTools,
   WeatherTools,
 } from "../MapTools/ThemeTools/index";
-import clusterImage from "../assets/cluster.png";
-import heatMapImage from "../assets/heatMap.jpg";
-import maskImage from "../assets/mask.jpg";
-import weatherImage from "../assets/weather.jpg";
-import vectorImage from "../assets/vector.png";
-import timeImage from "../assets/time.jpg";
+import clusterImage from "@/assets/map/imgs/cluster.png";
+import heatMapImage from "@/assets/map/imgs/heatMap.jpg";
+import maskImage from "@/assets/map/imgs/mask.jpg";
+import weatherImage from "@/assets/map/imgs/weather.jpg";
+import vectorImage from "@/assets/map/imgs/vector.png";
+import timeImage from "@/assets/map/imgs/time.jpg";
 
 const mapStore = useMapStore();
 const topicStore = useTopicLayerStore();

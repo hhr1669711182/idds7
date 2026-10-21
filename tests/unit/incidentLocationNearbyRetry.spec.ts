@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises } from '@vue/test-utils'
-import { geoserverApi } from '@/service/geoserver'
+import { geoserverApi } from '@/apis/geoserver'
 import {
   BUILDING_LAYER_NAME,
   FIRE_HYDRANT_LAYER_NAME,
@@ -16,7 +16,7 @@ import {
 } from '@/store/useIncidentLocationStore'
 import { MESSAGE_CHANNEL, MESSAGE_EVENT_KEY, MESSAGE_SYSTEM } from '@/const/const.message.type'
 
-vi.mock('@/service/geoserver', () => ({ geoserverApi: { getWFSFeatures: vi.fn() } }))
+vi.mock('@/apis/geoserver', () => ({ geoserverApi: { getWFSFeatures: vi.fn() } }))
 vi.mock('@/store', () => ({ useUserStore: vi.fn() }))
 vi.mock('@/controller/core/business/IncidentStationQuery', () => ({
   queryIncidentStations: vi.fn(async () => ({

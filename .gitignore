@@ -30,7 +30,9 @@ dist-lib
 *.njsproj
 *.sln
 *.sw?
-*.trae*
+.trae/*
+!.trae/rules/
+!.trae/rules/**
 # /src/**/*.md
 *.anima*
 *.agnes*

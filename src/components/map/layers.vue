@@ -143,21 +143,20 @@ const onTileClick = (item: ToolbarItem) => {
   align-items: center;
   gap: 5px;
   padding: 6px;
-  border-radius: 8px;
-  border: 1px solid #364050;
-  /* 完全不透明 —— 半透明父容器会让子元素 1px 边框做亚像素 alpha 混合导致发虚 */
-  background: #1a1f2e;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--toolbar-border);
+  background: var(--toolbar-bg);
+  box-shadow: var(--toolbar-shadow);
 }
 
 .tile {
   position: relative;
   width: 62px;
   height: 54px;
-  border-radius: 6px;
-  border: 1px solid #364050;
-  background: #2a3040;
-  color: #ffffff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--toolbar-tile-border);
+  background: var(--toolbar-tile-bg);
+  color: var(--toolbar-tile-text);
   cursor: pointer;
   /* 强制 button 不使用浏览器默认样式 */
   appearance: none;
@@ -174,8 +173,8 @@ const onTileClick = (item: ToolbarItem) => {
   transition: border-color 0.2s, background 0.2s;
 
   &:hover {
-    border-color: #4a5a78;
-    background: #3a4658;
+    border-color: var(--toolbar-tile-hover-border);
+    background: var(--toolbar-tile-hover-bg);
   }
 
   &:focus-visible {
@@ -185,9 +184,9 @@ const onTileClick = (item: ToolbarItem) => {
 
   &.checked {
     font-weight: 600;
-    border-color: var(--active-border);
-    background: #3a4a60;
-    color: #ffffff;
+    border-color: var(--toolbar-tile-active-border);
+    background: var(--toolbar-tile-active-bg);
+    color: var(--toolbar-tile-active-text);
   }
 
   &.disabled {
@@ -203,7 +202,7 @@ const onTileClick = (item: ToolbarItem) => {
 .label {
   font-size: 12px;
   line-height: 1;
-  color: #ffffff;
+  color: inherit;
   /* text-shadow 让白字在暗背景上更锐利，避免 subpixel 渲染发虚 */
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
@@ -215,7 +214,7 @@ const onTileClick = (item: ToolbarItem) => {
   width: 12px;
   height: 12px;
   border-radius: 999px;
-  background: var(--active-border);
+  background: var(--toolbar-badge-bg);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   display: grid;
   place-items: center;

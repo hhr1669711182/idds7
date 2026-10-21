@@ -1,4 +1,4 @@
-import { geoserverApi, type WMSFeatureInfoParams } from '@/service/geoserver'
+import { geoserverApi, type WMSFeatureInfoParams } from '@/apis/geoserver'
 import type { LayerConfig } from '@/config/layers'
 
 export interface WMSLayerOptions {

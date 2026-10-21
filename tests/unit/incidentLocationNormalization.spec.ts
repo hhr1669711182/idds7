@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeIncidentLocationContent, toAddressUpdatedData } from '@/service/incidentLocation'
+import { normalizeIncidentLocationContent, toAddressUpdatedData } from '@/utils/incidentLocation'
 
 describe('F1/F11/F13 common profile normalization', () => {
   it('Given 纯 delta When before/after 均缺省 Then 跳过槽位且保留显式 null/非空 before；回归 F1 P2', () => {

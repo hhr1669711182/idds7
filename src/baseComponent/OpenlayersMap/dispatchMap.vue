@@ -68,7 +68,7 @@ import {
 import { createSpecialMapMock, type SpecialMapMock } from '@/baseComponent/OpenlayersMap/specialMapMock.ts'
 import { createIncidentRelocate, type IncidentRelocate } from '@/baseComponent/OpenlayersMap/incidentRelocate.ts'
 import { Fill, Stroke, Style } from "ol/style";
-import { getStyle, MAP_ICON_SRC } from '@/baseComponent/amap/featureStyle'
+import { getStyle, MAP_ICON_SRC } from '@/baseComponent/OpenlayersMap/style'
 import {
   useIncidentLocationStore,
   useStationLayerStore,
@@ -111,9 +111,9 @@ import type { SharedDispatchVehicleMock } from '@/composables/useMockCallLocatio
 //   mountIncomingCallFeatures,
 //   type IncomingCallFeaturesManager,
 // } from '@/composables/useIncomingCallFeatures'
-import amapData from "../amap/data.json";
-import carImg from "../amap/imgs/car.png";
-import fireImg from "../amap/imgs/xfz.png";
+import amapData from "@/assets/map/config/data.json";
+import carImg from "@/assets/map/icon/car.png";
+import fireImg from "@/assets/map/icon/xfz.png";
 import {
   type JRAlarmData,
 } from "../amap/mapData.ts";
@@ -123,8 +123,12 @@ import dayjs from 'dayjs'
 import { ElMessage } from "element-plus";
 import { EventBus } from "@/utils/mitt.ts";
 import AlarmDetailPopup from "./AlarmDetailPopup.vue";
-import IncidentDetailDialog, {
+import IncidentDetailDialog from "./IncidentDetailDialog.vue";
+import { fetchIncidentDetail } from "@/apis/incidentProfile";
+import {
+  toIncidentDetailData,
   type IncidentDetailData,
+  type IncidentDetailResponseData,
 } from "./IncidentDetailDialog.vue";
 import {
   buildUnifiedAlarmPopupRows,
@@ -140,9 +144,9 @@ import type { AlarmData } from "../amap/useAmapTools.ts";
 import ZoomLevelControl from "./ZoomLevelControl.vue";
 import { THEME_COLOR } from "../../const/const.common.ts";
 import { createBaseSourceSource } from "./baseSource.ts";
-import ljImg from "@/assets/svg/lj.svg";
-import xcImg from "@/assets/svg/xc.svg";
-import zjImg from "@/assets/svg/jz.svg";
+import ljImg from "@/assets/icons-svg/lj.svg";
+import xcImg from "@/assets/icons-svg/xc.svg";
+import zjImg from "@/assets/icons-svg/jz.svg";
 import { useDispatchMapStore } from "@/store";
 import { storeToRefs } from "pinia";
 import TileWMS from "ol/source/TileWMS";
@@ -1919,6 +1923,9 @@ const closeAlarmPopup = () => {
 /** 警情详情固定弹窗（与地图锚定小弹窗分离，居中 Modal 展示报警/接警两段信息） */
 const incidentDetailVisible = ref(false);
 const incidentDetailData = ref<IncidentDetailData | null>(null);
+const incidentDetailLoading = ref(false);
+/** 请求序号：弹窗可连续切换警情打开，仅最新一次请求允许回写数据 */
+let incidentDetailRequestId = 0;
 
 /** 从松散业务对象中按候选字段名取第一个非空值 */
 const pickField = (
@@ -1986,11 +1993,41 @@ const buildIncidentDetailData = (popup: ActiveMapPopup): IncidentDetailData => {
   };
 };
 
-/** 点击小弹窗"警情详情"按钮：快照当前点位数据并打开固定弹窗 */
+/** 提取当前弹窗点位的警情 ID；取不到时详情弹窗仅展示本地快照 */
+const pickPopupIncidentId = (popup: ActiveMapPopup): string | null => {
+  if (popup.kind === "jr") return popup.data.incidentId || null;
+  if (popup.kind === "alarm") {
+    return pickField(popup.data, ["incidentId", "inquiryId", "orderNo"]);
+  }
+  return popup.data.incidentId || null;
+};
+
+/**
+ * 点击小弹窗"警情详情"按钮：先用本地快照打开弹窗，再拉取详情接口覆盖。
+ * 无 incidentId 时仅展示快照；接口失败提示并保留快照内容。
+ */
 const openIncidentDetail = () => {
   if (!activeMapPopup.value) return;
+  const incidentId = pickPopupIncidentId(activeMapPopup.value);
   incidentDetailData.value = buildIncidentDetailData(activeMapPopup.value);
   incidentDetailVisible.value = true;
+  if (!incidentId?.trim()) return;
+  const requestId = ++incidentDetailRequestId;
+  incidentDetailLoading.value = true;
+  fetchIncidentDetail<IncidentDetailResponseData>(incidentId)
+    .then((detail) => {
+      if (requestId !== incidentDetailRequestId) return;
+      incidentDetailData.value = toIncidentDetailData(detail);
+    })
+    .catch((error) => {
+      console.warn("[incident-detail] 拉取警情详情失败", { incidentId, error });
+      if (requestId === incidentDetailRequestId) {
+        ElMessage.error("警情详情获取失败，当前展示点位已知信息");
+      }
+    })
+    .finally(() => {
+      if (requestId === incidentDetailRequestId) incidentDetailLoading.value = false;
+    });
 };
 
 const initMap = () => {
@@ -2572,7 +2609,11 @@ onUnmounted(() => {
     </div>
 
     <!-- 警情详情固定弹窗（居中 Modal，小弹窗点"警情详情"打开） -->
-    <IncidentDetailDialog v-model="incidentDetailVisible" :data="incidentDetailData" />
+    <IncidentDetailDialog
+      v-model="incidentDetailVisible"
+      :data="incidentDetailData"
+      :loading="incidentDetailLoading"
+    />
 
     <!-- 在线车辆弹窗 -->
     <div ref="carPopupRef" class="car_popup" v-show="carPopupVisible">
@@ -2701,7 +2742,7 @@ onUnmounted(() => {
   z-index: 60;
   width: 100%;
   height: 40px;
-  background: url("@/assets/bottomBg.png") center no-repeat;
+  background: url("@/assets/ui/buttons/bottomBg.png") center no-repeat;
   background-size: 100% 100%;
 
   flex: 1;
@@ -2716,7 +2757,7 @@ onUnmounted(() => {
     PingFang SC;
   font-weight: 500;
   font-size: 14px;
-  color: #ffffff;
+  color: var(--text-primary);
   line-height: 20px;
   text-align: left;
   font-style: normal;
@@ -2760,8 +2801,8 @@ onUnmounted(() => {
   width: 340px;
   padding: 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: var(--panel-bg);
+  border: 1px solid color-mix(in srgb, #000 12%, transparent);
   backdrop-filter: blur(8px);
 }
 
@@ -2778,8 +2819,8 @@ onUnmounted(() => {
   width: auto;
   padding: 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: var(--panel-bg);
+  border: 1px solid color-mix(in srgb, #000 12%, transparent);
   backdrop-filter: blur(8px);
 }
 
@@ -2789,9 +2830,9 @@ onUnmounted(() => {
   max-width: 320px;
   padding: 10px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  background: var(--panel-bg);
+  border: 1px solid color-mix(in srgb, #000 12%, transparent);
+  box-shadow: 0 8px 28px color-mix(in srgb, #000 18%, transparent);
   pointer-events: auto;
 }
 
@@ -2804,7 +2845,7 @@ onUnmounted(() => {
 
 .fire_popup_title {
   font-size: 14px;
-  color: #111827;
+  color: var(--text-primary);
   font-weight: 600;
   line-height: 1.2;
 }
@@ -2813,8 +2854,8 @@ onUnmounted(() => {
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.14);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid color-mix(in srgb, #000 14%, transparent);
+  background: var(--panel-bg);
   cursor: pointer;
   line-height: 1;
 }
@@ -2830,11 +2871,11 @@ onUnmounted(() => {
   grid-template-columns: 56px 1fr;
   gap: 8px;
   font-size: 12px;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .fire_popup_k {
-  color: rgba(17, 24, 39, 0.7);
+  color: var(--text-secondary);
 }
 
 .fire_popup_v {
@@ -2847,9 +2888,9 @@ onUnmounted(() => {
   max-width: 320px;
   padding: 10px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  background: var(--panel-bg);
+  border: 1px solid color-mix(in srgb, #000 12%, transparent);
+  box-shadow: 0 8px 28px color-mix(in srgb, #000 18%, transparent);
   pointer-events: auto;
 }
 
@@ -2862,7 +2903,7 @@ onUnmounted(() => {
 
 .car_popup_title {
   font-size: 14px;
-  color: #111827;
+  color: var(--text-primary);
   font-weight: 600;
   line-height: 1.2;
 }
@@ -2871,8 +2912,8 @@ onUnmounted(() => {
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.14);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid color-mix(in srgb, #000 14%, transparent);
+  background: var(--panel-bg);
   cursor: pointer;
   line-height: 1;
 }
@@ -2888,11 +2929,11 @@ onUnmounted(() => {
   grid-template-columns: 70px 1fr;
   gap: 8px;
   font-size: 12px;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .car_popup_k {
-  color: rgba(17, 24, 39, 0.7);
+  color: var(--text-secondary);
 }
 
 .car_popup_v {
@@ -2913,7 +2954,7 @@ onUnmounted(() => {
 
 .nav_label {
   font-size: 13px;
-  color: #111827;
+  color: var(--text-primary);
   line-height: 32px;
 }
 
@@ -2931,7 +2972,7 @@ onUnmounted(() => {
 :deep(.nav_input_ep .el-input__wrapper),
 :deep(.nav_input_ep .el-select__wrapper) {
   border-radius: 10px;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18) inset;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #000 18%, transparent) inset;
   padding: 0 10px;
   height: 32px;
   background-color: transparent;
@@ -2939,7 +2980,7 @@ onUnmounted(() => {
 
 :deep(.nav_input_ep .el-input__wrapper.is-focus),
 :deep(.nav_input_ep .el-select__wrapper.is-focused) {
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.7) inset, 0 0 0 3px rgba(37, 99, 235, 0.15);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-cyan) 70%, transparent) inset, 0 0 0 3px color-mix(in srgb, var(--accent-cyan) 15%, transparent);
 }
 
 :deep(.nav_input_ep .el-input__inner) {
@@ -2950,29 +2991,29 @@ onUnmounted(() => {
 .nav_input {
   height: 32px;
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
+  border: 1px solid color-mix(in srgb, #000 18%, transparent);
   padding: 0 10px;
   outline: none;
   font-size: 13px;
 }
 
 .nav_input:focus {
-  border-color: rgba(37, 99, 235, 0.7);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: color-mix(in srgb, var(--accent-cyan) 70%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-cyan) 15%, transparent);
 }
 
 .nav_pick {
   height: 32px;
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(17, 24, 39, 0.9);
-  color: #ffffff;
+  border: 1px solid color-mix(in srgb, #000 18%, transparent);
+  background: var(--panel-bg);
+  color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
 }
 
 .nav_pick:hover {
-  background: rgba(17, 24, 39, 1);
+  background: var(--panel-bg);
 }
 
 .nav_dropdown {
@@ -2981,7 +3022,7 @@ onUnmounted(() => {
   max-height: 220px;
   overflow: auto;
   border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid color-mix(in srgb, #000 12%, transparent);
   background: rgba(255, 255, 255, 0.98);
 }
 
@@ -2994,7 +3035,7 @@ onUnmounted(() => {
   cursor: pointer;
   font-size: 13px;
   line-height: 1.2;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .nav_option:hover {
@@ -3011,9 +3052,9 @@ onUnmounted(() => {
   flex: 1;
   height: 34px;
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
+  border: 1px solid color-mix(in srgb, #000 18%, transparent);
   background: rgba(37, 99, 235, 0.92);
-  color: #ffffff;
+  color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
 }
@@ -3024,109 +3065,17 @@ onUnmounted(() => {
 }
 
 .nav_action_secondary {
-  background: rgba(255, 255, 255, 0.92);
-  color: #111827;
+  background: var(--panel-bg);
+  color: var(--text-primary);
 }
 
-/* 基础控件样式 */
-:global(.ol-control) {
-  background-color: rgba(255, 255, 255, 0.8);
-  border-radius: 4px;
-}
+/* OL 控件外观与通用位置统一由 src/styles/ol-controls.less 管理；
+   本文件只覆盖本页面专属的位置差异。 */
 
-:global(.ol-control button) {
-  width: 36px;
-  height: 36px;
-  font-size: 16px;
-}
-
-/* 移动端适配 */
-:global(.is-mobile .ol-control button) {
-  width: 44px;
-  height: 44px;
-  font-size: 18px;
-}
-
-:global(.is-mobile .ol-scale-line) {
-  font-size: 14px;
-  padding: 2px 8px;
-}
-
-:global(.ol-overviewmap) {
-  bottom: 1.7em;
-  left: 0.5em;
-  z-index: 1;
-}
-
-:deep(.ol-overviewmap .ol-overviewmap-map) {
-  width: 180px !important;
-  height: 120px !important;
-  position: absolute;
-  bottom: 0;
-  left: calc(36px + 10px);
-  button {
-   display: inline-block;
-  }
-
-}
-
-.ol-overviewmap:not(.ol-collapsed) button {
-    bottom: 0;
-    left: 0;
-    position: absolute;
-}
-
-:global(.is-mobile .ol-overviewmap) {
-  bottom: 5em;
-  width: 120px;
-  height: 120px;
-}
-
-/* 打印控件适配 */
-:global(.ol-control.ol-print-dialog) {
-  top: 0.5em;
-  right: 7.5em;
-}
-
-:global(.is-mobile .ol-control.ol-print-dialog) {
-  display: none;
-}
-
-/* 全屏控件适配 */
-:global(.ol-rotate) {
-  top: 3em;
-  right: 0.5em;
-}
-
-:global(.is-mobile .ol-rotate) {
-  top: 4em;
-}
-
-:global(.ol-scale-line) {
+/* 调派图比例尺位置：底部抬高，避开左下角鹰眼缩略图 */
+:global(#dispatch-map .ol-scale-line) {
   bottom: 28px !important;
-  left: 4em;
-  // left: calc(100% - 300px);
+  left: 4em !important;
 }
 
-/* 缩放控件适配 */
-:global(.ol-zoom) {
-  top: calc(100% - 140px) !important;
-  left: 0.5em;
-}
-
-:global(.is-mobile .ol-zoom) {
-  left: 0.5em;
-  /* top: 0.5em; */
-  top: calc(100% - 120px) !important;
-}
-
-:global(.ol-zoom button) {
-  width: 36px;
-  height: 36px;
-}
-
-:global(.is-mobile .ol-zoom button) {
-  width: 44px;
-  height: 44px;
-}
 </style>

@@ -291,6 +291,60 @@ describe('Control 迁移应用生命周期（回归 2026-10-15 F4/F8/F10）', ()
     expect(usePendingDispatchAlarmStore().profile?.incidentId).toBe('A')
   })
 
+  it('Given 已缓存画像 When attachAlarmProfile Then 立即hydrate且后续更新实时送达', async () => {
+    const runtime = start()
+    const user = useUserStore()
+    user.applySharedState(
+      JSON.stringify({ ...user.rawState, updatedAt: 2, phase: 'inquiry', currentAlarm: { incidentId: 'A' } }),
+    )
+    useMessageStore().ingest(
+      { eventKey: MESSAGE_EVENT_KEY.ALARM_PROFILE_SYNC, data: { incidentId: 'A', longitude: 114, latitude: 22 } },
+      MESSAGE_CHANNEL.WS,
+      MESSAGE_SYSTEM.IDS_SEAT_WEB,
+    )
+    await vi.advanceTimersByTimeAsync(500)
+
+    const seen: string[] = []
+    const stop = runtime.attachAlarmProfile((profile) => seen.push(profile.incidentId))
+    expect(seen).toEqual(['A'])
+
+    useMessageStore().ingest(
+      { eventKey: MESSAGE_EVENT_KEY.ALARM_PROFILE_SYNC, data: { incidentId: 'B', longitude: 115, latitude: 23 } },
+      MESSAGE_CHANNEL.WS,
+      MESSAGE_SYSTEM.IDS_SEAT_WEB,
+    )
+    await vi.advanceTimersByTimeAsync(500)
+    expect(seen).toEqual(['A', 'B'])
+    stop()
+  })
+
+  it('Given 已attach画像 When 解绑后新画像到达 Then 不再送达旧handler', async () => {
+    const runtime = start()
+    const user = useUserStore()
+    user.applySharedState(
+      JSON.stringify({ ...user.rawState, updatedAt: 2, phase: 'inquiry', currentAlarm: { incidentId: 'A' } }),
+    )
+    const stop = runtime.attachAlarmProfile(() => {})
+    stop()
+    useMessageStore().ingest(
+      { eventKey: MESSAGE_EVENT_KEY.ALARM_PROFILE_SYNC, data: { incidentId: 'B' } },
+      MESSAGE_CHANNEL.WS,
+      MESSAGE_SYSTEM.IDS_SEAT_WEB,
+    )
+    await vi.advanceTimersByTimeAsync(500)
+    expect(usePendingDispatchAlarmStore().profile?.incidentId).toBe('B')
+    stop()
+  })
+
+  it('Given runtime已dispose When attachAlarmProfile Then 返回空函数不抛错', () => {
+    const runtime = new BusinessMessageRuntime()
+    runtime.dispose()
+    const handler = vi.fn()
+    const stop = runtime.attachAlarmProfile(handler)
+    expect(handler).not.toHaveBeenCalled()
+    expect(() => stop()).not.toThrow()
+  })
+
   it('Given 旧退出导航在途 When 新flood任务到达再返回调派 Then 旧导航不清新任务；回归路由竞争', async () => {
     const runtime = start()
     const router = createRouter({

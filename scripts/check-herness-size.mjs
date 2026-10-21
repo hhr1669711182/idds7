@@ -53,20 +53,24 @@ if (existsSync(sopPath)) {
   }
 }
 
-// 2. 单个日志文件体量
+// 2. 单个日志文件体量（结构：09-工作日志/YYYY-MM/YYYY-MM-DD/agent-<用户名>.md）
 const logRoot = join(herness, '09-工作日志')
 if (existsSync(logRoot)) {
   for (const month of readdirSync(logRoot)) {
     const monthDir = join(logRoot, month)
     if (!statSync(monthDir).isDirectory()) continue
-    for (const file of readdirSync(monthDir)) {
-      if (!file.endsWith('.md')) continue
-      const size = statSync(join(monthDir, file)).size
-      if (size > LOG_FILE_MAX_BYTES) {
-        warnings.push(
-          `日志文件 09-工作日志/${month}/${file} 已达 ${kb(size)}` +
-            `（上限 ${kb(LOG_FILE_MAX_BYTES)}）。内容过多请按主题拆分，或把仍有效的结论沉淀到 05-共享上下文/当前状态摘要.md。`,
-        )
+    for (const day of readdirSync(monthDir)) {
+      const dayDir = join(monthDir, day)
+      if (!statSync(dayDir).isDirectory()) continue
+      for (const file of readdirSync(dayDir)) {
+        if (!file.endsWith('.md')) continue
+        const size = statSync(join(dayDir, file)).size
+        if (size > LOG_FILE_MAX_BYTES) {
+          warnings.push(
+            `日志文件 09-工作日志/${month}/${day}/${file} 已达 ${kb(size)}` +
+              `（上限 ${kb(LOG_FILE_MAX_BYTES)}）。内容过多请按主题拆分，或把仍有效的结论沉淀到 05-共享上下文/当前状态摘要.md。`,
+          )
+        }
       }
     }
   }

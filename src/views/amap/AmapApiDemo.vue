@@ -210,13 +210,13 @@ const call = async (key: keyof typeof amapApi) => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f7f8fa;
-  color: #222;
+  background: var(--card-bg);
+  color: var(--text-primary);
 }
 .header {
   padding: 12px 20px;
-  background: #1f2937;
-  color: #f3f4f6;
+  background: var(--text-primary);
+  color: var(--card-bg);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -225,7 +225,7 @@ const call = async (key: keyof typeof amapApi) => {
 }
 .header h2 { font-size: 16px; margin: 0; }
 .meta { font-size: 12px; opacity: .85; }
-.meta code { background: #111827; padding: 2px 6px; border-radius: 4px; }
+.meta code { background: var(--text-primary); padding: 2px 6px; border-radius: 4px; }
 .sep { margin: 0 6px; opacity: .5; }
 .content {
   padding: 16px;
@@ -235,13 +235,13 @@ const call = async (key: keyof typeof amapApi) => {
   overflow: auto;
 }
 .card {
-  background: #fff;
+  background: var(--text-primary);
   border-radius: 8px;
   padding: 12px 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  box-shadow: 0 1px 3px color-mix(in srgb, #000 6%, transparent);
 }
 .card.full { grid-column: 1 / -1; }
-.card h3 { font-size: 14px; margin: 0 0 10px; color: #374151; }
+.card h3 { font-size: 14px; margin: 0 0 10px; color: var(--text-secondary); }
 .form-row {
   display: flex;
   gap: 8px;
@@ -249,26 +249,26 @@ const call = async (key: keyof typeof amapApi) => {
   flex-wrap: wrap;
   margin-bottom: 8px;
 }
-.form-row label { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #4b5563; }
+.form-row label { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); }
 .form-row input, .form-row select {
   padding: 4px 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--widget-border);
   border-radius: 4px;
   font-size: 12px;
   min-width: 120px;
 }
 button {
   padding: 4px 10px;
-  border: 1px solid #d1d5db;
-  background: #fff;
+  border: 1px solid var(--widget-border);
+  background: var(--text-primary);
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
 }
-button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+button.primary { background: var(--accent-cyan); color: var(--text-primary); border-color: var(--accent-cyan); }
 .card pre {
-  background: #0f172a;
-  color: #e2e8f0;
+  background: var(--panel-bg-solid);
+  color: var(--text-primary);
   padding: 10px;
   border-radius: 6px;
   font-size: 12px;
@@ -277,12 +277,12 @@ button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
   margin: 0;
 }
 .error {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--tag-danger-bg);
+  color: var(--tag-danger-text);
   padding: 8px 10px;
   border-radius: 6px;
   font-size: 12px;
 }
 .error .msg { margin-top: 4px; font-family: ui-monospace, monospace; }
-.empty { color: #9ca3af; font-size: 12px; }
+.empty { color: var(--text-muted); font-size: 12px; }
 </style>

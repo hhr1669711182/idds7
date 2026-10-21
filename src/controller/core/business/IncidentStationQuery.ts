@@ -9,7 +9,7 @@
  * @FilePath: src/controller/core/business/IncidentStationQuery.ts
  */
 import { distance } from '@turf/turf'
-import { geoserverApi } from '@/service/geoserver'
+import { geoserverApi } from '@/apis/geoserver'
 
 /** 消防站图层（gis:view_res_org_dept），几何字段 geom */
 export const STATION_LAYER_NAME = 'gis:view_res_org_dept'

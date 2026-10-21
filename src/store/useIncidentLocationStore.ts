@@ -25,7 +25,7 @@ import {
   getAddressProfileKey,
   getIncidentLocationContextKey,
   normalizeIncidentLocationContent,
-} from '@/service/incidentLocation'
+} from '@/utils/incidentLocation'
 import { queryIncidentStations } from '@/controller/core/business/IncidentStationQuery'
 import {
   DEFAULT_NEARBY_RESOURCE_RADIUS_METERS,

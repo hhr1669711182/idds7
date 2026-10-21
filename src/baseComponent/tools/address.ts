@@ -6,7 +6,7 @@
  * 的 queryJurisdictionAtPoint 函数。
  */
 import { getDistance } from 'ol/sphere'
-import { geoserverApi } from '@/service/geoserver'
+import { geoserverApi } from '@/apis/geoserver'
 
 /** 消防站图层，几何字段 geom */
 const FIRE_STATION_TYPE_NAME = 'gis:view_res_org_dept'

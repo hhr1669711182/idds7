@@ -5,7 +5,7 @@
  * 返回的 fields 是「该图层真实存在的字段名」，WFS-T 写事务前会按它裁剪要素属性，
  * 避免把 MarkDraw 内部的临时字段（name/mark/style/以 _ 开头字段）写进数据库。
  */
-import { geoserverApi } from '@/service/geoserver'
+import { geoserverApi } from '@/apis/geoserver'
 import type { MarkDrawLayer } from '../engine/types'
 
 export interface FeatureTypeInfo {

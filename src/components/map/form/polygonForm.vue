@@ -4,10 +4,10 @@ import { storeToRefs } from 'pinia';
 import { Style, Icon, Stroke, Fill } from "ol/style";
 import Overlay from 'ol/Overlay';
 import { useCardStore, useMapStore } from '../../../store/index.ts';
-import locImgSrc from "../../../assets/loc.png";
-import polygon3 from "../../../assets/polygon3.png";
-import polygon4 from "../../../assets/polygon4.png";
-import polygon5 from "../../../assets/polygon5.png";
+import locImgSrc from "@/assets/ui/buttons/loc.png";
+import polygon3 from "@/assets/ui/buttons/polygon3.png";
+import polygon4 from "@/assets/ui/buttons/polygon4.png";
+import polygon5 from "@/assets/ui/buttons/polygon5.png";
 import { getSVGForSrcById, convertToRGBA, getImagePattern } from "@/utils/index.ts";
 import Slider from '../../../baseComponent/Slider.vue';
 
@@ -231,15 +231,15 @@ onMounted(() => {
 }
 
 .polygon_content li:nth-child(3) {
-    background: url(../../../assets/polygon3.png) no-repeat;
+    background: url(@/assets/ui/buttons/polygon3.png) no-repeat;
 }
 
 .polygon_content li:nth-child(4) {
-    background: url(../../../assets/polygon4.png) no-repeat;
+    background: url(@/assets/ui/buttons/polygon4.png) no-repeat;
 }
 
 .polygon_content li:nth-child(5) {
-    background: url(../../../assets/polygon5.png) no-repeat;
+    background: url(@/assets/ui/buttons/polygon5.png) no-repeat;
 }
 
 html[data-theme="NIGHT"] {

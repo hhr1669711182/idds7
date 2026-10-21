@@ -53,11 +53,11 @@ const formatValue = (value: AlarmDetailRow["value"]) => {
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 8px;
   font-size: 12px;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .alarm_detail_k {
-  color: rgba(17, 24, 39, 0.7);
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 

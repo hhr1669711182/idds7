@@ -13,10 +13,10 @@ import {
   ZOOM,
 } from "../../../../baseComponent/OpenlayersMap/const.map.ts";
 import { SPATIAL_ANALYSIS_TYPES } from "../../../../const/index.ts";
-import addCircleImg from "../../assets/画圆.svg";
-import unionImg from "../../assets/并集.svg";
-import intersectionImg from "../../assets/交集.svg";
-import differenceImg from "../../assets/差集.svg";
+import addCircleImg from "@/assets/icons-svg/map/画圆.svg";
+import unionImg from "@/assets/icons-svg/map/并集.svg";
+import intersectionImg from "@/assets/icons-svg/map/交集.svg";
+import differenceImg from "@/assets/icons-svg/map/差集.svg";
 import { DrawTool } from "../../MapTools";
 import { Feature } from "ol";
 import * as turf from "@turf/turf";

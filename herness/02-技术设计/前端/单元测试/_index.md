@@ -22,5 +22,5 @@
 | 地图配置归一 | `src/config/mapConfig.ts` | 分组排序、enabled/visible 归一、持久化容错 |
 | 消息体归一 | `src/interceptor/unwrap.ts` | JSON 字符串解析、topics 大小写、非法输入 |
 | 订阅匹配 | `src/interceptor/matcher.ts` | CUSTOM / SEAT 匹配、key 匹配 |
-| 调度校验 | `src/service/methods/dispatchVehicles.ts` | `validateDispatchRequest` 边界 |
+| 调度校验 | `src/apis/dispatchVehicles.ts` | `validateDispatchRequest` 边界 |
 | 错误转换 | `src/service/error.ts` | `toAppError` 各类错误映射 |

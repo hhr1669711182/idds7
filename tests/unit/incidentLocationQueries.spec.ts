@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { toStationCandidates } from '@/controller/core/business/IncidentStationQuery'
 import { toNearbyResources } from '@/controller/core/business/IncidentNearbyResourceQuery'
 
-vi.mock('@/service/geoserver', () => ({ geoserverApi: { getWFSFeatures: vi.fn() } }))
+vi.mock('@/apis/geoserver', () => ({ geoserverApi: { getWFSFeatures: vi.fn() } }))
 
 describe('F1 engine independent query boundary', () => {
   it('Given business 查询 When 检查依赖 Then 不引用 OL/Three；回归 F1 分层', () => {

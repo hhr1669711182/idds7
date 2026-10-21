@@ -74,7 +74,7 @@ const onToggleFollow = () => {
   gap: 6px;
   padding: 6px 8px;
   background: rgba(10, 14, 26, 0.85);
-  border: 1px solid @ma-border;
+  border: 1px solid var(--ma-border);
   border-radius: 4px;
   z-index: 100;
   backdrop-filter: blur(4px);
@@ -82,8 +82,8 @@ const onToggleFollow = () => {
 
 .op-btn {
   background: transparent;
-  border: 1px solid @ma-border;
-  color: @ma-text;
+  border: 1px solid var(--ma-border);
+  color: var(--ma-text);
   padding: 4px 10px;
   font-size: 12px;
   border-radius: 2px;
@@ -92,21 +92,21 @@ const onToggleFollow = () => {
   white-space: nowrap;
 }
 .op-btn:hover:not(:disabled) {
-  border-color: @ma-orange;
-  color: @ma-orange;
+  border-color: var(--ma-orange);
+  color: var(--ma-orange);
 }
 .op-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 .op-btn.replay {
-  background: linear-gradient(90deg, @ma-orange, #ff9500);
-  border-color: @ma-orange;
+  background: linear-gradient(90deg, var(--ma-orange), var(--ma-orange-light));
+  border-color: var(--ma-orange);
   color: #fff;
   font-weight: 600;
 }
 .op-btn.replay:hover:not(:disabled) {
-  box-shadow: 0 0 8px rgba(255, 122, 0, 0.6);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ma-orange) 60%, transparent);
 }
 .op-btn.active {
   background: rgba(180, 100, 255, 0.15);

@@ -6,7 +6,7 @@ import {
   type GisOpenState,
   type GisUnclosedIncident,
   type GisUnclosedIncidentList,
-} from '@/service/methods/unclosedIncidents'
+} from '@/apis/unclosedIncidents'
 import { ERROR_CODES, type AppError } from '@/service/error'
 
 /** 处置/到场阶段标红；返程/归队标蓝（与旧即时警情口径对齐） */

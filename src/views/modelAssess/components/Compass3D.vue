@@ -74,8 +74,8 @@ const onReset = () => {
 
 .reset-btn {
   background: transparent;
-  border: 1px solid #1f2940;
-  color: #8a96b0;
+  border: 1px solid var(--ma-border);
+  color: var(--ma-text-dim);
   padding: 4px 8px;
   font-size: 11px;
   border-radius: 2px;
@@ -84,8 +84,8 @@ const onReset = () => {
 }
 
 .reset-btn:hover:not(:disabled) {
-  color: #ff7a00;
-  border-color: #ff7a00;
+  color: var(--ma-orange);
+  border-color: var(--ma-orange);
 }
 
 .reset-btn:disabled {
@@ -95,7 +95,7 @@ const onReset = () => {
 
 .hint {
   font-size: 10px;
-  color: #5b6478;
+  color: var(--ma-text-muted);
   text-align: center;
   padding: 2px 0;
 }

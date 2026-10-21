@@ -1,36 +1,22 @@
 /*
  * @Author: hhr
  * @Date: 2026-04-21 18:40:47
- * @LastEditTime: 2026-10-09 10:00:00
+ * @LastEditTime: 2026-10-19 10:00:00
  * @LastEditors: hhr
- * @Description: WebSocket 客户端：支持多实例、自动重连、心跳保活，以及消息服务 V2 的 CONNECT 首帧鉴权
+ * @Description: WebSocket 客户端：多实例、自动重连、心跳保活；协议鉴权委托给 AuthStrategy
  * @FilePath: \ids-gis-web\src\hooks\useWebSocket.ts
  */
 
-/** 消息服务 V2 CONNECT 首帧配置（鉴权） */
-export interface WebSocketConnectAuth {
-  /**
-   * CONNECT 首帧负载，通常为 { action:'connect', token, clientId, tenantId? }。
-   * 用函数形式，使自动重连时能读取到最新 token。
-   */
-  payload: object | (() => object)
-  /** 鉴权超时（ms），默认 5000；超时未收到 connected 则判定失败并关闭连接。 */
-  timeout?: number
-}
+import {
+  OpenAuthStrategy,
+  V2AuthStrategy,
+  type AuthStrategy,
+  type WebSocketConnectAuth,
+  type WebSocketConnectedInfo,
+  type WebSocketSubscribeResult,
+} from './useWebSocketAuth'
 
-/** connected 成功后服务端回传的连接身份 */
-export interface WebSocketConnectedInfo {
-  userId?: string
-  sessionState?: string
-  clientId?: string
-}
-
-/** subscribed 订阅回执 */
-export interface WebSocketSubscribeResult {
-  topic: string
-  result: 'ok' | 'denied'
-  reason?: string
-}
+export type { WebSocketConnectAuth, WebSocketConnectedInfo, WebSocketSubscribeResult } from './useWebSocketAuth'
 
 export interface WebSocketOptions {
   reconnect?: boolean
@@ -58,27 +44,35 @@ export interface WebSocketOptions {
   onSubscribeResult?: (result: WebSocketSubscribeResult) => void
 }
 
+/** 带默认值的选项子集，字段声明处无需重复 Required<Pick<...>> */
+interface ResolvedOptions {
+  reconnect: boolean
+  reconnectAttempts: number
+  reconnectInterval: number
+  heartbeat: boolean
+  heartbeatInterval: number
+  heartbeatMessage: string | object
+}
+
 /**
- * WebSocket 类
- * 支持多实例、自动重连、心跳保活，以及可选的消息服务 V2 CONNECT 首帧鉴权
+ * WebSocket 传输层：连接 / 断线重连 / 心跳保活 / 帧收发。
+ *
+ * 协议相关（CONNECT 首帧鉴权、控制帧消费）全部委托给 AuthStrategy，
+ * 本类不含任何 V2 协议细节，见 useWebSocketAuth.ts。
  */
 export class WebSocketClient {
   public ws: WebSocket | null = null
   private url: string
-  private options: WebSocketOptions &
-    Required<
-      Pick<
-        WebSocketOptions,
-        'reconnect' | 'reconnectAttempts' | 'reconnectInterval' | 'heartbeat' | 'heartbeatInterval' | 'heartbeatMessage'
-      >
-    >
+  private options: WebSocketOptions & ResolvedOptions
   private attempts = 0
   private reconnectTimer?: ReturnType<typeof setTimeout>
   private heartbeatTimer?: ReturnType<typeof setInterval>
-  /** V2：是否已通过鉴权（未配置 connectAuth 时恒在就绪后置 true） */
-  private authed = false
-  private authTimer?: ReturnType<typeof setTimeout>
+  /** 最近一次 onopen 事件，供 markReady 回调 onOpen 时复用 */
   private openEvent?: Event
+  /** 当前连接是否已进入就绪态：保证心跳 / initSend / onOpen 只触发一次 */
+  private ready = false
+  /** 协议鉴权策略：无 connectAuth 时为恒就绪的空实现 */
+  private auth: AuthStrategy
 
   constructor(url: string, options: WebSocketOptions = {}) {
     this.url = url
@@ -91,29 +85,24 @@ export class WebSocketClient {
       heartbeatMessage: 'ping',
       ...options,
     }
+    this.auth = this.createAuthStrategy()
     this.connect()
   }
 
   public connect = () => {
     if (this.ws?.readyState === WebSocket.OPEN) return
 
-    this.authed = false
-    clearTimeout(this.authTimer)
+    const socket = new WebSocket(this.url)
+    this.ws = socket
 
-    this.ws = new WebSocket(this.url)
-
-    this.ws.onopen = (e) => {
+    socket.onopen = (e) => {
       this.openEvent = e
-
-      if (this.options.connectAuth) {
-        // V2：打开后先发 CONNECT 首帧，等待 connected 才进入就绪态
-        this.startConnectAuth()
-      } else {
-        this.markReady({}, e)
-      }
+      this.auth.handshake()
+      // 无鉴权策略时 ready 恒为 true，握手即就绪；V2 由策略在 connected 后回调 markReady
+      if (this.auth.ready) this.markReady()
     }
 
-    this.ws.onmessage = (e) => {
+    socket.onmessage = (e) => {
       const raw = e.data
 
       // 心跳回执：直接吞掉
@@ -128,31 +117,20 @@ export class WebSocketClient {
         }
       }
 
-      // V2 控制帧：connected / subscribed 在内部处理，不透传给业务
-      if (parsed && typeof parsed === 'object') {
-        const action = parsed.action
-        if (action === 'connected') {
-          this.handleConnected(parsed)
-          return
-        }
-        if (action === 'subscribed') {
-          this.handleSubscribed(parsed)
-          return
-        }
-      }
+      // 控制帧由鉴权策略消费，不透传给业务
+      if (this.auth.handleFrame(parsed)) return
 
       // 鉴权完成前丢弃一切业务帧
-      if (this.options.connectAuth && !this.authed) return
+      if (!this.auth.ready) return
 
-      console.log('[ws-handler] 收到消息', raw)
       this.options.onMessage?.(parsed, e)
     }
 
-    this.ws.onerror = (e) => this.options.onError?.(e)
+    socket.onerror = (e) => this.options.onError?.(e)
 
-    this.ws.onclose = (e) => {
-      this.authed = false
-      clearTimeout(this.authTimer)
+    socket.onclose = (e) => {
+      this.ready = false
+      this.auth.reset()
       this.stopHeartbeat()
       this.options.onClose?.(e)
 
@@ -164,83 +142,10 @@ export class WebSocketClient {
     }
   }
 
-  /** 进入就绪态：启动心跳、flush 初始订阅，并回调 onOpen / onReady */
-  private markReady = (info: WebSocketConnectedInfo, event: Event) => {
-    // 仅在鉴权通过后才清零重试计数。
-    // 若放在 onopen，CONNECT 被拒（denied/超时）时服务端会「打开即关闭」，
-    // 计数不断被重置，reconnectAttempts 永远不生效，形成死循环。
-    this.attempts = 0
-    this.authed = true
-    clearTimeout(this.authTimer)
-    this.startHeartbeat()
-
-    // 发送连接初始化消息（例如 Topic 订阅）；重连成功后也会再次发送。
-    const initialMessages = Array.isArray(this.options.initSend) ? this.options.initSend : [this.options.initSend]
-    initialMessages.forEach((message) => {
-      if (message && (typeof message === 'string' || Object.keys(message).length > 0)) {
-        this.send(message)
-      }
-    })
-
-    this.options.onOpen?.(event)
-    this.options.onReady?.(info, event)
-  }
-
-  /** V2：发送 CONNECT 首帧并等待 connected */
-  private startConnectAuth = () => {
-    const auth = this.options.connectAuth
-    if (!auth) return
-    const timeout = auth.timeout ?? 5000
-
-    const frame = typeof auth.payload === 'function' ? auth.payload() : auth.payload
-    // CONNECT 首帧需绕过“鉴权后才允许 send”的闸门，直接发送
-    if (this.ws?.readyState === WebSocket.OPEN && frame && typeof frame === 'object') {
-      this.ws.send(JSON.stringify(frame))
-    }
-
-    clearTimeout(this.authTimer)
-    this.authTimer = setTimeout(() => {
-      if (this.authed) return
-      this.options.onAuthDenied?.('connect_timeout', null)
-      try {
-        this.ws?.close()
-      } catch {
-        /* 忽略关闭异常 */
-      }
-    }, timeout)
-  }
-
-  private handleConnected = (raw: any) => {
-    clearTimeout(this.authTimer)
-    if (raw?.result === 'denied') {
-      this.authed = false
-      this.options.onAuthDenied?.(raw.reason ?? 'denied', raw)
-      // 服务端随后会主动关闭连接，由 onclose 走既有重连逻辑
-      return
-    }
-    this.markReady(
-      {
-        userId: typeof raw.userId === 'string' ? raw.userId : undefined,
-        sessionState: typeof raw.sessionState === 'string' ? raw.sessionState : undefined,
-        clientId: typeof raw.clientId === 'string' ? raw.clientId : undefined,
-      },
-      this.openEvent ?? new Event('open'),
-    )
-  }
-
-  private handleSubscribed = (raw: any) => {
-    const result: WebSocketSubscribeResult['result'] = raw?.result === 'denied' ? 'denied' : 'ok'
-    this.options.onSubscribeResult?.({
-      topic: typeof raw?.topic === 'string' ? raw.topic : String(raw?.topic ?? ''),
-      result,
-      ...(raw?.reason ? { reason: String(raw.reason) } : null),
-    })
-  }
-
   public send = (data: string | object | ArrayBuffer | Blob) => {
     if (this.ws?.readyState !== WebSocket.OPEN) return false
-    // V2：未通过鉴权前，除 CONNECT 首帧（内部直发）外，不允许发送业务数据
-    if (this.options.connectAuth && !this.authed) return false
+    // 鉴权完成前除 CONNECT 首帧（由策略直发）外，不允许发送业务数据
+    if (!this.auth.ready) return false
     this.ws.send(typeof data === 'string' ? data : JSON.stringify(data))
     return true
   }
@@ -262,8 +167,8 @@ export class WebSocketClient {
   public disconnect = () => {
     this.options.reconnect = false
     clearTimeout(this.reconnectTimer)
-    clearTimeout(this.authTimer)
-    this.authed = false
+    this.ready = false
+    this.auth.reset()
     this.stopHeartbeat()
     if (this.ws) {
       this.ws.onopen = null
@@ -273,6 +178,58 @@ export class WebSocketClient {
       this.ws.close()
     }
     this.ws = null
+  }
+
+  /**
+   * 进入就绪态：启动心跳、flush 初始订阅，并回调 onOpen。
+   * 无鉴权策略时 onopen 直接就绪；V2 时由 connected 控制帧触发策略置位后调用。
+   */
+  private markReady = () => {
+    if (this.ready) return
+    this.ready = true
+    // 仅在鉴权通过后才清零重试计数。
+    // 若放在 onopen，CONNECT 被拒（denied/超时）时服务端会「打开即关闭」，
+    // 计数不断被重置，reconnectAttempts 永远不生效，形成死循环。
+    this.attempts = 0
+    this.startHeartbeat()
+
+    // 发送连接初始化消息（例如 Topic 订阅）；重连成功后也会再次发送。
+    const initialMessages = Array.isArray(this.options.initSend) ? this.options.initSend : [this.options.initSend]
+    initialMessages.forEach((message) => {
+      if (message && (typeof message === 'string' || Object.keys(message).length > 0)) {
+        this.send(message)
+      }
+    })
+
+    if (this.openEvent) this.options.onOpen?.(this.openEvent)
+  }
+
+  /** 构建鉴权策略：V2 用握手策略，其余保持打开即用 */
+  private createAuthStrategy = (): AuthStrategy => {
+    const handlers = {
+      onReady: this.markReady,
+      onConnected: (info: WebSocketConnectedInfo) => {
+        if (this.openEvent) this.options.onReady?.(info, this.openEvent)
+      },
+      onAuthDenied: this.options.onAuthDenied,
+      onSubscribeResult: this.options.onSubscribeResult,
+    }
+    if (!this.options.connectAuth) return new OpenAuthStrategy()
+    return new V2AuthStrategy(
+      this.options.connectAuth,
+      handlers,
+      (frame) => {
+        // CONNECT 首帧需绕过「鉴权后才允许 send」的闸门，直接发送
+        if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(frame))
+      },
+      () => {
+        try {
+          this.ws?.close()
+        } catch {
+          /* 忽略关闭异常 */
+        }
+      },
+    )
   }
 
   private startHeartbeat = () => {

@@ -16,7 +16,7 @@ import type { CarLocationBatch } from '@/controller/core/protocol/LegacyMessageP
 import type { GenericController } from '@/controller/core/generic'
 import { EventBus } from '@/utils/mitt'
 
-vi.mock('@/baseComponent/amap/featureStyle', () => ({
+vi.mock('@/baseComponent/OpenlayersMap/style', () => ({
   getStyle: () => new Style(),
   MAP_ICON_SRC: { car: 'car.png' },
 }))

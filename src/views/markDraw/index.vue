@@ -65,15 +65,8 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: 0;
 }
-:deep(.ol-control) {
-  background-color: rgba(255, 255, 255, 0.8);
-  border-radius: 2px;
-}
-:deep(.ol-control button) {
-  width: 36px;
-  height: 36px;
-  font-size: 16px;
-}
+/* OL 控件外观与通用尺寸统一由 src/styles/ol-controls.less 管理；
+   本文件只覆盖本页面专属的位置差异。 */
 /* 缩放控件放到左下角，避开右侧工具栏与顶部信息条 */
 :deep(.ol-zoom) {
   top: auto !important;

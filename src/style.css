@@ -82,15 +82,8 @@ body {
     z-index: 1;
   }
 
-  /* 移动端控件适配 */
-  .ol-control {
-    background-color: rgba(255, 255, 255, 0.9) !important;
-    border: 1px solid #ddd !important;
-  }
-
-  .ol-control button {
-    font-size: 16px !important;
-  }
+  /* 移动端 OL 控件适配统一由 src/styles/ol-controls.less 管理，
+     此处不再覆盖控件外观，避免与主题样式打架。 */
 
   /* 避免移动端点击延迟 */
   * {

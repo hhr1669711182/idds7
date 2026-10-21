@@ -23,7 +23,7 @@ const amapApiStub = {
 }
 
 vi.mock('@/apis/amap', () => ({ amapApi: amapApiStub }))
-vi.mock('@/service/searchQuery', () => ({
+vi.mock('@/apis/searchQuery', () => ({
   getSearchViewOptions: () => [{ id: 'gis:v_srvc_water_hydrant', name: '消火栓' }],
   runSearch: vi.fn(async () => ({ addressItems: [], resourceItems: [], truncated: false, failedLayers: 0 })),
 }))

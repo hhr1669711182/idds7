@@ -478,7 +478,6 @@ const startResize = (e: MouseEvent) => {
   border: 1px solid var(--md-border);
   box-shadow: var(--md-shadow);
   backdrop-filter: var(--md-blur);
-  -webkit-backdrop-filter: var(--md-blur);
   color: var(--md-text);
   font-size: 12px;
   letter-spacing: 0.4px;
@@ -535,7 +534,6 @@ const startResize = (e: MouseEvent) => {
   border: 1px solid var(--md-border);
   box-shadow: var(--md-shadow);
   backdrop-filter: var(--md-blur);
-  -webkit-backdrop-filter: var(--md-blur);
   overflow: hidden;
 }
 .md-drawer__grip {

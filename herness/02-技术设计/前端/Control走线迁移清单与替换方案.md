@@ -155,7 +155,7 @@ flowchart TD
 | `gisPointChannel.ts` | `composables/useGisPointSelection.ts` + 通用 BC bridge | 新业务保留；冻结项未闭环不能借迁位删除 |
 | `seatSharedState.ts` | 状态接收→useUserStore；类型→protocol；纯会话/头部转换→utils | service/router/组件/控制器引用全核对 |
 | `pageCondition.ts` | `register/pageCondition.ts` | App 改装配；页面条件自有键仍保留 |
-| `dispatchVehicleAdapter.ts` | `service/methods/dispatchVehicleAdapter.ts` | HTTP 适配契约对齐；自身类型问题在该批处理 |
+| `dispatchVehicleAdapter.ts` | `apis/dispatchVehicleAdapter.ts` | HTTP 适配契约对齐；自身类型问题在该批处理 |
 | `Swiper.ts` | `baseComponent/OpenlayersMap/SwipeControl.ts` | 保持 ol 控件行为，改 swipeControl 消费 |
 | `Swiper.css` | 随控件迁同目录 | 更新 CSS import 后保留对照 |
 
@@ -173,7 +173,7 @@ flowchart TD
 | 通用类型/常量 | `types/message.ts`、`const.message.type.ts` | 类型化来源/全量元数据、LOCAL_STORAGE 与接收专用 HTTP 通道、必要的通用快照能力 |
 | 契约与测试 | `docs/source/**`、`tests/{unit,components,e2e}/**` | 同步真实变更、批次验收证据 |
 
-`useMessageStore916.ts` 及其依赖完整保留为旧链对照。`store/interceptor-integration.ts`、`store/messageInterceptors.ts` 的未引用双实现可登记待清理，不能与 916 混为废案。
+`useMessageStore916.ts` 及其依赖完整保留为旧链对照。`store/interceptor-integration.ts`、`store/messageInterceptors.ts` 的未引用双实现已于 2026-10-19 删除（734 行，唯一在用的实现为 `src/interceptor/**`，由 `store/useMessageStore.ts` 装配与执行）。916 仍需保留，不能与已清理的旧拦截器混为废案。
 
 ## 6. 归一、消息契约与恢复语义
 

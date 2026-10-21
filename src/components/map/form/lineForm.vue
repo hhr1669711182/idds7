@@ -3,7 +3,7 @@ import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { Style, Stroke } from "ol/style";
 import { useCardStore } from "../../../store/index.ts";
-import rightImg from "../../../assets/right.png";
+import rightImg from "@/assets/ui/buttons/right.png";
 import { getSVGForSrcById, getStyleFunction } from "@/utils/index.ts";
 import { LINE_FORM_LINE_STYLES } from "../../../const/const.map.ts";
 import Slider from "../../../baseComponent/Slider.vue";
@@ -231,7 +231,7 @@ const currentLine = computed(() => {
 
 .i_option {
   display: inline-block;
-  background: url(../../../assets/lineOption.png) no-repeat;
+  background: url(@/assets/ui/buttons/lineOption.png) no-repeat;
   height: 8px;
   width: 180px;
 }

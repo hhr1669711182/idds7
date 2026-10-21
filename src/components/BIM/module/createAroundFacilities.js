@@ -4,6 +4,7 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { Line2 } from 'three/addons/lines/Line2.js'
 import { lonLatToLocalCoord } from './commonThree.js'
 import { commonSetting } from './commonSetting.js'
+import { assetUrls } from '@/const/assetPaths'
 
 export function drawAOIPath(buildingsGroup, coordinates) {
   if (!coordinates) return
@@ -116,7 +117,7 @@ function drawEnvEnterprises(buildingsGroup, data) {
 }
 
 function createEnvEnterprises(buildingsGroup, localCoord, size) {
-  const texture = new THREE.TextureLoader().load('/model3d/xf_zddw.png')
+  const texture = new THREE.TextureLoader().load(assetUrls.stationMarker)
   const mat = new THREE.SpriteMaterial({
     map: texture,
     transparent: true,
@@ -141,7 +142,7 @@ function drawEntranceExit(buildingsGroup, data) {
 }
 
 function createEntranceExit(buildingsGroup, localCoord, size) {
-  const texture = new THREE.TextureLoader().load('/model3d/xf_entrance.png')
+  const texture = new THREE.TextureLoader().load(assetUrls.entranceMarker)
   const mat = new THREE.SpriteMaterial({
     map: texture,
     transparent: true,

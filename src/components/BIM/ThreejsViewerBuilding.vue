@@ -112,7 +112,7 @@ window.addEventListener('click', (event) => {
   top: 0;
   left: 0;
   /* 可选：背景色，方便查看效果 */
-  background-color: #f5f5f5;
+  background-color: var(--panel-bg);
   /* 可选：子元素居中（按需添加） */
   display: flex;
   justify-content: center;
@@ -145,7 +145,7 @@ window.addEventListener('click', (event) => {
   background: white;
   padding: 8px 12px;
   border-radius: 6px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 10px color-mix(in srgb, #000 20%, transparent);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -154,7 +154,7 @@ window.addEventListener('click', (event) => {
 select {
   padding: 4px 8px;
   font-size: 14px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--widget-border);
   border-radius: 4px;
   outline: none;
   cursor: pointer;

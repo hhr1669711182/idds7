@@ -14,7 +14,7 @@ import { SearchResultTool } from "../MapTools/drawMapTools/SearchResultTool";
 import { transform } from "ol/proj";
 import { isOlMap } from "@/utils/mapTool";
 import { amapApi, type PoiFeature, type RegeoData } from "@/apis/amap";
-import { parseCoordinateText } from "@/service/coordinateText";
+import { parseCoordinateText } from "@/utils/coordinateText";
 import { useCurrentMap } from "@/composables/useCurrentMap";
 import type { SearchViewOption } from "@/types/search";
 import RoutePlanPanel from "./routePlanPanel.vue";

@@ -1,8 +1,14 @@
 import { ref, computed } from 'vue'
+import { ElMessage } from 'element-plus'
 import type { CarItem } from '@/composables/useCarFeatures'
 import type { JRAlarmData } from '../amap/mapData.ts'
 import dayjs from 'dayjs'
-import type { IncidentDetailData } from './IncidentDetailDialog.vue'
+import { fetchIncidentDetail } from '@/apis/incidentProfile'
+import {
+  toIncidentDetailData,
+  type IncidentDetailData,
+  type IncidentDetailResponseData,
+} from './IncidentDetailDialog.vue'
 
 export type AlarmDetailRow = {
   label: string
@@ -182,6 +188,9 @@ export function useMapPopups() {
   // === 警情详情固定弹窗（居中 Modal，小弹窗点"警情详情"打开） ===
   const incidentDetailVisible = ref(false)
   const incidentDetailData = ref<IncidentDetailData | null>(null)
+  const incidentDetailLoading = ref(false)
+  /** 请求序号：弹窗可连续切换警情打开，仅最新一次请求允许回写数据 */
+  let incidentDetailRequestId = 0
 
   /** 从松散业务对象中按候选字段名取第一个非空值 */
   const pickField = (data: Record<string, any> | null | undefined, keys: string[]): string | null => {
@@ -234,17 +243,42 @@ export function useMapPopups() {
     disasterType: pickField(d, ['disasterTypeLabel', 'disasterType', 'alarmType']),
   })
 
-  /** 点击小弹窗"警情详情"按钮：快照当前点位数据并打开固定弹窗 */
-  const openIncidentDetailFromAlarm = () => {
-    if (!alarmData.value) return
-    incidentDetailData.value = buildDetailFromAlarm(alarmData.value)
+  /**
+   * 点击小弹窗"警情详情"按钮：先用本地快照打开弹窗，再拉取详情接口覆盖。
+   * 无 incidentId 时仅展示快照；接口失败提示并保留快照内容。
+   */
+  const openDetailWithFetch = (incidentId: string | null, snapshot: IncidentDetailData) => {
+    incidentDetailData.value = snapshot
     incidentDetailVisible.value = true
+    if (!incidentId?.trim()) return
+    const requestId = ++incidentDetailRequestId
+    incidentDetailLoading.value = true
+    fetchIncidentDetail<IncidentDetailResponseData>(incidentId)
+      .then((detail) => {
+        if (requestId !== incidentDetailRequestId) return
+        incidentDetailData.value = toIncidentDetailData(detail)
+      })
+      .catch((error) => {
+        console.warn('[incident-detail] 拉取警情详情失败', { incidentId, error })
+        if (requestId === incidentDetailRequestId) {
+          ElMessage.error('警情详情获取失败，当前展示点位已知信息')
+        }
+      })
+      .finally(() => {
+        if (requestId === incidentDetailRequestId) incidentDetailLoading.value = false
+      })
   }
 
+  /** 点击警情规划小弹窗"警情详情"：快照 + 详情接口 */
+  const openIncidentDetailFromAlarm = () => {
+    if (!alarmData.value) return
+    openDetailWithFetch(pickField(alarmData.value, ['incidentId', 'inquiryId', 'orderNo']), buildDetailFromAlarm(alarmData.value))
+  }
+
+  /** 点击今日灾情小弹窗"警情详情"：快照 + 详情接口 */
   const openIncidentDetailFromJrAlarm = () => {
     if (!jrAlarmData.value) return
-    incidentDetailData.value = buildDetailFromJrAlarm(jrAlarmData.value)
-    incidentDetailVisible.value = true
+    openDetailWithFetch(jrAlarmData.value.incidentId || null, buildDetailFromJrAlarm(jrAlarmData.value))
   }
 
   return {
@@ -271,6 +305,7 @@ export function useMapPopups() {
     closeJRAlarmPopup,
     incidentDetailVisible,
     incidentDetailData,
+    incidentDetailLoading,
     openIncidentDetailFromAlarm,
     openIncidentDetailFromJrAlarm,
   }

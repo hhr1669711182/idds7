@@ -1,0 +1,186 @@
+/*
+ * OpenLayers 控件样式唯一真源。
+ *
+ * 【职责】
+ * 1. 控件外观（底色 / 描边 / 圆角 / 投影 / 文字色）—— 一律走调色盘 token，昼夜自动生效；
+ * 2. 控件通用尺寸与位置（缩放 / 比例尺 / 旋转 / 鹰眼 / 打印）；
+ * 3. 移动端（.is-mobile）适配。
+ *
+ * 【铁律】
+ * - 本文件是全局样式（由 src/styles/index.less 引入），故用普通选择器，
+ *   不要写 :global() —— 那只在 SFC 的 scoped 样式块里有效。
+ * - 页面级只允许覆盖「位置」（left / bottom / top / z-index），不要再覆盖「外观」。
+ *   否则同一套控件在不同页面各长各的，历史事故：ol-overviewmap 被 overflow:hidden 裁没，
+ *   鹰眼缩略图整块消失且排查极难。
+ * - OL10 的 ol.css 已把控件外观收敛到 7 个官方 CSS 变量
+ *   （--ol-background-color / --ol-foreground-color / --ol-accent-background-color
+ *     / --ol-subtle-background-color / --ol-subtle-foreground-color
+ *     / --ol-partial-background-color / --ol-brand-color），
+ *   调色盘在 src/styles/palettes.less 里桥接这些变量。
+ *
+ * 引入顺序：src/style.css（ol.css）→ src/styles/index.less，本文件在后，
+ * 同权重下覆盖生效；组件 scoped 样式在产物中更晚加载，可覆盖本文件的定位值。
+ *
+ * 规范见 herness/05-共享上下文/代码样式规范.md
+ */
+
+/* ---------- 官方变量桥接（全局，两个主题共用入口） ---------- */
+:root {
+  --ol-partial-background-color: color-mix(in srgb, var(--ol-background-color) 78%, transparent);
+}
+
+/* ---------- 控件容器：底色与文字色，所有控件通用 ---------- */
+.ol-control {
+  background-color: var(--ol-background-color);
+  color: var(--ol-foreground-color);
+  border-radius: var(--radius-sm);
+}
+
+/* 只有「有视觉主体」的控件才加描边与投影。
+   ol-overviewmap 容器与折叠态 ol-attribution 都是 0 尺寸定位盒，
+   加了描边会留下一小块边框残影。 */
+.ol-zoom,
+.ol-rotate {
+  // border: 1px solid var(--ol-subtle-background-color);
+  box-shadow: var(--panel-shadow);
+}
+
+/* ---------- 控件按钮 ---------- */
+.ol-control button {
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  background-color: transparent;
+  color: var(--ol-foreground-color);
+  border: none;
+  border-radius: 0;
+}
+
+.ol-control button:hover,
+.ol-control button:focus-visible {
+  background-color: var(--ol-accent-background-color);
+  color: var(--ol-foreground-color);
+}
+
+.ol-control button:first-child {
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.ol-control button:last-child {
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.ol-control button:only-child {
+  border-radius: var(--radius-sm);
+}
+
+.is-mobile .ol-control button {
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+}
+
+/* ---------- 缩放控件 ---------- */
+.ol-zoom {
+  top: calc(100% - 140px) !important;
+  left: 0.5em;
+}
+
+.is-mobile .ol-zoom {
+  left: 0.5em;
+  top: calc(100% - 120px) !important;
+}
+
+/* ---------- 比例尺 ---------- */
+.ol-scale-line {
+  background: var(--ol-partial-background-color);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--ol-foreground-color);
+  padding: 2px 6px;
+  bottom: 0px !important;
+  left: 0.5em;
+}
+
+.ol-scale-line .ol-scale-line-inner {
+  color: var(--ol-foreground-color) !important;
+  border-color: var(--ol-subtle-foreground-color);
+}
+
+.is-mobile .ol-scale-line {
+  font-size: 14px;
+  padding: 2px 8px;
+}
+
+/* ---------- 旋转控件（指南针图标用官方 brand 色） ---------- */
+.ol-rotate {
+  top: 3em;
+  right: 0.5em;
+}
+
+.ol-rotate button {
+  color: var(--ol-brand-color);
+}
+
+.is-mobile .ol-rotate {
+  top: 4em;
+}
+
+/* ---------- 鹰眼（概览图） ----------
+   容器是 0 尺寸定位盒：缩略图被 position:absolute 抽出，不撑开父级。
+   容器一旦裁剪 / 描边 / 铺底色，180x120 缩略图就会被整块裁没。 */
+.ol-overviewmap {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+  bottom: 1.7em;
+  left: 0.5em;
+  z-index: 1;
+}
+
+.ol-overviewmap:not(.ol-collapsed) {
+  background: transparent;
+}
+
+/* 视觉主体落在真正的缩略图上 */
+.ol-overviewmap .ol-overviewmap-map {
+  width: 180px !important;
+  height: 120px !important;
+  position: absolute;
+  bottom: 0;
+  left: calc(36px + 10px);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--panel-shadow);
+}
+
+/* 折叠按钮：容器透明，按钮自身要有底色才看得见 */
+.ol-overviewmap button {
+  background-color: var(--ol-background-color);
+  border: 1px solid var(--ol-subtle-background-color);
+  box-shadow: var(--panel-shadow);
+}
+
+.ol-overviewmap:not(.ol-collapsed) button {
+  bottom: 0;
+  left: 0;
+  position: absolute;
+}
+
+.is-mobile .ol-overviewmap {
+  bottom: 5em;
+  width: 120px;
+  height: 120px;
+}
+
+/* ---------- 打印控件 ---------- */
+.ol-control.ol-print-dialog {
+  top: 0.5em;
+  right: 7.5em;
+}
+
+.is-mobile .ol-control.ol-print-dialog {
+  display: none;
+}

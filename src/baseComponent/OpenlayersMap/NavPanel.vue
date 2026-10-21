@@ -3,9 +3,8 @@ import { ref, computed } from "vue";
 import * as olProj from "ol/proj";
 import { ElMessage } from "element-plus";
 import { fetchInputTips } from "../amap/useAmapTools.ts";
-import amapData from "../amap/data.json";
+import amapData from "@/assets/map/config/data.json";
 import { useFireStations } from "@/composables/useFireStations";
-import { EventBus } from "@/utils/mitt.ts";
 
 const props = defineProps<{
   nav: any;

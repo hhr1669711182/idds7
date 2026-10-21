@@ -6,7 +6,7 @@
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\controller\core\business\DispatchController.ts
  */
-import { BUFFER_POLYGON_FILL, FIRE_STATION_ICON, ROUTE_LINE_STROKE } from '@/baseComponent/amap/featureStyle'
+import { BUFFER_POLYGON_FILL, FIRE_STATION_ICON, ROUTE_LINE_STROKE } from '@/baseComponent/OpenlayersMap/style'
 import type { BusinessMapPort } from '../protocol/BusinessMapPort'
 import type {
   DispatchViewportFitData,

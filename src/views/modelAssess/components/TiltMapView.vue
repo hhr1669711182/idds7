@@ -7,15 +7,11 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useModelAssessStore } from '@/store/useModelAssessStore'
 import { useDispatchStore } from '@/store/useDispatchStore'
-import { LAYER_TABS } from '@/const/const.modelAssess'
 import type { LayerTabKey } from '@/const/const.modelAssess'
 import type { PickComponentInfo } from '../composables/useThreeScene'
 import ThreeViewer from './ThreeViewer.vue'
 import FloorPlan2D from './FloorPlan2D.vue'
-import ComponentDetailPopover from './ComponentDetailPopover.vue'
-import RouteDebugPanel from './RouteDebugPanel.vue'
 import MasterAlarmPanel from './MasterAlarmPanel.vue'
-import Compass3D from './Compass3D.vue'
 
 const store = useModelAssessStore()
 const dispatchStore = useDispatchStore()
@@ -149,7 +145,7 @@ const onModelLoaded = () => store.setModelLoaded(true)
   .tab-divider {
     display: inline-block;
     width: 1px;
-    background: #1f2940;
+    background: var(--ma-border);
     margin: 4px 4px;
     height: 24px;
     vertical-align: middle;

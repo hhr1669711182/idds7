@@ -154,7 +154,6 @@ const onClick = (tool: MarkDrawToolType) => {
   border: 1px solid var(--md-border);
   box-shadow: var(--md-shadow);
   backdrop-filter: var(--md-blur);
-  -webkit-backdrop-filter: var(--md-blur);
 }
 /* 按钮列表可滚动，底部「清除元素」常驻可见 */
 .md-toolbar__list {

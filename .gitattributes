@@ -26,6 +26,19 @@
 *.eot binary
 *.mp4 binary
 
+# 3D 模型与地理瓦片（体量大且为二进制，行尾探测会污染仓库）
+*.glb binary
+*.gltf binary
+*.obj binary
+*.fbx binary
+*.bin binary
+*.tif binary
+*.tiff binary
+
+# three.js 字体与模型内 JSON 数据（单文件可达 16MB，行尾转换会破坏体积）
+public/fonts/*.json binary
+*.typeface.json binary
+
 # lockfile 不参与行尾/格式化处理
 pnpm-lock.yaml -text
 

@@ -27,23 +27,24 @@ span {
   height: 26px;
   right: 18px;
   bottom: 150px;
-  background: url(../../assets/gl-navi-control-pc4.png) -188px 1px / 266px no-repeat
-    rgb(255, 255, 255);
-  box-shadow: rgba(0, 0, 0, 0.15) 1px 2px 1px;
+  background-color: var(--panel-bg-solid);
+  box-shadow: var(--panel-shadow);
+  /* 精灵图底色随主题变化：夜间用深色，白天用白色 */
+  background-image: url(@/assets/ui/sprites/gl-navi-control-pc4.png);
+  background-repeat: no-repeat;
+  background-size: 266px;
+  background-position: -188px 1px;
 }
 
 span:hover {
-  background: url(../../assets/gl-navi-control-pc4.png) -240px 1px / 266px no-repeat
-    rgb(255, 255, 255);
+  background-position: -240px 1px;
 }
 
 span.active {
-  background: url(../../assets/gl-navi-control-pc4.png) -110px 1px / 266px no-repeat
-    rgb(255, 255, 255);
+  background-position: -110px 1px;
 }
 
 span.active:hover {
-  background: url(../../assets/gl-navi-control-pc4.png) -162px 1px / 266px no-repeat
-    rgb(255, 255, 255);
+  background-position: -162px 1px;
 }
 </style>

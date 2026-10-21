@@ -4,7 +4,7 @@ import { Feature, Map, View } from "ol";
 import { Style, Fill, Stroke, Text } from "ol/style";
 import LayerVector from "ol/layer/Vector";
 import SourceVector from "ol/source/Vector";
-import lands from "../../../../assets/lands.json";
+import lands from "@/assets/map/geo/lands.json";
 import GeoJSON from "ol/format/GeoJSON";
 import { fromLonLat } from "ol/proj";
 import { Geometry } from "ol/geom";

@@ -15,7 +15,7 @@ import * as olProj from 'ol/proj'
 import Overlay from 'ol/Overlay'
 // import { EventBus } from "@/utils/mitt.ts";
 import { useDispatchStore } from '@/store' // useTabsStore,
-import { createRouteDirectionArrowStyle, createSelectedTmcLineStyle, getStyle, MAP_ICON_SRC } from './featureStyle'
+import { createRouteDirectionArrowStyle, createSelectedTmcLineStyle, getStyle, MAP_ICON_SRC } from '@/baseComponent/OpenlayersMap/style'
 import { createDispatchVehicleLabel } from './dispatchVehicleLabel'
 import {
   normalizeRouteResults,

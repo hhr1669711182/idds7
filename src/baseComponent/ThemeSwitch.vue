@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import dayImg from "../assets/day.svg";
-import nightImg from "../assets/night.svg";
+import dayImg from "@/assets/ui/theme/day.svg";
+import nightImg from "@/assets/ui/theme/night.svg";
 import { useCommonStore } from "../store/index.ts";
 import { storeToRefs } from "pinia";
 import { THEME_COLOR } from "../const/index.ts";
@@ -21,7 +21,7 @@ const changeThemeColor = (flag: boolean) => {
 };
 </script>
 <template>
-  <div>
+  <div class="theme-switch">
     <el-switch v-model="colorFlag" size="large" @change="changeThemeColor">
       <template #active-action>
         <img :src="dayImg" />
@@ -33,15 +33,28 @@ const changeThemeColor = (flag: boolean) => {
   </div>
 </template>
 <style scoped>
+.theme-switch {
+  position: fixed;
+  top: calc(var(--top-actions-center) - var(--top-actions-switch-height) / 2);
+  right: calc(
+    var(--top-actions-right) + var(--weather-panel-width) + var(--top-actions-gap) +
+      2 * (var(--top-actions-size) + var(--top-actions-gap))
+  );
+  z-index: 1000;
+  width: var(--top-actions-switch-width);
+  height: var(--top-actions-switch-height);
+  display: flex;
+  align-items: center;
+}
 :deep(.el-switch__action) {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #000;
+  background-color: var(--panel-bg-solid);
 }
 
 :deep(.el-switch.is-checked .el-switch__core .el-switch__action) {
-  background-color: #fff !important;
+  background-color: var(--primary-color) !important;
 }
 
 img {
@@ -50,11 +63,12 @@ img {
 }
 
 :deep(.el-switch.is-checked .el-switch__core) {
-  background-color: #fff;
-  border-color: #6b6464c9;
+  background-color: var(--accent-cyan-soft);
+  border-color: var(--accent-cyan);
 }
 
 :deep(.el-switch__core) {
-  background-color: #000;
+  background-color: var(--panel-bg-solid);
+  border-color: var(--widget-border);
 }
 </style>

@@ -28,7 +28,7 @@
   bottom: 60px;
   border-radius: 6px;
   padding: 6px 5px;
-  background-color: rgba(94, 210, 225, 0.72);
+  background-color: color-mix(in srgb, var(--accent-cyan) 72%, transparent);
   font-size: 12px;
 }
 .key {
@@ -36,13 +36,13 @@
   width: 30px;
   height: 20px;
   margin: 2px;
-  background-color: #f0f0f0;
-  border: 1px solid #ccc;
+  background-color: var(--text-primary);
+  border: 1px solid var(--text-secondary);
   border-radius: 2px;
   text-align: center;
   line-height: 20px;
   font-family: Arial, sans-serif;
-  box-shadow: 0 1px #999;
+  box-shadow: 0 1px var(--text-muted);
   transition: all 0.1s ease;
 }
 </style>

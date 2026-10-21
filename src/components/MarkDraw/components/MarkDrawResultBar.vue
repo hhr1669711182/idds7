@@ -54,7 +54,6 @@ const visible = computed(() => props.measure !== null);
   border: 1px solid var(--md-border);
   box-shadow: var(--md-shadow);
   backdrop-filter: var(--md-blur);
-  -webkit-backdrop-filter: var(--md-blur);
   color: var(--md-text);
   font-size: 12px;
 }

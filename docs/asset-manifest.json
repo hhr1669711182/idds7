@@ -1,0 +1,1059 @@
+{
+  "$comment": "本文件由 scripts/manifest-assets.mjs 生成，请勿手工编辑。资源管理约定见 herness/02-技术设计/前端/资源文件管理-技术方案.md。",
+  "generator": "scripts/manifest-assets.mjs",
+  "summary": {
+    "fileCount": 92,
+    "totalBytes": 65201199,
+    "totalMB": 62.18,
+    "byKind": {
+      "font": {
+        "count": 7,
+        "bytes": 18103995
+      },
+      "public-literal": {
+        "count": 2,
+        "bytes": 178339
+      },
+      "model": {
+        "count": 22,
+        "bytes": 43161676
+      },
+      "video": {
+        "count": 1,
+        "bytes": 2833447
+      },
+      "other": {
+        "count": 6,
+        "bytes": 20573
+      },
+      "map": {
+        "count": 38,
+        "bytes": 861884
+      },
+      "ui": {
+        "count": 16,
+        "bytes": 41285
+      }
+    }
+  },
+  "assets": [
+    {
+      "path": "public/fonts/gentilis_bold.typeface.json",
+      "bytes": 649318,
+      "sha256": "c028fd9c4017e34f",
+      "kind": "font",
+      "refs": [
+        "src/const/assetPaths.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/fonts/gentilis_regular.typeface.json",
+      "bytes": 627529,
+      "sha256": "7ed95f2faa30f59d",
+      "kind": "font",
+      "refs": [
+        "src/const/assetPaths.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/fonts/helvetiker_bold.typeface.json",
+      "bytes": 61632,
+      "sha256": "bd68159ee0b8d10f",
+      "kind": "font",
+      "refs": [
+        "src/const/assetPaths.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/fonts/helvetiker_regular.typeface.json",
+      "bytes": 63182,
+      "sha256": "d5c5467690f74061",
+      "kind": "font",
+      "refs": [
+        "src/const/assetPaths.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/fonts/optimer_bold.typeface.json",
+      "bytes": 112249,
+      "sha256": "d690a5f45706db0c",
+      "kind": "font",
+      "refs": [
+        "src/const/assetPaths.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/fonts/optimer_regular.typeface.json",
+      "bytes": 110666,
+      "sha256": "17e5e14d94d66e0e",
+      "kind": "font",
+      "refs": [
+        "src/const/assetPaths.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/fonts/YEFONTDianYingPangBaiTi_Regular.json",
+      "bytes": 16479419,
+      "sha256": "9517d43258ae3818",
+      "kind": "font",
+      "refs": [
+        "src/const/assetPaths.ts",
+        "tests/unit/assetCleanup.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/icons.svg",
+      "bytes": 174883,
+      "sha256": "e46b3e8fc2c8492c",
+      "kind": "public-literal",
+      "refs": [
+        "src/App.vue",
+        "src/components/MarkDraw/components/MarkDrawToolbar.vue",
+        "src/const/assetPaths.ts",
+        "tests/unit/assetCleanup.spec.ts",
+        "tests/unit/assetPaths.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": "sprite，App.vue fetch 后注入 #svgBase"
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0_001.jpg",
+      "bytes": 592039,
+      "sha256": "e458a97eba691de4",
+      "kind": "model",
+      "refs": [],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0_002.jpg",
+      "bytes": 2502745,
+      "sha256": "01d02b2ae109a095",
+      "kind": "model",
+      "refs": [],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0_003.jpg",
+      "bytes": 113366,
+      "sha256": "924f6412affe38f3",
+      "kind": "model",
+      "refs": [],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0_004.jpg",
+      "bytes": 436640,
+      "sha256": "1cb30b6700fbd6c8",
+      "kind": "model",
+      "refs": [],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0_005.jpg",
+      "bytes": 481296,
+      "sha256": "d6e75ebdc93f1163",
+      "kind": "model",
+      "refs": [],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0_006.jpg",
+      "bytes": 92129,
+      "sha256": "45de4515b1702cde",
+      "kind": "model",
+      "refs": [],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0_007.jpg",
+      "bytes": 2464927,
+      "sha256": "d80f53b7d1d7fe61",
+      "kind": "model",
+      "refs": [],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0_008.jpg",
+      "bytes": 4318946,
+      "sha256": "bd1859de1573789d",
+      "kind": "model",
+      "refs": [],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0_009.jpg",
+      "bytes": 1718543,
+      "sha256": "91153be56bfd792c",
+      "kind": "model",
+      "refs": [],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0_010.jpg",
+      "bytes": 1895402,
+      "sha256": "e8038e512bdaa937",
+      "kind": "model",
+      "refs": [],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0_011.jpg",
+      "bytes": 2276675,
+      "sha256": "519a6d082d41f631",
+      "kind": "model",
+      "refs": [],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0_012.jpg",
+      "bytes": 2134275,
+      "sha256": "82b67daa34eab2d3",
+      "kind": "model",
+      "refs": [],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0.bin",
+      "bytes": 213180,
+      "sha256": "d582caf1f93cdcc8",
+      "kind": "model",
+      "refs": [
+        "tests/unit/assetCleanup.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/gltf/B370921843501063A0.gltf",
+      "bytes": 19025,
+      "sha256": "c078e407edd50c1c",
+      "kind": "model",
+      "refs": [
+        "src/const/assetPaths.ts",
+        "tests/unit/assetCleanup.spec.ts",
+        "tests/unit/assetRuntimeRefs.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/xf_entrance.png",
+      "bytes": 2837,
+      "sha256": "443b1f626d3d957c",
+      "kind": "model",
+      "refs": [
+        "src/const/assetPaths.ts",
+        "tests/unit/assetCleanup.spec.ts",
+        "tests/unit/assetRuntimeRefs.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/xf_extinguisher.glb",
+      "bytes": 257740,
+      "sha256": "c667d412fbeb8720",
+      "kind": "model",
+      "refs": [
+        "src/const/assetPaths.ts",
+        "tests/unit/assetCleanup.spec.ts",
+        "tests/unit/assetRuntimeRefs.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/xf_fire_hydrant.obj",
+      "bytes": 10275342,
+      "sha256": "5e940fbad8318167",
+      "kind": "model",
+      "refs": [
+        "src/const/assetPaths.ts",
+        "tests/unit/assetCleanup.spec.ts",
+        "tests/unit/assetRuntimeRefs.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/xf_fire_truck.glb",
+      "bytes": 674836,
+      "sha256": "a5b8c12326936e89",
+      "kind": "model",
+      "refs": [
+        "src/const/assetPaths.ts",
+        "tests/unit/assetCleanup.spec.ts",
+        "tests/unit/assetPaths.spec.ts",
+        "tests/unit/assetRuntimeRefs.spec.ts",
+        "tests/unit/assetUrl.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/xf_firefighter.glb",
+      "bytes": 1283812,
+      "sha256": "b1320caeecd53a72",
+      "kind": "model",
+      "refs": [
+        "src/const/assetPaths.ts",
+        "tests/unit/assetCleanup.spec.ts",
+        "tests/unit/assetRuntimeRefs.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/xf_smoke.png",
+      "bytes": 167394,
+      "sha256": "ebf570d0b0466290",
+      "kind": "model",
+      "refs": [
+        "src/const/assetPaths.ts",
+        "tests/unit/assetCleanup.spec.ts",
+        "tests/unit/assetRuntimeRefs.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/xf_trapped_man.glb",
+      "bytes": 11236280,
+      "sha256": "c7fa9c09bd33962d",
+      "kind": "model",
+      "refs": [
+        "src/const/assetPaths.ts",
+        "tests/unit/assetCleanup.spec.ts",
+        "tests/unit/assetRuntimeRefs.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/model3d/xf_zddw.png",
+      "bytes": 4247,
+      "sha256": "2bfbbb2d4c6e0e69",
+      "kind": "model",
+      "refs": [
+        "src/const/assetPaths.ts",
+        "tests/unit/assetCleanup.spec.ts",
+        "tests/unit/assetRuntimeRefs.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": null
+    },
+    {
+      "path": "public/tw.svg",
+      "bytes": 3456,
+      "sha256": "b42b5ecf93b1e732",
+      "kind": "public-literal",
+      "refs": [
+        "tests/unit/assetCleanup.spec.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": "index.html favicon"
+    },
+    {
+      "path": "public/video/MVI_39031.mp4",
+      "bytes": 2833447,
+      "sha256": "1bd194a382bf62d8",
+      "kind": "video",
+      "refs": [
+        "src/controller/core/business/IncidentVideoOverlayController.ts"
+      ],
+      "publicLiteral": true,
+      "keepReason": "现场视频本地兜底副本（代码当前走远程源）"
+    },
+    {
+      "path": "src/assets/fixtures/addressRobot/backendResult.json",
+      "bytes": 6538,
+      "sha256": "f321794a538321bf",
+      "kind": "other",
+      "refs": [
+        "src/components/AddressRobotDrawer/types.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/fixtures/addressRobot/gis_search.json",
+      "bytes": 2335,
+      "sha256": "5908706e64aeffc7",
+      "kind": "other",
+      "refs": [
+        "src/components/AddressRobotDrawer/types.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/geo/ssrk.json",
+      "bytes": 5883,
+      "sha256": "a0220e90832093ba",
+      "kind": "other",
+      "refs": [
+        "src/composables/useSSRKFeatures.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/icons-svg/jz.svg",
+      "bytes": 1377,
+      "sha256": "80da748209a5c138",
+      "kind": "other",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/dispatchMap.vue",
+        "src/components/bottomNav/index.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/icons-svg/lj.svg",
+      "bytes": 1596,
+      "sha256": "b5f9c23b24e299dd",
+      "kind": "other",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/dispatchMap.vue",
+        "src/components/bottomNav/index.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/icons-svg/map/并集.svg",
+      "bytes": 1380,
+      "sha256": "076f85504cd29d36",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/Panels/analyseMap.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/icons-svg/map/差集.svg",
+      "bytes": 1324,
+      "sha256": "7f3ed124aa50f5dd",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/Panels/analyseMap.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/icons-svg/map/画圆.svg",
+      "bytes": 660,
+      "sha256": "ac8282521c550bc1",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/Panels/analyseMap.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/icons-svg/map/交集.svg",
+      "bytes": 1602,
+      "sha256": "60243e6c516e796e",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/Panels/analyseMap.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/icons-svg/map/end.svg",
+      "bytes": 2616,
+      "sha256": "4d30c8bac1ef3e6b",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/routePlan.vue",
+        "src/components/map/MapTools/drawMapTools/SearchResultTool.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/icons-svg/map/pointIng.png",
+      "bytes": 595,
+      "sha256": "306a1f400adeb299",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/routePlan.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/icons-svg/map/start.svg",
+      "bytes": 1488,
+      "sha256": "9184f8da4165d173",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/routePlan.vue",
+        "src/components/map/MapTools/drawMapTools/SearchResultTool.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/icons-svg/xc.svg",
+      "bytes": 2844,
+      "sha256": "79e77e5c6772bb5c",
+      "kind": "other",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/dispatchMap.vue",
+        "src/components/bottomNav/index.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/config/data.json",
+      "bytes": 207,
+      "sha256": "833708e0bea8a65d",
+      "kind": "map",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/dispatchMap.vue",
+        "src/baseComponent/OpenlayersMap/map.vue",
+        "src/baseComponent/OpenlayersMap/NavPanel.vue",
+        "src/components/common/WeatherPanel.vue",
+        "src/config/env.ts",
+        "tests/unit/assetUrl.spec.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/geo/hongshang.json",
+      "bytes": 48919,
+      "sha256": "11adf6be630f8aa8",
+      "kind": "map",
+      "refs": [
+        "src/components/map/MapTools/ThemeTools/MaskTools.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/geo/lands.json",
+      "bytes": 438419,
+      "sha256": "58d2bde5ba43334a",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/Panels/vectorLayerHight.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/icon/即时警情-灰.png",
+      "bytes": 16076,
+      "sha256": "c925bfcdc6904e52",
+      "kind": "map",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/style/icons.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/icon/即时警情.png",
+      "bytes": 15782,
+      "sha256": "d5eb241a638e96bf",
+      "kind": "map",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/style/icons.ts",
+        "src/baseComponent/tools/FeatureHandler.js"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/icon/alarm_high.png",
+      "bytes": 2987,
+      "sha256": "516531f9a14f5401",
+      "kind": "map",
+      "refs": [],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/icon/alarm.png",
+      "bytes": 5183,
+      "sha256": "9742794cf4af9d31",
+      "kind": "map",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/specialMapMock.ts",
+        "src/baseComponent/OpenlayersMap/style/icons.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/icon/blue-fire.svg",
+      "bytes": 2056,
+      "sha256": "28a9f1e90d605a68",
+      "kind": "map",
+      "refs": [],
+      "publicLiteral": false,
+      "keepReason": "动态模板引用：style/icons.ts::getCommonAlarmIconSrc 按 `${colorType}-${type}.svg` 运行时拼装"
+    },
+    {
+      "path": "src/assets/map/icon/blue-rescue.svg",
+      "bytes": 1630,
+      "sha256": "e8a46349f37e65d4",
+      "kind": "map",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/style/icons.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": "动态模板引用：style/icons.ts::getCommonAlarmIconSrc 按 `${colorType}-${type}.svg` 运行时拼装"
+    },
+    {
+      "path": "src/assets/map/icon/blue-society.svg",
+      "bytes": 5671,
+      "sha256": "b1b8786509bc5629",
+      "kind": "map",
+      "refs": [],
+      "publicLiteral": false,
+      "keepReason": "动态模板引用：style/icons.ts::getCommonAlarmIconSrc 按 `${colorType}-${type}.svg` 运行时拼装"
+    },
+    {
+      "path": "src/assets/map/icon/car.png",
+      "bytes": 1232,
+      "sha256": "867ad02dcd406a04",
+      "kind": "map",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/dispatchMap.vue",
+        "src/baseComponent/OpenlayersMap/map.vue",
+        "src/baseComponent/OpenlayersMap/style/icons.ts",
+        "tests/components/dispatchT1TrackingBoundary.spec.ts",
+        "tests/unit/f6F7EngineBoundary.spec.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/icon/carTap.png",
+      "bytes": 1693,
+      "sha256": "08c7a657a03293f0",
+      "kind": "map",
+      "refs": [],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/icon/fire-engine.svg",
+      "bytes": 904,
+      "sha256": "8d69766d464bca56",
+      "kind": "map",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/style/icons.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/icon/poi.png",
+      "bytes": 720,
+      "sha256": "f48916bde1eeb32e",
+      "kind": "map",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/specialMapMock.ts",
+        "src/baseComponent/OpenlayersMap/style/icons.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/icon/poi1.png",
+      "bytes": 780,
+      "sha256": "b8d86ded6fb20b31",
+      "kind": "map",
+      "refs": [],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/icon/red-fire.svg",
+      "bytes": 2054,
+      "sha256": "72ec1d44c5992aec",
+      "kind": "map",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/style/icons.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": "动态模板引用：style/icons.ts::getCommonAlarmIconSrc 按 `${colorType}-${type}.svg` 运行时拼装"
+    },
+    {
+      "path": "src/assets/map/icon/red-rescue.svg",
+      "bytes": 1630,
+      "sha256": "07b50bb588cd904b",
+      "kind": "map",
+      "refs": [],
+      "publicLiteral": false,
+      "keepReason": "动态模板引用：style/icons.ts::getCommonAlarmIconSrc 按 `${colorType}-${type}.svg` 运行时拼装"
+    },
+    {
+      "path": "src/assets/map/icon/red-society.svg",
+      "bytes": 5671,
+      "sha256": "f4a05bf2d0da2d7d",
+      "kind": "map",
+      "refs": [],
+      "publicLiteral": false,
+      "keepReason": "动态模板引用：style/icons.ts::getCommonAlarmIconSrc 按 `${colorType}-${type}.svg` 运行时拼装"
+    },
+    {
+      "path": "src/assets/map/icon/shui.png",
+      "bytes": 4142,
+      "sha256": "46ddb205e68480a6",
+      "kind": "map",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/style/icons.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/icon/xfz.png",
+      "bytes": 1270,
+      "sha256": "da9d49c5f49242c6",
+      "kind": "map",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/dispatchMap.vue",
+        "src/baseComponent/OpenlayersMap/map.vue",
+        "src/baseComponent/OpenlayersMap/style/icons.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/icon/zhu.png",
+      "bytes": 18309,
+      "sha256": "f0151f8c8a591596",
+      "kind": "map",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/dispatchMap.vue",
+        "src/baseComponent/OpenlayersMap/DispatchT1.ts",
+        "src/baseComponent/OpenlayersMap/FeatureClickQuery.ts",
+        "src/baseComponent/OpenlayersMap/style/icons.ts",
+        "src/store/useIncidentLocationStore.ts"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/imgs/cluster.png",
+      "bytes": 52931,
+      "sha256": "da6d762ac4fb2f80",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/topicLayerCard.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/imgs/heatMap.jpg",
+      "bytes": 7632,
+      "sha256": "f07821b1fc653aec",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/topicLayerCard.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/imgs/logo-dark.svg",
+      "bytes": 739,
+      "sha256": "4b439f7c275bb284",
+      "kind": "map",
+      "refs": [],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/imgs/mask.jpg",
+      "bytes": 4450,
+      "sha256": "86eb206710c02978",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/topicLayerCard.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/imgs/north.svg",
+      "bytes": 274,
+      "sha256": "06ebfd1495139d3c",
+      "kind": "map",
+      "refs": [],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/imgs/setting.png",
+      "bytes": 910,
+      "sha256": "77d66b183f2c469a",
+      "kind": "map",
+      "refs": [],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/imgs/time.jpg",
+      "bytes": 5075,
+      "sha256": "59f0ce9c840cf272",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/topicLayerCard.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/imgs/vector.png",
+      "bytes": 16171,
+      "sha256": "51a923f4f692fe37",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/topicLayerCard.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/map/imgs/weather.jpg",
+      "bytes": 4872,
+      "sha256": "be4958633ac5e956",
+      "kind": "map",
+      "refs": [
+        "src/components/map/component/topicLayerCard.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/buttons/arrow.png",
+      "bytes": 1121,
+      "sha256": "61f425d4b9e929af",
+      "kind": "ui",
+      "refs": [
+        "src/baseComponent/tools/FeatureHandler.js"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/buttons/bottomBg.png",
+      "bytes": 7730,
+      "sha256": "079059358e93f678",
+      "kind": "ui",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/dispatchMap.vue",
+        "src/components/bottomNav/index.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/buttons/lineOption.png",
+      "bytes": 2771,
+      "sha256": "30331aa6caaf53d0",
+      "kind": "ui",
+      "refs": [
+        "src/components/map/form/lineForm.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/buttons/loc.png",
+      "bytes": 1336,
+      "sha256": "b688e548c33cc5f5",
+      "kind": "ui",
+      "refs": [
+        "src/components/map/form/circleForm.vue",
+        "src/components/map/form/polygonForm.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/buttons/marker.png",
+      "bytes": 10046,
+      "sha256": "08bdfed2cfedaa35",
+      "kind": "ui",
+      "refs": [
+        "src/components/map/form/pointForm.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/buttons/polygon3.png",
+      "bytes": 1028,
+      "sha256": "9e6b0759ed93eba4",
+      "kind": "ui",
+      "refs": [
+        "src/components/map/form/polygonForm.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/buttons/polygon4.png",
+      "bytes": 357,
+      "sha256": "84e4395651986f8c",
+      "kind": "ui",
+      "refs": [
+        "src/components/map/form/polygonForm.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/buttons/polygon5.png",
+      "bytes": 269,
+      "sha256": "5eb0d7f0aec5d98a",
+      "kind": "ui",
+      "refs": [
+        "src/components/map/form/polygonForm.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/buttons/right.png",
+      "bytes": 332,
+      "sha256": "04a3c14c8e88ec92",
+      "kind": "ui",
+      "refs": [
+        "src/baseComponent/OpenlayersMap/style/factory.ts",
+        "src/components/map/component/routePlan.vue",
+        "src/components/map/form/lineForm.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/icons/three_draw.png",
+      "bytes": 1134,
+      "sha256": "b15cc22517098612",
+      "kind": "ui",
+      "refs": [
+        "src/components/BIM/viewerInquiryBuilding.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/icons/three_move.png",
+      "bytes": 1274,
+      "sha256": "35a8de905884b972",
+      "kind": "ui",
+      "refs": [
+        "src/components/BIM/viewerInquiryBuilding.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/sprites/earth-navi-control-pc4-night.png",
+      "bytes": 2714,
+      "sha256": "7497b39649cd65fe",
+      "kind": "ui",
+      "refs": [
+        "src/components/map/compass.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/sprites/earth-navi-control-pc4.png",
+      "bytes": 4571,
+      "sha256": "a7bdd3b7ce4f602e",
+      "kind": "ui",
+      "refs": [
+        "src/components/map/compass.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/sprites/gl-navi-control-pc4.png",
+      "bytes": 3977,
+      "sha256": "16bc4798614e353a",
+      "kind": "ui",
+      "refs": [
+        "src/components/common/ModeChange.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/theme/day.svg",
+      "bytes": 1705,
+      "sha256": "3eac7e42f1325918",
+      "kind": "ui",
+      "refs": [
+        "src/baseComponent/ThemeSwitch.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/assets/ui/theme/night.svg",
+      "bytes": 920,
+      "sha256": "fcb95380ebfbea28",
+      "kind": "ui",
+      "refs": [
+        "src/baseComponent/ThemeSwitch.vue"
+      ],
+      "publicLiteral": false,
+      "keepReason": null
+    },
+    {
+      "path": "src/map.svg",
+      "bytes": 183830,
+      "sha256": "60f4b5f2c2cd47fc",
+      "kind": "map",
+      "refs": [],
+      "publicLiteral": false,
+      "keepReason": null
+    }
+  ]
+}

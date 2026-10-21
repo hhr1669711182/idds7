@@ -4,7 +4,7 @@ import TileLayer from 'ol/layer/Tile'
 import TileWMS from 'ol/source/TileWMS'
 import { circle, point } from '@turf/turf'
 import { fetchDrivingRoutes } from '@/baseComponent/amap/useAmapTools'
-import { geoserverApi } from '@/service/geoserver'
+import { geoserverApi } from '@/apis/geoserver'
 import type { EsQueryData, BufferCalcData, RouteCalcData, RouteCalcResult } from '../protocol'
 
 export class SpatialController {

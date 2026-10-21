@@ -205,7 +205,7 @@ describe('Control 916 迁移归一回归：Given 固定输入 When 新链接收 
   )
 
   it('Given F1 已归一 slots 映射 When 接收画像 Then 复用同一服务返回载荷与快照类型', async () => {
-    const { normalizeIncidentLocationContent } = await import('@/service/incidentLocation')
+    const { normalizeIncidentLocationContent } = await import('@/utils/incidentLocation')
     const content = { incidentId: ' incident-1 ', version: 3, slots: { longitude: null, disaster_address: '地址' } }
     const expected = normalizeIncidentLocationContent(content)
     expect(expected).not.toBeNull()

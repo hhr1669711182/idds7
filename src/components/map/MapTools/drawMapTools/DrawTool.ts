@@ -2,7 +2,7 @@
 import Map from 'ol/Map'
 import Feature from 'ol/Feature'
 import { Style, Stroke, Fill } from 'ol/style'
-import { Draw, Interaction } from 'ol/interaction'
+import { Draw } from 'ol/interaction'
 import { createRegularPolygon, createBox } from 'ol/interaction/Draw'
 import { TYPES } from '../../../../const/const.map'
 import { BaseTool } from './BaseTool'

@@ -5,7 +5,7 @@
 import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'
 import { loadGLTF, loadOBJ, lonLatToLocalCoord, buildMockHydrants } from './commonThree'
-import { maModelSetting } from './commonSetting'
+import { assetUrls } from '@/const/assetPaths'
 
 /**
  * 加载消防车（GLB）
@@ -13,7 +13,7 @@ import { maModelSetting } from './commonSetting'
  */
 export async function loadFireTruck(buildingsGroup: THREE.Group, coor: [number, number]): Promise<THREE.Object3D> {
   try {
-    const gltf = await loadGLTF(`${maModelSetting.assetBase}/xf_fire_truck.glb`)
+    const gltf = await loadGLTF(assetUrls.fireTruck)
     const model = gltf.scene as THREE.Object3D
     model.scale.setScalar(0.06)
     const localCoord = lonLatToLocalCoord(coor[0], coor[1], true) as THREE.Vector3
@@ -37,7 +37,7 @@ export async function loadFireTruck(buildingsGroup: THREE.Group, coor: [number, 
  */
 export async function loadFireFighter(buildingsGroup: THREE.Group): Promise<THREE.AnimationMixer | null> {
   try {
-    const gltf = await loadGLTF(`${maModelSetting.assetBase}/xf_firefighter.glb`)
+    const gltf = await loadGLTF(assetUrls.fireFighter)
     const model = gltf.scene
     model.scale.setScalar(0.1)
     model.position.set(0.3, 0, -0.6)
@@ -60,7 +60,7 @@ export async function loadFireFighter(buildingsGroup: THREE.Group): Promise<THRE
 export async function loadFireHydrant(buildingsGroup: THREE.Group): Promise<void> {
   const features = buildMockHydrants()
   try {
-    const object = await loadOBJ(`${maModelSetting.assetBase}/xf_fire_hydrant.obj`)
+    const object = await loadOBJ(assetUrls.fireHydrant)
     const allGeometries: THREE.BufferGeometry[] = []
     object.traverse((child: THREE.Object3D) => {
       if ((child as THREE.Mesh).isMesh) {

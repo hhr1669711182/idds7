@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { toDispatchAlarmProfile as legacy } from '@/Control/alarmMessage'
-import { toDispatchAlarmProfile } from '@/service/alarmProfile'
+import { toDispatchAlarmProfile } from '@/utils/alarmProfile'
 import type { AlarmIncidentStateData } from '@/controller/core/protocol/LegacyMessageProtocol'
 
 vi.mock('@/store', () => ({ useUserStore: () => ({ seatNumber: '8001' }) }))

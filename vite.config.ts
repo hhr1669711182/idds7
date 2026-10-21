@@ -1,7 +1,7 @@
 /*
  * @Author: huanghuanrong
  * @Date: 2026-03-31 15:30:08
- * @LastEditTime: 2026-10-14 19:38:19
+ * @LastEditTime: 2026-10-20 14:07:45
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\vite.config.ts
@@ -17,6 +17,7 @@ import { createSvgIconsPlugin } from 'vite-plugin-svg-icons'
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 import cesium from 'vite-plugin-cesium'
+import { elementStyleRegistry } from './scripts/vite-plugin-element-styles.mjs'
 
 export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -53,8 +54,9 @@ export default defineConfig(({ mode, command }) => {
         dts: 'src/types/components.d.ts',
         resolvers: [ElementPlusResolver()],
       }),
+      elementStyleRegistry(),
       createSvgIconsPlugin({
-        iconDirs: [fileURLToPath(new URL('./src/assets/svg', import.meta.url))],
+        iconDirs: [fileURLToPath(new URL('./src/assets/icons-svg', import.meta.url))],
         symbolId: 'icon-[dir]-[name]',
       }),
     ],
@@ -75,6 +77,9 @@ export default defineConfig(({ mode, command }) => {
     },
     build: {
       sourcemap: mode !== 'production',
+      // 大包阈值：CesiumDuty（约 4MB）已由路由懒加载隔离出首屏，属已知大包。
+      // 其余 chunk 超过 1MB 即视为分包劣化信号。
+      chunkSizeWarningLimit: 1024,
       outDir: isLib ? 'dist-lib' : 'dist',
       lib: isLib
         ? {
@@ -129,7 +134,7 @@ export default defineConfig(({ mode, command }) => {
         ...(env.VITE_DISPATCH_MOCK === 'true'
           ? {
               '/api/dispatch': {
-                target: 'http://127.0.0.1:18080',
+                target: 'http://192.168.172.103:3003/',
                 changeOrigin: true,
                 rewrite: (path: string) => path.replace(/^\/api/, ''),
               },

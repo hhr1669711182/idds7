@@ -1,16 +1,8 @@
-import amapRawConfig from '@/baseComponent/amap/data.json'
+import amapRawConfig from '@/assets/map/config/data.json'
 
 type AmapConfigItem = { data?: { city?: string; adcode?: string; keywords?: string; boundaries?: unknown[] } }
 const amapConfigData = amapRawConfig as AmapConfigItem[]
 
-/*
- * @Author: hhr
- * @Date: 2026-05-06 17:11:52
- * @LastEditTime: 2026-08-27 16:15:05
- * @LastEditors: hhr
- * @Description: 文件描述
- * @FilePath: \ids-gis-web\src\config\env.ts
- */
 const readEnvString = (key: string) => {
   const value = import.meta.env[key] // 拓展读取接口
   return typeof value === 'string' ? value.trim() : ''
@@ -24,6 +16,9 @@ const isDev = import.meta.env.DEV === true
 export const appEnv = {
   isDev,
   appMode: readEnvString('VITE_APP_ENV'),
+  // 资源基础路径，来自 vite 的 base（应用形态 './'、库形态 '/'）。
+  // 运行期资源（3D 模型 / 字体 / 视频）统一经 @/const/assetPaths 取值，业务代码不直接读本字段。
+  assetBase: import.meta.env.BASE_URL,
   apiBaseUrl: stripTrailingSlashes(readEnvString('VITE_API_BASE_URL')),
   useMock: readEnvString('VITE_USE_MOCK') === 'true',
   useWS: readEnvString('VITE_USE_WS') === 'true',

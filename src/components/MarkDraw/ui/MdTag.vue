@@ -18,7 +18,7 @@ defineProps<{
 .md-tag {
   display: inline-flex;
   align-items: center;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 500;
   line-height: 1.2;
@@ -30,33 +30,33 @@ defineProps<{
   padding: 3px 10px;
 }
 .md-tag--default {
-  background: rgba(120, 180, 230, 0.12);
-  color: #aac6e8;
-  border-color: rgba(120, 180, 230, 0.25);
+  background: var(--tag-default-bg);
+  color: var(--tag-default-text);
+  border-color: var(--tag-default-border);
 }
 .md-tag--primary {
-  background: rgba(0, 212, 255, 0.15);
-  color: #5ee0ff;
-  border-color: rgba(0, 212, 255, 0.4);
+  background: var(--tag-primary-bg);
+  color: var(--tag-primary-text);
+  border-color: var(--tag-primary-border);
 }
 .md-tag--success {
-  background: rgba(46, 204, 113, 0.18);
-  color: #2ecc71;
-  border-color: rgba(46, 204, 113, 0.45);
+  background: var(--tag-success-bg);
+  color: var(--tag-success-text);
+  border-color: var(--tag-success-border);
 }
 .md-tag--warning {
-  background: rgba(230, 162, 60, 0.18);
-  color: #f5a623;
-  border-color: rgba(230, 162, 60, 0.45);
+  background: var(--tag-warning-bg);
+  color: var(--tag-warning-text);
+  border-color: var(--tag-warning-border);
 }
 .md-tag--danger {
-  background: rgba(245, 54, 92, 0.18);
-  color: #ff5b7a;
-  border-color: rgba(245, 54, 92, 0.45);
+  background: var(--tag-danger-bg);
+  color: var(--tag-danger-text);
+  border-color: var(--tag-danger-border);
 }
 .md-tag--info {
-  background: rgba(180, 200, 220, 0.1);
-  color: #b6c5d4;
-  border-color: rgba(180, 200, 220, 0.25);
+  background: var(--tag-info-bg);
+  color: var(--tag-info-text);
+  border-color: var(--tag-info-border);
 }
 </style>

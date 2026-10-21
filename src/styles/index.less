@@ -1,6 +1,9 @@
-@import './element.less';
+@import './tokens.less';
+@import './palettes.less';
 @import './day.less';
 @import './night.less';
+@import './element-theme.less';
+@import './ol-controls.less';
 @import './themed-panel.less';
 
 /* 滚动条全局配置样式 */
@@ -14,12 +17,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.3);
+  background: color-mix(in srgb, var(--text-primary) 30%, transparent);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.4);
+  background: color-mix(in srgb, var(--text-primary) 40%, transparent);
 }
 
 ::-webkit-scrollbar-corner {
@@ -29,5 +32,5 @@
 /* Firefox 滚动条兼容 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  scrollbar-color: color-mix(in srgb, var(--text-primary) 20%, transparent) transparent;
 }

@@ -162,10 +162,10 @@ const onEdit = () => {
   top: 60px;
   right: 12px;
   width: 280px;
-  background: linear-gradient(180deg, #131826 0%, #1a2236 100%);
-  border: 1px solid #ff7a00;
+  background: linear-gradient(180deg, var(--ma-bg-panel) 0%, var(--ma-bg-panel) 100%);
+  border: 1px solid var(--ma-orange);
   border-radius: 6px;
-  box-shadow: 0 0 20px rgba(255, 122, 0, 0.3);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--ma-orange) 30%, transparent);
   z-index: 30;
   pointer-events: auto;
 }
@@ -175,12 +175,12 @@ const onEdit = () => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid #2a3556;
-  background: linear-gradient(90deg, rgba(255, 122, 0, 0.15), transparent);
+  border-bottom: 1px solid var(--ma-border-light);
+  background: linear-gradient(90deg, var(--ma-orange-soft), transparent);
 }
 
 .cp-title {
-  color: #ff7a00;
+  color: var(--ma-orange);
   font-size: 13px;
   font-weight: 600;
 }
@@ -188,21 +188,21 @@ const onEdit = () => {
 .cp-close {
   background: transparent;
   border: none;
-  color: #8a96b0;
+  color: var(--ma-text-dim);
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
 }
 
 .cp-close:hover {
-  color: #ff4d4f;
+  color: var(--ma-red);
 }
 
 .cp-body {
   padding: 10px 12px;
   font-size: 12px;
   line-height: 1.8;
-  color: #e6ebf5;
+  color: var(--ma-text);
 }
 
 .cp-row {
@@ -211,26 +211,26 @@ const onEdit = () => {
 }
 
 .cp-key {
-  color: #8a96b0;
+  color: var(--ma-text-dim);
   flex-shrink: 0;
 }
 
 .cp-val {
-  color: #e6ebf5;
+  color: var(--ma-text);
   font-weight: 500;
 }
 
 .cp-val.fire-val {
-  color: #ff7a00;
+  color: var(--ma-orange);
   font-weight: 700;
 }
 
 .cp-val.green-val {
-  color: #22c55e;
+  color: var(--ma-green);
 }
 
 .cp-val.orange-val {
-  color: #ff9500;
+  color: var(--ma-orange-light);
 }
 
 .cp-row.fire-row {
@@ -244,15 +244,15 @@ const onEdit = () => {
   display: flex;
   gap: 6px;
   margin-top: 10px;
-  border-top: 1px solid #1f2940;
+  border-top: 1px solid var(--ma-border);
   padding-top: 10px;
 }
 
 .cp-btn {
   flex: 1;
   background: transparent;
-  border: 1px solid #2a3556;
-  color: #e6ebf5;
+  border: 1px solid var(--ma-border-light);
+  color: var(--ma-text);
   padding: 4px 8px;
   font-size: 11px;
   border-radius: 2px;
@@ -261,18 +261,18 @@ const onEdit = () => {
 }
 
 .cp-btn:hover {
-  border-color: #ff7a00;
-  color: #ff7a00;
+  border-color: var(--ma-orange);
+  color: var(--ma-orange);
 }
 
 .cp-btn.primary {
-  background: rgba(255, 122, 0, 0.15);
-  border-color: #ff7a00;
-  color: #ff7a00;
+  background: var(--ma-orange-soft);
+  border-color: var(--ma-orange);
+  color: var(--ma-orange);
 }
 
 .cp-btn.primary:hover {
-  background: rgba(255, 122, 0, 0.25);
+  background: color-mix(in srgb, var(--ma-orange) 25%, transparent);
 }
 
 .popover-fade-enter-active,

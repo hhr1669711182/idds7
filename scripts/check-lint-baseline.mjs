@@ -2,7 +2,8 @@
 /**
  * 类型门禁基线检查（只提示，不阻塞提交）。
  *
- * 现状：仓库有 193 个既有 vue-tsc 报错（TS6133 为主），暂不清理。
+ * 现状：仓库有一批既有 vue-tsc 报错（TS6133 为主），暂不清理。
+ *         具体数量以 lint-baseline.json 的 count 为准。
  * 策略：
  *   - 与 lint-baseline.json 比对，识别「新增」与「已修复」；
  *   - 默认仅打印报告并 exit 0（advisory 模式，不阻塞提交）；
@@ -58,8 +59,11 @@ if (count === 0 && output.trim()) {
 }
 
 const baselineIdentities = new Set([...baseline].map(identity))
+const currentIdentities = new Set([...current].map(identity))
 const added = [...current].filter((item) => !baselineIdentities.has(identity(item)))
-const fixed = [...baseline].filter((item) => !current.has(item))
+/** 与 added 同口径：按「文件 + 错误码 + 消息」比对，不含行号。
+ *  早期版本用带行号的完整串比对，行号漂移会让同一问题被重复计入「已修复」。 */
+const fixed = [...baseline].filter((item) => !currentIdentities.has(identity(item)))
 
 console.log(`[lint-baseline] 当前 ${count} 项 / 基线 ${baseline.size} 项`)
 if (fixed.length) console.log(`[lint-baseline] 已修复 ${fixed.length} 项`)

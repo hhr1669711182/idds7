@@ -19,7 +19,7 @@
  * @FilePath: src/controller/core/business/IncidentNearbyResourceQuery.ts
  */
 import { centroid, circle as turfCircle, distance } from '@turf/turf'
-import { geoserverApi } from '@/service/geoserver'
+import { geoserverApi } from '@/apis/geoserver'
 import type { Coordinate } from './IncidentStationQuery'
 
 /** 消防栓图层（gis:env_fire_water），几何字段 geom，点要素 */

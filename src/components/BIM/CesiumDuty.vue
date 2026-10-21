@@ -159,7 +159,7 @@ const loadBuildingData = async () => {
   top: 0;
   left: 0;
   /* 可选：背景色，方便查看效果 */
-  background-color: #f5f5f5;
+  background-color: var(--panel-bg);
   /* 可选：子元素居中（按需添加） */
   display: flex;
   justify-content: center;

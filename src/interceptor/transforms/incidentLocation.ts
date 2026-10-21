@@ -1,11 +1,11 @@
 import { MESSAGE_EVENT_KEY, MESSAGE_SUBSCRIBE_TOPIC } from '@/const/const.message.type'
 import type { AddressUpdatedData } from '@/controller/core/protocol/LegacyMessageProtocol'
-import { normalizeIncidentLocationContent } from '@/service/incidentLocation'
+import { normalizeIncidentLocationContent } from '@/utils/incidentLocation'
 import type { MessageInterceptor, NormalizedMessage } from '../types'
 import { matchesMessageRoute } from '../matcher'
 import { getFrameMetadata, getMessagePayload, normalize, unwrapMessageFrames } from '../unwrap'
 
-export { LOCATION_RELEVANT_SLOT_CODES, parseAddressUpdatedContent } from '@/service/incidentLocation'
+export { LOCATION_RELEVANT_SLOT_CODES, parseAddressUpdatedContent } from '@/utils/incidentLocation'
 
 export const normalizeAddressUpdatedFrames = (
   frame: unknown,

@@ -223,7 +223,7 @@ window.addEventListener("resize", handleResize);
   top: 0;
   left: 0;
   /* 可选：背景色，方便查看效果 */
-  background-color: #f5f5f5;
+  background-color: var(--text-primary);
   /* 可选：子元素居中（按需添加） */
   display: flex;
   justify-content: center;
@@ -239,10 +239,10 @@ window.addEventListener("resize", handleResize);
   position: absolute;
   top: 10px;
   left: 10px;
-  background: rgba(0, 0, 0, 0.65);
+  background: color-mix(in srgb, #000 65%, transparent);
   padding: 12px 12px;
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 14px;
   z-index: 999;
   width: 280px;
@@ -258,19 +258,19 @@ window.addEventListener("resize", handleResize);
 .building-title {
   font-size: 14px;
   font-weight: bold;
-  color: #ffffff;
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .building-address {
   font-size: 14px;
-  color: #aaaaaa;
+  color: var(--text-muted);
 }
 
 .fold-btn {
-  background-color: #25272c;
-  border: 1px solid #666666;
-  color: #fff;
+  background-color: var(--panel-bg-solid);
+  border: 1px solid var(--text-muted);
+  color: var(--text-primary);
   border-radius: 4px;
   padding: 4px 4px;
   font-size: 10px;
@@ -278,10 +278,10 @@ window.addEventListener("resize", handleResize);
 }
 
 .fire-info-panel {
-  background: rgba(0, 0, 0, 0.25);
+  background: color-mix(in srgb, #000 25%, transparent);
   padding: 12px 12px;
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 14px;
   z-index: 999;
 }
@@ -300,7 +300,7 @@ window.addEventListener("resize", handleResize);
 .label {
   width: 80px;
   font-size: 14px;
-  color: #b8c2cc;
+  color: var(--text-secondary);
   user-select: none;
 }
 
@@ -316,23 +316,23 @@ window.addEventListener("resize", handleResize);
 .input-field {
   width: 100%;
   height: 32px;
-  background: #1a1a1a;
-  border: 1px solid #8a5a3c;
+  background: var(--panel-bg-solid);
+  border: 1px solid var(--accent-cyan);
   border-radius: 6px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 14px;
   padding: 0 10px;
   outline: none;
 }
 
 .input-field:focus {
-  border-color: #d27a48;
+  border-color: var(--accent-cyan);
 }
 
 .suffix {
   margin-left: 8px;
   font-size: 14px;
-  color: #b8c2cc;
+  color: var(--text-secondary);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -341,10 +341,10 @@ window.addEventListener("resize", handleResize);
 .select-field {
   width: 100%;
   height: 32px;
-  background: #1a1a1a;
-  border: 1px solid #8a5a3c;
+  background: var(--panel-bg-solid);
+  border: 1px solid var(--accent-cyan);
   border-radius: 6px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 14px;
   padding: 0 10px;
   outline: none;
@@ -352,7 +352,7 @@ window.addEventListener("resize", handleResize);
 }
 
 .select-field:focus {
-  border-color: #d27a48;
+  border-color: var(--accent-cyan);
 }
 
 .arrow-icon {
@@ -361,7 +361,7 @@ window.addEventListener("resize", handleResize);
   top: 50%;
   transform: translateY(-50%);
   font-size: 12px;
-  color: #b8c2cc;
+  color: var(--text-secondary);
   pointer-events: none;
 }
 
@@ -372,7 +372,7 @@ window.addEventListener("resize", handleResize);
     right: 10px;
     width: 148px;
     height: 188px;
-    background: rgba(0, 0, 0, 0.65);
+    background: color-mix(in srgb, #000 65%, transparent);
     border-radius: 12px;
     display: flex;
     flex-direction: column;
@@ -389,14 +389,14 @@ window.addEventListener("resize", handleResize);
     width: 110px;
     height: 110px;
     border-radius: 50%;
-    border: 2px solid #eee;
+    border: 2px solid var(--text-primary);
     margin-bottom: 12px;
   }
   /* 方位文字 */
-  .dir-n { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); color: #fff; font-weight: bold; }
-  .dir-s { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); color: #fff; font-weight: bold; }
-  .dir-w { position: absolute; left: 4px; top: 50%; transform: translateY(-50%); color: #fff; font-weight: bold; }
-  .dir-e { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); color: #fff; font-weight: bold; }
+  .dir-n { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); color: var(--text-primary); font-weight: bold; }
+  .dir-s { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); color: var(--text-primary); font-weight: bold; }
+  .dir-w { position: absolute; left: 4px; top: 50%; transform: translateY(-50%); color: var(--text-primary); font-weight: bold; }
+  .dir-e { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); color: var(--text-primary); font-weight: bold; }
   /* 指针容器，随相机旋转 */
   .needle-container {
     width: 100%;
@@ -413,11 +413,11 @@ window.addEventListener("resize", handleResize);
     /* 三角形：上红，左右透明，形成向上尖头 */
     border-left: 6px solid transparent;
     border-right: 6px solid transparent;
-    border-bottom: 30px solid #ff3333;
+    border-bottom: 30px solid var(--tag-danger-text);
     transform-origin: center bottom;
     transform: translate(-50%, -100%);
     /* 红色外发光，匹配截图辉光效果 */
-    filter: drop-shadow(0 0 6px #ff3333);
+    filter: drop-shadow(0 0 6px var(--tag-danger-text));
   }
 
   .needle-s {
@@ -429,12 +429,12 @@ window.addEventListener("resize", handleResize);
     /* 向下的灰色三角形 */
     border-left: 6px solid transparent;
     border-right: 6px solid transparent;
-    border-top: 30px solid #aaaaaa;
+    border-top: 30px solid var(--text-muted);
     transform-origin: center top;
     transform: translate(-50%, 0);
   }
   .compass-text {
-    color: #fff;
+    color: var(--text-primary);
     font-size: 20px;
   }
 </style>

@@ -10,7 +10,7 @@ vi.mock('@/baseComponent/OpenlayersMap/mountPointLayer', () => ({
 vi.mock('@/baseComponent/OpenlayersMap/mountPolygonLayer', () => ({
   mountPolygonLayer: () => ({ destroy: layers.destroy }),
 }))
-vi.mock('@/baseComponent/amap/featureStyle', () => ({ getStyle: vi.fn(), MAP_ICON_SRC: { endPoint: 'end' } }))
+vi.mock('@/baseComponent/OpenlayersMap/style', () => ({ getStyle: vi.fn(), MAP_ICON_SRC: { endPoint: 'end' } }))
 
 import { createSpecialMapMock } from '@/baseComponent/OpenlayersMap/specialMapMock'
 

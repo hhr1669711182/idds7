@@ -2,7 +2,7 @@
  * WFS-T 事务封装：insert / update / delete / mixed
  * 直接走 geoserverApi.transaction(xml)，由 engine 捕获异常并回滚本地 feature。
  */
-import { geoserverApi } from '@/service/geoserver'
+import { geoserverApi } from '@/apis/geoserver'
 import { resolveFeatureType } from './nsResolver'
 import { buildInsertXml, buildUpdateXml, buildDeleteXml, buildMixedXml, buildGeomUpdateXml } from './wfsXml'
 import type Feature from 'ol/Feature'

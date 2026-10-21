@@ -85,12 +85,12 @@ void isSelected;
   display: flex;
   flex-direction: column;
   font-size: 12px;
-  color: #d6e1ee;
+  color: var(--text-primary);
 }
 .md-table__head {
   display: flex;
-  background: rgba(0, 30, 60, 0.4);
-  border-bottom: 1px solid rgba(120, 180, 230, 0.18);
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--widget-border);
 }
 .md-table__cell {
   flex: 1;
@@ -103,7 +103,7 @@ void isSelected;
 }
 .md-table__cell--head {
   font-size: 11px;
-  color: rgba(180, 200, 220, 0.6);
+  color: var(--text-muted);
   font-weight: 500;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -114,17 +114,18 @@ void isSelected;
   overflow-x: hidden;
 }
 .md-table__row {
+  position: relative;
   display: flex;
-  border-bottom: 1px solid rgba(120, 180, 230, 0.08);
+  border-bottom: 1px solid var(--widget-border);
   cursor: pointer;
   transition: background 0.12s ease;
 }
 .md-table__row:hover {
-  background: rgba(0, 212, 255, 0.08);
+  background: var(--accent-cyan-soft);
 }
 .md-table__row.is-active {
-  background: rgba(0, 212, 255, 0.18) !important;
-  color: #5ee0ff;
+  background: var(--accent-cyan-soft);
+  color: var(--accent-cyan-strong);
   font-weight: 600;
 }
 .md-table__row.is-active::before {
@@ -133,13 +134,10 @@ void isSelected;
   left: 0;
   width: 2px;
   height: 100%;
-  background: linear-gradient(180deg, #00d4ff, transparent);
-}
-.md-table__row {
-  position: relative;
+  background: linear-gradient(180deg, var(--accent-cyan), transparent);
 }
 .md-table__row.is-selected {
-  background: rgba(46, 204, 113, 0.08);
+  background: var(--tag-success-bg);
 }
 .md-table__cell-text {
   overflow: hidden;
@@ -148,21 +146,21 @@ void isSelected;
   width: 100%;
 }
 .md-table__check {
-  accent-color: #00d4ff;
+  accent-color: var(--accent-cyan);
   cursor: pointer;
 }
 .md-table__loading,
 .md-table__empty {
   padding: 24px;
   text-align: center;
-  color: rgba(180, 200, 220, 0.5);
+  color: var(--text-muted);
   font-size: 12px;
 }
 .md-table__body::-webkit-scrollbar {
   width: 6px;
 }
 .md-table__body::-webkit-scrollbar-thumb {
-  background: rgba(120, 180, 230, 0.25);
+  background: var(--widget-border);
   border-radius: 3px;
 }
 </style>

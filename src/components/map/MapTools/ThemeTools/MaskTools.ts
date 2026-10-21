@@ -13,7 +13,7 @@ import Mask from 'ol-ext/filter/Mask'
 import Crop from 'ol-ext/filter/Crop'
 import { Fill } from 'ol/style'
 import { LAYER_NAMES } from '../../../../baseComponent/OpenlayersMap/layers'
-import geojson from '../../assets/hongshang.json'
+import geojson from '@/assets/map/geo/hongshang.json'
 
 export class MaskTools {
   map: Map

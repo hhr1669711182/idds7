@@ -11,6 +11,7 @@ import { useUserStore } from '@/store/useUserStore'
 import { useDispatchT1Store } from '@/store/useDispatchT1Store'
 
 const runtime = vi.hoisted(() => ({
+  attachAlarmProfile: vi.fn(() => vi.fn()),
   attachTracking: vi.fn(),
   subscribe: vi.fn(() => vi.fn()),
   instances: [] as Array<{
@@ -59,11 +60,11 @@ vi.mock('@/composables/useFireStations', async () => {
   const { ref } = await import('vue')
   return { useFireStations: () => ({ stations: ref([]), load: vi.fn(async () => undefined) }) }
 })
-vi.mock('@/service/geoserver', () => ({ geoserverApi: { getWMSServiceUrl: () => '/geoserver/wms' } }))
+vi.mock('@/apis/geoserver', () => ({ geoserverApi: { getWMSServiceUrl: () => '/geoserver/wms' } }))
 vi.mock('@/baseComponent/OpenlayersMap/FeatureClickQuery', () => ({
   DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS: 'dispatch_t1_primary_station',
 }))
-vi.mock('@/baseComponent/amap/featureStyle', () => ({
+vi.mock('@/baseComponent/OpenlayersMap/style', () => ({
   getStyle: () => new Style(),
   createRouteLineStyle: () => new Style(),
   MAP_ICON_SRC: { car: 'car.png' },
@@ -78,8 +79,8 @@ vi.mock('@/controller/core/business/IncidentStationQuery', async (importOriginal
   queryStationFeatures: vi.fn(async () => []),
   queryIncidentStations: runtime.queryStations,
 }))
-vi.mock('@/service/methods/dispatchVehicles', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/methods/dispatchVehicles')>()),
+vi.mock('@/apis/dispatchVehicles', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/apis/dispatchVehicles')>()),
   queryDispatchFormation: vi.fn(async () => ({ formationId: 'formation-1', formationVersion: 1 })),
 }))
 
@@ -127,6 +128,12 @@ describe('DispatchT1 GPS运行时挂载（回归 2026-10-15 F6）', () => {
     runtime.disposals.length = 0
     runtime.handler = null
     runtime.latest = acceptedGps
+    runtime.attachAlarmProfile.mockReset()
+    runtime.attachAlarmProfile.mockImplementation(() => {
+      const dispose = vi.fn()
+      runtime.disposals.push(dispose)
+      return dispose
+    })
     runtime.attachTracking.mockImplementation((handler: (data: CarLocationBatch) => void) => {
       expect(runtime.instances.length + runtime.realInstances.length).toBeGreaterThan(0)
       runtime.handler = handler
@@ -183,7 +190,20 @@ describe('DispatchT1 GPS运行时挂载（回归 2026-10-15 F6）', () => {
   it('Given 地图未就绪 When 组件挂载 Then 不attach且不直接订阅消息', async () => {
     await show(null)
     expect(runtime.attachTracking).not.toHaveBeenCalled()
+    expect(runtime.attachAlarmProfile).not.toHaveBeenCalled()
     expect(runtime.subscribe).not.toHaveBeenCalled()
+  })
+
+  it('Given 警情画像缓存 When 地图就绪 Then 经Runtime订阅而非prop倒挂，且卸载即解绑', async () => {
+    const panel = await show(null)
+    // 回归：原实现用 store→prop→watch 倒挂传画像，与 attachTracking 的 Runtime 桥不一致。
+    expect(runtime.attachAlarmProfile).not.toHaveBeenCalled()
+    await panel.setProps({ map: createMap() })
+    expect(runtime.attachAlarmProfile).toHaveBeenCalledTimes(1)
+    const stop = runtime.disposals[0]
+    expect(stop).not.toHaveBeenCalled()
+    await panel.setProps({ map: null })
+    expect(stop).toHaveBeenCalledTimes(1)
   })
 
   it('Given 最新accepted GPS已缓存 When 地图就绪 Then controller建好后attach并立即hydrate', async () => {
@@ -369,7 +389,7 @@ describe('DispatchT1 GPS运行时挂载（回归 2026-10-15 F6）', () => {
   it('Given 旧query等待formation When 会话变更后响应 Then 不回写新会话状态（回归F6服务层代次缺口）', async () => {
     runtime.useRealService = true
     runtime.latest = null
-    const { queryDispatchFormation } = await import('@/service/methods/dispatchVehicles')
+    const { queryDispatchFormation } = await import('@/apis/dispatchVehicles')
     const deferred = Promise.withResolvers<Awaited<ReturnType<typeof queryDispatchFormation>>>()
     vi.mocked(queryDispatchFormation).mockReturnValueOnce(deferred.promise)
     runtime.queryStations.mockResolvedValueOnce({

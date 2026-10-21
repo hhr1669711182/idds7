@@ -21,6 +21,7 @@ import baseSource from "./component/baseSource.vue";
 const routePlan = defineAsyncComponent(() => import("./component/routePlan.vue"));
 import bigPanel from "./component/bigPanel.vue";
 import config from "./config.vue";
+import paletteDrawer from "./component/paletteDrawer.vue";
 import layers from "./layers.vue";
 import ssrkPanel from "./component/ssrkPanel.vue";
 
@@ -85,6 +86,16 @@ const handleLayerChange: LayerChangeHandler = (action, id) => {
   }
 };
 
+/** 调色盘 / 底图滤镜变更后重载瓦片，让新滤镜立即生效 */
+const handleFilterChange = () => {
+  const map = MapStore.map;
+  if (!map || typeof map.getLayers !== "function") return;
+  map.getLayers().forEach((layer: any) => {
+    const source = layer.getSource?.();
+    if (source && typeof source.refresh === "function") source.refresh();
+  });
+};
+
 const handleConfigSave = () => {
   openLayersMapRef.value?.syncLayers(layersStore.checkedIds, true);
 };
@@ -117,6 +128,7 @@ onUnmounted(() => {
     <card />
     <bigPanel />
     <config @save="handleConfigSave" />
+    <paletteDrawer @filter-change="handleFilterChange" />
     <layers :onLayerChange="handleLayerChange" />
 
     <ssrkPanel v-show="ssrkPanelOpen" />

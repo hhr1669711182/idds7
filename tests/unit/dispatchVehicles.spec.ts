@@ -17,7 +17,7 @@ import {
   listDispatchVehicles,
   validateDispatchRequest,
   type DispatchVehiclesRequest,
-} from '@/service/methods/dispatchVehicles'
+} from '@/apis/dispatchVehicles'
 import { useDispatchT1Store } from '@/store/useDispatchT1Store'
 
 /**
@@ -27,7 +27,7 @@ import { useDispatchT1Store } from '@/store/useDispatchT1Store'
  * - 请求体必须含 1—200 个不重复的 vehicleId；
  * - 同一批车辆不能被下发两次（beginDispatch 幂等）。
  */
-describe('service/methods/dispatchVehicles 调派车辆契约', () => {
+describe('apis/dispatchVehicles 调派车辆契约', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     Get.mockReset()

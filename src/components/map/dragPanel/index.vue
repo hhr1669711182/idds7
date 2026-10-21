@@ -20,7 +20,7 @@ const { isMobile } = useResponsive();
   position: absolute;
   background: var(--widget-bg);
   border: 1px solid var(--widget-border);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   top: 5px;
   right: 80px;
   color: var(--widget-text);
@@ -29,14 +29,9 @@ const { isMobile } = useResponsive();
   line-height: 20px;
   z-index: 5;
   display: flex;
+  backdrop-filter: blur(var(--glass-blur));
   > div {
     margin-right: 20px;
-  }
-}
-
-html[data-theme="NIGHT"] {
-  .drag-panel {
-    backdrop-filter: blur(4px);
   }
 }
 
@@ -48,8 +43,8 @@ html[data-theme="NIGHT"] {
   flex-wrap: wrap;
   gap: 10px;
   padding: 8px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--panel-shadow);
 }
 
 .drag-panel.is-mobile > div {

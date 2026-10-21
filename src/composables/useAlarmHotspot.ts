@@ -6,9 +6,9 @@ import {
   type DisasterProfileItem,
   type AlarmListResult,
   type AlarmItem,
-} from '@/service/methods/alarm'
+} from '@/apis/alarm'
 import type { JRAlarmData } from '@/baseComponent/amap/mapData'
-import type { PageResult } from '@/service/methods/types'
+import type { PageResult } from '@/apis/types'
 
 const RED_INCIDENT_STATES = new Set([
   'CREATED',

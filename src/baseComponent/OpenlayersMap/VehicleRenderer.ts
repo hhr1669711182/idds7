@@ -9,7 +9,7 @@ import Point from 'ol/geom/Point'
 import VectorSource from 'ol/source/Vector'
 import { fromLonLat, toLonLat } from 'ol/proj'
 import { getDistance } from 'ol/sphere'
-import { getStyle, MAP_ICON_SRC } from '@/baseComponent/amap/featureStyle'
+import { getStyle, MAP_ICON_SRC } from '@/baseComponent/OpenlayersMap/style'
 import type { CarLocationBatch, CarLocationPoint } from '@/controller/core/protocol/LegacyMessageProtocol'
 import type { DispatchFlowState, DispatchVehicleCommand } from '@/controller/core/business/DispatchController1'
 import { Style, Stroke } from 'ol/style'
@@ -229,8 +229,8 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
         rotation: 0,
         scale: 0.65,
         styleId: key,
+        zIndex: 100,
       }) as Style
-      vehicleStyle.setZIndex(100)
       feature.setStyle(vehicleStyle)
       vehicleSource.addFeature(feature)
 
@@ -276,8 +276,8 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
       rotation: 0,
       scale: 0.65,
       styleId,
+      zIndex: 100,
     }) as Style
-    vehicleStyle.setZIndex(100)
     feature.setStyle(vehicleStyle)
     vehicleSource.addFeature(feature)
 
@@ -485,8 +485,8 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
         rotation: tracked.rotation,
         scale: 0.65,
         styleId: key,
+        zIndex: 100,
       }) as Style
-      vehicleStyle.setZIndex(100)
       tracked.feature.setStyle(vehicleStyle)
 
       if (progress < 1) {
@@ -536,8 +536,8 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
         rotation: tracked.rotation,
         scale: 0.65,
         styleId,
+        zIndex: 100,
       }) as Style
-      vehicleStyle.setZIndex(100)
       tracked.feature.setStyle(vehicleStyle)
 
       const current = realtimeAnimations.get(key)
@@ -617,8 +617,8 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
       rotation: tracked.rotation,
       scale: 0.65,
       styleId,
+      zIndex: 100,
     }) as Style
-    vehicleStyle.setZIndex(100)
     tracked.feature.setStyle(vehicleStyle)
     return true
   }

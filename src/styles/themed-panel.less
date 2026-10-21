@@ -1,18 +1,20 @@
 /*
- * Element Plus 主题覆盖（不依赖官方 dark 主题 css，改用项目已有的 CSS 变量驱动）。
- * 背景：element-plus 默认是浅色主题，夜间模式下 el-tabs / el-input / el-checkbox
- * 等组件仍是黑字黑底，导致文字看不清。
+ * 主题强化层（在 Element Plus 全局变量之上做局部加强）。
  *
- * 落位：需要主题化的业务面板在根节点加 .themed-panel 类即可，
- * 避免全局污染其他页面。
+ * 变量层（src/styles/element-theme.less）已让所有 Element Plus 组件在夜间
+ * 下拿到正确配色，本文件只补「变量无法表达的细节」：透明底、激活态强调、
+ * 滑块轨道等。挂到 body 上的浮层（Message / Popover）由变量层负责，
+ * 这里不再用 html[data-theme] 逃逸写法。
+ *
+ * 落位：需要主题强化的业务面板在根节点加 .themed-panel 类。
  */
 
-/* ---------- 通用：标签页文字在夜间模式下不可见 ---------- */
+/* ---------- 通用 ---------- */
 .themed-panel {
-  /* 继承面板自身的字体与底色 */
   color: var(--text-primary);
 }
 
+/* ---------- 标签页 ---------- */
 .themed-panel .el-tabs__item {
   color: var(--text-secondary);
 }
@@ -22,12 +24,10 @@
   color: var(--accent-cyan);
 }
 
-/* 激活态下划线跟随主题色 */
 .themed-panel .el-tabs__active-bar {
   background-color: var(--accent-cyan);
 }
 
-/* tabs 内容区不需要额外背景 */
 .themed-panel .el-tabs__content,
 .themed-panel .el-tab-pane {
   background: transparent;
@@ -52,38 +52,15 @@
   color: var(--text-secondary);
 }
 
-/* autocomplete 下拉面板挂在 body 上，不在面板内，用 html[data-theme] 兜底 */
-html[data-theme='NIGHT'] .el-autocomplete-suggestion,
-html[data-theme='NIGHT'] .el-popper.is-light {
-  background: var(--panel-bg) !important;
-  border-color: var(--panel-border) !important;
-  color: var(--text-primary) !important;
-}
-
-html[data-theme='NIGHT'] .el-popper.is-light .el-popper__arrow::before {
-  background: var(--panel-bg) !important;
-  border-color: var(--panel-border) !important;
-}
-
-html[data-theme='NIGHT'] .el-autocomplete-suggestion li,
-html[data-theme='NIGHT'] .el-popper.is-light li {
-  color: var(--text-secondary);
-}
-
-html[data-theme='NIGHT'] .el-autocomplete-suggestion li.is-highlighted,
-html[data-theme='NIGHT'] .el-popper.is-light li.is-highlighted {
-  background: var(--hover-bg) !important;
-  color: var(--text-primary) !important;
-}
-
 /* ---------- 按钮 ---------- */
 .themed-panel .el-button--primary {
   --el-button-bg-color: var(--accent-cyan);
   --el-button-border-color: var(--accent-cyan);
-  --el-button-hover-bg-color: var(--active-border);
-  --el-button-hover-border-color: var(--active-border);
-  --el-button-active-bg-color: var(--active-border);
-  --el-button-text-color: #fff;
+  --el-button-hover-bg-color: var(--accent-cyan-strong);
+  --el-button-hover-border-color: var(--accent-cyan-strong);
+  --el-button-active-bg-color: var(--accent-cyan-strong);
+  --el-button-active-border-color: var(--accent-cyan-strong);
+  --el-button-text-color: #0b1220;
 }
 
 .themed-panel .el-button--primary.is-disabled,

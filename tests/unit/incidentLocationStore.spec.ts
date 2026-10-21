@@ -8,7 +8,7 @@ import {
 import { MESSAGE_CHANNEL, MESSAGE_EVENT_KEY, MESSAGE_SYSTEM } from '@/const/const.message.type'
 import type { AddressUpdatedData } from '@/controller/core/protocol/IncidentLocationProtocol'
 import type { MessageEnvelope } from '@/types/message'
-import { normalizeIncidentLocationContent } from '@/service/incidentLocation'
+import { normalizeIncidentLocationContent } from '@/utils/incidentLocation'
 
 const queries = vi.hoisted(() => ({ stations: vi.fn(), nearby: vi.fn() }))
 vi.mock('@/controller/core/business/IncidentStationQuery', () => ({ queryIncidentStations: queries.stations }))

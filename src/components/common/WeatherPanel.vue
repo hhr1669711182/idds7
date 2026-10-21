@@ -1,7 +1,7 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed } from "vue";
 import { weather as weatherApi, type AmapWeatherLive } from "@/apis/amap";
-import dataJson from "@/baseComponent/amap/data.json";
+import dataJson from "@/assets/map/config/data.json";
 
 const props = withDefaults(
   defineProps<{
@@ -95,27 +95,61 @@ onBeforeUnmount(() => {
 .weather_panel {
   position: absolute;
   top: 0.5em;
-  right: 0.5em;
+  right: var(--top-actions-right);
   z-index: 60;
-  min-width: 220px;
-  max-width: 380px;
+  /* 固定宽度：内容超长时截断，保证右上角按钮簇位置不被面板挤动 */
+  width: var(--weather-panel-width);
   padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--panel-shadow);
   pointer-events: auto;
   display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  overflow: hidden;
 }
-.weather_panel_header { display: flex; align-items: center; gap: 8px; }
-.weather_panel_city_text { font-size: 13px; font-weight: 600; color: #111827; }
-.weather_panel_loading, .weather_panel_error { font-size: 12px; color: rgba(17, 24, 39, 0.7); }
-.weather_panel_error { color: #b91c1c; }
-.weather_panel_body { display: flex; gap: 12px; align-items: center; }
-.weather_panel_main { display: flex; align-items: center; gap: 8px; }
+.weather_panel_header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 允许收缩：城市名过长时按省略号截断，而不是把右侧内容挤出面板 */
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.weather_panel_city_text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.weather_panel_loading, .weather_panel_error { font-size: 12px; color: var(--text-muted); }
+.weather_panel_error { color: var(--tag-danger-text); }
+.weather_panel_body {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.weather_panel_main { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 .weather_panel_icon { font-size: 18px; line-height: 1; }
-.weather_panel_temp { font-size: 16px; font-weight: 700; color: #111827; line-height: 1; }
-.weather_panel_unit { font-size: 12px; font-weight: 500; margin-left: 2px; color: rgba(17, 24, 39, 0.7); }
-.weather_panel_meta { font-size: 12px; color: rgba(17, 24, 39, 0.65); display: flex; align-items: center; gap: 6px; }
-.weather_panel_dot { color: rgba(17, 24, 39, 0.35); }
+.weather_panel_temp { font-size: 16px; font-weight: 700; color: var(--text-primary); line-height: 1; }
+.weather_panel_unit { font-size: 12px; font-weight: 500; margin-left: 2px; color: var(--text-muted); }
+.weather_panel_meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.weather_panel_dot { color: var(--text-muted); }
 </style>

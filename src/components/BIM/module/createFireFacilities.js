@@ -4,9 +4,10 @@ import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'
 import * as turf from '@turf/turf'
 import { lonLatToLocalCoord, loadGLTF } from './commonThree.js'
 import { commonSetting } from './commonSetting.js'
+import { assetUrls } from '@/const/assetPaths'
 
 export async function loadFireFighter(buildingsGroup) {
-  const gltf = await loadGLTF('/model3d/xf_firefighter.glb')
+  const gltf = await loadGLTF(assetUrls.fireFighter)
   const model = gltf.scene
   model.scale.setScalar(0.1)
   model.position.set(0.35, 0, -0.8)
@@ -21,7 +22,7 @@ export async function loadFireFighter(buildingsGroup) {
 }
 
 export async function loadFireTruck(buildingsGroup, coor) {
-  const gltf = await loadGLTF('/model3d/xf_fire_truck.glb')
+  const gltf = await loadGLTF(assetUrls.fireTruck)
   const model = gltf.scene
   model.scale.setScalar(0.06)
   const localCoord = lonLatToLocalCoord(coor[0], coor[1], true)
@@ -52,7 +53,7 @@ const calculateFireHydrant = (item, basePoint, buildRadius) => {
 
 const drawFireHydrant = (buildingsGroup, features) => {
   const loader = new OBJLoader()
-  loader.load('/model3d/xf_fire_hydrant.obj', (object) => {
+  loader.load(assetUrls.fireHydrant, (object) => {
     const allGeometries = []
     object.traverse((child) => {
       if (child.isMesh) {

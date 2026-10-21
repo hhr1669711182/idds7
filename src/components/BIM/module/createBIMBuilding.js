@@ -1,9 +1,10 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { assetUrls } from '@/const/assetPaths'
 
 export function load3DBuilding(buildingsGroup) {
   const loader = new GLTFLoader()
-  loader.load('/model3d/gltf/B370921843501063A0.gltf', function (gltf) {
+  loader.load(assetUrls.buildingGltf, function (gltf) {
     gltf.scene.traverse((child) => {
       if (child.isMesh) {
         child.material.metalness = 0

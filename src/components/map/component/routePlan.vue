@@ -6,12 +6,12 @@ import Feature from "ol/Feature";
 import { LineString } from "ol/geom";
 import Overlay from "ol/Overlay";
 import { Style, Icon, Stroke, Fill, Circle } from "ol/style";
-import selectPointImg from "../assets/pointIng.png";
+import selectPointImg from "@/assets/icons-svg/map/pointIng.png";
 import { useMapStore, usePanelStore } from "../../../store";
 import { PANEL_TYPES } from "../../../const/index.ts";
-import endImg from "../assets/end.svg";
-import startImg from "../assets/start.svg";
-import rightImg from "../../../assets/right.png";
+import endImg from "@/assets/icons-svg/map/end.svg";
+import startImg from "@/assets/icons-svg/map/start.svg";
+import rightImg from "@/assets/ui/buttons/right.png";
 import { getStyleFunction } from "@/utils/index.ts";
 import {
   VECTOR_LAYER,

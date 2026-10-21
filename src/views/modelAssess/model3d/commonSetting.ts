@@ -18,8 +18,6 @@ export const maModelSetting = {
   buildRadius: 200,
   /** GeoServer workspace */
   gisWorkspace: 'gis',
-  /** 资源根路径（复用 public/model3d/） */
-  assetBase: '/model3d',
   /** 楼层表资源（白模 GeoServer 图层） */
   fireHydrant: { layerName: 'gis:v_srvc_water_hydrant', geom: 'geom' },
   whiteBuilding: { layerName: 'gis:mapBuilding', geom: 'geom' },

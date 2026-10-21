@@ -10,7 +10,7 @@ import VectorSource from 'ol/source/Vector'
 import type { GenericController } from '@/controller/core/generic'
 import type { AddressRobotGisSearchData } from '@/controller/core/protocol/BusinessProtocol'
 import { EventBus } from '@/utils/mitt'
-import { getStyle } from '@/baseComponent/amap/featureStyle'
+import { getStyle } from '@/baseComponent/OpenlayersMap/style'
 import {
   createDisplayStyleFunction,
   createFlashStyleFunction,

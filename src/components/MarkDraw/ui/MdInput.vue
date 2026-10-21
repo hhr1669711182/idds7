@@ -58,34 +58,34 @@ void props;
 <style scoped>
 .md-input {
   position: relative;
-  background: rgba(10, 18, 32, 0.6);
-  border: 1px solid rgba(120, 180, 230, 0.18);
-  border-radius: 6px;
+  background: var(--widget-bg);
+  border: 1px solid var(--widget-border);
+  border-radius: var(--radius-md);
   transition: all 0.18s ease;
 }
 .md-input:focus-within {
-  border-color: rgba(0, 212, 255, 0.6);
-  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.12);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 3px var(--accent-cyan-soft);
 }
 .md-input.is-disabled {
   opacity: 0.5;
 }
 .md-input.is-readonly {
-  background: rgba(10, 18, 32, 0.4);
+  background: var(--card-bg);
 }
 .md-input__field {
   width: 100%;
   background: transparent;
   border: none;
   outline: none;
-  color: #e8f0fa;
+  color: var(--text-primary);
   font-size: 13px;
   padding: 7px 10px;
   font-family: inherit;
   box-sizing: border-box;
 }
 .md-input__field::placeholder {
-  color: rgba(180, 200, 220, 0.4);
+  color: var(--text-muted);
 }
 .md-input__field--ta {
   resize: vertical;
@@ -93,7 +93,7 @@ void props;
   line-height: 1.5;
 }
 .md-input__field:read-only {
-  color: rgba(220, 230, 240, 0.7);
+  color: var(--text-secondary);
   cursor: default;
 }
 </style>

@@ -38,9 +38,3 @@ declare interface IResponse<T = any> {
   data: T extends any ? T : T & any
 }
 
-declare module '../../../public/publicLink.js' {
-  export const publicLink: {
-    d25: string
-    d3: string
-  }
-}

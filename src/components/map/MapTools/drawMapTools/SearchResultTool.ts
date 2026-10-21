@@ -9,15 +9,15 @@ import { Style, Circle as StyleCircle, Stroke, Fill, Icon } from 'ol/style'
 import { fromLonLat } from 'ol/proj'
 import type Map from 'ol/Map'
 
-import { geoserverApi } from '@/service/geoserver'
+import { geoserverApi } from '@/apis/geoserver'
 import { LAYER_NAMES } from '@/baseComponent/OpenlayersMap/layers'
 import { getSVGForSrcById } from '@/utils'
 
 import { isOlMap } from '@/utils/mapTool'
 import { cssVar, themeAccent, withAlpha } from '@/utils/themeColor'
 import type { ResourceFilterSet } from '@/types/search'
-import startImg from '@/components/map/assets/start.svg'
-import endImg from '@/components/map/assets/end.svg'
+import startImg from '@/assets/icons-svg/map/start.svg'
+import endImg from '@/assets/icons-svg/map/end.svg'
 
 /** Direction arrow along the route, pointing from start to end */
 const DIRECTION_ARROW_SVG = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(

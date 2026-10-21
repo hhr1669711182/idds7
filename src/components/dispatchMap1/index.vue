@@ -7,16 +7,7 @@
  * @FilePath: src\components\dispatchMap1\index.vue
 -->
 <script setup lang="ts">
-import {
-  computed,
-  nextTick,
-  onActivated,
-  onMounted,
-  onUnmounted,
-  ref,
-  shallowRef,
-  watch,
-} from 'vue';
+import { nextTick, onActivated, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 import type OlMap from 'ol/Map';
 import ScaleLine from 'ol/control/ScaleLine';
 import OpenlayersMap from '@/baseComponent/OpenlayersMap/dispatchMap.vue';
@@ -48,7 +39,6 @@ const layersStore = useLayersStore();
 const mapRef = shallowRef<OpenlayersMapExpose | null>(null);
 const olMap = shallowRef<OlMap | null>(null);
 const pageRef = ref<HTMLElement | null>(null);
-const pendingAlarmProfile = computed(() => pendingDispatchAlarmStore.profile);
 
 const getDispatch1LayerIds = (ids: string[]) =>
   ids.filter((id) => id !== TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER);
@@ -92,8 +82,6 @@ watch(
   { deep: true, immediate: true },
 );
 
-watch(pendingAlarmProfile, () => nextTick(refreshMapViewport));
-
 const setMap = (map: OlMap) => {
   dispatch1MapStore.setMap(map);
   olMap.value = map;
@@ -114,6 +102,8 @@ const handleDispatchError = (error: unknown) => {
 
 const handleQuerySuccess = (state: Readonly<DispatchT1State>) => {
   pendingDispatchAlarmStore.consume(state.incident?.id);
+  // 警情已上图，Overlay 弹出后地图容器尺寸与比例尺需要重算。
+  nextTick(refreshMapViewport);
 };
 
 let disposed = false;
@@ -161,7 +151,6 @@ onMounted(async () => {
     <OpenlayersMap ref="mapRef" map-id="dispatch1-map" @set-map="setMap" />
     <DispatchT1Panel
       :map="olMap"
-      :websocket-data="pendingAlarmProfile"
       @dispatch="handleDispatch"
       @query-success="handleQuerySuccess"
       @error="handleDispatchError"

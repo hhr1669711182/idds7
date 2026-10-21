@@ -1,0 +1,360 @@
+/*
+ * 调色盘 —— 每个主题/预设盘是一组 CSS 变量。
+ *
+ * 切换主题 = 换 data-theme 属性；切换预设盘 = 换 data-palette 属性。
+ * 业务代码只消费 var(--token)，两种切换都无需改业务代码。
+ *
+ * 优先级：:root[data-palette] > :root[data-theme]
+ * 规范见 herness/05-共享上下文/代码样式规范.md
+ */
+
+/* ============================================================
+ * 与主题无关的全局变量（圆角 / 间距）
+ *
+ * 这类值不随主题变化，统一挂在 :root 上，任何调色盘下都能取到。
+ * 切勿只写 Less 变量：否则 var(--radius-md) 取不到值，
+ * 浏览器会回退成 0（圆角直接消失）。
+ * ============================================================ */
+:root {
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+
+  /* 右上角操作簇（主题开关 / 功能配置 / 调色盘）的布局常量。
+     与主题无关，与 tokens.less 同值。天气面板按 --top-actions-cluster-width 让位。 */
+  --top-actions-right: 8px;
+  --top-actions-center: 30px;
+  --top-actions-gap: 10px;
+  --top-actions-size: 30px;
+  --top-actions-switch-width: 50px;
+  --top-actions-switch-height: 40px;
+  --weather-panel-width: 288px;
+
+  /* 交互态兜底：调色盘若未显式覆盖，这里保证 var(--hover-bg) 等永远有值。
+     没有兜底时浏览器会把声明判为 invalid，hover / checked 底色直接消失。 */
+  --hover-bg: color-mix(in srgb, var(--accent-cyan, #22d3ee) 12%, transparent);
+  --hover-border: color-mix(in srgb, var(--accent-cyan, #22d3ee) 45%, transparent);
+  --active-bg: color-mix(in srgb, var(--accent-cyan, #22d3ee) 18%, transparent);
+  --active-border: var(--accent-cyan, #22d3ee);
+  --active-text: var(--accent-cyan, #22d3ee);
+}
+
+/* 移动端：窄屏放不下「天气面板 + 三按钮」的完整横排，
+   收窄面板与间距，避免最左侧的主题开关被挤出屏幕（实测 x = -46）。 */
+@media (max-width: 768px) {
+  :root {
+    --top-actions-gap: 6px;
+    --weather-panel-width: 190px;
+  }
+}
+
+/* ---------- 夜间科技盘（默认） ---------- */
+:root[data-theme='NIGHT'] {
+  --accent-cyan: @cyan-500;
+  --accent-cyan-soft: rgba(34, 211, 238, 0.16);
+  --accent-cyan-strong: @cyan-400;
+  --accent-glow: @cyan-glow;
+  --accent-gold: @gold-500;
+  --accent-gold-soft: rgba(251, 191, 36, 0.18);
+
+  --panel-bg: @night-panel;
+  --panel-bg-solid: @night-panel-solid;
+  --panel-border: @night-border;
+  --panel-shadow: @shadow-panel-night;
+
+  --header-bg: @night-header;
+  --header-text: @night-text;
+  --header-border: @night-border;
+
+  --card-bg: @night-card;
+  --card-border: @night-border-soft;
+  --card-shadow: none;
+
+  --card-box-bg: rgba(18, 40, 68, 0.55);
+  --card-box-border: @night-border-soft;
+
+  --widget-bg: @glass-bg-night;
+  --widget-border: @night-border;
+  --widget-text: @night-text-secondary;
+
+  --text-primary: @night-text;
+  --text-secondary: @night-text-secondary;
+  --text-muted: @night-text-muted;
+
+  --hover-bg: rgba(34, 211, 238, 0.12);
+  --hover-border: @cyan-600;
+  --active-bg: rgba(34, 211, 238, 0.18);
+  --active-border: @cyan-500;
+  --active-text: @cyan-300;
+
+  /* 图层工具栏：深色玻璃底 + 主色描边（沿用原设计语言，仅色值走变量） */
+  --toolbar-bg: rgba(16, 26, 43, 0.94);
+  --toolbar-border: rgba(51, 220, 255, 0.35);
+  --toolbar-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  --toolbar-tile-bg: rgba(10, 98, 120, 0.55);
+  --toolbar-tile-border: rgba(51, 220, 255, 0.28);
+  --toolbar-tile-hover-bg: rgba(16, 116, 142, 0.7);
+  --toolbar-tile-hover-border: rgba(51, 220, 255, 0.55);
+  --toolbar-tile-active-bg: rgba(160, 100, 40, 0.55);
+  --toolbar-tile-active-border: rgba(255, 205, 110, 0.55);
+  --toolbar-tile-text: rgba(255, 255, 255, 0.92);
+  --toolbar-tile-active-text: #fff;
+  --toolbar-badge-bg: rgba(255, 165, 35, 0.95);
+
+  /* OpenLayers 原生控件：桥接到 OL10 官方 --ol-* 变量 */
+  --ol-background-color: #0d1929;
+  --ol-foreground-color: @night-text;
+  --ol-accent-background-color: #16304e;
+  --ol-subtle-background-color: rgba(34, 211, 238, 0.18);
+  --ol-subtle-foreground-color: @night-text-secondary;
+  --ol-brand-color: @cyan-500;
+
+  --primary-color: rgba(10, 22, 40, 0.82);
+  --primary-text-color: @night-text;
+  --primary-svg-color: @night-text-secondary;
+  --primary-svg-hover-color: rgba(34, 211, 238, 0.18);
+  --primary-li-bottom-color: @night-border;
+
+  --glass-bg: @glass-bg-night;
+  --glass-blur: 8px;
+  --radius-md: 8px;
+
+  --filter-hue-rotate: 180deg;
+  --filter-invert: 100%;
+  --filter-saturate: 1600%;
+  --filter-brightness: 80%;
+  --filter-contrast: 90%;
+
+  --tag-default-bg: @tag-default-bg;
+  --tag-default-text: @tag-default-text;
+  --tag-default-border: @tag-default-border;
+  --tag-primary-bg: @tag-primary-bg;
+  --tag-primary-text: @tag-primary-text;
+  --tag-primary-border: @tag-primary-border;
+  --tag-success-bg: @tag-success-bg;
+  --tag-success-text: @tag-success-text;
+  --tag-success-border: @tag-success-border;
+  --tag-warning-bg: @tag-warning-bg;
+  --tag-warning-text: @tag-warning-text;
+  --tag-warning-border: @tag-warning-border;
+  --tag-danger-bg: @tag-danger-bg;
+  --tag-danger-text: @tag-danger-text;
+  --tag-danger-border: @tag-danger-border;
+  --tag-info-bg: @tag-info-bg;
+  --tag-info-text: @tag-info-text;
+  --tag-info-border: @tag-info-border;
+
+  /* 模型研判模块配色 */
+  --ma-bg: #0a0e1a;
+  --ma-bg-card: #0000004b;
+  --ma-bg-panel: #1a2236;
+  --ma-bg-deep: #0d1322;
+  --ma-border: #1f2940;
+  --ma-border-light: #2a3556;
+  --ma-orange: #ff7a00;
+  --ma-orange-light: #ff9500;
+  --ma-orange-soft: rgba(255, 122, 0, 0.15);
+  --ma-text: #e6ebf5;
+  --ma-text-dim: #8a96b0;
+  --ma-text-muted: #5b6478;
+  --ma-red: #ff4d4f;
+  --ma-blue: #3385ff;
+  --ma-green: #22c55e;
+  --ma-yellow: #fbbf24;
+}
+
+/* ---------- 白天盘 ---------- */
+:root[data-theme='DAY'] {
+  --accent-cyan: @blue-500;
+  --accent-cyan-soft: rgba(51, 133, 255, 0.12);
+  --accent-cyan-strong: @blue-600;
+  --accent-glow: rgba(51, 133, 255, 0.25);
+  --accent-gold: @gold-300;
+  --accent-gold-soft: rgba(255, 212, 140, 0.28);
+
+  --panel-bg: @day-panel;
+  --panel-bg-solid: @day-panel-solid;
+  --panel-border: @day-border;
+  --panel-shadow: @shadow-panel-day;
+
+  --header-bg: @day-header;
+  --header-text: @day-text;
+  --header-border: @day-border;
+
+  --card-bg: @day-card;
+  --card-border: @day-border;
+  --card-shadow: 0 2px 8px rgba(15, 40, 80, 0.08);
+
+  --card-box-bg: #ffffff;
+  --card-box-border: @day-border;
+
+  --widget-bg: @glass-bg-day;
+  --widget-border: @day-border;
+  --widget-text: @day-text-secondary;
+
+  --text-primary: @day-text;
+  --text-secondary: @day-text-secondary;
+  --text-muted: @day-text-muted;
+
+  --hover-bg: #f5f5f5;
+  --hover-border: @blue-300;
+  --active-bg: #e6f7ff;
+  --active-border: @blue-500;
+  --active-text: @blue-500;
+
+  /* 图层工具栏：白天用浅色玻璃底 + 蓝色描边，与地图浅色底融合 */
+  --toolbar-bg: rgba(255, 255, 255, 0.92);
+  --toolbar-border: rgba(51, 133, 255, 0.35);
+  --toolbar-shadow: 0 8px 18px rgba(15, 40, 80, 0.14);
+  --toolbar-tile-bg: rgba(51, 133, 255, 0.08);
+  --toolbar-tile-border: rgba(51, 133, 255, 0.28);
+  --toolbar-tile-hover-bg: rgba(51, 133, 255, 0.16);
+  --toolbar-tile-hover-border: rgba(51, 133, 255, 0.5);
+  --toolbar-tile-active-bg: rgba(51, 133, 255, 0.2);
+  --toolbar-tile-active-border: @blue-500;
+  --toolbar-tile-text: @day-text;
+  --toolbar-tile-active-text: @blue-600;
+  --toolbar-badge-bg: @blue-500;
+
+  /* OpenLayers 原生控件：桥接到 OL10 官方 --ol-* 变量 */
+  --ol-background-color: #ffffff;
+  --ol-foreground-color: @day-text;
+  --ol-accent-background-color: @day-card;
+  --ol-subtle-background-color: rgba(51, 133, 255, 0.12);
+  --ol-subtle-foreground-color: @day-text-secondary;
+  --ol-brand-color: @blue-500;
+
+  --primary-color: rgba(255, 255, 255, 0.92);
+  --primary-text-color: @day-text;
+  --primary-svg-color: @day-text-secondary;
+  --primary-svg-hover-color: rgba(51, 133, 255, 0.12);
+  --primary-li-bottom-color: @day-border;
+
+  --glass-bg: @glass-bg-day;
+  --glass-blur: 6px;
+  --radius-md: 8px;
+
+  --filter-hue-rotate: 0deg;
+  --filter-invert: 0%;
+  --filter-saturate: 100%;
+  --filter-brightness: 100%;
+  --filter-contrast: 100%;
+
+  --tag-default-bg: rgba(100, 116, 139, 0.1);
+  --tag-default-text: #64748b;
+  --tag-default-border: rgba(100, 116, 139, 0.22);
+  --tag-primary-bg: rgba(51, 133, 255, 0.1);
+  --tag-primary-text: #1f6fe0;
+  --tag-primary-border: rgba(51, 133, 255, 0.3);
+  --tag-success-bg: rgba(82, 196, 26, 0.1);
+  --tag-success-text: #3f9c12;
+  --tag-success-border: rgba(82, 196, 26, 0.28);
+  --tag-warning-bg: rgba(250, 173, 20, 0.14);
+  --tag-warning-text: #b7791f;
+  --tag-warning-border: rgba(250, 173, 20, 0.34);
+  --tag-danger-bg: rgba(245, 34, 45, 0.1);
+  --tag-danger-text: #d32029;
+  --tag-danger-border: rgba(245, 34, 45, 0.28);
+  --tag-info-bg: rgba(100, 116, 139, 0.1);
+  --tag-info-text: #64748b;
+  --tag-info-border: rgba(100, 116, 139, 0.22);
+
+  /* 模型研判模块配色（白天盘：浅底深字） */
+  --ma-bg: #eef2f8;
+  --ma-bg-card: #ffffffb3;
+  --ma-bg-panel: #f7f9fc;
+  --ma-bg-deep: #e6ecf5;
+  --ma-border: #d3dded;
+  --ma-border-light: #c2d0e4;
+  --ma-orange: #d96a00;
+  --ma-orange-light: #f08000;
+  --ma-orange-soft: rgba(217, 106, 0, 0.1);
+  --ma-text: #1e293b;
+  --ma-text-dim: #64748b;
+  --ma-text-muted: #94a3b8;
+  --ma-red: #e5484d;
+  --ma-blue: #2f6fe0;
+  --ma-green: #16a34a;
+  --ma-yellow: #d99a0b;
+}
+
+/* ============================================================
+ * 调试预设盘：主题感知的二元组
+ *
+ * 每个预设同时给出 DAY / NIGHT 两套值，切换主题时自动取对应的一套。
+ * 这样预设盘与主题正交：选 OCEAN 盘 + 切到 DAY，得到的是「浅底 + 冷蓝」，
+ * 而不是深色盘直接盖在浅色主题上。
+ * ============================================================ */
+
+/* ---------- OCEAN 深空蓝 ---------- */
+:root[data-palette='OCEAN'][data-theme='NIGHT'] {
+  --accent-cyan: #4cc9f0;
+  --accent-cyan-strong: #90e0ef;
+  --accent-cyan-soft: rgba(76, 201, 240, 0.18);
+  --accent-glow: rgba(76, 201, 240, 0.38);
+  --panel-bg: rgba(8, 28, 48, 0.84);
+  --panel-bg-solid: #0c2138;
+  --panel-border: #1d4a6b;
+  --card-bg: rgba(14, 38, 62, 0.72);
+  --text-primary: #d6eefb;
+  --text-secondary: #93c5e0;
+  --filter-hue-rotate: 200deg;
+  --filter-saturate: 1400%;
+  --filter-brightness: 84%;
+}
+
+:root[data-palette='OCEAN'][data-theme='DAY'] {
+  --accent-cyan: #0e7490;
+  --accent-cyan-strong: #155e75;
+  --accent-cyan-soft: rgba(14, 116, 144, 0.12);
+  --accent-glow: rgba(14, 116, 144, 0.22);
+  --panel-bg: rgba(240, 250, 255, 0.9);
+  --panel-bg-solid: #f7fdff;
+  --panel-border: #a5d8e8;
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --text-primary: #0c4a6e;
+  --text-secondary: #0e7490;
+  --filter-hue-rotate: 0deg;
+  --filter-saturate: 120%;
+  --filter-brightness: 100%;
+}
+
+/* ---------- EMBER 琥珀暖调 ---------- */
+:root[data-palette='EMBER'][data-theme='NIGHT'] {
+  --accent-cyan: #f59e0b;
+  --accent-cyan-strong: #fbbf24;
+  --accent-cyan-soft: rgba(245, 158, 11, 0.18);
+  --accent-glow: rgba(245, 158, 11, 0.35);
+  --accent-gold: #fde68a;
+  --panel-bg: rgba(32, 20, 12, 0.84);
+  --panel-bg-solid: #1f1610;
+  --panel-border: #5a3d1e;
+  --card-bg: rgba(44, 30, 18, 0.72);
+  --text-primary: #fde8cd;
+  --text-secondary: #d9b98a;
+  --filter-hue-rotate: 20deg;
+  --filter-saturate: 1200%;
+  --filter-brightness: 78%;
+}
+
+:root[data-palette='EMBER'][data-theme='DAY'] {
+  --accent-cyan: #b45309;
+  --accent-cyan-strong: #92400e;
+  --accent-cyan-soft: rgba(180, 83, 9, 0.12);
+  --accent-glow: rgba(180, 83, 9, 0.22);
+  --accent-gold: #b45309;
+  --panel-bg: rgba(255, 250, 240, 0.9);
+  --panel-bg-solid: #fffbf3;
+  --panel-border: #e8c99b;
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --text-primary: #7c2d12;
+  --text-secondary: #92400e;
+  --filter-hue-rotate: 0deg;
+  --filter-saturate: 110%;
+  --filter-brightness: 100%;
+}

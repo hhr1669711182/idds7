@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia';
 import { Style, Icon, Stroke, Fill } from "ol/style";
 import Overlay from 'ol/Overlay'
 import { useCardStore, useMapStore } from '../../../store/index.ts';
-import locImgSrc from "../../../assets/loc.png";
+import locImgSrc from "@/assets/ui/buttons/loc.png";
 import Slider from '../../../baseComponent/Slider.vue';
 import { getSVGForSrcById, convertToRGBA, getImagePattern } from "@/utils/index.ts";
 

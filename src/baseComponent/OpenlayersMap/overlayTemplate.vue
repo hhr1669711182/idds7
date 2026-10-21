@@ -27,10 +27,11 @@ defineEmits(["close"]);
   min-width: 280px;
   max-width: 420px;
   padding: 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  border-radius: var(--radius-lg);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--panel-shadow);
+  backdrop-filter: blur(var(--glass-blur));
   pointer-events: auto;
 }
 
@@ -43,7 +44,7 @@ defineEmits(["close"]);
 
 .overlay_popup_title {
   font-size: 14px;
-  color: #111827;
+  color: var(--text-primary);
   font-weight: 600;
   line-height: 1.2;
   overflow: hidden;
@@ -54,9 +55,10 @@ defineEmits(["close"]);
 .overlay_popup_close {
   width: 26px;
   height: 26px;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.14);
-  background: rgba(255, 255, 255, 0.92);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--widget-border);
+  background: var(--panel-bg-solid);
+  color: var(--text-secondary);
   cursor: pointer;
   line-height: 1;
 }
@@ -66,13 +68,13 @@ defineEmits(["close"]);
   display: grid;
   gap: 6px;
   font-size: 12px;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .overlay_popup_footer {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--widget-border);
   display: flex;
   justify-content: flex-end;
 }

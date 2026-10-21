@@ -45,7 +45,7 @@ import { VEHICLE_STATUS_TEXT } from '@/const/const.business.type';
 import type {
   CarLocationBatch,
 } from '@/controller/core/protocol/LegacyMessageProtocol';
-import { geoserverApi } from '@/service/geoserver';
+import { geoserverApi } from '@/apis/geoserver';
 import { useFireStations } from '@/composables/useFireStations';
 import {
   DispatchT1,
@@ -59,7 +59,6 @@ import { getSharedMapStage } from '@/utils/seatSharedState';
 
 const props = defineProps<{
   map: OlMap | null;
-  websocketData?: DispatchT1WebSocketData | null;
   amapKey?: string;
 }>();
 
@@ -92,6 +91,7 @@ let hydrantClickKey: EventsKey | null = null;
 let hydrantRequestVersion = 0;
 let pendingWebSocketData: DispatchT1WebSocketData | null = null;
 let vehicleLocationUnsubscribe: (() => void) | null = null;
+let alarmProfileUnsubscribe: (() => void) | null = null;
 watch(
   () => userStore.sessionEpoch,
   () => {
@@ -171,6 +171,11 @@ const createService = (map: OlMap) => {
     onDispatch: async (command) => emit('dispatch', command),
   });
   service.value = instance;
+  // 警情画像与车辆 GPS 同构：统一经 Runtime 订阅，注册即 hydrate 缓存值，
+  // 避免消息先于页面挂载到达时丢失（原实现靠 store→prop→watch 倒挂传递）。
+  alarmProfileUnsubscribe = getBusinessMessageRuntime().attachAlarmProfile((profile) => {
+    if (service.value === instance) void receiveWebSocket(profile);
+  });
   vehicleLocationUnsubscribe = getBusinessMessageRuntime().attachTracking((data) => {
     if (service.value === instance) receiveVehicleLocations(data);
   });
@@ -186,6 +191,8 @@ const createService = (map: OlMap) => {
 };
 
 const destroyService = () => {
+  alarmProfileUnsubscribe?.();
+  alarmProfileUnsubscribe = null;
   vehicleLocationUnsubscribe?.();
   vehicleLocationUnsubscribe = null;
   hydrantRequestVersion += 1;
@@ -516,14 +523,6 @@ watch(
   { flush: 'post' },
 );
 
-watch(
-  () => props.websocketData,
-  (data) => {
-    if (data) void receiveWebSocket(data);
-  },
-  { deep: true, immediate: true },
-);
-
 onMounted(() => {
   // ensureStationOverlay(); 车辆列表弹窗当前阶段注释调先
   ensureHydrantQuery();
@@ -665,10 +664,10 @@ defineExpose({
   display: flex;
   gap: 10px;
   padding: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.42);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 42%, transparent);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+  background: var(--panel-bg);
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 20%, transparent);
   backdrop-filter: blur(8px);
 }
 
@@ -684,20 +683,20 @@ defineExpose({
 }
 
 .dispatch-button {
-  background: #dc2626;
-  color: #fff;
+  background: var(--tag-danger-text);
+  color: var(--text-primary);
 }
 
 .cancel-dispatch-button {
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #374151;
+  border: 1px solid var(--text-muted);
+  background: var(--panel-bg);
+  color: var(--text-secondary);
 }
 
 .dispatch-button:disabled,
 .cancel-dispatch-button:disabled {
-  background: #cbd5e1;
-  color: #fff;
+  background: var(--panel-bg);
+  color: var(--text-primary);
   cursor: not-allowed;
 }
 
@@ -707,22 +706,22 @@ defineExpose({
   max-height: 330px;
   overflow-y: auto;
   padding: 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--panel-border);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
-  color: #172033;
+  background: var(--panel-bg);
+  box-shadow: 0 12px 30px color-mix(in srgb, #000 25%, transparent);
+  color: var(--panel-bg-solid);
 }
 
 .dispatch-t1-hydrant-popup {
   position: relative;
   width: 320px;
   padding: 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--panel-border);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
-  color: #172033;
+  background: var(--panel-bg);
+  box-shadow: 0 12px 30px color-mix(in srgb, #000 25%, transparent);
+  color: var(--panel-bg-solid);
 }
 
 .hydrant-popup-header {
@@ -735,10 +734,10 @@ defineExpose({
 .hydrant-popup-header button {
   width: 28px;
   height: 28px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--text-muted);
   border-radius: 7px;
-  background: #fff;
-  color: #475569;
+  background: var(--panel-bg);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
@@ -755,7 +754,7 @@ defineExpose({
 }
 
 .hydrant-popup-row span {
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .hydrant-popup-row strong {
@@ -792,8 +791,8 @@ defineExpose({
   min-width: 24px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: #e2e8f0;
-  color: #475569;
+  background: var(--panel-bg);
+  color: var(--text-secondary);
   font-size: 11px;
   line-height: 1.4;
   text-align: center;
@@ -802,25 +801,25 @@ defineExpose({
 }
 
 .station-popup-header.primary .role-tag {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--tag-danger-bg);
+  color: var(--tag-danger-text);
 }
 
 .station-address {
   margin: 9px 0 12px;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.45;
 }
 
 .distance {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
 .dispatch-station-popup h4 {
   margin: 0 0 7px;
-  color: #475569;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -828,7 +827,7 @@ defineExpose({
   gap: 9px;
   padding: 8px;
   border-radius: 6px;
-  background: #f8fafc;
+  background: var(--panel-bg);
   cursor: pointer;
 }
 
@@ -857,7 +856,7 @@ defineExpose({
 }
 
 .vehicle-meta-grid small {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 11px;
   white-space: nowrap;
 }
@@ -866,14 +865,14 @@ defineExpose({
   margin-top: 8px;
   padding: 9px 12px;
   border-radius: 6px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--card-bg);
+  color: var(--accent-cyan);
   font-size: 12px;
 }
 
 .error-message,
 .route-message.error {
-  color: #dc2626;
+  color: var(--tag-danger-text);
 }
 
 .dispatch-query-status {
@@ -883,9 +882,9 @@ defineExpose({
   z-index: 1300;
   padding: 9px 13px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.16);
-  color: #2563eb;
+  background: var(--panel-bg);
+  box-shadow: 0 5px 16px color-mix(in srgb, #000 16%, transparent);
+  color: var(--accent-cyan);
   font-size: 13px;
 }
 

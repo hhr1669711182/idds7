@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isCoordinateText, parseCoordinateText } from '@/service/coordinateText'
+import { isCoordinateText, parseCoordinateText } from '@/utils/coordinateText'
 
 /**
  * 坐标文本解析契约：把检索框里的多种写法归一为 WGS84 [lng, lat]。

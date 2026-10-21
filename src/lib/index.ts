@@ -13,7 +13,7 @@ import type { Emitter } from 'mitt'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
 // import ElementPlus from "element-plus";
-import 'element-plus/dist/index.css'
+import 'virtual:element-styles'
 import 'virtual:svg-icons-register'
 import 'virtual:uno.css'
 import '../style.css'
@@ -22,6 +22,7 @@ import { drag } from '../directives/index.ts'
 import App from '../App.vue'
 import router from '../router'
 import { initUserStore } from '@/store/useUserStore'
+import { useCommonStore } from '@/store/useCommonStore'
 import { getBusinessMessageRuntime, disposeBusinessMessageRuntime } from '@/controller/core/io/BusinessMessageRuntime'
 import { initMessage } from '@/register/initMessage'
 import { initPageConditionListener, requestSpecialMapNavigation } from '@/register/pageCondition'
@@ -82,6 +83,8 @@ export function mountApp(options: MountOptions): AppInstance {
   }
   try {
     cleanups.push(initUserStore())
+    // 恢复上次选择的调色盘 / 自定义变量 / 底图滤镜（localStorage）
+    useCommonStore().restorePalette()
     const runtime = getBusinessMessageRuntime(pinia)
     cleanups.push(() => disposeBusinessMessageRuntime(pinia))
     runtime.start()

@@ -404,14 +404,15 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="less">
-@bg: #06131f;
-@bg-top: #0b1b2a;
-@text: rgba(235, 248, 255, 0.92);
-@cyan: rgba(39, 210, 255, 0.55);
-@cyan-soft: rgba(39, 210, 255, 0.25);
-@cyan-line: rgba(39, 210, 255, 0.12);
-@cyan-text: rgba(144, 246, 255, 0.92);
-@gold: rgba(255, 155, 0, 0.9);
+// 主题色统一取自 src/styles/night.less 的 CSS 变量，避免各面板各写一套。
+@bg: var(--panel-bg);
+@bg-top: var(--header-bg);
+@text: var(--text-primary);
+@cyan: var(--accent-cyan);
+@cyan-soft: var(--accent-cyan-soft);
+@cyan-line: var(--accent-cyan-soft);
+@cyan-text: var(--accent-cyan-strong);
+@gold: var(--accent-gold);
 @gap: 10px;
 
 .flex-center() {
@@ -443,22 +444,32 @@ onMounted(async () => {
 .cfg-toggle {
   .flex-center();
   position: fixed;
-  top: 15px;
-  right: 300px;
+  top: calc(var(--top-actions-center) - var(--top-actions-size) / 2);
+  right: calc(
+    var(--top-actions-right) + var(--weather-panel-width) + var(--top-actions-gap) +
+      var(--top-actions-size) + var(--top-actions-gap)
+  );
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: var(--top-actions-size);
+  height: var(--top-actions-size);
   padding: 0;
   border: 0;
   background: transparent;
   cursor: pointer;
-  z-index: 5;
+  z-index: 1000;
+  color: var(--text-secondary);
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--accent-cyan);
+  }
 }
 
 .cfg-panel {
   position: absolute;
   z-index: 1100;
-  top: 50px;
+  /* 落在右上角操作簇下方，避免压住天气面板 */
+  top: calc(var(--top-actions-center) + var(--top-actions-switch-height) / 2 + var(--space-sm));
   right: 20px;
   width: 520px;
   max-width: 90vw;
@@ -482,11 +493,11 @@ onMounted(async () => {
 
   :deep(.el-switch) {
     --el-switch-on-color: @gold;
-    --el-switch-off-color: rgba(39, 210, 255, 0.35);
+    --el-switch-off-color: var(--accent-cyan-soft);
   }
 
   :deep(.el-checkbox__inner) {
-    border-color: rgba(39, 210, 255, 0.35);
+    border-color: var(--accent-cyan-soft);
     background-color: rgba(0, 0, 0, 0.25);
   }
 
@@ -496,15 +507,15 @@ onMounted(async () => {
   }
 
   :deep(.el-button--primary) {
-    --el-button-bg-color: rgba(39, 210, 255, 0.75);
-    --el-button-border-color: rgba(39, 210, 255, 0.75);
-    --el-button-hover-bg-color: rgba(39, 210, 255, 0.85);
-    --el-button-hover-border-color: rgba(39, 210, 255, 0.85);
+    --el-button-bg-color: var(--accent-cyan);
+    --el-button-border-color: var(--accent-cyan);
+    --el-button-hover-bg-color: var(--accent-cyan-strong);
+    --el-button-hover-border-color: var(--accent-cyan-strong);
   }
 
   :deep(.el-button.is-disabled.el-button--primary) {
-    --el-button-bg-color: rgba(39, 210, 255, 0.25);
-    --el-button-border-color: rgba(39, 210, 255, 0.25);
+    --el-button-bg-color: var(--accent-cyan-soft);
+    --el-button-border-color: var(--accent-cyan-soft);
   }
 }
 
@@ -526,7 +537,7 @@ onMounted(async () => {
   color: rgba(144, 246, 255, 0.95);
   font-size: 14px;
   background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(39, 210, 255, 0.35);
+  border: 1px solid var(--accent-cyan-soft);
   border-radius: 8px 8px 0 0;
   cursor: pointer;
 

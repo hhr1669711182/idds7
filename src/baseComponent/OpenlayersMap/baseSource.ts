@@ -7,6 +7,7 @@ import { AmapSourceOptions, createAmapSource } from '../tools/amap.ts'
 import { createBaiduSource } from '../tools/baidu.ts'
 import { tileLoadFunction } from '@/utils/mapTool.ts'
 import { LAYER_NAMES } from './layers.ts'
+import { buildFilterString, getBasemapFilter } from '@/utils/themeColor.ts'
 
 export type BaseSourceProviderId =
   | 'thunderforest'
@@ -188,8 +189,8 @@ const createThematicSource = (mode: BaseSourceMode) => {
       canvas.height = h
       const context = canvas.getContext('2d')
       if (context) {
-        context.filter =
-          'grayscale(98%) invert(100%) sepia(20%) hue-rotate(180deg) saturate(1600%) brightness(80%) contrast(90%)'
+        // 滤镜参数来自调色盘 CSS 变量，与 utils/mapTool.ts 的底图滤镜同源
+        context.filter = buildFilterString(getBasemapFilter())
         context.drawImage(img, 0, 0, w, h, 0, 0, w, h)
         imageTile.getImage().src = canvas.toDataURL('image/png')
       }

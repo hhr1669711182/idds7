@@ -9,7 +9,7 @@
 import { createAlova } from 'alova'
 import VueHook from 'alova/vue'
 import adapterFetch from 'alova/fetch'
-import { AppError, ERROR_CODES } from './error'
+import { AppError } from './error'
 import { appEnv } from '@/config/env'
 import { AMAP_ERROR_CODES } from '@/apis/amap'
 

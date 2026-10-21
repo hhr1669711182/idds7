@@ -1,5 +1,4 @@
 import { Coordinate } from 'ol/coordinate'
-import Map from 'ol/Map'
 import Feature from 'ol/Feature'
 import { Style, Stroke, Icon, Text, Fill } from 'ol/style'
 import { Draw, Interaction } from 'ol/interaction'

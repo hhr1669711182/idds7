@@ -2,9 +2,9 @@ import Map from 'ol/Map'
 import Feature from 'ol/Feature'
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
-import { Style, Circle, Stroke, Fill, Icon } from 'ol/style'
+import { Style, Circle, Stroke, Fill } from 'ol/style'
 import GeoJSON from 'ol/format/GeoJSON'
-import { geoserverApi, type WFSFeatureParams } from '@/service/geoserver'
+import { geoserverApi, type WFSFeatureParams } from '@/apis/geoserver'
 
 export interface AddressRobotData {
   id: string

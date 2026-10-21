@@ -1,4 +1,4 @@
-import type { DispatchVehicleDTO } from '@/service/methods/dispatchVehicles';
+import type { DispatchVehicleDTO } from '@/apis/dispatchVehicles';
 
 /**
  * GET /gis/incidents/{incidentId}/vehicles 后端原始车辆投影。

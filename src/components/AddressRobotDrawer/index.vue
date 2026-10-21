@@ -7,7 +7,7 @@
 -->
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { loadGis, loadOsm } from "./data";
+import { loadOsm } from "./data";
 import { displayLabels } from "./types";
 import { EventBus } from "@/utils/index.ts";
 

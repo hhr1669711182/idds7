@@ -168,7 +168,7 @@ const handleClickImgOptions = ({
 }
 
 .icon_container i {
-  background: url(../../../assets/marker.png) no-repeat;
+  background: url(@/assets/ui/buttons/marker.png) no-repeat;
   display: inline-block;
   height: 26px;
   width: 26px;

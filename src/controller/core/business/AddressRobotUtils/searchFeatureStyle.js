@@ -1,5 +1,5 @@
-﻿import { Style, Circle, Fill, Stroke, Text } from 'ol/style'
-import { getStyle } from '@/baseComponent/amap/featureStyle'
+import { Style, Circle, Fill, Stroke, Text } from 'ol/style'
+import { getStyle } from '@/baseComponent/OpenlayersMap/style'
 
 const ROLE_LABELS = {
   anchor: '锚定物',

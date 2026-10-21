@@ -110,13 +110,13 @@ const onPickRow = (uuid: string) => {
 }
 
 .trapped-item:hover {
-  background: #1a2236;
-  border-color: #2a3556;
+  background: var(--ma-bg-panel);
+  border-color: var(--ma-border-light);
 }
 
 .trapped-item.active {
-  background: rgba(255, 122, 0, 0.18);
-  border-color: #ff7a00;
-  box-shadow: 0 0 8px rgba(255, 122, 0, 0.4);
+  background: color-mix(in srgb, var(--ma-orange) 18%, transparent);
+  border-color: var(--ma-orange);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ma-orange) 40%, transparent);
 }
 </style>

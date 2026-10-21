@@ -6,6 +6,7 @@ import Stats from "three/examples/jsm/libs/stats.module";
 import WEBGL from "three/examples/jsm/capabilities/WebGL.js";
 import { FontLoader } from "three/addons/loaders/FontLoader.js";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
+import { FONT_OPTIONS } from "@/const/assetPaths";
 
 let scene, materials;
 const init = () => {
@@ -51,18 +52,8 @@ const init = () => {
   }
 };
 
-const options = [
-  { label: "Gentilis 粗体", value: "fonts/gentilis_bold.typeface.json" },
-  { label: "Gentilis 常规体", value: "fonts/gentilis_regular.typeface.json" },
-  { label: "Helvetiker 粗体", value: "fonts/helvetiker_bold.typeface.json" },
-  { label: "Helvetiker 常规体", value: "fonts/helvetiker_regular.typeface.json" },
-  { label: "Optimer 粗体", value: "fonts/optimer_bold.typeface.json" },
-  { label: "Optimer 常规体", value: "fonts/optimer_regular.typeface.json" },
-  {
-    label: "YEFONT 电影庞白体",
-    value: "fonts/YEFONTDianYingPangBaiTi_Regular.json",
-  },
-];
+/** 字体清单单一来源：@/const/assetPaths 的 FONT_OPTIONS（原为重复的两份硬编码） */
+const options = FONT_OPTIONS;
 
 const textFamily = ref(options[0].value);
 const text = ref("3D Text");

@@ -16,6 +16,7 @@ import ImageTile from 'ol/ImageTile.js'
 import TileState from 'ol/TileState.js'
 import type { LoadFunction } from 'ol/Tile.js'
 import type { StyleLike } from 'ol/style/Style.js'
+import { buildFilterString, getBasemapFilter } from './themeColor.ts'
 
 export const formatDistance = (dis: number) => {
   if (dis > 100) {
@@ -410,8 +411,8 @@ export const tileLoadFunction: LoadFunction = (imageTile, src) => {
       return
     }
     try {
-      context.filter =
-        'grayscale(98%) invert(100%) sepia(20%) hue-rotate(180deg) saturate(1600%) brightness(80%) contrast(90%)'
+      // 滤镜参数来自调色盘 CSS 变量，切换主题/调色盘即改变底图色感
+      context.filter = buildFilterString(getBasemapFilter())
       context.drawImage(img, 0, 0)
       // Keep the rendered bitmap directly: no PNG encoding, base64 or second decode.
       tile.setImage(canvas)

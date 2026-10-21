@@ -8,4 +8,13 @@ node scripts/check-lint-baseline.mjs || true
 #    若后续要接入 CI 严格门禁，在 CI 中设置 HARNESS_STRICT=1 即可。
 node scripts/check-herness-size.mjs || true
 
+# 3) 资源清单校验（仅提示，不阻塞提交）
+#    检查资源重复、R2 运行期资源硬编码路径、新增资源未登记 manifest。
+#    删除判断属人工决策，零引用只作提示、不阻断。
+node scripts/manifest-assets.mjs --check || true
+
+# 4) Element Plus 样式完整性校验（仅提示，不阻塞提交）
+#    检查：源码用到的 El 组件是否已登记样式、样式文件是否存在、产物是否含 --el-* 根变量。
+node scripts/verify-element-styles.mjs || true
+
 exit 0

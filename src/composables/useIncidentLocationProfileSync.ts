@@ -2,12 +2,12 @@ import { watch } from 'vue'
 import { useUserStore } from '@/store/useUserStore'
 import { useMessageStore } from '@/store/useMessageStore'
 import { useIncidentLocationStore } from '@/store/useIncidentLocationStore'
-import { fetchIncidentLocationProfile } from '@/service/incidentLocationProfile'
+import { fetchIncidentLocationProfile } from '@/apis/incidentProfile'
 import {
   getIncidentLocationContextKey,
   readIncidentLocationContext,
   toAddressUpdatedData,
-} from '@/service/incidentLocation'
+} from '@/utils/incidentLocation'
 import {
   MESSAGE_CHANNEL,
   MESSAGE_EVENT_KEY,

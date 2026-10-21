@@ -1,7 +1,7 @@
 import { watch, type WatchStopHandle } from 'vue'
 import { useIncidentLocationStore } from '@/store/useIncidentLocationStore'
 import { useUserStore } from '@/store/useUserStore'
-import { readIncidentLocationContext } from '@/service/incidentLocation'
+import { readIncidentLocationContext } from '@/utils/incidentLocation'
 import { getSharedMapStage } from '@/utils/seatSharedState'
 import type { MessageEnvelope } from '@/types/message'
 import type { BusinessMapPort } from '@/controller/core/protocol/BusinessMapPort'
@@ -32,6 +32,7 @@ export class IncidentLocationController {
   receive(envelope: MessageEnvelope<AddressUpdatedData>): IncidentLocationAcceptance {
     if (this.disposed) return { accepted: false, reason: 'disposed' }
     const result = this.store.onAddressUpdated(envelope)
+    console.log('IncidentLocationController.receive accepted:', result.accepted, result)
     if (result.accepted && this.port && 'onIncidentLocationAccepted' in this.port) {
       this.port.onIncidentLocationAccepted?.(result)
     }

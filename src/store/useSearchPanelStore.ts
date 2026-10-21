@@ -16,7 +16,7 @@ import {
   type SearchSourceTab,
   type SearchViewOption,
 } from '@/types/search'
-import { getSearchViewOptions, runSearch } from '@/service/searchQuery'
+import { getSearchViewOptions, runSearch } from '@/apis/searchQuery'
 
 const emptyBucket = (): SearchResultBucket => ({ items: [], truncated: false, failedLayers: 0 })
 

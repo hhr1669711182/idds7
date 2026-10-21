@@ -3,7 +3,7 @@ import type { Pinia } from 'pinia'
 import { useMessageStore } from '@/store/useMessageStore'
 import { useUserStore } from '@/store/useUserStore'
 import { usePendingCallLocationStore } from '@/store/usePendingCallLocationStore'
-import { usePendingDispatchAlarmStore } from '@/store/usePendingDispatchAlarmStore'
+import { usePendingDispatchAlarmStore, type PendingDispatchAlarmProfile } from '@/store/usePendingDispatchAlarmStore'
 import { useIncidentLocationStore } from '@/store/useIncidentLocationStore'
 import { createLogger } from '@/utils/logger'
 import { BusinessController } from '../business'
@@ -64,6 +64,7 @@ export class BusinessMessageRuntime {
   private executing: { job: MockJob; run: object } | null = null
   private tracker: ((data: TrackingVehicleGpsUpdateData) => void) | null = null
   private latestGps: TrackingVehicleGpsUpdateData | null = null
+  private alarmProfileListener: ((profile: PendingDispatchAlarmProfile) => void) | null = null
   private latestAddress: { data: AddressRobotGisSearchData; options?: { businessId?: string } } | null = null
   private readonly user = useUserStore()
   public readonly port: BusinessMapPort
@@ -132,6 +133,7 @@ export class BusinessMessageRuntime {
           this.invalidateMock()
           this.latestGps = null
           this.latestAddress = null
+          this.alarmProfileListener = null
           this.active?.port.addressRobotClear()
           this.business.call.clearLocateCalls()
           this.business.alarm.reset()
@@ -204,6 +206,30 @@ export class BusinessMessageRuntime {
     if (this.latestGps) handler(this.latestGps)
     return () => {
       if (this.tracker === handler) this.tracker = null
+    }
+  }
+
+  /**
+   * 订阅警情画像。与 attachTracking 同构：注册时同步 hydrate 当前缓存，
+   * 避免消息先于页面挂载到达导致丢失（原先靠 store→prop→watch 倒挂传递）。
+   */
+  public attachAlarmProfile(handler: (profile: PendingDispatchAlarmProfile) => void) {
+    if (this.disposed) return () => {}
+    const store = usePendingDispatchAlarmStore()
+    if (store.profile) handler(store.profile)
+    this.alarmProfileListener = handler
+    const stop = watch(
+      () => store.profile,
+      (profile) => {
+        if (this.disposed || !profile) return
+        handler(profile)
+      },
+      { flush: 'sync' },
+    )
+    this.stops.push(stop)
+    return () => {
+      stop()
+      if (this.alarmProfileListener === handler) this.alarmProfileListener = null
     }
   }
 

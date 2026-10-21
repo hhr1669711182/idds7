@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, nextTick, onUnmounted, ref, shallowRef, watch, markRaw } from "vue";
+import { onMounted, nextTick, onUnmounted, ref, shallowRef, watch } from "vue";
 import OLMap from "ol/Map";
 import { waitForBaseMap } from "./startup.ts";
 let cancelStartup: (() => void) | undefined;
@@ -13,7 +13,8 @@ import { ScaleLine, OverviewMap } from "ol/control";
 import { readScaleLineUnit } from "../../config/scaleLine.ts";
 // import { KeyboardPan } from "ol/interaction";
 import { FeatureClickQuery } from "./FeatureClickQuery.ts";
-import { useExtent } from "@/components/map/MapTools/commonTools/useExtent.ts";
+// 限制视图范围 要保留 lint检查不清除
+// import { useExtent } from "@/components/map/MapTools/commonTools/useExtent.ts";
 import {
   AMAP_LAYER,
   GOOGLE_LAYER,
@@ -33,16 +34,16 @@ import {
 import { mountCarFeatures } from "@/composables/useCarFeatures";
 import { mountSSRKFeatures } from "@/composables/useSSRKFeatures";
 import { mountIncomingCallFeatures } from "@/composables/useIncomingCallFeatures";
-import amapData from "../amap/data.json";
-import carImg from "../amap/imgs/car.png";
-import fireImg from "../amap/imgs/xfz.png";
+import amapData from "@/assets/map/config/data.json";
+import carImg from "@/assets/map/icon/car.png";
+import fireImg from "@/assets/map/icon/xfz.png";
 import { useFireStations } from "@/composables/useFireStations";
 import { useUnclosedIncidents } from "@/composables/useUnclosedIncidents";
 import { EventBus } from "@/utils/mitt.ts";
 import AlarmDetailPopup from "./AlarmDetailPopup.vue";
 import IncidentDetailDialog from "./IncidentDetailDialog.vue";
 import ZoomLevelControl from "./ZoomLevelControl.vue";
-import { useBaseSourceStore, useMapConfigStore, useTabsStore } from "@/store"; // , useCommonStore
+import { useBaseSourceStore, useMapConfigStore } from "@/store"; // , useCommonStore
 // import { THEME_COLOR } from "../../const/const.common.ts";
 import { createBaseSourceSource } from "./baseSource.ts";
 // import { storeToRefs } from "pinia";
@@ -538,7 +539,11 @@ onUnmounted(() => {
     </div>
 
     <!-- 警情详情固定弹窗（居中 Modal，小弹窗点"警情详情"打开） -->
-    <IncidentDetailDialog v-model="popups.incidentDetailVisible.value" :data="popups.incidentDetailData.value" />
+    <IncidentDetailDialog
+      v-model="popups.incidentDetailVisible.value"
+      :data="popups.incidentDetailData.value"
+      :loading="popups.incidentDetailLoading.value"
+    />
 
     <div
       :ref="(el) => { carPopupRef = el as HTMLElement | null }"

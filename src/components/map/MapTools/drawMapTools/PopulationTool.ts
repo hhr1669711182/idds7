@@ -17,7 +17,7 @@ import WFS from 'ol/format/WFS'
 import type { Coordinate } from 'ol/coordinate'
 import { v4 as uuidv4 } from 'uuid'
 import { formatArea, getArea } from '@/utils/index.ts'
-import { geoserverApi } from '@/service/geoserver'
+import { geoserverApi } from '@/apis/geoserver'
 import { BaseTool } from './BaseTool'
 
 /** 人口图层：读（视图，支持空间查询） */

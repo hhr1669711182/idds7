@@ -172,48 +172,52 @@ onMounted(async () => {
 .menu-btn {
   font-size: 16px;
   padding: 10px 20px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  background: var(--panel-bg-solid);
+  border: 1px solid var(--widget-border);
 }
 
 .filter-group {
   display: flex;
   align-items: center;
-  background-color: #1c2438;
+  background-color: var(--panel-bg-solid);
   padding: 4px 8px;
-  border-radius: 6px;
-  color: white;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  border: 1px solid var(--widget-border);
 }
 
 .filter-item {
   display: flex;
   align-items: center;
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .filter-item .label {
   margin-right: 8px;
-  color: #8c9bb3;
+  color: var(--text-muted);
 }
 
 :deep(.el-input-number__decrease), :deep(.el-input-number__increase) {
-  background-color: #2b3548;
-  border-color: #3b4558;
-  color: white;
+  background-color: var(--card-bg);
+  border-color: var(--widget-border);
+  color: var(--text-primary);
 }
 
 :deep(.el-input__wrapper),
 :deep(.el-select__wrapper) {
-  background-color: #1c2438;
-  box-shadow: 0 0 0 1px #3b4558 inset;
+  background-color: var(--widget-bg);
+  box-shadow: 0 0 0 1px var(--widget-border) inset;
 }
 
 :deep(.el-input__inner),
 :deep(.el-select__placeholder) {
-  color: white;
+  color: var(--text-primary);
 }
 
 :deep(.el-checkbox__label) {
-  color: white;
+  color: var(--text-primary);
 }
 
 .dispatch-bottom-bar {
@@ -232,7 +236,7 @@ onMounted(async () => {
 .settings-btn {
   display: flex;
   align-items: center;
-  color: #8c9bb3;
+  color: var(--text-muted);
   margin-right: 24px;
   font-size: 14px;
 }
@@ -240,9 +244,11 @@ onMounted(async () => {
 .layer-checkboxes {
   display: flex;
   gap: 12px;
-  background-color: #1c2438;
+  background-color: var(--panel-bg-solid);
   padding: 2px 12px;
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border: 1px solid var(--widget-border);
+  border-bottom: none;
 }
 
 :deep(.layer-checkboxes .el-checkbox__label) {

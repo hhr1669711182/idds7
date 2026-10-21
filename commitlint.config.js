@@ -48,8 +48,8 @@ export default {
     'scope-empty': [0, 'never'],
     // header 最大长度
     'header-max-length': [2, 'always', 72],
-    // body 最大行数
-    'body-max-line-length': [2, 'always', 200],
+    // body 单行最大长度：中文语境下 200 过窄，400 可容纳完整叙述
+    'body-max-line-length': [2, 'always', 400],
   },
   prompt: {
     messages: {

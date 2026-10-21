@@ -13,17 +13,18 @@
 
 <style scoped lang="less">
 .ssrk_panel {
-  border-radius: 8px;
-  box-shadow: 0 2px 4px #0000004d;
+  border-radius: var(--radius-md);
+  box-shadow: var(--panel-shadow);
   position: absolute;
   left: 54px;
   bottom: 150px;
   width: 180px;
   height: 70px;
 
-  background-color: #2f3c4f;
+  background-color: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   padding: 10px;
-  color: white;
+  color: var(--text-primary);
   font-family: Arial, sans-serif;
   font-size: 12px;
   z-index: 1001;
@@ -31,19 +32,21 @@
   .title {
     font-weight: bold;
     margin-bottom: 4px;
+    color: var(--text-primary);
   }
 
   .color-bar {
     width: 100%;
     height: 12px;
     background: linear-gradient(to right, blue, cyan, green, yellow, red);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     margin-bottom: 5px;
   }
 
   .scale {
     display: flex;
     justify-content: space-between;
+    color: var(--text-muted);
   }
 }
 </style>

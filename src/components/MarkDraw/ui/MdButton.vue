@@ -41,7 +41,6 @@ defineProps<{
   cursor: pointer;
   transition: all 0.18s ease;
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   white-space: nowrap;
   user-select: none;
 }

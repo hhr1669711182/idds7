@@ -68,7 +68,25 @@ onMounted(() => {
     </el-tooltip>
   </div>
 </template>
-<style scoped>
+<style scoped lang="less">
+/*
+ * 雪碧图按主题切换：白天用原图，夜间用夜间版（深蓝圆盘 + 青色箭头 + 琥珀指针）。
+ * 两张图尺寸一致（266×75），取图偏移完全相同。
+ *
+ * 实现：用 CSS 变量承载整条 background 简写，主题只切变量值，
+ * 避免在 scoped 样式里写 html[data-theme] 逃逸选择器。
+ */
+@compass-sprite: url(@/assets/ui/sprites/earth-navi-control-pc4.png);
+@compass-sprite-night: url(@/assets/ui/sprites/earth-navi-control-pc4-night.png);
+
+/* 白天默认值（挂在 :root，供 .compass 继承） */
+:global(html) {
+  --compass-bg: @compass-sprite 0% 0% / 266px no-repeat;
+  --compass-left: @compass-sprite -75px -5px / 266px no-repeat;
+  --compass-left-hover: @compass-sprite -89px -5px / 266px no-repeat;
+  --compass-center: @compass-sprite -56px -4px / 266px no-repeat;
+}
+
 .compass {
   height: 54px;
   width: 52px;
@@ -76,8 +94,7 @@ onMounted(() => {
   right: 18px;
   bottom: 38px;
   z-index: 5;
-  background: url(../../assets/earth-navi-control-pc4.png) 0% 0% / 266px
-    no-repeat;
+  background: var(--compass-bg);
 
   .left,
   .center,
@@ -95,18 +112,15 @@ onMounted(() => {
     z-index: 5;
     width: 15px;
     height: 42px;
-    background: url(../../assets/earth-navi-control-pc4.png) -75px -5px / 266px
-      no-repeat;
+    background: var(--compass-left);
   }
 
   .left:hover {
-    background: url(../../assets/earth-navi-control-pc4.png) -89px -5px / 266px
-      no-repeat;
+    background: var(--compass-left-hover);
   }
 
   .center {
-    background: url(../../assets/earth-navi-control-pc4.png) -56px -4px / 266px
-      no-repeat;
+    background: var(--compass-center);
     left: 19px;
     top: 4px;
     width: 14px;
@@ -122,13 +136,25 @@ onMounted(() => {
     width: 15px;
     height: 42px;
     transform: scaleX(-1);
-    background: url(../../assets/earth-navi-control-pc4.png) -75px -5px / 266px
-      no-repeat;
+    background: var(--compass-left);
   }
 
   .right:hover {
-    background: url(../../assets/earth-navi-control-pc4.png) -89px -5px / 266px
-      no-repeat;
+    background: var(--compass-left-hover);
   }
+}
+
+/*
+ * 夜间换用夜间雪碧图。
+ *
+ * 注意：变量必须定义在 :root（html）上而不是 .compass 上——
+ * scoped 编译会把 `html[data-theme='NIGHT'] .compass` 里的后代选择器吃掉，
+ * 只剩 html 规则；若把变量定义挂在 .compass 内，主题切换时不会重算。
+ */
+:global(html[data-theme='NIGHT']) {
+  --compass-bg: @compass-sprite-night 0% 0% / 266px no-repeat;
+  --compass-left: @compass-sprite-night -75px -5px / 266px no-repeat;
+  --compass-left-hover: @compass-sprite-night -89px -5px / 266px no-repeat;
+  --compass-center: @compass-sprite-night -56px -4px / 266px no-repeat;
 }
 </style>

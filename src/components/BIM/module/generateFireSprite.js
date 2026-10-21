@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import * as turf from '@turf/turf'
 import { lonLatToLocalCoord, loadGLTF } from './commonThree.js'
 import { commonSetting } from './commonSetting.js'
+import { assetUrls } from '@/const/assetPaths'
 
 let allGroup = undefined
 let allData = undefined
@@ -14,7 +15,7 @@ export function createFireSprite(buildingsGroup, data, fireFloor) {
   allData = data
   const pos = getPosition(data, fireFloor)
   const textureLoader = new THREE.TextureLoader()
-  const fireTex = textureLoader.load('/model3d/xf_smoke.png')
+  const fireTex = textureLoader.load(assetUrls.smokeTexture)
   const fireMat = new THREE.SpriteMaterial({
     map: fireTex,
     transparent: true,
@@ -157,7 +158,7 @@ function updateTrappedPersonPos(floor) {
 }
 
 export async function loadTrappedPerson(pos) {
-  const gltf = await loadGLTF('/model3d/xf_trapped_man.glb')
+  const gltf = await loadGLTF(assetUrls.trappedMan)
   const model = gltf.scene
   model.userData = { name: 'trappedPerson' }
   let scale = 0.0006

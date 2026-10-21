@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 /**
  * 三级面板第三级：feature 列表（玻璃风格自写）
  * - 行点击 → flyTo + 选中 + emit feature-selected
@@ -9,7 +9,7 @@
  *  - GeoServer GeoJSON 默认 4326，本组件读后转 3857 再上图
  */
 import { ref, watch, computed, onMounted, onBeforeUnmount } from "vue";
-import { geoserverApi } from "@/service/geoserver";
+import { geoserverApi } from "@/apis/geoserver";
 import { useMarkDrawStore } from "../store/useMarkDrawStore";
 import { isWritable } from "./layerConfig";
 import { deleteFeatures, updateFeatures } from "../form/wfst/transaction";

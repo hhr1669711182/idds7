@@ -238,9 +238,9 @@ const onPickRow = (uuid: string) => {
 @import '../styles/model-assess.less';
 
 .locate-btn {
-  background: rgba(255, 122, 0, 0.15);
-  border: 1px solid #ff7a00;
-  color: #ff7a00;
+  background: var(--ma-orange-soft);
+  border: 1px solid var(--ma-orange);
+  color: var(--ma-orange);
   padding: 1px 6px;
   border-radius: 2px;
   font-size: 10px;
@@ -249,36 +249,36 @@ const onPickRow = (uuid: string) => {
 }
 
 .locate-btn:hover {
-  background: rgba(255, 122, 0, 0.3);
+  background: color-mix(in srgb, var(--ma-orange) 30%, transparent);
 }
 
 .locate-hint {
-  color: #22c55e;
+  color: var(--ma-green);
   font-size: 10px;
   font-weight: 600;
 }
 
 /* ===================== 新增受困救援样式 ===================== */
 .rescue-section {
-  border-top: 1px solid #1f2940;
+  border-top: 1px solid var(--ma-border);
   background: rgba(13, 19, 34, 0.4);
 }
 
 .section-title {
   padding: 8px 12px;
   font-size: 11px;
-  color: #8a96b0;
+  color: var(--ma-text-dim);
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 122, 0, 0.05);
+  background: color-mix(in srgb, var(--ma-orange) 6%, transparent);
 }
 
 .section-title .dot {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #ff7a00;
+  background: var(--ma-orange);
 }
 
 .trapped-list {
@@ -297,32 +297,32 @@ const onPickRow = (uuid: string) => {
   gap: 6px;
   font-size: 11px;
   padding: 4px 6px;
-  background: #0d1322;
-  border: 1px solid #1f2940;
+  background: var(--ma-bg-deep);
+  border: 1px solid var(--ma-border);
   border-radius: 3px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .trapped-item:hover {
-  background: rgba(26, 34, 54, 0.5);
-  border-color: #2a3556;
+  background: var(--ma-bg-panel);
+  border-color: var(--ma-border-light);
 }
 
 .trapped-item.active {
-  background: rgba(255, 122, 0, 0.1);
-  border-color: #ff7a00;
-  box-shadow: inset 0 0 8px rgba(255, 122, 0, 0.2);
+  background: color-mix(in srgb, var(--ma-orange) 12%, transparent);
+  border-color: var(--ma-orange);
+  box-shadow: inset 0 0 8px color-mix(in srgb, var(--ma-orange) 22%, transparent);
 }
 
 .trapped-item .floor {
-  color: #e6ebf5;
+  color: var(--ma-text);
   font-weight: 700;
   font-family: 'Consolas', monospace;
 }
 
 .trapped-item .dir {
-  color: #8a96b0;
+  color: var(--ma-text-dim);
 }
 
 .trapped-item .count-ctrl {
@@ -334,9 +334,9 @@ const onPickRow = (uuid: string) => {
 .trapped-item .count-ctrl button {
   width: 16px;
   height: 16px;
-  background: #131826;
-  border: 1px solid #1f2940;
-  color: #e6ebf5;
+  background: var(--ma-bg-panel);
+  border: 1px solid var(--ma-border);
+  color: var(--ma-text);
   border-radius: 2px;
   cursor: pointer;
   font-size: 10px;
@@ -346,14 +346,14 @@ const onPickRow = (uuid: string) => {
 }
 
 .trapped-item .count-ctrl button:hover {
-  border-color: #ff7a00;
-  color: #ff7a00;
+  border-color: var(--ma-orange);
+  color: var(--ma-orange);
 }
 
 .trapped-item .count-ctrl .num {
   flex: 1;
   text-align: center;
-  color: #ff7a00;
+  color: var(--ma-orange);
   font-weight: 700;
   font-family: 'Consolas', monospace;
 }
@@ -361,14 +361,14 @@ const onPickRow = (uuid: string) => {
 .trapped-item .del {
   background: transparent;
   border: none;
-  color: #5b6478;
+  color: var(--ma-text-muted);
   cursor: pointer;
   font-size: 12px;
   padding: 0;
 }
 
 .trapped-item .del:hover {
-  color: #ff4d4f;
+  color: var(--ma-red);
 }
 
 
@@ -376,7 +376,7 @@ const onPickRow = (uuid: string) => {
 .toggle-btn {
   background: transparent;
   border: none;
-  color: #8a96b0;
+  color: var(--ma-text-dim);
   cursor: pointer;
   padding: 2px;
   display: flex;
@@ -386,19 +386,19 @@ const onPickRow = (uuid: string) => {
   transition: all 0.2s;
 }
 .toggle-btn:hover {
-  color: #ff7a00;
-  background: rgba(255, 122, 0, 0.1);
+  color: var(--ma-orange);
+  background: color-mix(in srgb, var(--ma-orange) 12%, transparent);
 }
 
 /* ===================== 新增暗黑科幻风格面板样式 ===================== */
 .ma-panel {
-  background: #11141a;
+  background: var(--ma-bg-deep);
   border-radius: 8px;
-  border: 1px solid #1f2940;
+  border: 1px solid var(--ma-border);
   overflow: hidden;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   font-family: 'PingFang SC', sans-serif;
-  color: #e6ebf5;
+  color: var(--ma-text);
   transition: all 0.3s ease;
   width: 250px; /* 固定面板宽度 */
   max-height: calc(100vh - 100px);
@@ -411,8 +411,8 @@ const onPickRow = (uuid: string) => {
   justify-content: space-between;
   align-items: flex-start;
   padding: 12px 16px;
-  background: #151a24;
-  border-bottom: 1px solid #1f2940;
+  background: var(--ma-bg-panel);
+  border-bottom: 1px solid var(--ma-border);
 }
 
 .head-info {
@@ -442,15 +442,15 @@ const onPickRow = (uuid: string) => {
 
 .address-text {
   font-size: 11px;
-  color: #8a96b0;
+  color: var(--ma-text-dim);
   max-width: 140px;
   white-space: wrap;
 }
 
 .collapse-btn {
   background: transparent;
-  border: 1px solid #2a3556;
-  color: #e6ebf5;
+  border: 1px solid var(--ma-border-light);
+  color: var(--ma-text);
   font-size: 11px;
   padding: 4px 8px;
   border-radius: 4px;
@@ -462,8 +462,8 @@ const onPickRow = (uuid: string) => {
 }
 
 .collapse-btn:hover {
-  background: #1f2940;
-  border-color: #3b4558;
+  background: var(--ma-border);
+  border-color: var(--ma-border-light);
 }
 
 .panel-content {
@@ -491,17 +491,17 @@ const onPickRow = (uuid: string) => {
 }
 
 .section-wrapper.orange::before {
-  background: #ff7a00;
-  box-shadow: 0 0 6px rgba(255, 122, 0, 0.4);
+  background: var(--ma-orange);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ma-orange) 40%, transparent);
 }
 
 .section-wrapper.blue::before {
-  background: #3385ff;
+  background: var(--ma-blue);
   box-shadow: 0 0 6px rgba(51, 133, 255, 0.4);
 }
 
 .info-box {
-  border: 1px solid #2a3556;
+  border: 1px solid var(--ma-border-light);
   border-radius: 6px;
   padding: 12px;
   display: flex;
@@ -522,14 +522,14 @@ const onPickRow = (uuid: string) => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #8a96b0;
+  color: var(--ma-text-dim);
 }
 
 .factor-row .ctrl {
   display: flex;
   align-items: center;
-  background: #151a24;
-  border: 1px solid #1f2940;
+  background: var(--ma-bg-panel);
+  border: 1px solid var(--ma-border);
   border-radius: 4px;
   overflow: hidden;
   height: 24px;
@@ -540,7 +540,7 @@ const onPickRow = (uuid: string) => {
   height: 100%;
   background: transparent;
   border: none;
-  color: #8a96b0;
+  color: var(--ma-text-dim);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -550,7 +550,7 @@ const onPickRow = (uuid: string) => {
 }
 
 .factor-row .step-btn:hover {
-  background: #1f2940;
+  background: var(--ma-border);
   color: #fff;
 }
 
@@ -560,22 +560,22 @@ const onPickRow = (uuid: string) => {
   font-size: 12px;
   font-weight: 600;
   font-family: 'Consolas', monospace;
-  color: #e6ebf5;
-  border-left: 1px solid #1f2940;
-  border-right: 1px solid #1f2940;
+  color: var(--ma-text);
+  border-left: 1px solid var(--ma-border);
+  border-right: 1px solid var(--ma-border);
   line-height: 24px;
-  background: #0d1322;
+  background: var(--ma-bg-deep);
 }
 
 .factor-row .note {
   font-size: 11px;
-  color: #e6ebf5;
+  color: var(--ma-text);
   text-align: right;
   white-space: nowrap;
 }
 
 .fire-highlight {
-  color: #ff7a00 !important;
+  color: var(--ma-orange) !important;
   font-weight: 600;
 }
 
@@ -586,7 +586,7 @@ const onPickRow = (uuid: string) => {
   align-items: center;
   margin-top: 4px;
   padding-top: 12px;
-  border-top: 1px solid #1f2940;
+  border-top: 1px solid var(--ma-border);
 }
 
 .smoke-ctrl {
@@ -604,9 +604,9 @@ const onPickRow = (uuid: string) => {
 .select-wrapper select {
   width: 100%;
   height: 24px;
-  background: #151a24;
-  border: 1px solid #1f2940;
-  color: #e6ebf5;
+  background: var(--ma-bg-panel);
+  border: 1px solid var(--ma-border);
+  color: var(--ma-text);
   border-radius: 4px;
   padding: 0 20px 0 8px;
   font-size: 11px;
@@ -617,12 +617,12 @@ const onPickRow = (uuid: string) => {
 }
 
 .select-wrapper select:hover, .select-wrapper select:focus {
-  border-color: #3385ff;
+  border-color: var(--ma-blue);
 }
 
 .select-wrapper select option {
-  background: #11141a;
-  color: #e6ebf5;
+  background: var(--ma-bg-deep);
+  color: var(--ma-text);
 }
 
 .select-wrapper .select-arrow {
@@ -630,7 +630,7 @@ const onPickRow = (uuid: string) => {
   right: 6px;
   top: 50%;
   transform: translateY(-50%);
-  color: #8a96b0;
+  color: var(--ma-text-dim);
   pointer-events: none;
 }
 
@@ -642,13 +642,13 @@ const onPickRow = (uuid: string) => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #2a3556;
+  background: var(--ma-border-light);
   pointer-events: none;
 }
 
-.select-wrapper select:has(option[value="black"]:checked) + .color-dot { background: #1a1a1a; border: 1px solid #333; }
-.select-wrapper select:has(option[value="white"]:checked) + .color-dot { background: #e6ebf5; }
-.select-wrapper select:has(option[value="yellow"]:checked) + .color-dot { background: #fbbf24; }
+.select-wrapper select:has(option[value="black"]:checked) + .color-dot { background: var(--ma-text); border: 1px solid #333; }
+.select-wrapper select:has(option[value="white"]:checked) + .color-dot { background: var(--ma-text); }
+.select-wrapper select:has(option[value="yellow"]:checked) + .color-dot { background: var(--ma-yellow); }
 
 .select-wrapper:has(.color-dot) select {
   padding-left: 22px;
@@ -669,13 +669,13 @@ const onPickRow = (uuid: string) => {
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #3385ff;
+  color: var(--ma-blue);
 }
 
 .add-mini-btn {
   background: rgba(51, 133, 255, 0.1);
   border: 1px solid rgba(51, 133, 255, 0.3);
-  color: #3385ff;
+  color: var(--ma-blue);
   width: 20px;
   height: 20px;
   border-radius: 4px;
@@ -688,7 +688,7 @@ const onPickRow = (uuid: string) => {
 }
 
 .add-mini-btn:hover {
-  background: #3385ff;
+  background: var(--ma-blue);
   color: #fff;
 }
 
@@ -710,7 +710,7 @@ const onPickRow = (uuid: string) => {
   justify-content: space-between;
   align-items: center;
   background: transparent;
-  border: 1px solid #1f2940;
+  border: 1px solid var(--ma-border);
   border-radius: 4px;
   padding: 6px 8px;
 }
@@ -728,9 +728,9 @@ const onPickRow = (uuid: string) => {
 
 .floor-input input {
   width: 28px;
-  background: #151a24;
-  border: 1px solid #1f2940;
-  color: #3385ff;
+  background: var(--ma-bg-panel);
+  border: 1px solid var(--ma-border);
+  color: var(--ma-blue);
   font-size: 12px;
   font-weight: 600;
   font-family: 'Consolas', monospace;
@@ -741,17 +741,17 @@ const onPickRow = (uuid: string) => {
   padding: 2px 0;
 }
 .floor-input input:hover, .floor-input input:focus {
-  border-color: #3385ff;
+  border-color: var(--ma-blue);
 }
 
 .unit {
-  color: #3385ff;
+  color: var(--ma-blue);
   font-weight: 600;
   font-size: 12px;
 }
 
 .divider {
-  color: #1f2940;
+  color: var(--ma-border);
   font-size: 10px;
 }
 
@@ -763,15 +763,15 @@ const onPickRow = (uuid: string) => {
 
 .count-input .label {
   font-size: 11px;
-  color: #8a96b0;
+  color: var(--ma-text-dim);
 }
 
 .count-input input {
   width: 32px;
-  background: #151a24;
-  border: 1px solid #1f2940;
+  background: var(--ma-bg-panel);
+  border: 1px solid var(--ma-border);
   border-radius: 4px;
-  color: #e6ebf5;
+  color: var(--ma-text);
   font-size: 11px;
   text-align: center;
   outline: none;
@@ -779,7 +779,7 @@ const onPickRow = (uuid: string) => {
   transition: all 0.2s;
 }
 .count-input input:hover, .count-input input:focus {
-  border-color: #3385ff;
+  border-color: var(--ma-blue);
 }
 
 .floor-input input::-webkit-outer-spin-button,
@@ -801,9 +801,9 @@ const onPickRow = (uuid: string) => {
 
 .dir-select select {
   width: 100%;
-  background: #151a24;
-  border: 1px solid #1f2940;
-  color: #3385ff;
+  background: var(--ma-bg-panel);
+  border: 1px solid var(--ma-border);
+  color: var(--ma-blue);
   font-size: 11px;
   border-radius: 4px;
   padding: 2px 16px 2px 6px;
@@ -813,12 +813,12 @@ const onPickRow = (uuid: string) => {
   cursor: pointer;
 }
 .dir-select select:hover, .dir-select select:focus {
-  border-color: #3385ff;
+  border-color: var(--ma-blue);
 }
 
 .dir-select select option {
-  background: #11141a;
-  color: #3385ff;
+  background: var(--ma-bg-deep);
+  color: var(--ma-blue);
 }
 
 .dir-select .select-arrow {
@@ -826,7 +826,7 @@ const onPickRow = (uuid: string) => {
   right: 4px;
   top: 50%;
   transform: translateY(-50%);
-  color: #3385ff;
+  color: var(--ma-blue);
   pointer-events: none;
   font-size: 12px;
 }
@@ -840,10 +840,10 @@ const onPickRow = (uuid: string) => {
 .mini-btn {
   width: 20px;
   height: 20px;
-  background: #151a24;
-  border: 1px solid #1f2940;
+  background: var(--ma-bg-panel);
+  border: 1px solid var(--ma-border);
   border-radius: 4px;
-  color: #8a96b0;
+  color: var(--ma-text-dim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -852,8 +852,8 @@ const onPickRow = (uuid: string) => {
 }
 
 .mini-btn:hover {
-  border-color: #3385ff;
-  color: #3385ff;
+  border-color: var(--ma-blue);
+  color: var(--ma-blue);
 }
 
 .del-btn {
@@ -862,7 +862,7 @@ const onPickRow = (uuid: string) => {
   background: rgba(255, 77, 79, 0.1);
   border: 1px solid rgba(255, 77, 79, 0.3);
   border-radius: 4px;
-  color: #ff4d4f;
+  color: var(--ma-red);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -871,7 +871,7 @@ const onPickRow = (uuid: string) => {
 }
 
 .del-btn:hover {
-  background: #ff4d4f;
+  background: var(--ma-red);
   color: #fff;
 }
 
@@ -885,7 +885,7 @@ const onPickRow = (uuid: string) => {
   background: rgba(51, 133, 255, 0.1);
   border: 1px dashed rgba(51, 133, 255, 0.4);
   border-radius: 4px;
-  color: #3385ff;
+  color: var(--ma-blue);
   font-size: 11px;
   cursor: pointer;
   transition: all 0.2s;
@@ -893,7 +893,7 @@ const onPickRow = (uuid: string) => {
 
 .add-new-btn:hover {
   background: rgba(51, 133, 255, 0.2);
-  border-color: #3385ff;
+  border-color: var(--ma-blue);
 }
 
 /* ===================== 其他 ===================== */
@@ -904,9 +904,9 @@ const onPickRow = (uuid: string) => {
 }
 
 .collapse-trigger-btn {
-  background: #1c2438;
-  border: 1px solid #2a3556;
-  color: #e6ebf5;
+  background: var(--ma-bg-panel);
+  border: 1px solid var(--ma-border-light);
+  color: var(--ma-text);
   font-size: 13px;
   font-weight: 600;
   padding: 8px 16px;
@@ -920,7 +920,7 @@ const onPickRow = (uuid: string) => {
 }
 
 .collapse-trigger-btn:hover {
-  background: #2a3556;
+  background: var(--ma-border-light);
   color: #fff;
 }
 </style>

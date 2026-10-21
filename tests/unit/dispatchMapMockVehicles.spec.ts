@@ -21,7 +21,7 @@ import type { MockMapPort } from '@/controller/core/protocol/BusinessMapPort'
 import type { SharedDispatchVehicleMock } from '@/composables/useMockCallLocationBridge'
 
 vi.mock('@/store', async () => ({ useUserStore: (await import('@/store/useUserStore')).useUserStore }))
-vi.mock('@/service/geoserver', () => ({ geoserverApi: {} }))
+vi.mock('@/apis/geoserver', () => ({ geoserverApi: {} }))
 
 const filename = resolve('src/baseComponent/OpenlayersMap/dispatchMap.vue')
 const script = parse(readFileSync(filename, 'utf8')).descriptor.scriptSetup!.content

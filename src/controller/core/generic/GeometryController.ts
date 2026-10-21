@@ -1,4 +1,3 @@
-﻿import { offset } from 'ol/sphere'
 /*
  * @Author: hhr
  * @Date: 2026-07-01 11:09:45
@@ -15,7 +14,8 @@ import Point from 'ol/geom/Point'
 import { Style, Icon, Fill, Stroke, Text } from 'ol/style'
 import GeoJSON from 'ol/format/GeoJSON'
 import { fromLonLat } from 'ol/proj'
-import { getStyle, ROUTE_LINE_STROKE, StyleKey } from '@/baseComponent/amap/featureStyle'
+import { getStyle, ROUTE_LINE_STROKE } from '@/baseComponent/OpenlayersMap/style'
+import type { StyleKey, StyleParamsMap } from '@/baseComponent/OpenlayersMap/style/types'
 import type {
   MarkerAddData,
   TextData,
@@ -108,7 +108,7 @@ export class GeometryController {
 
     // 设置样式 - marker 始终在最顶层 (zIndex 最大)
     if (data.iconType) {
-      feature.setStyle(getStyle(data.iconType as StyleKey, data?.iconParams))
+      feature.setStyle(getStyle(data.iconType as StyleKey, data?.iconParams as StyleParamsMap[StyleKey]))
       // feature.setStyle(new Style({
       //   zIndex: GeometryController.MARKER_Z_INDEX,
       //   image: baseStyle.getImage()

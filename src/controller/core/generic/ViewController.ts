@@ -8,7 +8,6 @@
  */
 import OlMap from 'ol/Map'
 import type BaseLayer from 'ol/layer/Base'
-import type Collection from 'ol/Collection'
 import GeoJSON from 'ol/format/GeoJSON'
 import TileWMS from 'ol/source/TileWMS'
 import ImageWMS from 'ol/source/ImageWMS'

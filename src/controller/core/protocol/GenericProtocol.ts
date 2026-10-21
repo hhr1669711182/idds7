@@ -1,4 +1,4 @@
-import { StyleKey } from '@/baseComponent/amap/featureStyle'
+import type { StyleKey } from '@/baseComponent/OpenlayersMap/style/types'
 
 export interface LocateData {
   lngLat: [number, number]

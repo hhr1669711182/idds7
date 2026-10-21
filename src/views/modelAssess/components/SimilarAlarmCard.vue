@@ -94,8 +94,8 @@ const getSimilarityColor = (sim: number) => {
   @media screen and (max-height: 900px) {
     height: 150px;
   }
-  background: #11141a;
-  border: 1px solid #1f2940;
+  background: var(--ma-bg-deep);
+  border: 1px solid var(--ma-border);
   border-radius: 8px;
   padding: 8px;
   display: flex;
@@ -107,7 +107,7 @@ const getSimilarityColor = (sim: number) => {
 }
 
 .similar-card:hover {
-  border-color: #3b4558;
+  border-color: var(--ma-border-light);
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
@@ -123,13 +123,13 @@ const getSimilarityColor = (sim: number) => {
 /* ===================== 左侧 3D 模型区 ===================== */
 .thumb-section {
   flex: 1;
-  background: #050810;
+  background: var(--ma-bg-deep);
   border-radius: 6px;
   position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #1f2940;
+  border: 1px solid var(--ma-border);
   min-height: 0;
 }
 
@@ -140,7 +140,7 @@ const getSimilarityColor = (sim: number) => {
   right: 0;
   text-align: center;
   font-size: 10px;
-  color: #e6ebf5;
+  color: var(--ma-text);
   font-weight: 600;
   z-index: 10;
   padding: 0 4px;
@@ -155,8 +155,8 @@ const getSimilarityColor = (sim: number) => {
   bottom: 4px;
   right: 4px;
   background: rgba(255, 77, 79, 0.15);
-  border: 1px solid #ff4d4f;
-  color: #ff4d4f;
+  border: 1px solid var(--ma-red);
+  color: var(--ma-red);
   font-size: 9px;
   padding: 2px 4px;
   border-radius: 4px;
@@ -195,8 +195,8 @@ const getSimilarityColor = (sim: number) => {
   border-radius: 6px;
   overflow: hidden;
   position: relative;
-  background: #e6ebf5;
-  border: 1px solid #1f2940;
+  background: var(--ma-text);
+  border: 1px solid var(--ma-border);
   min-height: 0;
 }
 
@@ -211,8 +211,8 @@ const getSimilarityColor = (sim: number) => {
   bottom: 4px;
   left: 4px;
   background: rgba(17, 20, 26, 0.8);
-  border: 1px solid #3b4558;
-  color: #e6ebf5;
+  border: 1px solid var(--ma-border-light);
+  color: var(--ma-text);
   font-size: 9px;
   padding: 2px 8px;
   border-radius: 4px;
@@ -226,13 +226,13 @@ const getSimilarityColor = (sim: number) => {
   justify-content: space-between;
   align-items: center;
   padding-top: 6px;
-  border-top: 1px solid #1f2940;
+  border-top: 1px solid var(--ma-border);
   flex-shrink: 0;
 }
 
 .similarity-text {
   font-size: 11px;
-  color: #8a96b0;
+  color: var(--ma-text-dim);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -251,8 +251,8 @@ const getSimilarityColor = (sim: number) => {
 
 .btn-del {
   background: transparent;
-  border: 1px solid #2a3556;
-  color: #5b6478;
+  border: 1px solid var(--ma-border-light);
+  color: var(--ma-text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -264,8 +264,8 @@ const getSimilarityColor = (sim: number) => {
 
 .btn-del:hover {
   background: rgba(255, 77, 79, 0.1);
-  border-color: #ff4d4f;
-  color: #ff4d4f;
+  border-color: var(--ma-red);
+  color: var(--ma-red);
 }
 
 .btn-merge {

@@ -96,7 +96,7 @@ onUnmounted(() => {
 .main-body.single-view :deep(.tilt-map) {
   flex: 1;
   border-radius: 6px;
-  border: 1px solid #1f2940;
+  border: 1px solid var(--ma-border);
   overflow: hidden;
 }
 
