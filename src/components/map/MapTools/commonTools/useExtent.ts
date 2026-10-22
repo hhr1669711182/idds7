@@ -19,6 +19,7 @@ export interface UseExtentResult {
   destroy: () => void
 }
 
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 export const transformExtent = (extent: Extent, coordSys = 'EPSG:4326') => {
   return olProj.transformExtent(extent, 'EPSG:4326', 'EPSG:3857')
 }

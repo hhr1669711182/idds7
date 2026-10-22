@@ -45,7 +45,6 @@ export const parseSharedMapStage = (raw: string | null): SharedMapStage | null =
 
 export const SEAT_SHARED_STATE_KEY = 'seat-shared-state'
 export const SEAT_SHARED_STATE_MOCK_KEY = 'seat-shared-state-mock'
-export const GIS_POINT_INFO_KEY = 'gis-point-info'
 
 /* ------------------------------------------------------------------ *
  * 以下为纯函数：只接收快照，不读 store、不读 localStorage。

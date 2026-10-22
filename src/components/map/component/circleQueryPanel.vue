@@ -519,8 +519,8 @@ onBeforeUnmount(() => {
 <style scoped lang="less">
 .search-panel-wrapper {
   position: absolute;
-  left: 16px;
-  top: 16px;
+  left: 0.5em;
+  top: 0.5em;
   z-index: 7;
   display: flex;
   flex-direction: column;

@@ -15,7 +15,12 @@ import * as olProj from 'ol/proj'
 import Overlay from 'ol/Overlay'
 // import { EventBus } from "@/utils/mitt.ts";
 import { useDispatchStore } from '@/store' // useTabsStore,
-import { createRouteDirectionArrowStyle, createSelectedTmcLineStyle, getStyle, MAP_ICON_SRC } from '@/baseComponent/OpenlayersMap/style'
+import {
+  createRouteDirectionArrowStyle,
+  createSelectedTmcLineStyle,
+  getStyle,
+  MAP_ICON_SRC,
+} from '@/baseComponent/OpenlayersMap/style'
 import { createDispatchVehicleLabel } from './dispatchVehicleLabel'
 import {
   normalizeRouteResults,
@@ -735,6 +740,7 @@ const interpolateOnLine = (coords: number[][], distances: number[], targetDistan
   const total = distances[distances.length - 1] ?? 0
   if (targetDistance >= total) {
     const last = coords[coords.length - 1]
+    // @ts-expect-error TS6133: 引用处已注释，保留备用
     const prev = coords[coords.length - 2] ?? last
     return { point: last, bearing: safeBearingRad(coords, coords.length - 1) }
   }
@@ -911,7 +917,9 @@ export class AmapRealtimeNav {
   public endMarker: Feature<Point> | null = null
   private alarmMarker: Feature<Point> | null = null
   private alarmData: AlarmData | null = null
+  // @ts-expect-error TS6133: 引用处已注释，保留备用
   private originLngLat: LngLat | null = null
+  // @ts-expect-error TS6133: 引用处已注释，保留备用
   private destinationLngLat: LngLat | null = null
   private boundRoutesplanroad: ((origins: LngLat[], destination: LngLat) => Promise<AmapDrivingResult[]>) | null = null
 

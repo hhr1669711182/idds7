@@ -1,11 +1,11 @@
 [
-    {
-        "amapWebServiceKey": "",
-        "data": {
-            "keywords": "北京市",
-            "adcode": "110000",
-            "city": "北京市",
-            "boundaries": []
-        }
+  {
+    "amapWebServiceKey": "",
+    "data": {
+      "keywords": "北京市",
+      "adcode": "110000",
+      "city": "北京市",
+      "boundaries": []
     }
+  }
 ]

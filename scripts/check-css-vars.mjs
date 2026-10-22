@@ -77,11 +77,18 @@ if (existsSync(tokensPath) && existsSync(palettesPath)) {
   const palettesText = readFileSync(palettesPath, 'utf8')
   /** @name: value —— 只取 Less 变量声明，忽略注释与嵌套块内的同名声明 */
   const lessVars = new Map(
-    [...tokensText.matchAll(/^\s*@([a-zA-Z0-9-]+)\s*:\s*([^;]+);/gm)].map((m) => [m[1], m[2].trim()])
+    [...tokensText.matchAll(/^\s*@([a-zA-Z0-9-]+)\s*:\s*([^;]+);/gm)].map((m) => [m[1], m[2].trim()]),
   )
-  /** --name: value —— 只取 :root 块内的声明，避免主题块内的覆盖值被误取 */
+  /**
+   * --name: value —— 只取**第一个顶层 :root 块**内的声明。
+   * 后面的 :root[data-theme=...] 是主题覆盖值、@media 内的 :root 是响应式覆盖值，
+   * 它们本来就允许与 tokens.less 不同（随主题/断点变化），不能算作漂移。
+   */
+  const rootBlock = palettesText.match(/^:root\s*\{([\s\S]*?)\n\}/m)
   const cssVars = new Map(
-    [...palettesText.matchAll(/^\s*(--[a-zA-Z0-9-]+)\s*:\s*([^;]+);/gm)].map((m) => [m[1].slice(2), m[2].trim()])
+    rootBlock
+      ? [...rootBlock[1].matchAll(/^\s*(--[a-zA-Z0-9-]+)\s*:\s*([^;]+);/gm)].map((m) => [m[1].slice(2), m[2].trim()])
+      : [],
   )
   for (const [name, lessValue] of lessVars) {
     if (!cssVars.has(name)) continue
@@ -111,7 +118,6 @@ if (missing.length) {
     console.log(`  ${item.name}  ←  ${item.files.slice(0, 3).join(', ')}`)
   }
   console.log('')
-}
   console.log('修复方式：')
   console.log('  · 与主题无关的（圆角/间距）→ 在 src/styles/palettes.less 的 :root 块定义为 CSS 变量')
   console.log("  · 随主题变化的 → 在 :root[data-theme='NIGHT'] / [data-theme='DAY'] 块内定义")

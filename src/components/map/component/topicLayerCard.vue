@@ -58,7 +58,11 @@ const handleTools = (type: string) => {
       break;
   }
 
-  toolMap?.create();
+  // 只有 ClusterTools / HeatMapTools 需要额外的 create()，
+  // 其余工具在构造时即完成初始化
+  if (toolMap instanceof ClusterTools || toolMap instanceof HeatMapTools) {
+    toolMap.create();
+  }
 };
 
 const MAP_THEMES = [
@@ -103,6 +107,7 @@ const MAP_THEMES = [
 ];
 const showSetting = ref(false);
 
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const handleClickSet = () => {
   showSetting.value = !showSetting.value;
 };

@@ -14,7 +14,8 @@ import { unByKey } from 'ol/Observable'
 import type { EventsKey } from 'ol/events'
 import * as olProj from 'ol/proj'
 import Overlay from 'ol/Overlay'
-import type { Style, StyleLike } from 'ol/style'
+import type Style from 'ol/style/Style.js'
+import type { StyleLike } from 'ol/style/Style.js'
 
 /** 通用点位图层管理器：支持全量 setData 与按 key 增量 upsert/remove */
 export type PointLayerManager<T> = {
@@ -172,3 +173,13 @@ export const mountPointLayer = <T>(params: MountPointLayerOptions<T>): PointLaye
 
 /** 仅为类型复用，避免调用方重复 import ol/style */
 export type PointLayerStyle = Style
+
+/**
+ * OL10 的样式联合类型。
+ *
+ * OpenLayers 10 不再从 `ol/style` 聚合入口导出 `StyleLike`（旧版已移除），
+ * 真实定义位于 `ol/style/Style.js`：`Style | Array<Style> | StyleFunction`。
+ * 这里重新导出一次，供 mountPointLayer / mountPolygonLayer 等图层工厂共用，
+ * 避免每个调用方都去记 OL 的深层导入路径。
+ */
+export type { StyleLike }

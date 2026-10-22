@@ -8,13 +8,13 @@ import * as olProj from "ol/proj";
 import { unByKey } from "ol/Observable";
 import type { EventsKey } from "ol/events";
 import type Overlay from "ol/Overlay";
-import OSM from "ol/source/OSM.js";
+// import OSM from "ol/source/OSM.js";  // TS6133: 未使用，import 保留备用
 import TileLayer from "ol/layer/Tile";
 import {
-  ZoomSlider,
-  FullScreen,
+  // ZoomSlider,  // TS6133: 模板功能已注释，import 保留备用
+  // FullScreen,  // TS6133: 模板功能已注释，import 保留备用
   ScaleLine,
-  ZoomToExtent,
+  // ZoomToExtent,  // TS6133: 模板功能已注释，import 保留备用
   OverviewMap,
 } from "ol/control";
 import { KeyboardPan, Modify } from "ol/interaction";
@@ -40,7 +40,8 @@ import {
   isTempFrontendLayerId,
 } from "./layers.ts";
 import { TrafficTools } from "../../components/map/MapTools";
-import { EXTENT, ZOOM, CENTER } from "./const.map.ts";
+import { ZOOM, CENTER } from "./const.map.ts";
+// import { EXTENT } from "./const.map.ts";  // TS6133: 仅被注释代码引用，import 保留备用
 import { useResponsive, useTouch } from "../../composables/useResponsive.ts";
 import {
   AmapRealtimeNav,
@@ -55,14 +56,14 @@ import {
 import {
   mountCarFeatures,
   type CarItem,
-  type CarFeaturesManager,
+  // type CarFeaturesManager,  // TS6133: 未使用，import 保留备用
 } from '@/composables/useCarFeatures'
 import {
   mountPointLayer,
   type PointLayerManager,
 } from '@/baseComponent/OpenlayersMap/mountPointLayer.ts'
 import {
-  mountPolygonLayer,
+  // mountPolygonLayer,  // TS6133: 功能已注释禁用，import 保留备用
   type PolygonLayerManager,
 } from '@/baseComponent/OpenlayersMap/mountPolygonLayer.ts'
 import { createSpecialMapMock, type SpecialMapMock } from '@/baseComponent/OpenlayersMap/specialMapMock.ts'
@@ -140,7 +141,7 @@ import {
 } from "./useMapPopups";
 import DispatchRoutePreview from './DispatchRoutePreview.vue';
 import { getSelectedRoute, matchStationRoute, type RouteAlternative, type StationRouteAlternatives } from '../amap/routeAlternatives';
-import type { AlarmData } from "../amap/useAmapTools.ts";
+// import type { AlarmData } from "../amap/useAmapTools.ts";  // TS6133: 未使用，import 保留备用
 import ZoomLevelControl from "./ZoomLevelControl.vue";
 import { THEME_COLOR } from "../../const/const.common.ts";
 import { createBaseSourceSource } from "./baseSource.ts";
@@ -164,6 +165,7 @@ const emit = defineEmits(["setMap"]);
 
 // 响应式检测
 const { isMobile } = useResponsive();
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const { isTouchDevice } = useTouch();
 
 let map: OLMap | null = null;
@@ -174,6 +176,7 @@ const mapZoomLevel = ref(ZOOM.INIT);
 
 const firePopupRef = ref<HTMLElement | null>(null);
 const firePopupVisible = ref(false);
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const navVisible = ref(false);
 const fireSelected = ref<any | null>(null);
 
@@ -277,12 +280,16 @@ const JR_ALARM_LAYER_CLASS = "JR_ALARM_LAYER";
 const INCIDENT_LOCATION_FOCUS_ZOOM = 15;
 
 /** 点位所属辖区面图层：数据来自 store.zones（WFS INTERSECTS 异步查询），始终可见 */
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 let incidentZoneManager: PolygonLayerManager<IncidentLocationZone> | null = null;
 /** 灾情现场视频弹窗控制器：警情定位完成后在灾情点弹出 */
 let incidentVideoController: IncidentVideoOverlayController | null = null;
 /** 已渲染进辖区图层的快照，用于与 store.zones diff 出 upsert/remove */
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 let renderedZones = new globalThis.Map<string, IncidentLocationZone>();
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const INCIDENT_LOCATION_ZONE_LAYER_ZINDEX = MAP_LAYER_Z_INDEX.jurisdiction;
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const INCIDENT_LOCATION_ZONE_LAYER_CLASS = "INCIDENT_LOCATION_ZONE_LAYER";
 
 /** 将地图视图定位到指定坐标（不低于 FOCUS_ZOOM） */
@@ -1657,6 +1664,7 @@ const endCoord = ref<[number, number] | null>(null);
 const activeDropdown = ref<"start" | "end" | null>(null);
 const isPlanning = ref(false);
 
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const canStart = computed(() => !!endCoord.value && !isPlanning.value);
 
 const formatTipText = (t: TipItem) => {
@@ -1716,9 +1724,12 @@ const queryTips = async (type: "start" | "end") => {
   else endTips.value = filtered;
 };
 
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const queryStartTips = debounce(() => queryTips("start"), 220);
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const queryEndTips = debounce(() => queryTips("end"), 220);
 
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const selectTip = (type: "start" | "end", tip: TipItem) => {
   if (!tip.location || !nav) return;
   const text = formatTipText(tip);
@@ -1734,6 +1745,7 @@ const selectTip = (type: "start" | "end", tip: TipItem) => {
   activeDropdown.value = null;
 };
 
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const fetchDisasterSuggestions = async (
   queryString: string,
   cb: any,
@@ -1781,6 +1793,7 @@ const fetchDisasterSuggestions = async (
   }
 };
 
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const onDisasterSelect = (item: any) => {
   const loc = item?.location as [number, number] | undefined;
   if (!loc) {
@@ -1800,6 +1813,7 @@ const onDisasterSelect = (item: any) => {
   }
 };
 
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const pickOnMap = async (type: "start" | "end") => {
   if (!nav) return;
   const key = ensureAmapKey();
@@ -1821,6 +1835,7 @@ const pickOnMap = async (type: "start" | "end") => {
   activeDropdown.value = null;
 };
 
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const startSimulate = async (orgs?: any[], d?: any) => {
   if (!nav || !endCoord.value) return;
   const key = ensureAmapKey();
@@ -2043,6 +2058,7 @@ const initMap = () => {
     collapsible: true,
   });
 
+  // @ts-expect-error TS6133: 模板功能已注释，变量保留备用
   const keyboardPan = new KeyboardPan({
     pixelDelta: 100,
     duration: 200,
@@ -2507,7 +2523,9 @@ const cleanup = () => {
 
 // tabs 模型
 const tabsStore = useTabsStore();
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const { activeTab } = storeToRefs(tabsStore);
+// @ts-expect-error TS6133: 模板功能已注释，变量保留备用
 const tabs = ref([
   {
     label: "路径规划",
@@ -2609,11 +2627,7 @@ onUnmounted(() => {
     </div>
 
     <!-- 警情详情固定弹窗（居中 Modal，小弹窗点"警情详情"打开） -->
-    <IncidentDetailDialog
-      v-model="incidentDetailVisible"
-      :data="incidentDetailData"
-      :loading="incidentDetailLoading"
-    />
+    <IncidentDetailDialog v-model="incidentDetailVisible" :data="incidentDetailData" :loading="incidentDetailLoading" />
 
     <!-- 在线车辆弹窗 -->
     <div ref="carPopupRef" class="car_popup" v-show="carPopupVisible">
@@ -3077,5 +3091,4 @@ onUnmounted(() => {
   bottom: 28px !important;
   left: 4em !important;
 }
-
 </style>

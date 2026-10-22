@@ -12,7 +12,7 @@ import type Geometry from 'ol/geom/Geometry'
 import GeoJSON from 'ol/format/GeoJSON'
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
-import type { StyleLike } from 'ol/style'
+import type { StyleLike } from './mountPointLayer'
 
 /** 通用面图层管理器：支持全量 setData 与按 key 增量 upsert/remove */
 export type PolygonLayerManager<T> = {

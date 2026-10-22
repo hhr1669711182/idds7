@@ -9,7 +9,8 @@ import BaseLayer from 'ol/layer/Base'
 
 export class WeatherTools {
   map: Map
-  cloud: AnimatedCanvas
+  // ol-ext 未随包提供类型声明，AnimatedCanvas 只能按「构造函数类型」使用
+  cloud: InstanceType<typeof AnimatedCanvas>
   AMAP_LAYER: BaseLayer | undefined
   GOOGLE_LAYER: BaseLayer | undefined
   constructor({ map }: { map: Map }) {
@@ -71,7 +72,7 @@ export class WeatherTools {
   }
   remove() {
     this.map.removeOverlay(this.cloud)
-    this.AMAP_LAYER.setVisible(true)
-    this.GOOGLE_LAYER.setVisible(false)
+    this.AMAP_LAYER?.setVisible(true)
+    this.GOOGLE_LAYER?.setVisible(false)
   }
 }

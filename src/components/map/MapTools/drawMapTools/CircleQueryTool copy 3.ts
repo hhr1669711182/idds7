@@ -1,4 +1,5 @@
-import { markRaw, toRaw } from 'vue'
+// import { markRaw, toRaw } from 'vue'  // TS6133: toRaw 未使用，import 保留备用
+import { markRaw } from 'vue'
 import { Draw, Modify } from 'ol/interaction'
 // import TileLayer from "ol/layer/Tile";
 // import TileWMS from "ol/source/TileWMS";

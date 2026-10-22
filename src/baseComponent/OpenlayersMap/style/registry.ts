@@ -1,9 +1,5 @@
 import { MAP_ICON_SRC, FIRE_STATION_ICON, getCommonAlarmIconSrc } from './icons'
-import {
-  ROUTE_LINE_STROKE,
-  SELECTED_ROUTE_OUTLINE_COLOR,
-  BUFFER_POLYGON_FILL,
-} from './palette'
+import { ROUTE_LINE_STROKE, SELECTED_ROUTE_OUTLINE_COLOR, BUFFER_POLYGON_FILL } from './palette'
 import {
   createBoundaryStyle,
   createEndpointStyle,

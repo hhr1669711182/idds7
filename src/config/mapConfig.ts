@@ -4,23 +4,78 @@ export type ConfigTab = 'feature' | 'layer'
 export type MapMode = 'dispatch' | 'oneMap'
 
 export const FEATURE_ZOOM_LIMITS = {
-  minZoom: { min: 3, max: 12 },
-  maxZoom: { min: 12, max: 18 },
+  minZoom: { min: 0, max: 12 },
+  maxZoom: { min: 12, max: 21 },
 } as const
 
 export interface FeatureSettings {
   minZoom: number
   maxZoom: number
   alarmZoom: number
+  /** 地图工具-导航组件（平移/复位） */
   showNav: boolean
+  /** 地图工具-绘制组件（标点/标线/标面/画圆/画矩形） */
   showDraw: boolean
+  /** 地图工具-其它组件（圈选/框选/测量/路况/人口/图源等） */
   showOther: boolean
   showEagleEye: boolean
+  /** 指北针/旋转控件 */
+  showCompass: boolean
+  /** 比例尺控件 */
+  showScaleLine: boolean
+  /** 天气面板 */
+  showWeather: boolean
+  /** 实时路况图层 */
+  showTraffic: boolean
+  /** 路径规划 */
+  showRoutePlan: boolean
+  /** 实时人口标绘 */
+  showPopulation: boolean
+  /** 专题图 */
+  showTopic: boolean
+  /** 清除/设置操作面板 */
+  showClear: boolean
+  /** 经纬度提示面板 */
+  showCoordinate: boolean
+  /** 底部图层工具栏 */
+  showLayerToolbar: boolean
+  /** 圈选查询面板 */
+  showCircleQuery: boolean
+  /** 调色盘 */
+  showPalette: boolean
   mapMode: MapMode
   bufferKm: number
   queryCustomPoi: boolean
   showCaseClosedStyle: boolean
   showUavTrack: boolean
+}
+
+/** 功能配置默认值（须与组件当前的「默认显」状态一致，避免保存一次后组件消失） */
+export const DEFAULT_FEATURE_SETTINGS: FeatureSettings = {
+  minZoom: FEATURE_ZOOM_LIMITS.minZoom.min,
+  maxZoom: FEATURE_ZOOM_LIMITS.maxZoom.max,
+  alarmZoom: 18,
+  showNav: true,
+  showDraw: true,
+  showOther: true,
+  showEagleEye: true,
+  showCompass: true,
+  showScaleLine: true,
+  showWeather: true,
+  showTraffic: true,
+  showRoutePlan: true,
+  showPopulation: true,
+  showTopic: true,
+  showClear: true,
+  showCoordinate: true,
+  showLayerToolbar: true,
+  showCircleQuery: true,
+  showPalette: true,
+  mapMode: 'dispatch',
+  bufferKm: 0.2,
+  queryCustomPoi: true,
+  showCaseClosedStyle: true,
+  showUavTrack: true,
 }
 
 export interface MapLayerResource extends LayerConfig {
@@ -146,20 +201,7 @@ export const buildLayerGroups = (layer?: MapConfigPayload['layer']): MapLayerGro
 export const createDefaultMapConfig = (): MapConfigPayload => ({
   version: '1',
   updatedAt: new Date().toISOString(),
-  feature: {
-    minZoom: FEATURE_ZOOM_LIMITS.minZoom.min,
-    maxZoom: FEATURE_ZOOM_LIMITS.maxZoom.max,
-    alarmZoom: 18,
-    showNav: true,
-    showDraw: true,
-    showOther: true,
-    showEagleEye: true,
-    mapMode: 'dispatch',
-    bufferKm: 0.2,
-    queryCustomPoi: true,
-    showCaseClosedStyle: true,
-    showUavTrack: true,
-  },
+  feature: { ...DEFAULT_FEATURE_SETTINGS },
   layer: {
     groups: buildLayerGroups(),
   },
@@ -170,6 +212,8 @@ export const normalizeMapConfig = (payload: MapConfigPayload): MapConfigPayload 
   const clamp = (value: number, min: number, max: number) =>
     Math.min(Math.max(Number.isFinite(Number(value)) ? Number(value) : min, min), max)
 
+  // 补齐旧数据缺失的功能字段（向后兼容：缺省取默认值）
+  next.feature = { ...DEFAULT_FEATURE_SETTINGS, ...next.feature }
   next.feature.minZoom = clamp(next.feature.minZoom, FEATURE_ZOOM_LIMITS.minZoom.min, FEATURE_ZOOM_LIMITS.minZoom.max)
   next.feature.maxZoom = clamp(next.feature.maxZoom, FEATURE_ZOOM_LIMITS.maxZoom.min, FEATURE_ZOOM_LIMITS.maxZoom.max)
   next.feature.alarmZoom = clamp(next.feature.alarmZoom, next.feature.minZoom, next.feature.maxZoom)
@@ -203,6 +247,16 @@ export const getVisibleLayerIds = (payload: MapConfigPayload): string[] =>
       category.resources.filter((resource) => resource.enabled && resource.visible).map((resource) => resource.id),
     ),
   )
+
+/**
+ * 配置数据源抽象：集中管理「从哪里读 / 写配置」。
+ * 当前默认走 localStorage（离线可用）；预留 HTTP 对接入口（对接 src/apis/common.ts 的
+ * getConfigMethod / 保存接口），正式接口就绪后切换 activeMapConfigSource 即可，无需改 store。
+ */
+export interface MapConfigSource {
+  fetchConfig: () => Promise<MapConfigPayload>
+  saveConfig: (payload: MapConfigPayload) => Promise<MapConfigPayload>
+}
 
 type MapConfigStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
@@ -238,22 +292,36 @@ const writeStoredMapConfig = (payload: MapConfigPayload) => {
   try {
     getMapConfigStorage()?.setItem(MAP_CONFIG_STORAGE_KEY, JSON.stringify(payload))
   } catch {
-    // The in-memory mock still works when storage is unavailable or full.
+    // localStorage 不可用或已满时保持内存态；不阻塞保存流程。
   }
 }
 
-let mockConfig = readStoredMapConfig() ?? createDefaultMapConfig()
-
-export const fetchMapConfig = async (): Promise<MapConfigPayload> => {
-  mockConfig = readStoredMapConfig() ?? mockConfig
-  return clone(mockConfig)
+/** 默认数据源：localStorage（离线可用，兜底 createDefaultMapConfig） */
+const localMapConfigSource: MapConfigSource = {
+  fetchConfig: async () => readStoredMapConfig() ?? createDefaultMapConfig(),
+  saveConfig: async (payload) => {
+    const next = normalizeMapConfig({ ...payload, updatedAt: new Date().toISOString() })
+    writeStoredMapConfig(next)
+    return clone(next)
+  },
 }
 
-export const saveMapConfig = async (payload: MapConfigPayload): Promise<MapConfigPayload> => {
-  mockConfig = normalizeMapConfig({
-    ...payload,
-    updatedAt: new Date().toISOString(),
-  })
-  writeStoredMapConfig(mockConfig)
-  return clone(mockConfig)
-}
+// 预留：HTTP 对接入口（接口就绪后取消注释并令 activeMapConfigSource 指向它）。
+// import { getConfigMethod } from '@/apis/common.ts'
+// const httpMapConfigSource: MapConfigSource = {
+//   fetchConfig: async () => {
+//     const remote = await getConfigMethod('mapConfig').send()
+//     return normalizeMapConfig(remote as MapConfigPayload)
+//   },
+//   saveConfig: async (payload) => {
+//     await // TODO: 保存接口就绪后接入
+//     return normalizeMapConfig(payload)
+//   },
+// }
+
+export const activeMapConfigSource: MapConfigSource = localMapConfigSource
+
+export const fetchMapConfig = (): Promise<MapConfigPayload> => activeMapConfigSource.fetchConfig()
+
+export const saveMapConfig = (payload: MapConfigPayload): Promise<MapConfigPayload> =>
+  activeMapConfigSource.saveConfig(payload)

@@ -10,7 +10,9 @@ vi.mock('@/store', async () => {
 
 // 挂起 store 的 HTTP 依赖（辖区/周边资源查询不在本测试范围）
 vi.mock('@/service/alova', () => ({ alovaInstance: { Get: vi.fn(() => new Promise(() => {})) } }))
-vi.mock('@/controller/core/business/IncidentStationQuery', () => ({ queryIncidentStations: () => new Promise(() => {}) }))
+vi.mock('@/controller/core/business/IncidentStationQuery', () => ({
+  queryIncidentStations: () => new Promise(() => {}),
+}))
 vi.mock('@/controller/core/business/IncidentNearbyResourceQuery', () => ({
   DEFAULT_NEARBY_RESOURCE_RADIUS_METERS: 500,
   queryIncidentNearbyResources: () => new Promise(() => {}),
@@ -37,15 +39,87 @@ const V2_FRAME = {
     inquiryId: 'inquiry-1',
     version: 12,
     slotChanges: [
-      { infoId: 'profile-1-disaster_address', slotId: 'disaster_address-slot', slotCode: 'disaster_address', changeType: 'UPDATED', changedFields: ['filledValue'], beforeValue: '示例路 99 号', afterValue: '示例路 1 号' },
-      { infoId: 'profile-1-longitude', slotId: 'longitude-slot', slotCode: 'longitude', changeType: 'UPDATED', changedFields: ['filledValue'], beforeValue: '113.95024', afterValue: '113.97' },
-      { infoId: 'profile-1-latitude', slotId: 'latitude-slot', slotCode: 'latitude', changeType: 'UPDATED', changedFields: ['filledValue'], beforeValue: '22.54545', afterValue: '22.57' },
-      { infoId: 'profile-1-met_floors', slotId: 'met_floors-slot', slotCode: 'met_floors', changeType: 'UPDATED', changedFields: ['filledValue'], beforeValue: '6', afterValue: '7' },
-      { infoId: 'profile-1-met_upfloors', slotId: 'met_upfloors-slot', slotCode: 'met_upfloors', changeType: 'UPDATED', changedFields: ['filledValue'], beforeValue: '5', afterValue: '6' },
-      { infoId: 'profile-1-build_type', slotId: 'build_type-slot', slotCode: 'build_type', changeType: 'UPDATED', changedFields: ['filledValue'], beforeValue: '10000', afterValue: null },
-      { infoId: 'profile-1-met_downfloors', slotId: 'met_downfloors-slot', slotCode: 'met_downfloors', changeType: 'UPDATED', changedFields: ['filledValue'], beforeValue: '2', afterValue: '1' },
-      { infoId: 'profile-1-is_over_100m', slotId: 'is_over_100m-slot', slotCode: 'is_over_100m', changeType: 'UPDATED', changedFields: ['filledValue'], beforeValue: 'TRUE', afterValue: 'FALSE' },
-      { infoId: 'profile-1-refuge_position', slotId: 'refuge_position-slot', slotCode: 'refuge_position', changeType: 'UPDATED', changedFields: ['filledValue'], beforeValue: null, afterValue: null },
+      {
+        infoId: 'profile-1-disaster_address',
+        slotId: 'disaster_address-slot',
+        slotCode: 'disaster_address',
+        changeType: 'UPDATED',
+        changedFields: ['filledValue'],
+        beforeValue: '示例路 99 号',
+        afterValue: '示例路 1 号',
+      },
+      {
+        infoId: 'profile-1-longitude',
+        slotId: 'longitude-slot',
+        slotCode: 'longitude',
+        changeType: 'UPDATED',
+        changedFields: ['filledValue'],
+        beforeValue: '113.95024',
+        afterValue: '113.97',
+      },
+      {
+        infoId: 'profile-1-latitude',
+        slotId: 'latitude-slot',
+        slotCode: 'latitude',
+        changeType: 'UPDATED',
+        changedFields: ['filledValue'],
+        beforeValue: '22.54545',
+        afterValue: '22.57',
+      },
+      {
+        infoId: 'profile-1-met_floors',
+        slotId: 'met_floors-slot',
+        slotCode: 'met_floors',
+        changeType: 'UPDATED',
+        changedFields: ['filledValue'],
+        beforeValue: '6',
+        afterValue: '7',
+      },
+      {
+        infoId: 'profile-1-met_upfloors',
+        slotId: 'met_upfloors-slot',
+        slotCode: 'met_upfloors',
+        changeType: 'UPDATED',
+        changedFields: ['filledValue'],
+        beforeValue: '5',
+        afterValue: '6',
+      },
+      {
+        infoId: 'profile-1-build_type',
+        slotId: 'build_type-slot',
+        slotCode: 'build_type',
+        changeType: 'UPDATED',
+        changedFields: ['filledValue'],
+        beforeValue: '10000',
+        afterValue: null,
+      },
+      {
+        infoId: 'profile-1-met_downfloors',
+        slotId: 'met_downfloors-slot',
+        slotCode: 'met_downfloors',
+        changeType: 'UPDATED',
+        changedFields: ['filledValue'],
+        beforeValue: '2',
+        afterValue: '1',
+      },
+      {
+        infoId: 'profile-1-is_over_100m',
+        slotId: 'is_over_100m-slot',
+        slotCode: 'is_over_100m',
+        changeType: 'UPDATED',
+        changedFields: ['filledValue'],
+        beforeValue: 'TRUE',
+        afterValue: 'FALSE',
+      },
+      {
+        infoId: 'profile-1-refuge_position',
+        slotId: 'refuge_position-slot',
+        slotCode: 'refuge_position',
+        changeType: 'UPDATED',
+        changedFields: ['filledValue'],
+        beforeValue: null,
+        afterValue: null,
+      },
     ],
   },
 }
@@ -67,7 +141,11 @@ const wireBusinessChain = async () => {
   )
   return {
     ingest: (frame: unknown) => useMessageStore().ingest(frame, MESSAGE_CHANNEL.WS, MESSAGE_SYSTEM.IDS_SEAT_WEB),
-    dispose: () => { stop(); policy.dispose(); controller.dispose() },
+    dispose: () => {
+      stop()
+      policy.dispose()
+      controller.dispose()
+    },
   }
 }
 
@@ -113,16 +191,25 @@ describe('DISASTER_PROFILE/UPDATED V2 帧 → 警情定位上图', () => {
     vi.useFakeTimers()
     const { useUserStore } = await import('@/store/useUserStore')
     const { useIncidentLocationStore } = await import('@/store/useIncidentLocationStore')
-    useUserStore().applySharedState(JSON.stringify({
-      v: 1, updatedAt: 1, auth: { sessionId: 's' }, phase: 'inquiry', currentAlarm: null,
-    }))
+    useUserStore().applySharedState(
+      JSON.stringify({
+        v: 1,
+        updatedAt: 1,
+        auth: { sessionId: 's' },
+        phase: 'inquiry',
+        currentAlarm: null,
+      }),
+    )
     const chain = await wireBusinessChain()
     chain.ingest(V2_FRAME)
     await vi.advanceTimersByTimeAsync(600)
-    expect(logger.info).toHaveBeenCalledWith('忽略状态不匹配的消息', expect.objectContaining({
-      eventKey: 'disaster_profile.address_updated',
-      stage: 'inquiry',
-    }))
+    expect(logger.info).toHaveBeenCalledWith(
+      '忽略状态不匹配的消息',
+      expect.objectContaining({
+        eventKey: 'disaster_profile.address_updated',
+        stage: 'inquiry',
+      }),
+    )
     expect(useIncidentLocationStore().markers).toEqual({})
     chain.dispose()
   })
@@ -131,10 +218,15 @@ describe('DISASTER_PROFILE/UPDATED V2 帧 → 警情定位上图', () => {
     vi.useFakeTimers()
     const { useUserStore } = await import('@/store/useUserStore')
     const { useIncidentLocationStore } = await import('@/store/useIncidentLocationStore')
-    useUserStore().applySharedState(JSON.stringify({
-      v: 1, updatedAt: 1, auth: { sessionId: 's' }, phase: 'inquiry',
-      currentAlarm: { incidentId: INCIDENT_ID },
-    }))
+    useUserStore().applySharedState(
+      JSON.stringify({
+        v: 1,
+        updatedAt: 1,
+        auth: { sessionId: 's' },
+        phase: 'inquiry',
+        currentAlarm: { incidentId: INCIDENT_ID },
+      }),
+    )
     const chain = await wireBusinessChain()
     chain.ingest(V2_FRAME)
     await vi.advanceTimersByTimeAsync(600)
@@ -148,10 +240,15 @@ describe('DISASTER_PROFILE/UPDATED V2 帧 → 警情定位上图', () => {
     vi.useFakeTimers()
     const { useUserStore } = await import('@/store/useUserStore')
     const { useIncidentLocationStore } = await import('@/store/useIncidentLocationStore')
-    useUserStore().applySharedState(JSON.stringify({
-      v: 1, updatedAt: 1, auth: { sessionId: 's' }, phase: 'inquiry',
-      currentAlarm: { incidentId: INCIDENT_ID },
-    }))
+    useUserStore().applySharedState(
+      JSON.stringify({
+        v: 1,
+        updatedAt: 1,
+        auth: { sessionId: 's' },
+        phase: 'inquiry',
+        currentAlarm: { incidentId: INCIDENT_ID },
+      }),
+    )
     const chain = await wireBusinessChain()
     chain.ingest(V2_FRAME)
     await vi.advanceTimersByTimeAsync(600)

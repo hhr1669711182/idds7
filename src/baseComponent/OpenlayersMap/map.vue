@@ -69,6 +69,7 @@ const nav = shallowRef<AmapRealtimeNav | null>(null);
 let zoomLevelChangeKey: EventsKey | null = null;
 const mapZoomLevel = ref(ZOOM.INIT);
 
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const navPanelRef = ref<InstanceType<typeof NavPanel> | null>(null);
 
 // == 抽离出的 Popups 管理 ==
@@ -101,6 +102,8 @@ let featureClickQuery: FeatureClickQuery | null = null;
 let detachBusinessMap: (() => void) | null = null;
 let genericCtrl: GenericController | null = null;
 let trafficTool: TrafficTools | null = null;
+const overviewControl = shallowRef<OverviewMap | null>(null);
+const scaleLineControl = shallowRef<ScaleLine | null>(null);
 
 const layersStore = useLayersStore();
 const baseSourceStore = useBaseSourceStore();
@@ -114,12 +117,11 @@ const { load: loadFireStations } = useFireStations();
 const wmsLayerMap = new globalThis.Map<string, TileLayer<TileWMS>>();
 let baseLayer: TileLayer | null = null;
 let overviewLayer: TileLayer | null = null;
-let baseSourceMaxZoom = ZOOM.MAX;
 
 const applyFeatureZoomLimits = () => {
   if (!map) return;
   const { minZoom, maxZoom } = mapConfigStore.config.feature;
-  const effectiveMaxZoom = Math.min(maxZoom, baseSourceMaxZoom);
+  const effectiveMaxZoom = maxZoom;
   const view = map.getView();
   view.setMinZoom(minZoom);
   view.setMaxZoom(effectiveMaxZoom);
@@ -142,8 +144,7 @@ const syncBaseSourceLayer = () => {
     {
       // night: themeColor.value === THEME_COLOR.NIGHT,
     },
-    (maxZoom: number) => nextTick(() => {
-      baseSourceMaxZoom = maxZoom;
+    (_maxZoom: number) => nextTick(() => {
       applyFeatureZoomLimits();
     }),
   );
@@ -166,6 +167,24 @@ watch(
   (v) => trafficTool?.setVisible(v),
 );
 watch(unclosedIncidents, (next) => jrAlarmManager?.setData?.(next));
+
+// 鹰眼 / 比例尺 随功能配置显隐（底座读 store，控制实例已在 initMap 时挂到 overviewControl/scaleLineControl）
+const syncConfiguredControls = () => {
+  const m = map;
+  if (!m || !overviewControl.value || !scaleLineControl.value) return;
+  const feature = mapConfigStore.feature;
+  const controls = m.getControls().getArray();
+  const hasOverview = controls.some((c) => c === overviewControl.value);
+  if (feature.showEagleEye && !hasOverview) m.addControl(overviewControl.value);
+  if (!feature.showEagleEye && hasOverview) m.removeControl(overviewControl.value);
+  const hasScale = controls.some((c) => c === scaleLineControl.value);
+  if (feature.showScaleLine && !hasScale) m.addControl(scaleLineControl.value);
+  if (!feature.showScaleLine && hasScale) m.removeControl(scaleLineControl.value);
+};
+watch(
+  () => [mapConfigStore.feature.showEagleEye, mapConfigStore.feature.showScaleLine],
+  syncConfiguredControls,
+);
 
 const addLayer = (id: string, visible?: boolean) => {
   if (!map) return;
@@ -276,7 +295,7 @@ const initMap = async () => {
         center: olProj.fromLonLat(CENTER),
         zoom: ZOOM.INIT,
         minZoom: mapConfigStore.config.feature.minZoom,
-        maxZoom: Math.min(mapConfigStore.config.feature.maxZoom, baseSourceMaxZoom),
+        maxZoom: mapConfigStore.config.feature.maxZoom,
       }),
     });
   applyFeatureZoomLimits();
@@ -305,14 +324,16 @@ const initMap = async () => {
   featureClickQuery = new FeatureClickQuery(map);
   featureClickQuery.activate();
 
-  map.addControl(
-    new OverviewMap({
-      layers: [overviewLayer],
-      collapsed: false,
-      collapsible: true,
-    }),
-  );
-  map.addControl(new ScaleLine({ units: readScaleLineUnit() }));
+  const feature = mapConfigStore.feature;
+  overviewControl.value = new OverviewMap({
+    layers: [overviewLayer],
+    collapsed: false,
+    collapsible: true,
+  });
+  scaleLineControl.value = new ScaleLine({ units: readScaleLineUnit() });
+  // 鹰眼/比例尺：按功能配置控制显隐（默认全显，保持与既有行为一致）
+  if (feature.showEagleEye) map.addControl(overviewControl.value);
+  if (feature.showScaleLine) map.addControl(scaleLineControl.value);
 
   nav.value = new AmapRealtimeNav(map, {
     amapKey: "7405ae6dde247ee87be4e7d8021056f4",

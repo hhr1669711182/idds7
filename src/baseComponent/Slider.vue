@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import type { Arrayable } from "element-plus/es/utils/typescript";
 
 const props = defineProps({
   value: {
@@ -20,9 +21,11 @@ watch(
   }
 );
 const emit = defineEmits(["change"]);
-const changeSlider = (val) => {
-  sliderValue.value = val;
-  emit("change", val);
+// el-slider 的 change / input 回调参数为 Arrayable<number>（可能是数组）
+const changeSlider = (val: Arrayable<number>) => {
+  const nextValue = Array.isArray(val) ? val[0] : val;
+  sliderValue.value = nextValue;
+  emit("change", nextValue);
 };
 </script>
 <template>

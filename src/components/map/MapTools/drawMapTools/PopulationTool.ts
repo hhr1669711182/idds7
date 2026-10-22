@@ -105,6 +105,7 @@ const generateZoneId = () => {
 }
 
 /** 外环坐标转 WKT，用于 CQL 空间过滤 */
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const toWktPolygon = (ring: Coordinate[]) => `POLYGON((${ring.map((c) => `${c[0]} ${c[1]}`).join(', ')}))`
 
 /**
@@ -187,6 +188,7 @@ const resolveGeometryField = (typeName: string) => {
 }
 
 /** 查询与框选多边形相交/包含的人口区域 */
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const queryPopulation = async (wkt: string): Promise<PopulationQueryResult> => {
   const geometryField = await resolveGeometryField(READ_TYPE_NAME)
   const data = await geoserverApi.getWFSFeatures(
@@ -284,6 +286,7 @@ const buildInsertTransaction = (
 }
 
 /** 通过 WFS-T 新增一条人口区域数据（目标为可写的基础表） */
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const insertPopulationZone = async (zone: PopulationZone, rings: Coordinate[][]) => {
   const target = splitTypeName(WRITE_TYPE_NAME)
   // GML 几何节点名必须与图层几何字段一致，否则 GeoServer 无法识别
@@ -416,6 +419,7 @@ export class PopulationTool extends BaseTool {
     this.hideHint()
   }
 
+  // @ts-expect-error TS6133: 引用处已注释，保留备用
   private showError(error: any) {
     console.error('[PopulationTool] 人口统计失败', error)
     this.hideHint()

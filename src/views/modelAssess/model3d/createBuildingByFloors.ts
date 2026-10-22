@@ -8,7 +8,9 @@ import { maModelSetting } from './commonSetting'
 /** 主建筑轮廓：以 basePoint 为中心的正方形（不依赖 GeoServer） */
 function buildMainBuildingPoints(): THREE.Vector2[] {
   const d = 0.0001
+  // @ts-expect-error TS6133: 引用处已注释，保留备用
   const cx = maModelSetting.basePoint.baseLon
+  // @ts-expect-error TS6133: 引用处已注释，保留备用
   const cy = maModelSetting.basePoint.baseLat
   const dx = (d * 111319.9) / 100
   const dy = (d * 111319.9) / 100
@@ -68,6 +70,8 @@ export interface FloorGroupRefs {
  * allFloors[i] 对应第 i 层（i 从 0 开始），可通过 .visible 控制显隐
  */
 export function createBuildingByFloors(totalFloors: number, buildHeight: number): FloorGroupRefs {
+  // TS6133: 参数保留用于对外签名一致性，当前实现改用 floorDisplayHeight 决定层高
+  void buildHeight
   const points = buildMainBuildingPoints()
   const wallHeight = maModelSetting.wallAndFloor.WALL_HEIGHT
   const wallThickness = maModelSetting.wallAndFloor.WALL_THICKNESS

@@ -26,6 +26,9 @@ class TestChannel {
   }
 }
 
+/** V1.1：选点消息统一包裹 { kind: 'map-point-selection', payload } 外壳 */
+const wire = (payload: unknown) => ({ kind: 'map-point-selection', payload })
+
 const seat = (type: string, requestId = 'R1', extra: Record<string, unknown> = {}) => ({
   v: 1,
   type,
@@ -37,7 +40,7 @@ const seat = (type: string, requestId = 'R1', extra: Record<string, unknown> = {
   ...extra,
 })
 
-describe('F12 V1.0 迁位冻结（回归 GIS BC 既有 wire/session/ACK 行为）', () => {
+describe('F12 V1.1 迁位冻结（回归 GIS BC wire 外壳/session/ACK 行为）', () => {
   let cleanup = () => {}
   beforeEach(() => {
     TestChannel.instances = []
@@ -52,11 +55,11 @@ describe('F12 V1.0 迁位冻结（回归 GIS BC 既有 wire/session/ACK 行为�
     vi.restoreAllMocks()
   })
 
-  it('Given App create 先于 getter When START/READY/PING Then 共用实例，wire 对象保持原样', () => {
+  it('Given App create 先于 getter When START/READY/PING Then 共用实例，发送自动包 kind/payload 外壳', () => {
     cleanup = createGisPointChannel()
     const channel = TestChannel.instances[0]
-    expect(channel.name).toBe('ids-gis-point-selection')
-    channel.receive(seat('PICK_START'))
+    expect(channel.name).toBe('ids-map-screen-relay')
+    channel.receive(wire(seat('PICK_START')))
     expect(ingest).toHaveBeenCalledWith(
       expect.objectContaining({
         eventKey: MESSAGE_EVENT_KEY.MOCK_INCIDENT_RELOCATE,
@@ -78,30 +81,31 @@ describe('F12 V1.0 迁位冻结（回归 GIS BC 既有 wire/session/ACK 行为�
       sentAt: 2,
     }
     instance.send(ready)
-    expect(channel.postMessage.mock.calls[0][0]).toBe(ready)
-    channel.receive(seat('PICK_PING'))
-    expect(channel.postMessage).toHaveBeenLastCalledWith(
-      expect.objectContaining({ type: 'PICK_PONG', requestId: 'R1' }),
-    )
+    expect(channel.postMessage.mock.calls[0][0]).toEqual({ kind: 'map-point-selection', payload: ready })
+    channel.receive(wire(seat('PICK_PING')))
+    expect(channel.postMessage).toHaveBeenLastCalledWith({
+      kind: 'map-point-selection',
+      payload: expect.objectContaining({ type: 'PICK_PONG', requestId: 'R1' }),
+    })
     expect(TestChannel.instances).toHaveLength(1)
   })
 
   it('Given 当前会话 When 匹配/不匹配 ACK 与旧 CANCEL Then 保留迟到 CANCEL 清新会话的冻结行为', () => {
     cleanup = createGisPointChannel()
     const channel = TestChannel.instances[0]
-    channel.receive(seat('PICK_START', 'R2'))
+    channel.receive(wire(seat('PICK_START', 'R2')))
     const ack = vi.fn()
     getGisPointChannel().onAck(ack)
-    channel.receive(seat('PICK_APPLIED', 'R1'))
+    channel.receive(wire(seat('PICK_APPLIED', 'R1')))
     expect(ack).not.toHaveBeenCalled()
     const applied = seat('PICK_APPLIED', 'R2')
-    channel.receive(applied)
+    channel.receive(wire(applied))
     expect(ack).toHaveBeenCalledWith(applied)
-    channel.receive(seat('PICK_FAILED', 'R2'))
+    channel.receive(wire(seat('PICK_FAILED', 'R2')))
     expect(ack).toHaveBeenCalledTimes(2)
-    channel.receive(seat('PICK_CANCEL', 'R1'))
-    channel.receive(seat('PICK_PING', 'R2'))
-    channel.receive(seat('PICK_APPLIED', 'R2'))
+    channel.receive(wire(seat('PICK_CANCEL', 'R1')))
+    channel.receive(wire(seat('PICK_PING', 'R2')))
+    channel.receive(wire(seat('PICK_APPLIED', 'R2')))
     expect(channel.postMessage).not.toHaveBeenCalled()
     expect(ack).toHaveBeenCalledTimes(2)
   })
@@ -109,10 +113,23 @@ describe('F12 V1.0 迁位冻结（回归 GIS BC 既有 wire/session/ACK 行为�
   it('Given 通道 When JSON 字符串或无效 token 到达 Then 不自动解析也不投递', () => {
     cleanup = createGisPointChannel()
     const channel = TestChannel.instances[0]
-    channel.receive(JSON.stringify(seat('PICK_START')))
-    channel.receive(seat('PICK_START', ''))
-    channel.receive(seat('PICK_START', 'R1', { v: '1' }))
-    channel.receive(seat('PICK_START', 'R1', { sentAt: NaN }))
+    channel.receive(JSON.stringify(wire(seat('PICK_START'))))
+    channel.receive(wire(seat('PICK_START', '')))
+    channel.receive(wire(seat('PICK_START', 'R1', { v: '1' })))
+    channel.receive(wire(seat('PICK_START', 'R1', { sentAt: NaN })))
+    expect(ingest).not.toHaveBeenCalled()
+  })
+
+  it('Given 通道 When kind 非 map-point-selection（relay 消息/裸旧消息） Then 按 V1.1 分流规则跳过', () => {
+    cleanup = createGisPointChannel()
+    const channel = TestChannel.instances[0]
+    // relay 的 map-relay-* 消息：同通道名但 kind 不同，必须跳过
+    channel.receive({ kind: 'map-relay-event', eventName: 'disaster_profile', payload: {} })
+    channel.receive({ kind: 'map-relay-snapshot', events: [] })
+    // V1.0 旧裸消息（无外壳）：拒收
+    channel.receive(seat('PICK_START'))
+    // kind 正确但 payload 非法：拒收
+    channel.receive({ kind: 'map-point-selection', payload: null })
     expect(ingest).not.toHaveBeenCalled()
   })
 

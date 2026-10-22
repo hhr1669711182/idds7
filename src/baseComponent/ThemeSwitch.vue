@@ -14,8 +14,9 @@ const colorFlag = computed(() => {
   return themeColor.value == THEME_COLOR.DAY;
 });
 
-const changeThemeColor = (flag: boolean) => {
-  const theme = flag ? THEME_COLOR.DAY : THEME_COLOR.NIGHT;
+// el-switch 的 change 回调参数类型为 string | number | boolean
+const changeThemeColor = (flag: string | number | boolean) => {
+  const theme = Boolean(flag) ? THEME_COLOR.DAY : THEME_COLOR.NIGHT;
   commonStore.setThemeColor(theme);
   document.documentElement.setAttribute("data-theme", theme);
 };

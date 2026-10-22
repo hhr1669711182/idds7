@@ -15,6 +15,7 @@ import { mountPolygonLayer, type PolygonLayerManager } from '@/baseComponent/Ope
 import { getSelectedRoute, type StationRouteAlternatives } from '@/baseComponent/amap/routeAlternatives'
 
 /** 北京市中心经纬度 */
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const BEIJING_CENTER: LngLat = [116.4074, 39.9042]
 
 /**

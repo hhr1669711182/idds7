@@ -2,7 +2,7 @@
 import { PANEL_MAP_TYPE } from "../../const/index.ts";
 import { LAYER_NAMES } from "../../baseComponent/OpenlayersMap/layers.ts";
 import { MODAL_SETTING } from "../../const/const.modals.ts";
-import { useModalStore, usePanelStore, useCardStore } from "../../store/index";
+import { useModalStore, usePanelStore, useCardStore, useMapConfigStore } from "../../store/index";
 import { useCurrentMap } from "@/composables/useCurrentMap";
 
 const { currentMap: MapInstance }: any = useCurrentMap();
@@ -10,6 +10,8 @@ const { currentMap: MapInstance }: any = useCurrentMap();
 const modalStore = useModalStore();
 
 const panelStore = usePanelStore();
+
+const mapConfigStore = useMapConfigStore();
 
 const cardStore: any = useCardStore();
 
@@ -51,7 +53,7 @@ const openBigPanel = () => {
 };
 </script>
 <template>
-  <ul class="Clear_clear__Zy0p7">
+  <ul v-if="mapConfigStore.feature.showClear" class="Clear_clear__Zy0p7">
     <li @click="openBigPanel">
       <el-tooltip class="box-item" effect="dark" content="地图操作" placement="left" :offset="20">
         <span role="img" class="anticon">

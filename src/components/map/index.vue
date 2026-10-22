@@ -45,12 +45,14 @@ type OpenlayersMapExpose = {
 
 const MapStore = useMapStore();
 const PanelStore = usePanelStore();
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const tabsStore = useTabsStore();
 const layersStore = useLayersStore();
 const mapConfigStore = useMapConfigStore();
 
 const { type, ssrkPanelOpen } = storeToRefs(PanelStore);
 const openLayersMapRef = shallowRef<OpenlayersMapExpose | null>(null);
+const { feature } = storeToRefs(mapConfigStore);
 let viewportRefreshFrame: number | null = null;
 
 const refreshMapViewport = () => {
@@ -128,13 +130,13 @@ onUnmounted(() => {
     <card />
     <bigPanel />
     <config @save="handleConfigSave" />
-    <paletteDrawer @filter-change="handleFilterChange" />
-    <layers :onLayerChange="handleLayerChange" />
+    <paletteDrawer v-if="feature.showPalette" @filter-change="handleFilterChange" />
+    <layers v-if="feature.showLayerToolbar" :onLayerChange="handleLayerChange" />
 
-    <ssrkPanel v-show="ssrkPanelOpen" />
+    <ssrkPanel v-if="feature.showPopulation" v-show="ssrkPanelOpen" />
 
-    <WeatherPanel />
-    <circleQueryPanel />
+    <WeatherPanel v-if="feature.showWeather" />
+    <circleQueryPanel v-if="feature.showCircleQuery" />
   </OpenlayersMap>
 
   <brp />

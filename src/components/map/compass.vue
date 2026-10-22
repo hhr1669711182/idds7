@@ -2,8 +2,10 @@
 import { ref, onMounted, nextTick } from "vue";
 import { easeOut } from "ol/easing";
 import { useCurrentMap } from "@/composables/useCurrentMap";
+import { useMapConfigStore } from "@/store";
 
 const { currentMap: MapInstance } = useCurrentMap();
+const mapConfigStore = useMapConfigStore();
 
 const rotate = ref(0);
 
@@ -56,7 +58,7 @@ onMounted(() => {
 });
 </script>
 <template>
-  <div class="compass" style="transform: rotate(0deg)">
+  <div v-if="mapConfigStore.feature.showCompass" class="compass" style="transform: rotate(0deg)">
     <el-tooltip class="box-item" effect="dark" content="逆时针旋转" placement="left" :offset="10">
       <span class="left" @click="handleLeftClick"></span>
     </el-tooltip>

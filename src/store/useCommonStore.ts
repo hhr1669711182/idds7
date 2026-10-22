@@ -133,9 +133,13 @@ export const useCommonStore = defineStore('commonStore', {
       if (typeof document !== 'undefined') {
         const root = document.documentElement
         if (!filter) {
-          ;['--filter-hue-rotate', '--filter-invert', '--filter-saturate', '--filter-brightness', '--filter-contrast'].forEach(
-            (name) => root.style.removeProperty(name),
-          )
+          ;[
+            '--filter-hue-rotate',
+            '--filter-invert',
+            '--filter-saturate',
+            '--filter-brightness',
+            '--filter-contrast',
+          ].forEach((name) => root.style.removeProperty(name))
         } else {
           Object.entries(filter).forEach(([key, value]) => {
             root.style.setProperty(`--filter-${key}`, `${value}${key === 'hueRotate' ? 'deg' : '%'}`)

@@ -35,28 +35,44 @@
       </div>
 
       <div class="cfg-options">
-        <div v-for="item in featureFields" :key="item.key" class="cfg-option">
-          <span class="cfg-label">{{ item.label }}</span>
-          <el-radio-group
-            v-if="item.kind === 'radio'"
-            :model-value="feature[item.key]"
-            @update:modelValue="updateFeature(item.key, $event)"
-          >
-            <el-radio v-for="opt in item.options" :key="String(opt.value)" :value="opt.value">
-              {{ opt.label }}
-            </el-radio>
-          </el-radio-group>
-          <div v-else class="cfg-number">
-            <el-input-number
-              :model-value="feature[item.key]"
-              :min="item.min"
-              :max="item.max"
-              :step="item.step"
-              :precision="item.precision"
-              size="small"
-              @update:modelValue="updateFeature(item.key, $event)"
-            />
-            <span>{{ item.unit }}</span>
+        <div v-for="group in featureFieldGroups" :key="group.title" class="cfg-group">
+          <div class="cfg-group-label">{{ group.title }}</div>
+          <div class="cfg-group-fields">
+            <div
+              v-for="item in group.fields"
+              :key="item.key"
+              class="cfg-option"
+              :class="{ 'cfg-option--radio': item.kind === 'radio', 'cfg-option--number': item.kind === 'number' }"
+            >
+              <span class="cfg-label">{{ item.label }}</span>
+              <el-switch
+                v-if="item.kind === 'switch'"
+                :model-value="feature[item.key]"
+                size="small"
+                @update:modelValue="updateFeature(item.key, $event)"
+              />
+              <el-radio-group
+                v-else-if="item.kind === 'radio'"
+                :model-value="feature[item.key]"
+                @update:modelValue="updateFeature(item.key, $event)"
+              >
+                <el-radio v-for="opt in item.options" :key="String(opt.value)" :value="opt.value">
+                  {{ opt.label }}
+                </el-radio>
+              </el-radio-group>
+              <div v-else class="cfg-number">
+                <el-input-number
+                  :model-value="feature[item.key]"
+                  :min="item.min"
+                  :max="item.max"
+                  :step="item.step"
+                  :precision="item.precision"
+                  size="small"
+                  @update:modelValue="updateFeature(item.key, $event)"
+                />
+                <span>{{ item.unit }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -152,7 +168,7 @@ import {
 } from "@/config/mapConfig.ts";
 
 type SliderKey = "minZoom" | "maxZoom" | "alarmZoom";
-type RadioKey = Exclude<keyof FeatureSettings, SliderKey | "bufferKm">;
+type SwitchKey = Exclude<keyof FeatureSettings, SliderKey | "bufferKm" | "mapMode">;
 type FeatureValue = FeatureSettings[keyof FeatureSettings];
 
 type SliderField = {
@@ -163,11 +179,17 @@ type SliderField = {
   step: number;
 };
 
+type SwitchField = {
+  kind: "switch";
+  key: SwitchKey;
+  label: string;
+};
+
 type RadioField = {
   kind: "radio";
-  key: RadioKey;
+  key: "mapMode";
   label: string;
-  options: { label: string; value: boolean | MapMode }[];
+  options: { label: string; value: MapMode }[];
 };
 
 type NumberField = {
@@ -181,7 +203,12 @@ type NumberField = {
   precision: number;
 };
 
-type FeatureField = RadioField | NumberField;
+type FeatureField = SwitchField | RadioField | NumberField;
+
+type FeatureGroup = {
+  title: string;
+  fields: FeatureField[];
+};
 
 const props = defineProps<{ modelValue?: MapConfigPayload; defaultTab?: ConfigTab }>();
 const emit = defineEmits<{
@@ -206,43 +233,59 @@ const featureSliders: SliderField[] = [
   { key: "alarmZoom", label: "警情定位比例:", min: 0, max: 22, step: 1 },
 ];
 
-const featureFields: FeatureField[] = [
-  { kind: "radio", key: "showNav", label: "地图工具导航组件:", options: visibleOptions() },
-  { kind: "radio", key: "showDraw", label: "地图工具绘制组件:", options: visibleOptions() },
-  { kind: "radio", key: "showOther", label: "地图工具其它组件:", options: visibleOptions() },
-  { kind: "radio", key: "showEagleEye", label: "鹰眼:", options: visibleOptions() },
+const featureFieldGroups: FeatureGroup[] = [
   {
-    kind: "radio",
-    key: "mapMode",
-    label: "地图:",
-    options: [
-      { label: "接处警", value: "dispatch" },
-      { label: "一张图", value: "oneMap" },
-    ],
-  },
-  { kind: "number", key: "bufferKm", label: "缓冲范围:", unit: "千米", min: 0, step: 0.1, precision: 1 },
-  {
-    kind: "radio",
-    key: "queryCustomPoi",
-    label: "查询自定义兴趣点:",
-    options: yesNoOptions(),
-  },
-  {
-    kind: "radio",
-    key: "showCaseClosedStyle",
-    label: "灾情结案状态样式:",
-    options: [
-      { label: "显示", value: true },
-      { label: "不显示", value: false },
+    title: "地图工具",
+    fields: [
+      { kind: "switch", key: "showNav", label: "导航组件" },
+      { kind: "switch", key: "showDraw", label: "绘制组件" },
+      { kind: "switch", key: "showOther", label: "其它组件" },
     ],
   },
   {
-    kind: "radio",
-    key: "showUavTrack",
-    label: "无人机实时轨迹:",
-    options: [
-      { label: "显示", value: true },
-      { label: "不显示", value: false },
+    title: "地图控件",
+    fields: [
+      { kind: "switch", key: "showEagleEye", label: "鹰眼" },
+      { kind: "switch", key: "showCompass", label: "指北针" },
+      { kind: "switch", key: "showScaleLine", label: "比例尺" },
+    ],
+  },
+  {
+    title: "数据服务",
+    fields: [
+      { kind: "switch", key: "showWeather", label: "天气面板" },
+      { kind: "switch", key: "showTraffic", label: "实时路况" },
+      { kind: "switch", key: "showRoutePlan", label: "路径规划" },
+      { kind: "switch", key: "showPopulation", label: "人口标绘" },
+      { kind: "switch", key: "showTopic", label: "专题图" },
+    ],
+  },
+  {
+    title: "面板工具",
+    fields: [
+      { kind: "switch", key: "showClear", label: "清除/设置" },
+      { kind: "switch", key: "showCoordinate", label: "经纬度" },
+      { kind: "switch", key: "showLayerToolbar", label: "图层工具栏" },
+      { kind: "switch", key: "showCircleQuery", label: "圈选查询" },
+      { kind: "switch", key: "showPalette", label: "调色盘" },
+    ],
+  },
+  {
+    title: "地图参数",
+    fields: [
+      {
+        kind: "radio",
+        key: "mapMode",
+        label: "地图",
+        options: [
+          { label: "接处警", value: "dispatch" },
+          { label: "一张图", value: "oneMap" },
+        ],
+      },
+      { kind: "number", key: "bufferKm", label: "缓冲范围", unit: "千米", min: 0, step: 0.1, precision: 1 },
+      { kind: "switch", key: "queryCustomPoi", label: "自定义兴趣点" },
+      { kind: "switch", key: "showCaseClosedStyle", label: "灾情结案样式" },
+      { kind: "switch", key: "showUavTrack", label: "无人机轨迹" },
     ],
   },
 ];
@@ -281,20 +324,6 @@ const currentCategory = computed(
 );
 const selectedCategoryId = computed(() => currentCategory.value.id);
 const isDirty = computed(() => snapshot(draft) !== snapshot(initial.value));
-
-function visibleOptions() {
-  return [
-    { label: "隐藏", value: false },
-    { label: "显示", value: true },
-  ];
-}
-
-function yesNoOptions() {
-  return [
-    { label: "是", value: true },
-    { label: "否", value: false },
-  ];
-}
 
 function snapshot(payload: MapConfigPayload) {
   return JSON.stringify(normalize(payload));
@@ -473,12 +502,16 @@ onMounted(async () => {
   right: 20px;
   width: 520px;
   max-width: 90vw;
+  max-height: calc(100vh - 120px);
   padding: 12px;
   color: @text;
   background: linear-gradient(180deg, @bg-top, @bg);
-  border: 2px solid @cyan;
+  border: 1px solid var(--panel-border);
   border-radius: 10px;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 
   :deep(.el-input__wrapper),
   :deep(.el-select__wrapper) {
@@ -525,6 +558,7 @@ onMounted(async () => {
 .cfg-radio,
 .cfg-footer {
   .flex-center();
+  flex-shrink: 0;
 }
 
 .cfg-tabs {
@@ -548,15 +582,104 @@ onMounted(async () => {
   }
 }
 
-.cfg-feature,
-.cfg-options,
+.cfg-feature {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: grid;
+  gap: @gap;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: @cyan-line;
+    border-radius: 3px;
+  }
+}
+
+.cfg-layer {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: @cyan-line;
+    border-radius: 3px;
+  }
+}
+
+/* 功能字段分组 */
+.cfg-options {
+  display: grid;
+  gap: @gap;
+}
+
+.cfg-group {
+  display: grid;
+  gap: 6px;
+}
+
+/* 图层 tab 的分类列表保留 grid 布局 */
 .cfg-list {
   display: grid;
   gap: @gap;
 }
 
-.cfg-slider,
+.cfg-group-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  opacity: 0.7;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.cfg-group-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+}
+
+/* 每个 option：label 左、控件右，单行排布 */
 .cfg-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.14);
+
+  .cfg-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* radio / number 字段：label 宽度自适应，不换行 */
+.cfg-option--radio .cfg-label,
+.cfg-option--number .cfg-label {
+  flex: 0 0 auto;
+  white-space: normal;
+}
+
+.cfg-option--radio .el-radio-group {
+  gap: 4px;
+}
+
+.cfg-slider {
   .field-grid(150px);
 }
 

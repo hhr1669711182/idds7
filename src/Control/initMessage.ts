@@ -32,7 +32,7 @@ import { createMockCallLocationBridge } from '@/Control/mockCallLocationBridge'
 import { createMapMessageHandlers } from '@/Control/mapMessageHandlers'
 import { createIncidentLocationProfileSync } from '@/Control/incidentLocationProfileSync'
 import { createMapRelayReader } from '@/Control/mapRelayReader'
-import { createGisPointChannel } from '@/Control/gisPointChannel'
+import { createGisPointChannel } from '@/composables/useGisPointSelection'
 import router from '@/router'
 import { ROUTE_NAMES } from '@/router/constants'
 
@@ -62,8 +62,9 @@ export const initMessage = () => {
     // 消费 host 转发的 disaster_profile（§8.3.1）/POSITION_SYNC（§8.3.2）白名单事件，
     // 复用 handlers.onAddressUpdated / handlers.onLocateCall，App 级常驻
     cleanups.push(createMapRelayReader()) // 不要删，先注释掉，演示后根据需求开启
-    // GIS 地图选点 BroadcastChannel（ids-gis-point-selection，对接受理席 gis-point-selection 协议 V1.0）
-    // 接收 PICK_START → 投递 MOCK_INCIDENT_RELOCATE → dispatchMap 激活选点交互
+    // GIS 地图选点 BroadcastChannel（对接受理席 gis-point-selection 协议 V1.1）
+    // 通道名 ids-map-screen-relay（与实时转发同名但各自独立实例，按 kind 分流）
+    // 接收 PICK_START（kind='map-point-selection'）→ 投递 MOCK_INCIDENT_RELOCATE → dispatchMap 激活选点交互
     cleanups.push(createGisPointChannel())
     cleanups.push(() => handlers.dispose())
 

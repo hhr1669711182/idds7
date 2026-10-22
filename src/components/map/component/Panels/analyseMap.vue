@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, markRaw } from "vue";
+import { onMounted, shallowRef, markRaw } from "vue";
 import Map from "ol/Map";
 import View from "ol/View";
 import * as olProj from "ol/proj";
@@ -18,10 +18,11 @@ import unionImg from "@/assets/icons-svg/map/并集.svg";
 import intersectionImg from "@/assets/icons-svg/map/交集.svg";
 import differenceImg from "@/assets/icons-svg/map/差集.svg";
 import { DrawTool } from "../../MapTools";
-import { Feature } from "ol";
+import Feature from "ol/Feature";
 import * as turf from "@turf/turf";
 import { Style, Stroke, Fill } from "ol/style";
 import { Polygon } from "ol/geom";
+import type { Position } from "geojson";
 
 let mapInstance: Map | null;
 const vectoryLayer = VECTOR_LAYER();
@@ -64,7 +65,8 @@ onMounted(() => {
 
 let drawTool: DrawTool;
 
-let completedFeatures = ref<Feature[]>([]);
+// shallowRef：避免 Vue 深层解包把 Feature 实例类型变形
+let completedFeatures = shallowRef<Feature[]>([]);
 
 const callback = ({ feature }: { feature: Feature }) => {
   completedFeatures.value.push(feature);
@@ -82,17 +84,18 @@ const drawCircle = () => {
 };
 
 const getPolygons = () => {
-  const p1 = turf.polygon(
-    completedFeatures.value[0]
-      .getGeometry()
-      ?.getCoordinates()
-  );
+  // 绘制工具产出的是 Polygon 要素；OL 的坐标为 Coordinate[]，转成 turf 的 Position[]
+  const toTurfPolygon = (feature: Feature | undefined) => {
+    const geometry = feature?.getGeometry() as Polygon | undefined;
+    const coordinates = geometry?.getCoordinates() as number[][][] | undefined;
+    if (!coordinates) return undefined;
+    return turf.polygon(coordinates as Position[][]);
+  };
 
-  const p2 = turf.polygon(
-    completedFeatures.value[1]
-      .getGeometry()
-      ?.getCoordinates()
-  );
+  const p1 = toTurfPolygon(completedFeatures.value[0]);
+  const p2 = toTurfPolygon(completedFeatures.value[1]);
+
+  if (!p1 || !p2) return { p1: null, p2: null };
 
   return { p1, p2 };
 };
@@ -116,11 +119,12 @@ const resetFeature = () => {
 };
 const handleUnionClick = () => {
   const { p1, p2 } = getPolygons();
+  if (!p1 || !p2) return;
   const union = turf.union(turf.featureCollection([p1, p2]));
   if (union) {
     resetFeature();
     feature = new Feature({
-      geometry: new Polygon(union?.geometry?.coordinates),
+      geometry: new Polygon(union.geometry.coordinates as number[][][]),
       zIndex: 9,
     });
 
@@ -132,11 +136,12 @@ const handleUnionClick = () => {
 
 const handleInsertClick = () => {
   const { p1, p2 } = getPolygons();
+  if (!p1 || !p2) return;
   const intersection = turf.intersect(turf.featureCollection([p1, p2]));
   if (intersection) {
     resetFeature();
     feature = new Feature({
-      geometry: new Polygon(intersection?.geometry?.coordinates),
+      geometry: new Polygon(intersection.geometry.coordinates as number[][][]),
       zIndex: 9,
     });
 
@@ -148,11 +153,12 @@ const handleInsertClick = () => {
 
 const handleDifferenceClick = () => {
   const { p1, p2 } = getPolygons();
+  if (!p1 || !p2) return;
   const difference = turf.difference(turf.featureCollection([p1, p2]));
   if (difference) {
     resetFeature();
    feature = new Feature({
-      geometry: new Polygon(difference?.geometry?.coordinates),
+      geometry: new Polygon(difference.geometry.coordinates as number[][][]),
       zIndex: 9,
     });
 

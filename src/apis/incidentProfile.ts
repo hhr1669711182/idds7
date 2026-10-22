@@ -16,7 +16,7 @@ export const fetchIncidentLocationProfile = (incidentId: string) =>
  * 响应数据格式与归一化由调用方（IncidentDetailDialog.vue）定义，经泛型标注。
  */
 export const fetchIncidentDetail = <T>(incidentId: string) =>
-  alovaInstance.Get<T>(
-    `/bff-client/api/v1/gis/incidents/${encodeURIComponent(incidentId)}/detail`,
-    { cacheFor: 0, meta: { showError: false } },
-  )
+  alovaInstance.Get<T>(`/bff-client/api/v1/gis/incidents/${encodeURIComponent(incidentId)}/detail`, {
+    cacheFor: 0,
+    meta: { showError: false },
+  })

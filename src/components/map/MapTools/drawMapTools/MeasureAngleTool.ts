@@ -79,6 +79,7 @@ export class MeasureAngleTool extends BaseTool {
   }
 
   handleMeasureLineStart(evt: { feature: Feature<Geometry>; coordinate: Coordinate }) {
+    // @ts-expect-error TS6133: 引用处已注释，保留备用
     const { feature, coordinate }: any = evt
 
     this.listenGeometryChange = feature.getGeometry().on('change', (evt: any) => {

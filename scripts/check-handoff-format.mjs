@@ -27,14 +27,27 @@ const STRICT = process.argv.includes('--strict')
 
 // ── 常量 ──────────────────────────────────────────────────────────────
 const REQUIRED_METADATA_FIELDS = [
-  '格式版本', '任务标识', '生成时间', '作者',
-  '仓库标识', '分支', 'HEAD', 'supersedes', '任务阶段',
+  '格式版本',
+  '任务标识',
+  '生成时间',
+  '作者',
+  '仓库标识',
+  '分支',
+  'HEAD',
+  'supersedes',
+  '任务阶段',
 ]
 const PHASE_ENUM = ['调查中', '待方案确认', '实现中', '待验证', '阻塞', '已完成']
 const REQUIRED_SECTIONS = [
-  '目标与边界', '方案与授权', '已确认事实与关键决策',
-  '进度与阻塞', '工作区与改动归属', '验证记录',
-  '踩坑、风险与待确认', '下一步与停止点', '按需阅读与接续指令',
+  '目标与边界',
+  '方案与授权',
+  '已确认事实与关键决策',
+  '进度与阻塞',
+  '工作区与改动归属',
+  '验证记录',
+  '踩坑、风险与待确认',
+  '下一步与停止点',
+  '按需阅读与接续指令',
 ]
 const SECRET_PATTERNS = [
   /(?:api[_-]?key|apikey)\s*[:=]\s*['"][A-Za-z0-9_-]{16,}['"]/gi,
@@ -66,7 +79,10 @@ function extractMetadataLines(content) {
   const metaLines = []
   let inMeta = false
   for (const line of lines) {
-    if (line.startsWith('| 元数据 |') || line.match(/^\|\s*元数据\s*\|/)) { inMeta = true; continue }
+    if (line.startsWith('| 元数据 |') || line.match(/^\|\s*元数据\s*\|/)) {
+      inMeta = true
+      continue
+    }
     if (inMeta) {
       if (line.startsWith('|---')) continue
       if (line.startsWith('|')) {
@@ -79,7 +95,10 @@ function extractMetadataLines(content) {
   // 解析 key-value
   const fields = {}
   for (const line of metaLines) {
-    const parts = line.split('|').map(p => p.trim()).filter(Boolean)
+    const parts = line
+      .split('|')
+      .map((p) => p.trim())
+      .filter(Boolean)
     if (parts.length >= 2) fields[parts[0]] = parts[1]
   }
   return fields
@@ -151,7 +170,7 @@ for (const file of files) {
   // 2. 章节
   const sections = extractSectionHeaders(content)
   for (const required of REQUIRED_SECTIONS) {
-    const found = sections.some(s => s.includes(required))
+    const found = sections.some((s) => s.includes(required))
     if (!found) errors.push(`缺少必填章节: "${required}"`)
   }
 

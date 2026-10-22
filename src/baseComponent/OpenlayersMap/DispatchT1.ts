@@ -18,7 +18,8 @@ import { fromLonLat, transform } from 'ol/proj'
 import TileWMS from 'ol/source/TileWMS'
 import VectorSource from 'ol/source/Vector'
 import { asArray } from 'ol/color'
-import { Fill, Stroke, Style } from 'ol/style'
+// import { Fill, Stroke, Style } from 'ol/style'  // TS6133: Fill / Stroke 未使用，保留备用
+import { Style } from 'ol/style'
 import { MAP_LAYER_Z_INDEX } from './layerOrder'
 import {
   buildRouteDirectionFeatures,
@@ -29,7 +30,8 @@ import {
 } from '@/baseComponent/amap/useAmapTools'
 import { createRouteLineStyle, getStyle, MAP_ICON_SRC } from '@/baseComponent/OpenlayersMap/style'
 import { DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS } from '@/baseComponent/OpenlayersMap/FeatureClickQuery'
-import { mountPolygonLayer, type PolygonLayerManager } from '@/baseComponent/OpenlayersMap/mountPolygonLayer'
+// import { mountPolygonLayer } from '@/baseComponent/OpenlayersMap/mountPolygonLayer'  // TS6133: 未使用，保留备用
+import type { PolygonLayerManager } from '@/baseComponent/OpenlayersMap/mountPolygonLayer'
 import type { CarLocationBatch } from '@/controller/core/protocol/LegacyMessageProtocol'
 import { createVehicleManager, type VehicleManager } from './VehicleRenderer'
 import {
@@ -47,7 +49,7 @@ import {
 } from '@/controller/core/business/DispatchController1'
 import { geoserverApi } from '@/apis/geoserver'
 import {
-  listDispatchVehicles,
+  // listDispatchVehicles,  // TS6133: 未使用，保留备用
   dispatchVehiclesBatch,
   validateDispatchRequest,
   createCommandId,
@@ -157,9 +159,12 @@ export class DispatchT1 {
    * 队站显示统一复用地图侧唯一的 gis:view_res_org_dept WMS 图层（由 store 驱动过滤）。
    */
   private readonly stationQuerySource: TileWMS
+  // @ts-expect-error TS6133: 未读取但已赋值，保留备用
   private showAllJurisdictions = false
+  // @ts-expect-error TS6133: 未读取但已赋值，保留备用
   private jurisdictionManager!: PolygonLayerManager<JurisdictionItem>
   /** 当前已渲染的辖区项（key = stationId） */
+  // @ts-expect-error TS6133: 未读取但已赋值，保留备用
   private readonly renderedJurisdictions = new globalThis.Map<string, JurisdictionItem>()
   private readonly routeSource = new VectorSource()
   private readonly routeLayer: VectorLayer<VectorSource>

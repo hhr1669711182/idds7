@@ -26,6 +26,7 @@ const mount = (props: any = {} as any) => {
   }
 }
 
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const unmount = () => {
   appInstance?.unmount()
   appInstance = null

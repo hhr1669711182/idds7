@@ -2,7 +2,6 @@ export const SEAT_SHARED_STATE_KEY = 'seat-shared-state'
 
 /** §7 mock 补丁通道独立 key（演示/联调来电定位补位）。 */
 export const SEAT_SHARED_STATE_MOCK_KEY = 'seat-shared-state-mock'
-export const GIS_POINT_INFO_KEY = 'gis-point-info'
 
 /**
  * 从 seat-shared-state 读取 accessToken（唯一凭证来源，不再使用 access_token 存储键）。

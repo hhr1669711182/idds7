@@ -9,6 +9,7 @@ import { useModelAssessStore } from '@/store/useModelAssessStore'
 import { SMOKE_LEVELS, TRAPPED_DIRS } from '@/const/const.modelAssess'
 
 const store = useModelAssessStore()
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const { masterAlarm, realtimeFactors, saveHint, selectedFloor, modelLoaded, trappedFloors, trappedTotal, selectedTrappedUuid } = storeToRefs(store)
 
 const isExpanded = ref(false)
@@ -26,9 +27,11 @@ const onFactor = <K extends keyof typeof realtimeFactors.value>(
 }
 
 const setSmoke = (v: string) => store.updateFactor('smokeLevel', v)
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const onSave = () => store.saveRealtimeFactors()
 
 /** 在 3D 视图中定位到起火层（强制切换回 3D + 选中起火层） */
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const onLocateFireFloor = () => {
   store.locateFireFloorIn3D()
 }

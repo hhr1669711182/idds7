@@ -19,8 +19,10 @@ const {
   realtimeFactors,
   trappedFloors,
   activeLayerTab,
+  // @ts-expect-error TS6133: 引用处已注释，保留备用
   selectedTrappedUuid,
   selectedFloor,
+  // @ts-expect-error TS6133: 引用处已注释，保留备用
   modelLoaded,
   plan2DMode,
   masterAlarm,
@@ -29,6 +31,7 @@ const {
 /** 上游 navPathPlanData（响应式追踪；WebSocket 更新时会自动重播） */
 const navPathPlanData = computed(() => dispatchStore.navPathPlanData)
 
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const onTab = (k: LayerTabKey) => {
   store.setActiveLayerTab(k)
 }
@@ -44,7 +47,9 @@ const onPickMarker = (uuid: string) => store.selectTrappedFloor(uuid)
 const onPickComponent = (info: PickComponentInfo) => {
   store.setSelectedComponent(info)
 }
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const onSwitch3D = () => store.setPlan2DMode(false)
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const onSwitch2D = () => store.setPlan2DMode(true)
 
 /** 主警情 ThreeViewer 模型加载完成 → store.modelLoaded = true（HUD 提示消失） */

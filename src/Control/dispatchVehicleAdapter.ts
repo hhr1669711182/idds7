@@ -63,7 +63,9 @@ export function normalizeDispatchVehicles(
   }
   const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
   const reasons: string[] = [];
-  const vehicles = list.map((raw, index) => {
+  // 显式标注元素类型：map 的推断结果里 vehicleId 等可选字段是必填的，
+  // 与 DispatchVehicleDTO（可选字段）不完全兼容，会让下游 filter 的类型谓词失配
+  const vehicles: (DispatchVehicleDTO | null)[] = list.map((raw, index) => {
     // plateNumber 是渲染与去重主键，属于关键契约，缺失必须明确报错。
     if (!raw || typeof raw.plateNumber !== 'string' || !raw.plateNumber.trim()) {
       reasons.push(`#${index} 缺少有效 plateNumber`);

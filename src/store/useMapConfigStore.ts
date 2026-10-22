@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import {
   createDefaultMapConfig,
@@ -9,6 +9,7 @@ import {
   normalizeMapConfig,
   saveMapConfig,
   type MapConfigPayload,
+  type FeatureSettings,
 } from '@/config/mapConfig.ts'
 import { useLayersStore } from './useLayersStore.ts'
 
@@ -17,6 +18,9 @@ export const useMapConfigStore = defineStore('mapConfig', () => {
   const loading = ref(false)
   const saving = ref(false)
   const loaded = ref(false)
+
+  /** 功能配置（各组件显隐的唯一读取源；视图层只读，随 config 响应式更新） */
+  const feature = computed<FeatureSettings>(() => config.value.feature)
 
   const syncLayers = (payload = config.value) => {
     const layersStore = useLayersStore()
@@ -53,6 +57,7 @@ export const useMapConfigStore = defineStore('mapConfig', () => {
 
   return {
     config,
+    feature,
     loaded,
     loading,
     saving,

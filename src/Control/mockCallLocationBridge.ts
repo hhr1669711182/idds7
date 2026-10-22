@@ -1,6 +1,6 @@
 import { useMessageStore } from '@/store/useMessageStore'
 import { MESSAGE_EVENT_KEY, MESSAGE_SYSTEM, MESSAGE_CHANNEL } from '@/const/const.message.type'
-import { SEAT_SHARED_STATE_KEY, SEAT_SHARED_STATE_MOCK_KEY, GIS_POINT_INFO_KEY } from '@/Control/seatSharedState'
+import { SEAT_SHARED_STATE_KEY, SEAT_SHARED_STATE_MOCK_KEY } from '@/Control/seatSharedState'
 import { MOCK_CALL_LOCATION_ID } from '@/const/const.message.type'
 
 export type SharedCallLocationMock = {
@@ -94,29 +94,6 @@ const parseSharedSpecialMapMock = (
             && !Array.isArray(dispatchCommand)
             && Object.keys(dispatchCommand).length > 0)
         return { simulate, updatedAt }
-    } catch {
-        return null
-    }
-}
-
-/**
- * 解析 seat-shared-state-mock 中的警情二次定位触发。
- * 数据结构：{ v: 1, updatedAt, incidentID, isSecondJQLocation: true, pointInfo: { x, y, address } }
- * 仅 isSecondJQLocation === true 且 incidentID 非空时返回；确认后由地图屏写回 false + pointInfo。
- */
-const parseSharedSecondJQLocation = (
-    raw: string | null,
-): { incidentId: string; updatedAt: number } | null => {
-    if (!raw) return null
-    try {
-        const mock = JSON.parse(raw)
-        if (Number(mock?.v) !== 1) return null
-        const updatedAt = Number(mock.updatedAt)
-        if (!Number.isFinite(updatedAt)) return null
-        if (mock.isSecondJQLocation !== true) return null
-        const incidentId = String(mock.incidentID ?? '').trim()
-        if (!incidentId) return null
-        return { incidentId, updatedAt }
     } catch {
         return null
     }
@@ -327,29 +304,6 @@ export const createMockCallLocationBridge = () => {
         } catch { /* ignore */ }
     }
 
-    /**
-     * 桥接警情二次定位触发（seat-shared-state-mock 的 secondJQLocation 字段）。
-     * 解析出 incidentId 后投递 MOCK_INCIDENT_RELOCATE 事件，
-     * 由 dispatchMap 订阅后激活地图选点交互。
-     */
-    const applyMockSecondJQLocation = (raw: string | null) => {
-        const parsed = parseSharedSecondJQLocation(raw)
-        if (!parsed) return
-        msg.ingest(
-            {
-                eventKey: MESSAGE_EVENT_KEY.MOCK_INCIDENT_RELOCATE,
-                data: { incidentId: parsed.incidentId },
-            },
-            MESSAGE_CHANNEL.BROADCAST_CHANNEL,
-            MESSAGE_SYSTEM.IDS_SEAT_WEB,
-            {
-                source: GIS_POINT_INFO_KEY,
-                mock: true,
-                mockUpdatedAt: parsed.updatedAt,
-            },
-        )
-    }
-
     return {
         applyMockCallLocation,
         applyMockDispatchVehicles,
@@ -357,6 +311,5 @@ export const createMockCallLocationBridge = () => {
         applySpecialMapRenderFromSharedState,
         applySpecialMapExit,
         applyMockDisasterSite,
-        applyMockSecondJQLocation,
     }
 }

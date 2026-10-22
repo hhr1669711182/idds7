@@ -163,9 +163,10 @@ const changLineStyle = ({
   form.value.feature.setStyle(newStyle);
 };
 
-const changeColor = (color: string) => {
+// el-color-picker 的 change / active-change 回调参数都可能为 null
+const changeColor = (color: string | null) => {
   const { lineStyle, width } = form.value;
-  changLineStyle({ lineStyle, color, width });
+  changLineStyle({ lineStyle, color: color ?? "", width });
 };
 
 const changeWidth = (width: number) => {

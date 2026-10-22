@@ -16,6 +16,7 @@ import { onMounted } from 'vue';
 
 import mitt from "mitt";
 
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const emitter = mitt();
 // const app = new NewGisBimApp(emitter);
 

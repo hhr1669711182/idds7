@@ -37,7 +37,10 @@ describe('B2 运行期资源引用迁移守卫', () => {
       const content = readFileSync(abs, 'utf8')
       // 只匹配资源扩展名，避免误伤 '../model3d/xxx' 这类相对导入路径
       if (!/\/model3d\/[\w./-]+\.(?:glb|gltf|obj|png|jpg|bin|json)/.test(content)) continue
-      const relPath = abs.slice(SRC_ROOT.length + 1).split('\\').join('/')
+      const relPath = abs
+        .slice(SRC_ROOT.length + 1)
+        .split('\\')
+        .join('/')
       if (isAllowedInConstantLayer(relPath)) continue
       offenders.push(relPath)
     }
@@ -49,7 +52,10 @@ describe('B2 运行期资源引用迁移守卫', () => {
     for (const abs of walk(SRC_ROOT)) {
       const content = readFileSync(abs, 'utf8')
       if (!/\bfonts\/[\w.-]+\.json/.test(content)) continue
-      const relPath = abs.slice(SRC_ROOT.length + 1).split('\\').join('/')
+      const relPath = abs
+        .slice(SRC_ROOT.length + 1)
+        .split('\\')
+        .join('/')
       if (isAllowedInConstantLayer(relPath)) continue
       offenders.push(relPath)
     }
@@ -59,9 +65,7 @@ describe('B2 运行期资源引用迁移守卫', () => {
   it('assetUrls 已登记全部实际在用的 3D 模型（防止新增模型忘记登记）', () => {
     const assetPaths = readFileSync(join(SRC_ROOT, 'const', 'assetPaths.ts'), 'utf8')
     const registered = new Set(
-      Array.from(assetPaths.matchAll(/\b(\w+):\s*`\$\{ASSET_CATEGORY\.\w+\}([^`]+)`/g)).map(
-        (m) => m[2],
-      ),
+      Array.from(assetPaths.matchAll(/\b(\w+):\s*`\$\{ASSET_CATEGORY\.\w+\}([^`]+)`/g)).map((m) => m[2]),
     )
 
     // public/model3d 下被代码加载过的模型文件（不含 gltf 贴图依赖与零引用的 fire_truck2）
@@ -83,10 +87,7 @@ describe('B2 运行期资源引用迁移守卫', () => {
 
   it('fontLoader 字体清单已合一为单一来源，不存在两份重复定义', () => {
     const fontListFiles = walk(SRC_ROOT).filter((abs) => abs.endsWith('fontLoader.vue'))
-    const legacyFontLoaders = fontListFiles.filter(
-      (abs) => readFileSync(abs, 'utf8').includes('typeface.json'),
-    )
+    const legacyFontLoaders = fontListFiles.filter((abs) => readFileSync(abs, 'utf8').includes('typeface.json'))
     expect(legacyFontLoaders).toEqual([])
   })
 })
-

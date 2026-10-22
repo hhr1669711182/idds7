@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { reactive } from "vue";
 import { storeToRefs } from "pinia";
-import { Style, Icon } from "ol/style";
+import { Icon } from "ol/style";
+import Style from "ol/style/Style";
 import { useCardStore } from "../../../store/index.ts";
 import { getSVGForSrcById } from "@/utils/index.ts";
 import { POINT_IMG_OPTIONS } from "../../../const/const.form.ts";
-import { StyleLike } from "ol/style/Style";
 
 const cardstore = useCardStore();
 const { getItem: getMarkerData } = cardstore;
@@ -22,24 +22,29 @@ const form = reactive({
   name: "point",
 });
 
-const changeColor = (color: string) => {
-  form.color = color;
+// el-color-picker 的 change / active-change 回调参数都可能为 null
+const changeColor = (color: string | null) => {
+  const nextColor = color ?? "";
+  form.color = nextColor;
 
-  const overlayTip = document.querySelector(`#overlay_${form.uuid}`);
+  const overlayTip = document.querySelector<HTMLElement>(`#overlay_${form.uuid}`);
   if (overlayTip) {
-    overlayTip.style.borderColor = color;
+    overlayTip.style.borderColor = nextColor;
   }
-  changeMarkerIcon({ color });
+  changeMarkerIcon({ color: nextColor });
 };
 
-const changeSize = (size: number) => {
+// el-input-number 的 change 回调会带上旧值，且新值可能为 undefined
+const changeSize = (size: number | undefined) => {
+  if (size === undefined) return;
   let { marker: targetMarker, overlay: targetOverlay } = getMarkerData();
   let rate = size / 25;
   if (targetMarker) {
-    var markerStyle: StyleLike | undefined = targetMarker.getStyle();
-    var img = markerStyle?.getImage();
-    img.setScale(rate);
-    targetMarker.setStyle(markerStyle);
+    const markerStyle = targetMarker.getStyle();
+    // getStyle() 返回的是 StyleLike 联合类型，只有 Style 实例才有 getImage()
+    const img = markerStyle instanceof Style ? markerStyle.getImage() : null;
+    img?.setScale(rate);
+    if (markerStyle) targetMarker.setStyle(markerStyle);
   }
 
   if (targetOverlay) {
@@ -58,12 +63,13 @@ const changeMarkerIcon = ({
   color = color || form.color;
   let { marker: targetMarker } = getMarkerData();
   if (targetMarker) {
-    const originStyle: StyleLike | undefined = targetMarker.getStyle();
+    const originStyle = targetMarker.getStyle();
+    const originScale = originStyle instanceof Style ? originStyle.getImage()?.getScale() : undefined;
     var markerStyle = new Style({
       image: new Icon({
         anchor: [0.5, 1],
         src: getSVGForSrcById({ symbolId, color }),
-        scale: originStyle?.getImage().getScale(),
+        scale: originScale,
       }),
     });
     targetMarker.setStyle(markerStyle);
@@ -76,12 +82,14 @@ const handleClickDefault = () => {
   changeMarkerIcon({ symbolId });
 };
 
-const changeShowName = (visible: boolean) => {
+// el-switch 的 change 回调参数类型为 string | number | boolean
+const changeShowName = (visible: string | number | boolean) => {
+  const showName = Boolean(visible);
   let { overlay: targetOverlay } = getMarkerData();
   if (targetOverlay) {
     const ele = targetOverlay.getElement();
     if (ele) {
-      ele.style.display = visible ? "block" : "none";
+      ele.style.display = showName ? "block" : "none";
     }
   }
 };

@@ -105,6 +105,7 @@ const handleBtnClick = (type: { value: any; coordinate: any; }) => {
   }
 };
 
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const flyTo = (location: Coordinate, done = (d: boolean) => {}) => {
   // 飞行动画
   let view = mapInstance.getView();

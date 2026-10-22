@@ -1,6 +1,6 @@
 /*
- * @Description: 警情二次定位模块（BroadcastChannel 版，对接受理席 gis-point-selection 协议 V1.0）。
- *               受理席经 BroadcastChannel('ids-gis-point-selection') 发 PICK_START，
+ * @Description: 警情二次定位模块（BroadcastChannel 版，对接受理席 gis-point-selection 协议 V1.1）。
+ *               受理席经 BroadcastChannel('ids-map-screen-relay')（选点 kind 分流）发 PICK_START，
  *               地图收到后激活选点交互（OpenLayers Draw Point）；
  *               鼠标松开（drawend）后弹出确认弹窗：
  *               - 点击"是"：逆地址解析获取 address，经 BroadcastChannel 回发 PICK_RESULT

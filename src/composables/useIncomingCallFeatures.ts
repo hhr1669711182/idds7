@@ -74,7 +74,9 @@ const STYLE_ID = 'incoming-call-features-style'
 const DEFAULT_ACCURACY_RADIUS_METER = 500
 const CIRCLE_SEGMENTS = 36
 const METERS_PER_DEGREE_LAT = 111320
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const NANSHA_FALLBACK_LNG = 113.930783
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const NANSHA_FALLBACK_LAT = 22.543345
 
 const PULSE_MIN_SCALE = 0.94
@@ -431,6 +433,7 @@ export const mountIncomingCallFeatures = (
   map.addLayer(circleLayer)
   map.addLayer(layer)
 
+  // @ts-expect-error TS6133: 引用处已注释，保留备用
   const styleElement = ensureStyleElement()
   const popupElement = document.createElement('div')
   popupElement.className = POPUP_CLASS
@@ -477,6 +480,7 @@ export const mountIncomingCallFeatures = (
     return feature
   }
 
+  // @ts-expect-error TS6133: 引用处已注释，保留备用
   const refreshFeatures = () => {
     pointSource.clear()
     circleSource.clear()

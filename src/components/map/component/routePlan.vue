@@ -17,15 +17,28 @@ import {
   VECTOR_LAYER,
   LAYER_NAMES,
 } from "../../../baseComponent/OpenlayersMap/layers.ts";
-import BaseLayer from "ol/layer/Base";
+import VectorLayer from "ol/layer/Vector";
+import Point from "ol/geom/Point";
 
 const panelStore = usePanelStore();
 
 const mapStore = useMapStore();
 
-let vectorLayer:BaseLayer;
+let vectorLayer: VectorLayer;
 
-const PointFeature = ref({
+/**
+ * 起点 / 途径点 / 终点 三个要素的容器。
+ *
+ * 显式标注类型，避免 ref 从 `null` 初值推断出 `null` 类型后，
+ * 后续所有 `.getGeometry()` / `.push()` 调用都退化成类型错误。
+ */
+type RoutePointFeature = {
+  start_point: Feature<Point> | null;
+  route_points: Feature<Point>[];
+  end_point: Feature<Point> | null;
+};
+
+const PointFeature = ref<RoutePointFeature>({
   start_point: null,
   route_points: [],
   end_point: null,
@@ -45,7 +58,7 @@ const mapInstance = toRaw(map.value);
 
 const activeIndex = ref("");
 
-const listChildren = [
+const listChildren: { name: string; value: keyof RoutePointFeature }[] = [
   { name: "起点", value: "start_point" },
   { name: "途径点", value: "route_points" },
   { name: "终点", value: "end_point" },
@@ -83,10 +96,11 @@ const colors = {
 };
 
 const getPointsStyle = () => {
+  const activeKey = activeIndex.value as keyof RoutePointFeature;
   return new Style({
     image: new Circle({
-      radius: activeIndex.value != listChildren[1].value ? 12 : 10,
-      fill: new Fill({ color: colors[activeIndex.value] }),
+      radius: activeKey != listChildren[1].value ? 12 : 10,
+      fill: new Fill({ color: colors[activeKey] }),
       stroke: new Stroke({
         color: "black",
         width: 2,
@@ -109,7 +123,7 @@ const drawStart = () => {
   exitDraw();
 
   draw = new Draw({
-    source: vectorLayer.getSource(),
+    source: vectorLayer.getSource() ?? undefined,
     type: "Point",
     style: styles.selectPointStyle,
   });
@@ -117,19 +131,20 @@ const drawStart = () => {
   mapInstance.addInteraction(draw);
 
   draw.on("drawend", function (event) {
-    const feature = event.feature;
-    console.log(feature.getGeometry().getCoordinates(), event);
+    // Draw 的 type 固定为 "Point"，几何一定是 Point，这里做一次显式收窄
+    const feature = event.feature as Feature<Point>;
+    console.log((feature.getGeometry() as Point).getCoordinates(), event);
     if (activeIndex.value == listChildren[0].value) {
       //起点
       if (PointFeature.value.start_point) {
-        vectorLayer.getSource().removeFeature(PointFeature.value.start_point);
+        vectorLayer.getSource()?.removeFeature(PointFeature.value.start_point);
       }
 
       PointFeature.value.start_point = feature;
     } else if (activeIndex.value == listChildren[1].value) {
       //途径点
       PointFeature.value.route_points.push(feature);
-      const coordinates = feature.getGeometry().getCoordinates();
+      const coordinates = (feature.getGeometry() as Point).getCoordinates();
       addOverlay({
         coordinates,
         index: PointFeature.value.route_points.length,
@@ -137,7 +152,7 @@ const drawStart = () => {
     } else {
       //终点
       if (PointFeature.value.end_point) {
-        vectorLayer.getSource().removeFeature(PointFeature.value.end_point);
+        vectorLayer.getSource()?.removeFeature(PointFeature.value.end_point);
       }
 
       PointFeature.value.end_point = feature;
@@ -146,18 +161,26 @@ const drawStart = () => {
   });
 };
 
-const createElement = (index: string) => {
+const createElement = (index?: number | string) => {
   var element = document.createElement("div");
   element.className = `popMarker_path_route_points`;
   element.id = `popMarker_path_route_points_${index}`;
-  element.innerHTML = index;
+  element.innerHTML = String(index ?? "");
   return element;
 };
 
 let overlays: Overlay[] = [];
 const popup = ref();
 
-const addOverlay = ({ coordinates, index, type = "point" }) => {
+const addOverlay = ({
+  coordinates,
+  index,
+  type = "point",
+}: {
+  coordinates: number[];
+  index?: number;
+  type?: string;
+}) => {
   const overlay = new Overlay({
     element: type == "point" ? createElement(index) : popup.value,
     positioning: "bottom-center",
@@ -181,25 +204,26 @@ onMounted(() => {
   }
 });
 
-const PathResult = ref([]);
+/** 路径坐标序列（每个点为一组 [x, y]） */
+const PathResult = ref<number[][]>([]);
 
 const drawLine = () => {
+  const { start_point, route_points, end_point } = PointFeature.value;
+  // 起点 / 终点必须都已选点，否则无法成线（btnState 已保证，这里是类型收窄）
+  if (!start_point || !end_point) return;
+
   PathResult.value = [];
 
   //起点
-  PathResult.value.push(
-    PointFeature.value.start_point.getGeometry().getCoordinates()
-  );
+  PathResult.value.push((start_point.getGeometry() as Point).getCoordinates());
 
   //途径点
-  PointFeature.value.route_points.forEach((feature) => {
-    PathResult.value.push(feature.getGeometry().getCoordinates());
+  route_points.forEach((feature) => {
+    PathResult.value.push((feature.getGeometry() as Point).getCoordinates());
   });
 
   //终点
-  PathResult.value.push(
-    PointFeature.value.end_point.getGeometry().getCoordinates()
-  );
+  PathResult.value.push((end_point.getGeometry() as Point).getCoordinates());
 
   const lineFeature = new Feature({
     geometry: new LineString(PathResult.value),
@@ -214,10 +238,10 @@ const drawLine = () => {
 
   lineFeature.setStyle(lineStyle);
 
-  vectorLayer.getSource().addFeature(lineFeature);
+  vectorLayer.getSource()?.addFeature(lineFeature);
 
-  PointFeature.value.start_point.setStyle(getEndpointStyle("start"));
-  PointFeature.value.end_point.setStyle(getEndpointStyle("end"));
+  start_point.setStyle(getEndpointStyle("start"));
+  end_point.setStyle(getEndpointStyle("end"));
 };
 
 const form = ref({
@@ -254,7 +278,7 @@ const cancelHandle = () => {
 
   activeIndex.value = "";
 
-  vectorLayer.getSource().clear();
+  vectorLayer.getSource()?.clear();
 
   overlays.forEach((overlay) => {
     mapInstance.removeOverlay(overlay);

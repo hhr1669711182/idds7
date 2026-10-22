@@ -18,3 +18,9 @@ declare module 'virtual:element-styles' {
   const content: string
   export default content
 }
+
+/** vite-plugin-svg-icons 生成的图标注册副作用模块 */
+declare module 'virtual:svg-icons-register' {}
+
+/** unocss 生成的样式副作用模块 */
+declare module 'virtual:uno.css' {}

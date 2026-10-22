@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { Feature, Map, View } from "ol";
+import Feature from "ol/Feature";
+import OLMap from "ol/Map";
+import View from "ol/View";
 import { Style, Fill, Stroke, Text } from "ol/style";
 import LayerVector from "ol/layer/Vector";
 import SourceVector from "ol/source/Vector";
@@ -29,45 +31,54 @@ const highlightStyle = new Style({
   }),
 });
 
-const infoRef = ref(null);
+/** 要素信息浮层 DOM（模板中的 ref="infoRef"） */
+const infoRef = ref<HTMLElement | null>(null);
 
-const map = ref(null);
+/**
+ * 地图实例与高亮要素的引用。
+ *
+ * 显式标注类型，避免 `ref(null)` 把类型推断死成 `null`，
+ * 导致后续所有属性访问都退化成「可能为空 / 属性不存在」的类型错误。
+ */
+const map = ref<OLMap | null>(null);
 
-const highlight = ref(null);
+const highlight = ref<Feature<Geometry> | null>(null);
 
-let featureOverlay: LayerVector<SourceVector<Feature<Geometry>>, Feature<Geometry>> | null = null;
+let featureOverlay: LayerVector | null = null;
 
 const displayFeatureInfo = (pixel: any) => {
   // 创建高亮图层
   if (!featureOverlay) {
     featureOverlay = new LayerVector({
       source: new SourceVector(),
-      map: map.value,
+      map: (map.value ?? undefined) as OLMap | undefined,
       style: (feature) => {
-        highlightStyle.getText().setText(feature.get("name"));
+        highlightStyle.getText()?.setText(feature.get("name"));
         return highlightStyle;
       },
     });
   }
   // 获取点击的要素
-  let feature = map.value.forEachFeatureAtPixel(pixel, (feature) => feature);
+  let feature = map.value?.forEachFeatureAtPixel(pixel, (feature) => feature) as
+    | Feature<Geometry>
+    | undefined;
   let info = infoRef.value;
   // 获取要素信息
-  if (feature) {
+  if (feature && info) {
     info.innerHTML = feature.getId() + ": " + feature.get("name");
-  } else {
+  } else if (info) {
     info.innerHTML = "&nbsp;";
   }
   // 设置高亮要素
   if (feature !== highlight.value) {
     if (highlight.value) {
-      featureOverlay.getSource().removeFeature(highlight.value);
+      featureOverlay.getSource()?.removeFeature(highlight.value);
     }
 
     if (feature) {
-      featureOverlay.getSource().addFeature(feature);
+      featureOverlay.getSource()?.addFeature(feature);
     }
-    highlight.value = feature;
+    highlight.value = feature ?? null;
   }
 };
 
@@ -101,12 +112,12 @@ const initMap = () => {
       wrapX: true,
     }),
     style: (feature) => {
-      style.getText().setText(feature.get("name"));
+      style.getText()?.setText(feature.get("name"));
       return style;
     },
   });
 
-  map.value = new Map({
+  const mapInstance = new OLMap({
     target: "modal_map",
     layers: [vectorLayer],
     view: new View({
@@ -114,16 +125,17 @@ const initMap = () => {
       zoom: 1,
     }),
   });
+  map.value = mapInstance;
 
-  map.value.on("pointermove", (evt) => {
+  mapInstance.on("pointermove", (evt) => {
     if (evt.dragging) {
       return;
     }
-    let pixel = map.value.getEventPixel(evt.originalEvent);
+    let pixel = mapInstance.getEventPixel(evt.originalEvent);
     displayFeatureInfo(pixel);
   });
 
-  map.value.on("click", (evt) => {
+  mapInstance.on("click", (evt) => {
     displayFeatureInfo(evt.pixel);
   });
 };

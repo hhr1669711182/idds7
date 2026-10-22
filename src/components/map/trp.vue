@@ -118,11 +118,21 @@ const drawingToolTypes = new Set<string>([
   TYPES.RECT,
 ]);
 
+// 各工具对应的专属功能开关（未命中专属开关的“其它功能”统一归 showOther）
+const dedicatedToolSwitch: Record<string, keyof import('@/config/mapConfig.ts').FeatureSettings> = {
+  [TYPES.TRAFFIC]: 'showTraffic',
+  [TYPES.PATHPLAN]: 'showRoutePlan',
+  [TYPES.POPULATION]: 'showPopulation',
+  [TYPES.TOPICTYPES]: 'showTopic',
+};
+
 const isToolVisible = (type: string) => {
-  const { showNav, showDraw } = mapConfigStore.config.feature;
-  if (navigationToolTypes.has(type)) return showNav;
-  if (drawingToolTypes.has(type)) return showDraw;
-  return true;
+  const feature = mapConfigStore.feature;
+  if (navigationToolTypes.has(type)) return feature.showNav;
+  if (drawingToolTypes.has(type)) return feature.showDraw;
+  const dedicated = dedicatedToolSwitch[type];
+  if (dedicated) return feature[dedicated];
+  return feature.showOther;
 };
 
 const visibleMenuItems = computed(() =>
@@ -147,7 +157,7 @@ const mobileMenuGroups = computed(() => {
 });
 
 watch(
-  () => [mapConfigStore.config.feature.showNav, mapConfigStore.config.feature.showDraw],
+  () => ({ ...mapConfigStore.feature }),
   () => {
     if (active.value && !isToolVisible(active.value)) {
       cardStore.clearDrawTool();

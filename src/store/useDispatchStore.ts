@@ -80,6 +80,7 @@ export const useDispatchStore = defineStore(
     //   }
     // });
 
+    // @ts-expect-error TS6133: 引用处已注释，保留备用
     const sendWsMessage = (data: any) => {
       // wsClient.send(data);
     }

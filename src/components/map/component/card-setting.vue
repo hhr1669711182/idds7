@@ -2,19 +2,34 @@
 import { markRaw } from "vue";
 import { storeToRefs } from "pinia";
 import { Draw } from "ol/interaction";
+import type VectorLayer from "ol/layer/Vector";
 import { useMapStore } from "../../../store";
+import { LAYER_NAMES } from "../../../baseComponent/OpenlayersMap/layers";
 
 const mapStore = useMapStore();
 
-const { mapTool: MapTool } = storeToRefs(mapStore);
+const { map } = storeToRefs(mapStore);
 
 const draw = () => {
+  // 矢量图层按 className 从地图里取（与 MarkDrawVectorLayer / clear.vue 同一套路）
+  const vectorLayer = map.value
+    ?.getLayers()
+    .getArray()
+    .find((layer: { getClassName: () => string }) => layer.getClassName() == LAYER_NAMES.VECTOR_LAYER) as
+      | VectorLayer
+      | undefined;
+
+  if (!vectorLayer) {
+    console.warn("[card-setting] 未找到矢量图层，无法绘制");
+    return;
+  }
+
   const draw = markRaw(new Draw({
-    source: MapTool.value.layers.vectorLayer.getSource(),
+    source: vectorLayer.getSource() ?? undefined,
     type: "Polygon",
     // style: this.style2,
   }));
-  MapTool.value.map.addInteraction(draw);
+  map.value?.addInteraction(draw);
 };
 </script>
 <template>

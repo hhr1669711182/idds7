@@ -132,10 +132,7 @@ const SKIP_DIRS = new Set([
 const hashFile = (abs) => createHash('sha256').update(readFileSync(abs)).digest('hex').slice(0, 16)
 
 // ── 1. 扫描 ──────────────────────────────────────────────────────────────
-const candidates = [
-  ...walk(join(root, 'public')),
-  ...walk(join(root, 'src')),
-]
+const candidates = [...walk(join(root, 'public')), ...walk(join(root, 'src'))]
 
 /** 代码源文件，用于建立引用关系。 */
 const codeFiles = [...walk(join(root, 'src')), ...walk(join(root, 'tests')), ...walk(join(root, 'server'))]
@@ -193,8 +190,7 @@ const manifestPaths = new Set(assets.map((a) => a.path))
 const publicLiterals = new Set(Object.keys(KEEP_REASONS).map((p) => p.replace(/^public\//, '')))
 
 // 匹配 loader.load('/…') / loadGLTF('/…') / TextureLoader.load('/…') / fetch('/…')
-const runtimeLiteralPattern =
-  /\b(?:loader\.load|loadGLTF|loadTexture|fetch)\s*\(\s*['"]([^'"]+)['"]/g
+const runtimeLiteralPattern = /\b(?:loader\.load|loadGLTF|loadTexture|fetch)\s*\(\s*['"]([^'"]+)['"]/g
 
 // 已迁移到 assetPaths 的新前缀（assets/ 前缀视为已合规）
 const MIGRATED_PREFIXES = ['assets/']
@@ -218,9 +214,7 @@ for (const [file, content] of codeContents) {
           `应改用 @/const/assetPaths 的 assetUrls（迁移批次 B2/B3）。`,
       )
     } else {
-      warnings.push(
-        `R2 提示：${relFile} 中字面量 '${literal}' 未在 manifest 找到对应文件，请确认是否为运行期资源。`,
-      )
+      warnings.push(`R2 提示：${relFile} 中字面量 '${literal}' 未在 manifest 找到对应文件，请确认是否为运行期资源。`)
     }
   }
 }

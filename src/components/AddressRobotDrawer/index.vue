@@ -44,10 +44,13 @@ const primary = computed(() =>
   anchors.value.find((a: any) => a.highlight_role === "context") ?? anchors.value.find((a: any) => a.anchor_id !== target.value?.anchor_id) ?? null
 );
 const offset = computed<any>(() => relations.value.find((r: any) => r.direction || r.distance) ?? {});
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const displayTarget = computed(() => target.value ?? primary.value ?? null);
 const directionText = computed(() => label("direction", offset.value.direction));
 const distanceText = computed(() => (offset.value.distance ? `${offset.value.distance} 米` : "—"));
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const relationText = computed(() => relations.value.map((r: any) => label("relation", r.relation_type)).join("、 ") || "—");
+// @ts-expect-error TS6133: 引用处已注释，保留备用
 const sourceText = computed(() => osm?.source || "待查询");
 const mapStatus = computed(() => (osm ? label("status", osm.status, "部分结果") : "待查询"));
 const candidateCount = computed(() => osm?.candidates?.length ?? 0);

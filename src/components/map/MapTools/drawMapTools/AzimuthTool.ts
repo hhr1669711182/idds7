@@ -118,6 +118,7 @@ export class AzimuthTool extends BaseTool {
   }
 
   handleMeasureLineStart(evt: { feature: Feature<Geometry>; coordinate: Coordinate }) {
+    // @ts-expect-error TS6133: 引用处已注释，保留备用
     const { feature, coordinate }: any = evt
 
     this.listenGeometryChange = feature.getGeometry().on('change', (evt: any) => {
@@ -168,6 +169,7 @@ export class AzimuthTool extends BaseTool {
 
     const startP = transform(this.Points[1], 'EPSG:3857', 'EPSG:4326')
     const endP = transform(this.Points[2], 'EPSG:3857', 'EPSG:4326')
+    // @ts-expect-error TS6133: 引用处已注释，保留备用
     const azimuthInDegrees = turf.rhumbBearing(startP, endP)
     this.Points = []
   }

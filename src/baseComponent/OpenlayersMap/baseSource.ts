@@ -108,6 +108,7 @@ const createAmapRoadSource = (options: AmapSourceOptions = {}) =>
   createAmapSource({
     mapType: 'label', // base
     gdSource: 'https://webrd01.is.autonavi.com/appmaptile',
+    maxZoom: 18,
     ...options,
   })
 
@@ -115,11 +116,12 @@ const createAmapImageSource = () =>
   createAmapSource({
     mapType: 'sat',
     gdSource: 'https://webst01.is.autonavi.com/appmaptile',
+    maxZoom: 18,
   })
 
-const createBaiduRoadSource = () => createBaiduSource({ mapType: 'road' })
+const createBaiduRoadSource = () => createBaiduSource({ mapType: 'road', maxZoom: 19 })
 
-const createBaiduImageSource = () => createBaiduSource({ mapType: 'image' })
+const createBaiduImageSource = () => createBaiduSource({ mapType: 'image', maxZoom: 19 })
 
 const createTiandituSource = (mode: 'img_w' | 'vec_w' | 'cta_w' | 'ter_w') => {
   const tk = '4d49c5a7a297e1ba4629257fe2af76c1'
@@ -128,6 +130,7 @@ const createTiandituSource = (mode: 'img_w' | 'vec_w' | 'cta_w' | 'ter_w') => {
   return buildUrlSource({
     url: `https://t0.tianditu.gov.cn/DataServer?T=${mode}&x={x}&y={y}&l={z}&tk=${tk}`,
     crossOrigin: 'anonymous',
+    maxZoom: 18,
   })
 }
 
@@ -142,13 +145,14 @@ const createGoogleSource = (mode: BaseSourceMode) => {
 const createThunderforestSource = (modeT: BaseSourceModeType) => {
   const apiKey = '6a53e8b25d114a5e9216df5bf9b5e9c8'
   const url = `https://{b-c}.tile.thunderforest.com/${modeT}/{z}/{x}/{y}.png?apikey=${apiKey}`
-  return buildUrlSource({ url, crossOrigin: 'anonymous' })
+  return buildUrlSource({ url, crossOrigin: 'anonymous', maxZoom: 19 })
 }
 
-const createOpenTopoMapSource = () => {
-  const url = `https://a.tile.opentopomap.org/{z}/{x}/{y}.png`
-  return buildUrlSource({ url, crossOrigin: 'anonymous' })
-}
+// TS6133: 备用底图源，保留备用
+// const createOpenTopoMapSource = () => {
+// const url = `https://a.tile.opentopomap.org/{z}/{x}/{y}.png`
+// return buildUrlSource({ url, crossOrigin: 'anonymous' })
+// }
 
 const createEsriTopoSource = () => {
   const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}`
@@ -156,12 +160,13 @@ const createEsriTopoSource = () => {
   return buildUrlSource({ url, crossOrigin: 'anonymous', maxZoom: 17 })
 }
 
-const createKailideSource = (mode: BaseSourceMode) => {
-  const key = mode === 'image' ? 'VITE_BASE_SOURCE_KAILIDE_IMAGE_URL' : 'VITE_BASE_SOURCE_KAILIDE_ROAD_URL'
-  return buildUrlSource({
-    url: envOr(key, `/tiles/kailide/${mode}/{z}/{x}/{y}.png`),
-  })
-}
+// TS6133: 备用底图源，保留备用
+// const createKailideSource = (mode: BaseSourceMode) => {
+// const key = mode === 'image' ? 'VITE_BASE_SOURCE_KAILIDE_IMAGE_URL' : 'VITE_BASE_SOURCE_KAILIDE_ROAD_URL'
+// return buildUrlSource({
+// url: envOr(key, `/tiles/kailide/${mode}/{z}/{x}/{y}.png`),
+// })
+// }
 
 const createOfflineSource = (mode: BaseSourceMode) => {
   const key = mode === 'image' ? 'VITE_BASE_SOURCE_OFFLINE_IMAGE_URL' : 'VITE_BASE_SOURCE_OFFLINE_ROAD_URL'
@@ -202,12 +207,13 @@ const createThematicSource = (mode: BaseSourceMode) => {
   // return mode === "image" ? [createTiandituSource("cta_w"), createTiandituSource("ter_w")] : createAmapRoadSource({ tileLoadFunction: MaskFn });
 }
 
-const createLocalSource = (mode: BaseSourceMode) => {
-  const key = mode === 'image' ? 'VITE_BASE_SOURCE_LOCAL_IMAGE_URL' : 'VITE_BASE_SOURCE_LOCAL_ROAD_URL'
-  return buildUrlSource({
-    url: envOr(key, `/tiles/local/${mode}/{z}/{x}/{y}.png`),
-  })
-}
+// TS6133: 备用底图源，保留备用
+// const createLocalSource = (mode: BaseSourceMode) => {
+// const key = mode === 'image' ? 'VITE_BASE_SOURCE_LOCAL_IMAGE_URL' : 'VITE_BASE_SOURCE_LOCAL_ROAD_URL'
+// return buildUrlSource({
+// url: envOr(key, `/tiles/local/${mode}/{z}/{x}/{y}.png`),
+// })
+// }
 
 const SOURCE_DEFINITIONS: BaseSourceOption[] = [
   {
@@ -258,6 +264,7 @@ const SOURCE_DEFINITIONS: BaseSourceOption[] = [
     label: '影像图',
     supportsNightMode: false,
     createSource: createBaiduImageSource,
+    maxZoom: 19,
   },
   {
     id: 'baidu-road',
@@ -267,6 +274,7 @@ const SOURCE_DEFINITIONS: BaseSourceOption[] = [
     label: '街道路网图',
     supportsNightMode: false,
     createSource: createBaiduRoadSource,
+    maxZoom: 19,
   },
   // {
   //   id: "kailide-image",
@@ -350,6 +358,7 @@ const SOURCE_DEFINITIONS: BaseSourceOption[] = [
     label: '地形地貌',
     supportsNightMode: true,
     createSource: () => createThematicSource('image'),
+    maxZoom: 17,
   },
   {
     id: 'thematic-road',
@@ -359,6 +368,7 @@ const SOURCE_DEFINITIONS: BaseSourceOption[] = [
     label: '深色地图',
     supportsNightMode: true,
     createSource: () => createThematicSource('road'),
+    maxZoom: 18,
   },
   // {
   //   id: "local-image",

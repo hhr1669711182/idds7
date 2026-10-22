@@ -122,6 +122,7 @@ export class CircleQueryTool extends BaseTool {
     EventBus.emit('circle-query:update', this.getSourceData())
   }
 
+  // @ts-expect-error TS6133: 引用处已注释，保留备用
   private emitClose() {
     EventBus.emit('circle-query:close')
   }

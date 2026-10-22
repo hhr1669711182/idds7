@@ -272,7 +272,10 @@ export function useMapPopups() {
   /** 点击警情规划小弹窗"警情详情"：快照 + 详情接口 */
   const openIncidentDetailFromAlarm = () => {
     if (!alarmData.value) return
-    openDetailWithFetch(pickField(alarmData.value, ['incidentId', 'inquiryId', 'orderNo']), buildDetailFromAlarm(alarmData.value))
+    openDetailWithFetch(
+      pickField(alarmData.value, ['incidentId', 'inquiryId', 'orderNo']),
+      buildDetailFromAlarm(alarmData.value),
+    )
   }
 
   /** 点击今日灾情小弹窗"警情详情"：快照 + 详情接口 */

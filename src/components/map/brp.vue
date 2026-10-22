@@ -11,11 +11,13 @@ import { onBeforeUnmount, toRaw, ref, watch } from "vue";
 import { toLonLat } from "ol/proj";
 import type { Coordinate } from "ol/coordinate";
 import { useCurrentMap } from "@/composables/useCurrentMap";
+import { useMapConfigStore } from "@/store";
 import { CENTER } from "@/baseComponent/OpenlayersMap/const.map";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { formatLngLat, type LngLat } from "@/utils/coordTransform";
 
 const { currentMap: MapInstance } = useCurrentMap();
+const mapConfigStore = useMapConfigStore();
 
 /** 地图中心点兜底值：鼠标尚未移入地图时作为面板初始显示与复制来源 */
 const DEFAULT_LNG_LAT: LngLat = [CENTER[0], CENTER[1]];
@@ -57,7 +59,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="brp" title="点击复制经纬度" @click="copyCoordinate">
+  <div v-if="mapConfigStore.feature.showCoordinate" class="brp" title="点击复制经纬度" @click="copyCoordinate">
     {{ coordinate }}
   </div>
 </template>

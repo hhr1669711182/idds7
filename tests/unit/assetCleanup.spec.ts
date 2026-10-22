@@ -45,9 +45,14 @@ describe('资源清理守卫（只守底线，不锁死删除清单）', () => {
 
   it('three.js 字体整组保留（字体清单由 assetPaths.FONT_OPTIONS 引用）', () => {
     const fonts = [
-      ...['gentilis_bold', 'gentilis_regular', 'helvetiker_bold', 'helvetiker_regular', 'optimer_bold', 'optimer_regular'].map(
-        (name) => join('public', 'fonts', `${name}.typeface.json`),
-      ),
+      ...[
+        'gentilis_bold',
+        'gentilis_regular',
+        'helvetiker_bold',
+        'helvetiker_regular',
+        'optimer_bold',
+        'optimer_regular',
+      ].map((name) => join('public', 'fonts', `${name}.typeface.json`)),
       // 中文字体后缀是 .json 而非 .typeface.json
       join('public', 'fonts', 'YEFONTDianYingPangBaiTi_Regular.json'),
     ]

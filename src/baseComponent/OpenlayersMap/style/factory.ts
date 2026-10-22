@@ -89,7 +89,8 @@ export const createRouteLineStyle = (color: string, width = 6): Style[] => [
   }),
 ]
 
-export const createTmcLineStyle = (status: AmapTmcStatus, width = 6) => createRouteLineStyle(getTmcStatusColor(status), width)
+export const createTmcLineStyle = (status: AmapTmcStatus, width = 6) =>
+  createRouteLineStyle(getTmcStatusColor(status), width)
 
 /** 高亮外线与路况内线共用同一几何，避免蓝线露出为填充。 */
 const createSelectedRouteOutlineStyle = (width = 6): Style[] => [

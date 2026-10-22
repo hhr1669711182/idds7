@@ -88,8 +88,8 @@
 
 2. **消息收发只有一个出口**：必须经 `useMessageStore().publish/subscribe`，禁止裸 `new WebSocket()`、禁止裸 `window.addEventListener('message')` 处理业务。改消息事件键或 DTO 时必须同步 `docs/source/07-协议事件清单.md` 与 `docs/source/协议层DTO Schema.tsd`。
 
-3. **类型门禁基线不干净**：`pnpm lint` 当前约有 **155 个既有报错**（绝大多数是未用变量 `TS6133`）。缺失的消息事件键已补齐、`controller/map`、`controller/three` 已删除。基线以 `lint-baseline.json` 为准（当前 155 项，2026-10-20 更新），实跑 `pnpm lint:baseline` 核对。
-   → **判定标准是「没有引入新增报错」，不是「零报错」。** 改动前后各跑一次并对比。
+3. **类型门禁基线已归零**：`pnpm lint` 当前 **0 个报错**（2026-10-22 154 项全部真修，`lint-baseline.json` 收敛为 0 项）。缺失的消息事件键已补齐、`controller/map`、`controller/three` 已删除。实跑 `pnpm lint:baseline` 核对。
+   → **判定标准回到「零报错」。** 出现新报错必须当场修，不许再攒基线。空值类（TS18047/TS2532/TS2531）必须真修，不许用 `any` 糊。
 
 ---
 
