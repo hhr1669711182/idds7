@@ -42,6 +42,8 @@ const emptyPort: BusinessMapPort = {
   trackingVehicleGpsUpdate() {},
   addressRobotGisSearch() {},
   addressRobotClear() {},
+  areaFenceHighlight() {},
+  areaFenceClear() {},
 }
 
 const guardMethods = <Target extends object>(target: Target, valid: () => boolean): Target =>

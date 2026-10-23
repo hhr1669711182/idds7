@@ -227,3 +227,31 @@ export interface AddressRobotGisCandidatesData {
 export interface AddressRobotClearData {
   businessId?: string
 }
+
+/* ============ (Area Fence) ============ */
+
+/**
+ * 行政区划围栏高亮指令。
+ * geometry 为 GeoJSON 几何（EPSG:4326 / WGS-84），
+ * flash=true 时渲染器先闪烁高亮再落到常驻描边。
+ */
+export interface AreaFenceHighlightData {
+  /** 行政区划编码 */
+  areaCode: string
+  /** 行政区划名称（用于图面标注） */
+  areaName?: string
+  /** 围栏几何 */
+  geometry: GeoJSON.Geometry
+  /** 是否先闪烁高亮 */
+  flash?: boolean
+  /** 描边色，默认取主题强调色 */
+  strokeColor?: string
+  /** 描边宽度 */
+  strokeWidth?: number
+}
+
+/** 行政区划围栏清除指令 */
+export interface AreaFenceClearData {
+  /** 业务分组，缺省清除全部行政区划围栏 */
+  businessId?: string
+}

@@ -7,6 +7,7 @@ import { DispatchController } from './DispatchController'
 import { TrackingController } from './TrackingController'
 import { AddressRobotController } from './AddressRobotController'
 import { IncidentLocationController } from './IncidentLocationController'
+import { AreaWeatherController } from './AreaWeatherController'
 
 export class BusinessController {
   public config: ConfigController
@@ -17,6 +18,7 @@ export class BusinessController {
   public tracking: TrackingController
   public addressRobot: AddressRobotController
   public incidentLocation: IncidentLocationController
+  public areaWeather: AreaWeatherController
 
   constructor(private genericController: BusinessMapPort) {
     this.config = new ConfigController(this.genericController)
@@ -27,6 +29,7 @@ export class BusinessController {
     this.tracking = new TrackingController(this.genericController)
     this.addressRobot = new AddressRobotController(this.genericController)
     this.incidentLocation = new IncidentLocationController()
+    this.areaWeather = new AreaWeatherController(this.genericController)
   }
 }
 
@@ -38,3 +41,4 @@ export * from './DispatchController'
 export * from './TrackingController'
 export * from './AddressRobotController'
 export * from './IncidentLocationController'
+export * from './AreaWeatherController'

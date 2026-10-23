@@ -5,9 +5,9 @@ import View from "ol/View";
 import * as olProj from "ol/proj";
 import { v4 as uuidv4 } from "uuid";
 import {
-  AMAP_LAYER,
   VECTOR_LAYER,
 } from "../../../../baseComponent/OpenlayersMap/layers.ts";
+import { useBaseMapLayer } from "../../../../baseComponent/OpenlayersMap/useBaseMapLayer.ts";
 import {
   CENTER,
   ZOOM,
@@ -26,9 +26,10 @@ import type { Position } from "geojson";
 
 let mapInstance: Map | null;
 const vectoryLayer = VECTOR_LAYER();
+const baseLayer = useBaseMapLayer({ layerName: "animationMap" });
 const initMap = () => {
   mapInstance = markRaw(new Map({
-    layers: [AMAP_LAYER("animationMap"), vectoryLayer],
+    layers: [baseLayer, vectoryLayer],
     target: "animationMap",
     view: new View({
       center: olProj.fromLonLat(CENTER),

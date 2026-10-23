@@ -40,6 +40,11 @@ export const AMAP_URL = 'https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&s
 export const GOOGLE_URL =
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 
+/**
+ * @deprecated 写死高德 URL，绕过 useBaseSourceStore 统一底图管理。
+ * 新代码请使用 `useBaseMapLayer`（`./useBaseMapLayer.ts`），
+ * 它自动跟随 store 切换且共享全局 source 缓存池。
+ */
 export const AMAP_LAYER = (layerName?: string) => {
   return new TileLayer({
     source: new XYZ({

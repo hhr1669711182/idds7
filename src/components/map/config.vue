@@ -103,27 +103,21 @@
       </div>
 
       <div class="cfg-body">
-        <div class="cfg-left">
-          <div class="cfg-title">资源配置:</div>
-          <div class="cfg-card">
-            <div class="cfg-subtitle">选择大类:</div>
-            <div class="cfg-list">
-              <div v-for="cat in currentGroup.categories" :key="cat.id" class="cfg-row">
-                <button class="cfg-radio" type="button" @click="selectCategory(cat.id)">
-                  <span class="cfg-dot" :class="{ on: cat.id === selectedCategoryId }" />
-                  <span>{{ cat.name }}</span>
-                </button>
-                <el-switch v-model="cat.visible" size="small" @change="setCategoryVisible(cat)" />
-              </div>
+        <div class="cfg-card">
+          <div class="cfg-card-label">选择大类</div>
+          <div class="cfg-list">
+            <div v-for="cat in currentGroup.categories" :key="cat.id" class="cfg-row">
+              <button class="cfg-radio" type="button" @click="selectCategory(cat.id)">
+                <span class="cfg-dot" :class="{ on: cat.id === selectedCategoryId }" />
+                <span>{{ cat.name }}</span>
+              </button>
+              <el-switch v-model="cat.visible" size="small" @change="setCategoryVisible(cat)" />
             </div>
           </div>
         </div>
 
         <div class="cfg-card">
-          <div class="cfg-head">
-            <span class="cfg-subtitle">选择细类资源:</span>
-            <span class="cfg-subtitle">工具栏显示</span>
-          </div>
+          <div class="cfg-card-label">选择细类资源</div>
           <div class="cfg-items">
             <div v-for="resource in currentCategory.resources" :key="resource.id" class="cfg-row cfg-item">
               <label class="cfg-check">
@@ -230,7 +224,7 @@ const tabs: { label: string; value: ConfigTab }[] = [
 const featureSliders: SliderField[] = [
   { key: "minZoom", label: "最小缩放比例:", ...FEATURE_ZOOM_LIMITS.minZoom, step: 1 },
   { key: "maxZoom", label: "最大缩放比例:", ...FEATURE_ZOOM_LIMITS.maxZoom, step: 1 },
-  { key: "alarmZoom", label: "警情定位比例:", min: 0, max: 22, step: 1 },
+  { key: "alarmZoom", label: "警情定位比例:", min: 0, max: 21, step: 1 },
 ];
 
 const featureFieldGroups: FeatureGroup[] = [
@@ -582,24 +576,7 @@ onMounted(async () => {
   }
 }
 
-.cfg-feature {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-right: 4px;
-  display: grid;
-  gap: @gap;
-
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: @cyan-line;
-    border-radius: 3px;
-  }
-}
-
+.cfg-feature,
 .cfg-layer {
   flex: 1;
   min-height: 0;
@@ -614,6 +591,11 @@ onMounted(async () => {
     background: @cyan-line;
     border-radius: 3px;
   }
+}
+
+.cfg-feature {
+  display: grid;
+  gap: @gap;
 }
 
 /* 功能字段分组 */
@@ -643,9 +625,10 @@ onMounted(async () => {
   border-bottom: 1px solid rgba(0, 0, 0, 0.2);
 }
 
+/* 6 列基础网格：switch 占 2 列（每行 3 个）；radio / number 各占 3 列（每行 2 个，各半） */
 .cfg-group-fields {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(6, 1fr);
   gap: 4px 12px;
 }
 
@@ -668,12 +651,17 @@ onMounted(async () => {
   }
 }
 
-/* radio / number 字段：label 宽度自适应，不换行 */
-.cfg-option--radio .cfg-label,
-.cfg-option--number .cfg-label {
-  flex: 0 0 auto;
-  white-space: normal;
+/* switch 类占 2 列（每行 3 个） */
+.cfg-option {
+  grid-column: span 2;
 }
+
+/* radio / number 各占 3 列（每行 2 个，各半） */
+.cfg-option--radio,
+.cfg-option--number {
+  grid-column: span 3;
+}
+
 
 .cfg-option--radio .el-radio-group {
   gap: 4px;
@@ -685,9 +673,10 @@ onMounted(async () => {
 
 .cfg-slider-body {
   display: grid;
-  grid-template-columns: 34px 1fr 28px;
+  grid-template-columns: 34px 1fr 36px;
   align-items: center;
-  gap: @gap;
+  justify-items: center;
+  gap: @gap 12px;
   color: @cyan-text;
   font-size: 12px;
 }
@@ -696,7 +685,7 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: @gap;
-  padding: 6px 0 12px;
+  padding: 6px 0 10px;
 }
 
 .cfg-field {
@@ -705,39 +694,27 @@ onMounted(async () => {
 
 .cfg-body {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 12px;
+  grid-template-columns: 1fr 1.5fr;
+  gap: @gap;
 }
 
 .cfg-card {
   .panel-card();
 }
 
-.cfg-label,
-.cfg-title {
+.cfg-label {
   color: @cyan-text;
   font-size: 13px;
 }
 
-.cfg-title {
+.cfg-card-label {
+  color: rgba(176, 247, 255, 0.92);
+  font-size: 13px;
   margin-bottom: 8px;
 }
 
-.cfg-subtitle {
-  color: rgba(176, 247, 255, 0.92);
-  font-size: 13px;
-}
-
-.cfg-head,
 .cfg-row {
   .grid-row();
-}
-
-.cfg-head {
-  padding-bottom: 10px;
-}
-
-.cfg-row {
   min-height: 30px;
 }
 
@@ -764,7 +741,6 @@ onMounted(async () => {
 }
 
 .cfg-items {
-  max-height: 260px;
   overflow: auto;
   padding-right: 4px;
 }
@@ -788,7 +764,6 @@ onMounted(async () => {
 
 .cfg-footer {
   justify-content: flex-end;
-  // gap: @gap;
   padding-top: 12px;
 }
 </style>

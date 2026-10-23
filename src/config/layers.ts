@@ -229,7 +229,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     icon: 'mdi:road-variant',
     minZoom: 14.5,
   },
-   {
+  {
     ...dispatchGroup,
     ...categories.safety,
     id: 'gis:ssrk',

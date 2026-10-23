@@ -20,7 +20,12 @@ import type {
   TrackPlayData,
 } from './GenericProtocol'
 import type { LayerRefreshData } from './IOProtocol'
-import type { AddressRobotGisSearchData, TrackingVehicleGpsUpdateData } from './BusinessProtocol'
+import type {
+  AddressRobotGisSearchData,
+  AreaFenceClearData,
+  AreaFenceHighlightData,
+  TrackingVehicleGpsUpdateData,
+} from './BusinessProtocol'
 
 export interface BusinessMapPort {
   readonly ready: boolean
@@ -56,6 +61,10 @@ export interface BusinessMapPort {
   trackingVehicleGpsUpdate(data: TrackingVehicleGpsUpdateData): void
   addressRobotGisSearch(data: AddressRobotGisSearchData, options?: { businessId?: string }): void | Promise<void>
   addressRobotClear(options?: { businessId?: string }): void
+  /** 行政区划围栏高亮：定位到该围栏并闪烁后保留常驻描边 */
+  areaFenceHighlight(data: AreaFenceHighlightData, options?: { businessId?: string }): void
+  /** 清除行政区划围栏 */
+  areaFenceClear(data?: AreaFenceClearData): void
 }
 
 export interface MockMapPort {

@@ -3,7 +3,7 @@ import { onMounted, markRaw } from "vue";
 import Map from "ol/Map";
 import View from "ol/View";
 import * as olProj from "ol/proj";
-import { AMAP_LAYER } from "../../../../baseComponent/OpenlayersMap/layers.ts";
+import { useBaseMapLayer } from "../../../../baseComponent/OpenlayersMap/useBaseMapLayer.ts";
 import {
   CENTER,
   ZOOM,
@@ -13,9 +13,10 @@ import { easeOut, easeIn } from "ol/easing";
 import { Coordinate } from "ol/coordinate";
 
 let mapInstance: any;
+const baseLayer = useBaseMapLayer({ layerName: "animationMap" });
 const initMap = () => {
   mapInstance = markRaw(new Map({
-    layers: [AMAP_LAYER("animationMap")],
+    layers: [baseLayer],
     target: "animationMap",
     view: new View({
       center: olProj.fromLonLat(CENTER),

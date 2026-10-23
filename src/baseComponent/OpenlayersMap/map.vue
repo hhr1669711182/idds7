@@ -16,12 +16,12 @@ import { FeatureClickQuery } from "./FeatureClickQuery.ts";
 // 限制视图范围 要保留 lint检查不清除
 // import { useExtent } from "@/components/map/MapTools/commonTools/useExtent.ts";
 import {
-  AMAP_LAYER,
   GOOGLE_LAYER,
   TEMP_FRONTEND_LAYER_IDS,
   VECTOR_LAYER,
   isTempFrontendLayerId,
 } from "./layers.ts";
+import { useBaseMapLayer } from "./useBaseMapLayer.ts";
 import { TrafficTools } from "../../components/map/MapTools";
 import { ZOOM, CENTER } from "./const.map.ts";
 import { useResponsive } from "../../composables/useResponsive.ts";
@@ -39,13 +39,14 @@ import carImg from "@/assets/map/icon/car.png";
 import fireImg from "@/assets/map/icon/xfz.png";
 import { useFireStations } from "@/composables/useFireStations";
 import { useUnclosedIncidents } from "@/composables/useUnclosedIncidents";
+// @ts-expect-error TS6133: NavPanel 已被 v-if="false" 隐藏，引用处保留备用
 import { EventBus } from "@/utils/mitt.ts";
 import AlarmDetailPopup from "./AlarmDetailPopup.vue";
 import IncidentDetailDialog from "./IncidentDetailDialog.vue";
 import ZoomLevelControl from "./ZoomLevelControl.vue";
 import { useBaseSourceStore, useMapConfigStore } from "@/store"; // , useCommonStore
 // import { THEME_COLOR } from "../../const/const.common.ts";
-import { createBaseSourceSource } from "./baseSource.ts";
+
 // import { storeToRefs } from "pinia";
 import { GenericController } from "@/controller/core/generic";
 import { getBusinessMessageRuntime } from '@/controller/core/io/BusinessMessageRuntime';
@@ -115,8 +116,14 @@ const {
 } = useUnclosedIncidents();
 const { load: loadFireStations } = useFireStations();
 const wmsLayerMap = new globalThis.Map<string, TileLayer<TileWMS>>();
-let baseLayer: TileLayer | null = null;
-let overviewLayer: TileLayer | null = null;
+// 底图 TileLayer：跟随全局 baseSourceStore 切换，共享 source 缓存池
+const baseLayer = useBaseMapLayer({
+  onMaxZoomChange: (_mz: number) => nextTick(() => applyFeatureZoomLimits()),
+  onSourceChange: (layer: TileLayer, activeId: string) => {
+    if (activeId === 'thematic-road') layer.setBackground('#1c3863');
+  },
+});
+const overviewLayer = useBaseMapLayer();
 
 const applyFeatureZoomLimits = () => {
   if (!map) return;
@@ -137,31 +144,6 @@ watch(
   applyFeatureZoomLimits,
 );
 
-const syncBaseSourceLayer = () => {
-  if (!baseLayer) return;
-  const source = createBaseSourceSource(
-    baseSourceStore.activeId,
-    {
-      // night: themeColor.value === THEME_COLOR.NIGHT,
-    },
-    (_maxZoom: number) => nextTick(() => {
-      applyFeatureZoomLimits();
-    }),
-  );
-
-  const previous = baseLayer.getSource();
-  baseLayer.setSource(source);
-  if (overviewLayer) overviewLayer.setSource(source);
-
-  if(baseSourceStore.activeId === 'thematic-road') baseLayer.setBackground('#1c3863')
-
-  previous?.dispose();
-};
-
-watch(
-  () => baseSourceStore.activeId,//[() => baseSourceStore.activeId, () => themeColor.value],
-  syncBaseSourceLayer,
-);
 watch(
   () => baseSourceStore.trafficVisible,
   (v) => trafficTool?.setVisible(v),
@@ -283,10 +265,6 @@ const regionCfg = (configList[0] || {}).data || configList[0];
 
 const initMap = async () => {
   if (disposed) return;
-  baseLayer = AMAP_LAYER();
-  overviewLayer = AMAP_LAYER();
-  syncBaseSourceLayer();
-
   map =
     new OLMap({
       layers: [baseLayer, GOOGLE_LAYER, VECTOR_LAYER()],
@@ -483,9 +461,9 @@ const cleanup = () => {
       layer.dispose();
     });
     wmsLayerMap.clear();
-    overviewLayer?.dispose();
-    baseLayer?.getSource()?.dispose();
-    baseLayer?.dispose();
+    // source 由 useBaseMapLayer 全局缓存池共享，卸载时只销毁图层，不 dispose 共享 source
+    overviewLayer.dispose();
+    baseLayer.dispose();
     map.dispose();
     map = null;
   }
@@ -609,7 +587,8 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <NavPanel
+    <!-- 路径规划选点面板：暂时注释，保留组件与关联代码以便随时恢复 -->
+    <!-- <NavPanel
       ref="navPanelRef"
       :nav="nav"
       :alarmData="popups.alarmData.value"
@@ -617,7 +596,7 @@ onUnmounted(() => {
         popups.closeAlarmPopup();
         EventBus.emit('panelClose');
       "
-    />
+    /> -->
   </div>
 </template>
 

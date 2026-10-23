@@ -72,6 +72,17 @@ export type {
 } from '../../src/controller/core/protocol/BusinessProtocol';
 
 /**
+ * 行政区划围栏指令 DTO：
+ * AreaFenceHighlightData 必含 areaCode 与 GeoJSON 几何（EPSG:4326 / WGS-84），
+ * areaName/flash/strokeColor/strokeWidth 可选；flash=true 时渲染器先闪烁再落回常驻描边。
+ * AreaFenceClearData 仅含可选 businessId（缺省清除全部行政区划围栏）。
+ * 几何数据来源见 @/apis/envArea（GeoServer gis:env_area_fence 优先，DataV GeoAtlas 兜底）。
+ */
+export type {
+  AreaFenceHighlightData, AreaFenceClearData,
+} from '../../src/controller/core/protocol/BusinessProtocol';
+
+/**
  * disaster_profile.address_updated 的实际 data：AddressUpdatedData。
  * 必含 version: number、slots: Record<string, string | null>，
  * address/longitude/latitude/primaryStationId 可空；
@@ -112,10 +123,12 @@ export type {
  * trackingVehicleGpsUpdate(data: TrackingVehicleGpsUpdateData): void；
  * addressRobotGisSearch(data: AddressRobotGisSearchData, options?: { businessId?: string }): void | Promise<void>；
  * addressRobotClear(options?: { businessId?: string }): void。
+ * areaFenceHighlight(data: AreaFenceHighlightData, options?: { businessId?: string }): void；
+ * areaFenceClear(data?: AreaFenceClearData): void。
  * MockMapPort：render/disasterSite/simulate/clear/dispatchVehicles。
  * BusinessMapAttachment：kind?: 'map' | 'dispatch'、mock?、dispose?。
  * baseComponent/OpenlayersMap/businessMapPort.ts::createBusinessMapPort(generic)
- * 返回 { port, dispose }，装配 AddressRobotRenderer。
+ * 返回 { port, dispose }，装配 AddressRobotRenderer 与 AreaFenceRenderer。
  */
 export type {
   BusinessMapPort, BusinessMapAttachment, MockMapPort,

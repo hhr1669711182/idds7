@@ -13,22 +13,23 @@ import * as olProj from "ol/proj";
 import { ScaleLine } from "ol/control";
 import { readScaleLineUnit } from "@/config/scaleLine";
 import {
-  AMAP_LAYER,
   GOOGLE_LAYER,
   VECTOR_LAYER,
 } from "@/baseComponent/OpenlayersMap/layers";
+import { useBaseMapLayer } from "@/baseComponent/OpenlayersMap/useBaseMapLayer";
 import { CENTER, ZOOM } from "@/baseComponent/OpenlayersMap/const.map";
 import MarkDrawSurface from "@/components/MarkDraw/components/MarkDrawSurface.vue";
 
 const mapEl = ref<HTMLDivElement | null>(null);
 const olMap = shallowRef<OLMap | null>(null);
+const baseLayer = useBaseMapLayer();
 
 onMounted(() => {
   if (!mapEl.value) return;
   const map = new OLMap({
     target: mapEl.value,
-    // 与 map 页面完全相同的底图与矢量图层装配
-    layers: [AMAP_LAYER(), GOOGLE_LAYER, VECTOR_LAYER()],
+    // 底图跟随全局 store 切换，不再写死 AMAP_URL
+    layers: [baseLayer, GOOGLE_LAYER, VECTOR_LAYER()],
     view: new View({
       center: olProj.fromLonLat(CENTER),
       zoom: ZOOM.INIT,

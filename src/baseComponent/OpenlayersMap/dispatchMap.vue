@@ -33,12 +33,12 @@ import {
   RESOURCE_CIRCLE_LAYER_CLASS,
 } from "./FeatureClickQuery.ts";
 import {
-  AMAP_LAYER,
   GOOGLE_LAYER,
   TEMP_FRONTEND_LAYER_IDS,
   VECTOR_LAYER,
   isTempFrontendLayerId,
 } from "./layers.ts";
+import { useBaseMapLayer } from "./useBaseMapLayer.ts";
 import { TrafficTools } from "../../components/map/MapTools";
 import { ZOOM, CENTER } from "./const.map.ts";
 // import { EXTENT } from "./const.map.ts";  // TS6133: 仅被注释代码引用，import 保留备用
@@ -143,8 +143,7 @@ import DispatchRoutePreview from './DispatchRoutePreview.vue';
 import { getSelectedRoute, matchStationRoute, type RouteAlternative, type StationRouteAlternatives } from '../amap/routeAlternatives';
 // import type { AlarmData } from "../amap/useAmapTools.ts";  // TS6133: 未使用，import 保留备用
 import ZoomLevelControl from "./ZoomLevelControl.vue";
-import { THEME_COLOR } from "../../const/const.common.ts";
-import { createBaseSourceSource } from "./baseSource.ts";
+
 import ljImg from "@/assets/icons-svg/lj.svg";
 import xcImg from "@/assets/icons-svg/xc.svg";
 import zjImg from "@/assets/icons-svg/jz.svg";
@@ -153,7 +152,7 @@ import { storeToRefs } from "pinia";
 import TileWMS from "ol/source/TileWMS";
 import { getWMSLayerOptions } from "@/apis/layers";
 import { LAYER_SOURCE_CONFIGS } from "@/config/layers";
-import { useBaseSourceStore, useCommonStore, useMapConfigStore, useTabsStore } from "@/store";
+import { useBaseSourceStore, useMapConfigStore, useTabsStore } from "@/store";
 
 const props = withDefaults(defineProps<{
   mapId?: string;
@@ -196,7 +195,6 @@ let fireManager: TempFrontendLayerManager | null = null;
 
 /** 已添加到地图的 WMS 图层（id -> ol.layer.Tile） */
 const baseSourceStore = useBaseSourceStore();
-const commonStore = useCommonStore();
 const mapConfigStore = useMapConfigStore();
 const {
   alarms: unclosedIncidents,
@@ -205,17 +203,18 @@ const {
 const { stations: fireStations, load: loadFireStations, getNearestFireStation } = useFireStations();
 /** WFS 全量队站原始列表；主管队站改由独立 zhu.png 图标上图，fireManager 填充时排除主管 id 避免图标重叠 */
 let allFireStations: typeof fireStations.value = [];
-const { themeColor } = storeToRefs(commonStore);
 const wmsLayerMap = new globalThis.Map<string, TileLayer<TileWMS>>();
-let baseLayer: TileLayer | null = null;
-let overviewLayer: TileLayer | null = null;
-let baseSourceMaxZoom = ZOOM.MAX;
+// 底图 TileLayer：跟随全局 baseSourceStore 切换，共享 source 缓存池
+const baseLayer = useBaseMapLayer({
+  onMaxZoomChange: (_mz: number) => nextTick(() => applyFeatureZoomLimits()),
+});
+const overviewLayer = useBaseMapLayer();
 let trafficTool: TrafficTools | null = null;
 
 const applyFeatureZoomLimits = () => {
   if (!map) return;
   const { minZoom, maxZoom } = mapConfigStore.config.feature;
-  const effectiveMaxZoom = Math.min(maxZoom, baseSourceMaxZoom);
+  const effectiveMaxZoom = maxZoom;
   const view = map.getView();
   view.setMinZoom(minZoom);
   view.setMaxZoom(effectiveMaxZoom);
@@ -703,23 +702,6 @@ watch(
   () => [...stationLayerStore.primaryStationIds],
   () => syncFireManagerStations(),
 );
-
-const syncBaseSourceLayer = () => {
-  if (!baseLayer) return;
-  const source = createBaseSourceSource(baseSourceStore.activeId, {
-    night: themeColor.value === THEME_COLOR.NIGHT,
-  }, (maxZoom: number) => nextTick(() => {
-    baseSourceMaxZoom = maxZoom;
-    applyFeatureZoomLimits();
-  }));
-
-  baseLayer.setSource(source);
-  if (overviewLayer) overviewLayer.setSource(source);
-};
-
-watch([() => baseSourceStore.activeId, () => themeColor.value], () => {
-  syncBaseSourceLayer();
-});
 
 watch(() => baseSourceStore.trafficVisible, (visible) => {
   if (trafficTool) {
@@ -2046,14 +2028,11 @@ const openIncidentDetail = () => {
 };
 
 const initMap = () => {
-  baseLayer = AMAP_LAYER();
-  overviewLayer = AMAP_LAYER();
-  syncBaseSourceLayer();
   const googleLayer = GOOGLE_LAYER;
   const vectorLayer = VECTOR_LAYER();
 
   const overviewMapControl = new OverviewMap({
-    layers: [overviewLayer!],
+    layers: [overviewLayer],
     collapsed: false,
     collapsible: true,
   });
@@ -2065,13 +2044,13 @@ const initMap = () => {
   });
 
   const mapInstance = markRaw(new OLMap({
-    layers: [baseLayer!, googleLayer, vectorLayer],
+    layers: [baseLayer, googleLayer, vectorLayer],
     target: props.mapId,
     view: new View({
       center: olProj.fromLonLat(CENTER),
       zoom: ZOOM.INIT,
       minZoom: mapConfigStore.config.feature.minZoom,
-      maxZoom: Math.min(mapConfigStore.config.feature.maxZoom, baseSourceMaxZoom),
+      maxZoom: mapConfigStore.config.feature.maxZoom,
     }),
   }));
   map = mapInstance;
@@ -2513,12 +2492,14 @@ const cleanup = () => {
   if (map) {
     wmsLayerMap.forEach((layer) => map?.removeLayer(layer));
     wmsLayerMap.clear();
+    // source 由 useBaseMapLayer 全局缓存池共享，卸载时只销毁图层，不 dispose 共享 source
+    overviewLayer.dispose();
+    baseLayer.dispose();
     map.dispose();
     map = null;
   }
   // 快照随地图实例失效；下次挂载由 initMap 按 store 现状重建
   forcedStationLayerSnapshot = null;
-  baseLayer = null;
 };
 
 // tabs 模型
