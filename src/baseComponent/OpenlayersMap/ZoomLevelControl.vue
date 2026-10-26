@@ -1,7 +1,7 @@
 <!--
  * @Author: hhr
  * @Date: 2026-05-15 17:08:09
- * @LastEditTime: 2026-07-09 10:38:44
+ * @LastEditTime: 2026-10-26 15:44:01
  * @LastEditors: hhr
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\baseComponent\OpenlayersMap\ZoomLevelControl.vue
@@ -32,7 +32,7 @@ const displayZoom = computed(() => {
   position: absolute;
   top: calc(100% - 180px);
   left: 0.5em;
-  z-index: 60;
+  z-index: 1;
   border-radius: var(--radius-md);
   background-color: var(--widget-bg);
   backdrop-filter: blur(var(--glass-blur));

@@ -66,42 +66,42 @@ const formatElapsed = (milliseconds: number) => {
   return milliseconds >= 1000 ? `${(milliseconds / 1000).toFixed(2)} 秒` : `${Math.round(milliseconds)} 毫秒`;
 };
 
-/** 高德拥堵状态文案：畅通 / 缓行 / 拥堵 / 严重拥堵 */
-const congestionLabel = (status: string | number) => {
-  switch (String(status).trim()) {
-    case "1": return "畅通";
-    case "2": return "缓行";
-    case "3": return "拥堵";
-    case "4":
-    case "5": return "严重拥堵";
-    default: break;
-  }
-  const key = String(status ?? "").trim().toUpperCase();
-  if (key.includes("严重") || key.includes("极度") || key.includes("SEVERE")) return "严重拥堵";
-  if (key.includes("拥堵") || key.includes("CONGEST")) return "拥堵";
-  if (key.includes("缓行") || key.includes("SLOW")) return "缓行";
-  if (key.includes("畅通") || key.includes("SMOOTH")) return "畅通";
-  return "未知";
-};
+// 高德拥堵状态文案：畅通 / 缓行 / 拥堵 / 严重拥堵（路况图例暂未启用，保留待恢复）
+// const congestionLabel = (status: string | number) => {
+//   switch (String(status).trim()) {
+//     case "1": return "畅通";
+//     case "2": return "缓行";
+//     case "3": return "拥堵";
+//     case "4":
+//     case "5": return "严重拥堵";
+//     default: break;
+//   }
+//   const key = String(status ?? "").trim().toUpperCase();
+//   if (key.includes("严重") || key.includes("极度") || key.includes("SEVERE")) return "严重拥堵";
+//   if (key.includes("拥堵") || key.includes("CONGEST")) return "拥堵";
+//   if (key.includes("缓行") || key.includes("SLOW")) return "缓行";
+//   if (key.includes("畅通") || key.includes("SMOOTH")) return "畅通";
+//   return "未知";
+// };
 
-const congestionLegendColor = (status: string | number) => {
-  switch (String(status).trim()) {
-    case "1": return "#3BA55D";
-    case "2": return "#F2C744";
-    case "3": return "#F08A24";
-    case "4":
-    case "5": return "#E64545";
-    default: break;
-  }
-  const key = String(status ?? "").trim().toUpperCase();
-  if (key.includes("严重") || key.includes("极度") || key.includes("SEVERE")) return "#E64545";
-  if (key.includes("拥堵") || key.includes("CONGEST")) return "#F08A24";
-  if (key.includes("缓行") || key.includes("SLOW")) return "#F2C744";
-  if (key.includes("畅通") || key.includes("SMOOTH")) return "#3BA55D";
-  return "#8A97A6";
-};
+// const congestionLegendColor = (status: string | number) => {
+//   switch (String(status).trim()) {
+//     case "1": return "#3BA55D";
+//     case "2": return "#F2C744";
+//     case "3": return "#F08A24";
+//     case "4":
+//     case "5": return "#E64545";
+//     default: break;
+//   }
+//   const key = String(status ?? "").trim().toUpperCase();
+//   if (key.includes("严重") || key.includes("极度") || key.includes("SEVERE")) return "#E64545";
+//   if (key.includes("拥堵") || key.includes("CONGEST")) return "#F08A24";
+//   if (key.includes("缓行") || key.includes("SLOW")) return "#F2C744";
+//   if (key.includes("畅通") || key.includes("SMOOTH")) return "#3BA55D";
+//   return "#8A97A6";
+// };
 
-const routeSummary = ref<{ distance: number; duration: number; elapsed: number; segments: RouteCongestionSegment[] } | null>(null);
+const routeSummary = ref<{ distance: number; duration: number; elapsed: number; segments: RouteCongestionSegment[]; trafficLights: number } | null>(null);
 
 /** Input box display state: only synchronized to the store on selection / map pick / clear */
 const endpointInput = reactive<Record<EndpointKey, string>>({
@@ -289,6 +289,7 @@ const parseRouteFeatures = (response: unknown) => {
   const payload = response as {
     totalDistance?: string | number
     totalTime?: string | number
+    trafficLights?: string | number
     features?: {
       tmcs?: TmcsItem[]
       geometry?: { coordinates?: unknown }
@@ -320,7 +321,6 @@ const parseRouteFeatures = (response: unknown) => {
     const topLevel = root as { tmcs?: TmcsItem[]; cost?: { tmcs?: TmcsItem[] } };
     const tmcs = feature?.properties?.tmcs ?? topLevel.cost?.tmcs ?? topLevel.tmcs;
     if (Array.isArray(tmcs)) {
-      if (seenPolyline.size) return;
       tmcs.forEach((item) => {
         if (!item?.polyline) return;
         const segCoords: [number, number][] = [];
@@ -334,7 +334,7 @@ const parseRouteFeatures = (response: unknown) => {
             segCoords.push(amapGcj02ToWgs84([lng, lat]));
           }
         });
-        if (segCoords.length >= 2) {
+        if (segCoords.length >= 2 && !seenPolyline.has(rawPolyline)) {
           seenPolyline.add(rawPolyline);
           segments.push({ coords: segCoords, status: item.status ?? "" });
         }
@@ -346,6 +346,7 @@ const parseRouteFeatures = (response: unknown) => {
     segments,
     distance: Number(root?.totalDistance ?? payload?.totalDistance ?? 0),
     duration: Number(root?.totalTime ?? payload?.totalTime ?? 0),
+    trafficLights: Number(root?.trafficLights ?? payload?.trafficLights ?? 0),
   };
 };
 
@@ -374,7 +375,7 @@ const planRoute = async () => {
           })
         : await amapApi.driving({ origin, destination });
 
-    const { coords, segments, distance, duration } = parseRouteFeatures(response);
+    const { coords, segments, distance, duration, trafficLights } = parseRouteFeatures(response);
     if (!coords.length) {
       ElMessage.warning("未找到可用路径");
       routeSummary.value = null;
@@ -382,7 +383,7 @@ const planRoute = async () => {
     }
     tool.showRoute(coords, segments);
     tool.fitPoints(coords);
-    routeSummary.value = { distance, duration, elapsed: performance.now() - startedAt, segments };
+    routeSummary.value = { distance, duration, elapsed: performance.now() - startedAt, segments, trafficLights };
   } catch (error) {
     console.warn("[routePlanPanel] planRoute failed:", error);
     ElMessage.error("路径规划失败，请稍后重试");
@@ -617,14 +618,18 @@ onBeforeUnmount(() => {
               <span class="rp-result-label">计算耗时</span>
               <span class="rp-result-value">{{ formatElapsed(routeSummary.elapsed) }}</span>
             </div>
+            <div class="rp-result-item">
+              <span class="rp-result-label">红绿灯</span>
+              <span class="rp-result-value">{{ routeSummary.trafficLights }} 个</span>
+            </div>
           </div>
-          <div v-if="routeSummary.segments.length" class="rp-congestion">
+          <!-- <div v-if="routeSummary.segments.length" class="rp-congestion">
             <span class="rp-congestion-label">路况</span>
             <span v-for="(seg, idx) in routeSummary.segments" :key="idx" class="rp-congestion-item">
               <i class="rp-congestion-dot" :style="{ background: congestionLegendColor(seg.status) }" />
               {{ congestionLabel(seg.status) }}
             </span>
-          </div>
+          </div> -->
         </div>
         <div v-else-if="!canPlan" class="rp-status">
           <span class="rp-status-text">请选择起点与终点后点击分析</span>
@@ -636,10 +641,15 @@ onBeforeUnmount(() => {
 
 <style scoped lang="less">
 .route-plan-panel {
-  /* 在 circleQueryPanel 的 flex 容器内流式排列，自动跟随上方检索面板高度 */
+  /* 在 circleQueryPanel 的 flex 容器内流式排列，自动跟随上方检索面板高度；
+     flex 可压缩 + min-height:0：与检索面板同时展开受视口限制时，
+     由内部 .rp-body 滚动兜底，避免整块被屏幕裁断 */
   position: relative;
   width: 100%;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
@@ -647,7 +657,12 @@ onBeforeUnmount(() => {
   color: var(--text-primary);
   font-size: 13px;
   overflow: hidden;
+}
 
+/* 头部 / 车型 tab 固定不参与压缩，只压缩 body 内容区 */
+.rp-header,
+.rp-tabs {
+  flex: 0 0 auto;
 }
 .rp-header {
   background: var(--header-bg);
@@ -680,13 +695,20 @@ onBeforeUnmount(() => {
 .rp-fold:hover,
 .rp-close:hover { opacity: 0.75; }
 
-.rp-tabs { padding: 0 8px; }
+.rp-tabs {
+  padding: 0 8px;
+  flex: 0 0 auto;
+}
 
 .rp-body {
   padding: 10px 14px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* 面板高度受限时此处出现内部滚动，表单/结果区完整可达 */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .rp-field {

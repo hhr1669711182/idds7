@@ -18,11 +18,7 @@ import { cssVar, themeAccent, withAlpha } from '@/utils/themeColor'
 import type { ResourceFilterSet } from '@/types/search'
 import startImg from '@/assets/icons-svg/map/start.svg'
 import endImg from '@/assets/icons-svg/map/end.svg'
-
-/** Direction arrow along the route, pointing from start to end */
-const DIRECTION_ARROW_SVG = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#ffffff" stroke="#1f2933" stroke-width="1.5" d="M12 2 L20 20 L12 15.5 L4 20 Z"/></svg>`,
-)}`
+import routeArrowImg from '@/assets/icons-svg/map/routeArrow.svg'
 /** A congestion segment along the route, used for per-segment coloring */
 export interface RouteCongestionSegment {
   /** WGS84 coordinates for this segment */
@@ -123,7 +119,6 @@ export class SearchResultTool {
       }),
     )
 
-    // The start/end markers have their own layer; showRoute() only clears the path layer
     this.endpointLayer = markRaw(
       new VectorLayer({
         source: markRaw(new VectorSource()),
@@ -322,7 +317,7 @@ export class SearchResultTool {
       })
       feature.setStyle(
         new Style({
-          stroke: new Stroke({ color: congestionColor(segment.status), width: 5 }),
+          stroke: new Stroke({ color: congestionColor(segment.status), width: 7 }),
           zIndex: 1,
         }),
       )
@@ -332,7 +327,8 @@ export class SearchResultTool {
   }
 
   /**
-   * 需求 3：在路径线上按固定像素间隔绘制方向箭头，指示起点→终点行进方向
+   * 在路径线上绘制方向箭头，指示起点→终点行进方向
+   * 箭头尺寸与线宽对齐（5px），密度按路线长度自适应
    */
   private drawRouteArrows(coords: [number, number][]) {
     const source = this.routeLayer.getSource()
@@ -340,25 +336,29 @@ export class SearchResultTool {
     const line = new LineString(coords.map((lngLat) => fromLonLat(lngLat)))
     const length = line.getLength()
     if (!Number.isFinite(length) || length <= 0) return
-    const arrowCount = Math.min(60, Math.max(3, Math.round(length / 2000)))
-    const pixelCount = arrowCount
-    for (let i = 1; i < pixelCount; i++) {
-      const fraction = i / pixelCount
+    // 密度：每 300m 一个箭头，下限 5 个、上限 150 个
+    const arrowCount = Math.min(150, Math.max(5, Math.round(length / 300)))
+    for (let i = 1; i < arrowCount; i++) {
+      const fraction = i / arrowCount
       const point = line.getCoordinateAt(fraction)
-      const before = line.getCoordinateAt(Math.max(0, fraction - 0.004))
-      const after = line.getCoordinateAt(Math.min(1, fraction + 0.004))
-      const rotation = (Math.atan2(after[1] - before[1], after[0] - before[0]) * 180) / Math.PI
+      const before = line.getCoordinateAt(Math.max(0, fraction - 0.002))
+      const after = line.getCoordinateAt(Math.min(1, fraction + 0.002))
+      // OL Icon.rotation 单位弧度，0=正北，顺时针
+      // 投影坐标 x=东、y=北，方向向量 (dx,dy) 对应旋转角 = atan2(dx, dy)
+      const dx = after[0] - before[0]
+      const dy = after[1] - before[1]
+      const rotation = Math.atan2(dx, dy)
       const feature = new Feature({ geometry: new Point(point) })
       feature.setStyle(
         new Style({
           image: new Icon({
-            src: DIRECTION_ARROW_SVG,
+            src: routeArrowImg,
             anchor: [0.5, 0.5],
             rotateWithView: true,
             rotation,
-            width: 14,
-            height: 14,
-            opacity: 0.95,
+            width: 7,
+            height: 7,
+            opacity: 0.9,
           }),
           zIndex: 2,
         }),
@@ -369,7 +369,7 @@ export class SearchResultTool {
   /** Path line style: consistent with the existing route planning tool (routePlan.vue) */
   private routeLineStyle() {
     return new Style({
-      stroke: new Stroke({ color: themeAccent(ROUTE_LINE_COLOR), width: 5 }),
+      stroke: new Stroke({ color: themeAccent(ROUTE_LINE_COLOR), width: 7 }),
       zIndex: 1,
     })
   }

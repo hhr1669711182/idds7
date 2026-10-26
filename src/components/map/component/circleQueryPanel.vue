@@ -16,6 +16,7 @@ import { isOlMap } from "@/utils/mapTool";
 import { amapApi, type PoiFeature, type RegeoData } from "@/apis/amap";
 import { parseCoordinateText } from "@/utils/coordinateText";
 import { useCurrentMap } from "@/composables/useCurrentMap";
+import { useClickOutside } from "@/composables/useClickOutside";
 import type { SearchViewOption } from "@/types/search";
 import RoutePlanPanel from "./routePlanPanel.vue";
 
@@ -107,6 +108,11 @@ const onClearCircle = () => {
 
 const viewSelectVisible = ref(false);
 const routeIconClicking = ref(false);
+/** input-panel 根节点：外部点击（地图/其他面板）时隐藏视图下拉 */
+const inputPanelRef = ref<HTMLElement | null>(null);
+useClickOutside(inputPanelRef, () => {
+  viewSelectVisible.value = false;
+});
 const bind = (tool: AnyTool | null) => {
   currentTool = tool;
   if (currentTool && typeof currentTool.getSourceData === "function") {
@@ -370,7 +376,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="search-panel-wrapper themed-panel">
     <!-- input-panel：检索框（路径规划图标前缀 + 查询按钮后缀） -->
-    <div class="input-panel">
+    <div class="input-panel" ref="inputPanelRef">
       <div class="input-panel-inner" @click="onFocusInput">
         <span class="input-icon-route" title="路径规划" @click.stop="onToggleRoute">
           <svg width="1em" height="1em" fill="currentColor" aria-hidden="true">
@@ -421,6 +427,7 @@ onBeforeUnmount(() => {
         </span>
       </div>
       <template v-if="!searchPanelCollapsed">
+        <div class="cq-content">
         <!-- 双数据源 tab -->
         <el-tabs v-model="activeTab" class="cq-tabs" @tab-change="onTabChange">
           <el-tab-pane :label="`地址信息 (${searchStore.addressResults.items.length})`" name="address" />
@@ -508,6 +515,7 @@ onBeforeUnmount(() => {
             <el-button class="cq-clear-btn" @click="onClearCircle">清空圈选</el-button>
           </div>
         </template>
+        </div>
       </template>
     </div>
 
@@ -526,6 +534,8 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 8px;
   width: 360px;
+  /* 列整体受视口约束：top 留 0.5em，底部对称 0.5em，防止双面板同时展开时整列出屏 */
+  max-height: calc(100vh - 1em);
 }
 
 .input-panel {
@@ -619,6 +629,17 @@ onBeforeUnmount(() => {
   max-height: calc(100vh - 220px);
   display: flex;
   flex-direction: column;
+  /* 允许被 flex 压缩，内容交由 .cq-content 内部滚动，避免压缩时底部圈选配置被裁切 */
+  min-height: 0;
+}
+
+/* 检索面板内容区：面板高度受限时由这里整体滚动（.cq-list 仍保留自身 120-260px 内滚） */
+.cq-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .cq-header {
@@ -682,7 +703,7 @@ onBeforeUnmount(() => {
   min-height: 120px;
   max-height: 260px;
   overflow-y: auto;
-  padding: 0 8px 8px;
+  padding: 1px 8px 8px;
 }
 
 .cq-empty {

@@ -8,6 +8,7 @@ import { createBaiduSource } from '../tools/baidu.ts'
 import { tileLoadFunction } from '@/utils/mapTool.ts'
 import { LAYER_NAMES } from './layers.ts'
 import { buildFilterString, getBasemapFilter } from '@/utils/themeColor.ts'
+import { appEnv } from '@/config/env.ts'
 
 export type BaseSourceProviderId =
   | 'thunderforest'
@@ -173,7 +174,7 @@ const createOfflineSource = (mode: BaseSourceMode) => {
   return buildUrlSource({
     url: envOr(
       key,
-      `http://192.168.173.198:8080/geoserver/gwc/service/tms/1.0.0/mbtiles:${DEFAULT_OFFLINE_SOURCE}@WebMercatorQuad@png/{z}/{x}/{-y}.png`,
+      `${appEnv.geoserverBaseUrl}wc/service/tms/1.0.0/mbtiles:${DEFAULT_OFFLINE_SOURCE}@WebMercatorQuad@png/{z}/{x}/{-y}.png`,
     ),
     // url: envOr(key, `/tiles/offline/${mode}/{z}/{x}/{y}.png`),
   })
