@@ -3,6 +3,7 @@ import { MESSAGE_EVENT_KEY, MOCK_CALL_LOCATION_ID, type MessageEventKey } from '
 import { useUserStore } from '@/store/useUserStore'
 import { usePendingCallLocationStore } from '@/store/usePendingCallLocationStore'
 import { usePendingDispatchAlarmStore } from '@/store/usePendingDispatchAlarmStore'
+import { useVehicleTrackStore } from '@/store/useVehicleTrackStore'
 import { createMessageStagePolicy, getSharedMapStage } from './messageStagePolicy'
 import type { BusinessController } from '../business'
 import type { BusinessMapPort } from '../protocol/BusinessMapPort'
@@ -31,6 +32,10 @@ export class InputController {
       usePendingDispatchAlarmStore().consume()
       this.business.call.clearLocateCalls()
       this.business.incidentLocation.reset()
+      // 值守代表本轮警情结束：清除终态标记与轨迹状态，避免再切回调派时恢复旧轨迹
+      const track = useVehicleTrackStore()
+      track.clearTerminal()
+      track.reset()
     }
     onShared()
     this.unsubscribers.push(watch(() => user.sharedStateRevision, onShared, { flush: 'sync' }))

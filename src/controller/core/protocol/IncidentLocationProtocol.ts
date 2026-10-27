@@ -58,7 +58,7 @@ export type IncidentLocationAcceptance =
     }
   | {
       accepted: false
-      reason: 'invalid' | 'identity' | 'version' | 'session' | 'stage' | 'watermark' | 'disposed'
+      reason: 'invalid' | 'identity' | 'version' | 'session' | 'stage' | 'watermark' | 'terminal' | 'disposed'
     }
 
 export interface IncidentLocationRenderingPort {

@@ -7,7 +7,7 @@ import { THEME_COLOR } from '../const'
  * 预设盘是「主题感知的二元组」：每个预设同时给出 DAY / NIGHT 两套值，
  * 切换主题时自动取对应的一套，因此预设盘与主题正交、互不覆盖。
  */
-export const PALETTE_PRESETS = ['NIGHT', 'DAY', 'OCEAN', 'EMBER'] as const
+export const PALETTE_PRESETS = ['NIGHT', 'DAY', 'OCEAN', 'EMBER', 'GLASS'] as const
 export type PalettePreset = (typeof PALETTE_PRESETS)[number]
 export type PaletteName = PalettePreset | 'CUSTOM'
 

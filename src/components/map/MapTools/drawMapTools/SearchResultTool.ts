@@ -4,7 +4,7 @@ import ImageWMS from 'ol/source/ImageWMS'
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
 import Feature from 'ol/Feature'
-import { Point, LineString } from 'ol/geom'
+import { Point } from 'ol/geom'
 import { Style, Circle as StyleCircle, Stroke, Fill, Icon } from 'ol/style'
 import { fromLonLat } from 'ol/proj'
 import type Map from 'ol/Map'
@@ -15,10 +15,11 @@ import { getSVGForSrcById } from '@/utils'
 
 import { isOlMap } from '@/utils/mapTool'
 import { cssVar, themeAccent, withAlpha } from '@/utils/themeColor'
+import { createRouteArrowFeatures, createRouteLineFeature, projectCoords } from '@/baseComponent/tools/routeBase'
+import type { LngLat } from '@/utils/coordTransform'
 import type { ResourceFilterSet } from '@/types/search'
 import startImg from '@/assets/icons-svg/map/start.svg'
 import endImg from '@/assets/icons-svg/map/end.svg'
-import routeArrowImg from '@/assets/icons-svg/map/routeArrow.svg'
 /** A congestion segment along the route, used for per-segment coloring */
 export interface RouteCongestionSegment {
   /** WGS84 coordinates for this segment */
@@ -300,9 +301,7 @@ export class SearchResultTool {
     if (!coords || coords.length < 2) return
 
     if (!segments || segments.length < 1) {
-      const feature = new Feature({
-        geometry: new LineString(coords.map((lngLat) => fromLonLat(lngLat))),
-      })
+      const feature = createRouteLineFeature(coords as LngLat[])
       feature.setStyle(this.routeLineStyle())
       source?.addFeature(feature)
       this.drawRouteArrows(coords)
@@ -312,9 +311,7 @@ export class SearchResultTool {
     // 按拥堵等级分段：每段独立 Feature + 独立颜色，段边界轻微重叠避免缝隙
     segments.forEach((segment) => {
       if (!segment.coords || segment.coords.length < 2) return
-      const feature = new Feature({
-        geometry: new LineString(segment.coords.map((lngLat) => fromLonLat(lngLat))),
-      })
+      const feature = createRouteLineFeature(segment.coords as LngLat[])
       feature.setStyle(
         new Style({
           stroke: new Stroke({ color: congestionColor(segment.status), width: 7 }),
@@ -333,38 +330,11 @@ export class SearchResultTool {
   private drawRouteArrows(coords: [number, number][]) {
     const source = this.routeLayer.getSource()
     if (!source || coords.length < 2) return
-    const line = new LineString(coords.map((lngLat) => fromLonLat(lngLat)))
-    const length = line.getLength()
-    if (!Number.isFinite(length) || length <= 0) return
-    // 密度：每 300m 一个箭头，下限 5 个、上限 150 个
-    const arrowCount = Math.min(150, Math.max(5, Math.round(length / 300)))
-    for (let i = 1; i < arrowCount; i++) {
-      const fraction = i / arrowCount
-      const point = line.getCoordinateAt(fraction)
-      const before = line.getCoordinateAt(Math.max(0, fraction - 0.002))
-      const after = line.getCoordinateAt(Math.min(1, fraction + 0.002))
-      // OL Icon.rotation 单位弧度，0=正北，顺时针
-      // 投影坐标 x=东、y=北，方向向量 (dx,dy) 对应旋转角 = atan2(dx, dy)
-      const dx = after[0] - before[0]
-      const dy = after[1] - before[1]
-      const rotation = Math.atan2(dx, dy)
-      const feature = new Feature({ geometry: new Point(point) })
-      feature.setStyle(
-        new Style({
-          image: new Icon({
-            src: routeArrowImg,
-            anchor: [0.5, 0.5],
-            rotateWithView: true,
-            rotation,
-            width: 7,
-            height: 7,
-            opacity: 0.9,
-          }),
-          zIndex: 2,
-        }),
-      )
-      source.addFeature(feature)
-    }
+    // 统一走路线底座的方向箭头（分级密度 + 合流去重），替代按线长自适应的旧实现
+    const projected = projectCoords(coords as LngLat[])
+    const resolution = this.map.getView().getResolution() ?? 1
+    const safeResolution = Number.isFinite(resolution) && resolution > 0 ? resolution : 1
+    source.addFeatures(createRouteArrowFeatures([projected], safeResolution))
   }
   /** Path line style: consistent with the existing route planning tool (routePlan.vue) */
   private routeLineStyle() {

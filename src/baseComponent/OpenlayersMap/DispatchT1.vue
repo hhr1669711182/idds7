@@ -56,6 +56,8 @@ import {
   type DispatchT1WebSocketData,
 } from './DispatchT1';
 import { getSharedMapStage } from '@/utils/seatSharedState';
+import { useVehicleTrackStore } from '@/store/useVehicleTrackStore';
+import { isTerminalIncidentState } from '@/utils/incidentState';
 
 const props = defineProps<{
   map: OlMap | null;
@@ -221,6 +223,17 @@ const closeHydrantPopup = () => {
   hydrantOverlay.value?.setPosition(undefined);
   service.value?.setGenericFeaturePopupSuppressed(false);
 };
+
+// 终态警情由车辆历史轨迹接管：清掉调派模块已渲染的队站、路线与车辆
+const vehicleTrackStore = useVehicleTrackStore();
+watch(
+  () => [vehicleTrackStore.terminalIncidentId, vehicleTrackStore.terminalState] as const,
+  ([incidentId, terminalState]) => {
+    if (!incidentId || !isTerminalIncidentState(terminalState)) return;
+    service.value?.reset();
+  },
+  { flush: 'sync' },
+);
 
 const ensureHydrantQuery = () => {
   const map = props.map;

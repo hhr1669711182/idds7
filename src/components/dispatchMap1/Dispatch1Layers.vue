@@ -11,36 +11,24 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useDispatch1MapStore } from '@/store/useDispatch1MapStore';
 import { useLayersStore } from '@/store/useLayersStore';
+import { useVehicleTrackStore } from '@/store/useVehicleTrackStore';
 import type { LayerConfig } from '@/config/layers';
 import { TEMP_FRONTEND_LAYER_IDS } from '@/baseComponent/OpenlayersMap/layers';
 
 const dispatch1MapStore = useDispatch1MapStore();
 const layersStore = useLayersStore();
+const vehicleTrackStore = useVehicleTrackStore();
 const { checkedIds } = storeToRefs(dispatch1MapStore);
 const { items } = storeToRefs(layersStore);
+const { buttonVisible: vehicleTrackButtonVisible, panelVisible: vehicleTrackPanelVisible } =
+  storeToRefs(vehicleTrackStore);
 
-type LayerToolbarItem = LayerConfig & {
+type ToolbarItem = LayerConfig & {
   disabled?: boolean;
-};
-
-type ToolbarItem = LayerToolbarItem | {
-  id: 'all';
-  name: string;
-  icon: string;
-  disabled?: boolean;
-};
-
-const selectAllItem: ToolbarItem = {
-  id: 'all',
-  name: '全选',
-  icon: 'mdi:checkbox-multiple-marked-outline',
 };
 
 const visibleItems = computed(() =>
   items.value.filter((item) => item.id !== TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER),
-);
-const toolbarItems = computed<ToolbarItem[]>(() =>
-  visibleItems.value.length ? [...visibleItems.value, selectAllItem] : [],
 );
 const allIds = computed(() =>
   visibleItems.value.filter((item) => !item.disabled).map((item) => item.id),
@@ -49,8 +37,7 @@ const isAllSelected = computed(() =>
   allIds.value.length > 0
   && allIds.value.every((id) => checkedIds.value.includes(id)),
 );
-const isChecked = (id: string) =>
-  id === 'all' ? isAllSelected.value : checkedIds.value.includes(id);
+const isChecked = (id: string) => checkedIds.value.includes(id);
 
 const toggleLayer = (id: string) => {
   const next = new Set(checkedIds.value);
@@ -61,18 +48,32 @@ const toggleLayer = (id: string) => {
 
 const onTileClick = (item: ToolbarItem) => {
   if (item.disabled) return;
-  if (item.id === 'all') {
-    dispatch1MapStore.setCheckedIds(isAllSelected.value ? [] : [...allIds.value]);
+  toggleLayer(item.id);
+};
+
+const onSelectAllClick = () => {
+  dispatch1MapStore.setCheckedIds(isAllSelected.value ? [] : [...allIds.value]);
+};
+
+/** 有轨迹时切换面板；暂无轨迹时按当前警情重新查询，成功后自动打开面板。 */
+const onVehicleTrackClick = () => {
+  if (vehicleTrackStore.points.length) {
+    vehicleTrackStore.togglePanel();
     return;
   }
-  toggleLayer(item.id);
+  vehicleTrackStore.requestReload();
 };
 </script>
 
 <template>
-  <div v-if="toolbarItems.length" class="dispatch1-layer-toolbar" role="toolbar" aria-label="Dispatch1 图层工具栏">
+  <div
+    v-if="visibleItems.length || vehicleTrackButtonVisible"
+    class="dispatch1-layer-toolbar"
+    role="toolbar"
+    aria-label="Dispatch1 图层工具栏"
+  >
     <button
-      v-for="item in toolbarItems"
+      v-for="item in visibleItems"
       :key="item.id"
       class="tile"
       :class="{ checked: isChecked(item.id), disabled: !!item.disabled }"
@@ -87,6 +88,33 @@ const onTileClick = (item: ToolbarItem) => {
         <Icon :icon="item.icon || 'mdi:layers-outline'" :size="20" />
       </span>
       <span class="label">{{ item.name }}</span>
+    </button>
+    <!-- 车辆历史轨迹入口：终态警情查询到轨迹后才出现，再次点击即关闭回放面板 -->
+    <button
+      v-if="vehicleTrackButtonVisible"
+      class="tile"
+      :class="{ checked: vehicleTrackPanelVisible }"
+      type="button"
+      @click="onVehicleTrackClick"
+    >
+      <span class="icon">
+        <Icon icon="mdi:car-outline" :size="20" />
+      </span>
+      <span class="label">车辆GPS</span>
+    </button>
+    <button
+      class="tile"
+      :class="{ checked: isAllSelected }"
+      type="button"
+      @click="onSelectAllClick"
+    >
+      <span v-if="isAllSelected" class="badge" role="img" aria-label="已选">
+        <Icon icon="mdi:check" :size="12" />
+      </span>
+      <span class="icon">
+        <Icon icon="mdi:checkbox-multiple-marked-outline" :size="20" />
+      </span>
+      <span class="label">全选</span>
     </button>
   </div>
 </template>

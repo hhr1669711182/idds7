@@ -101,6 +101,12 @@ export type {
 } from '../../src/controller/core/protocol/IncidentLocationProtocol';
 
 /**
+ * IncidentLocationAcceptance 拒绝原因含 'terminal'：
+ * 警情处于 5 个终态（ARRIVED / OPERATION_COMPLETED / RETURNED / CLOSED /
+ * POST_ACTION_REVIEWED）时不再上图，由车辆历史轨迹链路接管，并 clearAll。
+ */
+
+/**
  * SharedState 源：core/protocol/SharedStateProtocol.ts。
  * v?/updatedAt?、auth?/user?/seat?、phase?、currentAlarm?、mode?；
  * auth/user/seat/currentAlarm 可空，auth 支持 Tenantid / X-Trace-Id。

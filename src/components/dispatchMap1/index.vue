@@ -26,6 +26,8 @@ import {
 import Compass from '@/components/map/compass.vue';
 import BottomRightPanel from '@/components/map/brp.vue';
 import Dispatch1Layers from './Dispatch1Layers.vue';
+import VehicleTrackPanel from './VehicleTrackPanel.vue';
+import { useVehicleTrackStore } from '@/store/useVehicleTrackStore';
 import { TEMP_FRONTEND_LAYER_IDS } from '@/baseComponent/OpenlayersMap/layers';
 import { readScaleLineUnit } from '@/config/scaleLine';
 
@@ -36,6 +38,7 @@ type OpenlayersMapExpose = {
 const dispatch1MapStore = useDispatch1MapStore();
 const pendingDispatchAlarmStore = usePendingDispatchAlarmStore();
 const layersStore = useLayersStore();
+const vehicleTrackStore = useVehicleTrackStore();
 const mapRef = shallowRef<OpenlayersMapExpose | null>(null);
 const olMap = shallowRef<OlMap | null>(null);
 const pageRef = ref<HTMLElement | null>(null);
@@ -157,6 +160,7 @@ onMounted(async () => {
     />
 
     <Dispatch1Layers />
+    <VehicleTrackPanel v-if="vehicleTrackStore.panelVisible" />
     <Compass />
     <BottomRightPanel />
   </div>

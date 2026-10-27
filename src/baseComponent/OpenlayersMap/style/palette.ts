@@ -74,6 +74,9 @@ export const VEHICLE_LABEL_BG_COLOR = 'rgba(17, 24, 39, 0.86)'
 /** 车辆标签字体 */
 export const VEHICLE_LABEL_FONT = '700 12px sans-serif'
 
+/** 车辆历史轨迹全轨迹线颜色，与实时路线蓝区分 */
+export const VEHICLE_HISTORY_TRACK_COLOR = '#1D9BF0'
+
 /** 消防站使用率进度条底色 */
 export const FIRE_STATION_USAGE_TRACK_COLOR = 'rgba(148,163,184,0.36)'
 

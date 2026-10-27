@@ -16,6 +16,7 @@ const PRESET_OPTIONS: { value: PalettePreset; label: string; desc: string }[] = 
   { value: "DAY", label: "日间清爽", desc: "浅色底 + 科技蓝主色" },
   { value: "OCEAN", label: "深海蓝", desc: "偏冷的调试盘" },
   { value: "EMBER", label: "琥珀暖调", desc: "暖色调试盘" },
+  { value: "GLASS", label: "毛玻璃", desc: "Apple 风格磨砂质感" },
 ];
 
 /** 可自定义的调色盘 token（覆盖预设盘） */

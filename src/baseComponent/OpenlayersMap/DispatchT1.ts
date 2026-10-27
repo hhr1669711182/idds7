@@ -17,18 +17,16 @@ import { unByKey } from 'ol/Observable'
 import { fromLonLat, transform } from 'ol/proj'
 import TileWMS from 'ol/source/TileWMS'
 import VectorSource from 'ol/source/Vector'
-import { asArray } from 'ol/color'
-// import { Fill, Stroke, Style } from 'ol/style'  // TS6133: Fill / Stroke 未使用，保留备用
-import { Style } from 'ol/style'
+// import { Fill, Stroke, Style } from 'ol/style'  // TS6133: Fill / Stroke / Style 未使用，保留备用
 import { MAP_LAYER_Z_INDEX } from './layerOrder'
-import {
-  buildRouteDirectionFeatures,
-  buildTmcFeatures,
-  fetchDrivingRoutes,
-  type AmapDrivingResult,
-  type AmapTmcStatus,
-} from '@/baseComponent/amap/useAmapTools'
+import { fetchDrivingRoutes, type AmapDrivingResult, type AmapTmcStatus } from '@/baseComponent/amap/useAmapTools'
 import { createRouteLineStyle, getStyle, MAP_ICON_SRC } from '@/baseComponent/OpenlayersMap/style'
+import {
+  createRouteArrowFeatures,
+  createRouteTmcFeatures,
+  dimRouteStyle,
+  projectCoords,
+} from '@/baseComponent/tools/routeBase'
 import { DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS } from '@/baseComponent/OpenlayersMap/FeatureClickQuery'
 // import { mountPolygonLayer } from '@/baseComponent/OpenlayersMap/mountPolygonLayer'  // TS6133: 未使用，保留备用
 import type { PolygonLayerManager } from '@/baseComponent/OpenlayersMap/mountPolygonLayer'
@@ -48,6 +46,8 @@ import {
   type DispatchWorkflowStatus,
 } from '@/controller/core/business/DispatchController1'
 import { geoserverApi } from '@/apis/geoserver'
+import { useVehicleTrackStore } from '@/store/useVehicleTrackStore'
+import { isTerminalIncidentState } from '@/utils/incidentState'
 import {
   // listDispatchVehicles,  // TS6133: 未使用，保留备用
   dispatchVehiclesBatch,
@@ -281,6 +281,11 @@ export class DispatchT1 {
       'data' in wrappedMessage && wrappedMessage.data
         ? wrappedMessage.data
         : (wrappedMessage as DispatchT1AlarmProfileData)
+    // 终态警情不再执行调派链路（主管/支撑队站、路径规划、车辆预取），只保留历史轨迹
+    if (isTerminalIncidentState(data.incidentState) || useVehicleTrackStore().isTerminalIncident(data.incidentId)) {
+      this.reset()
+      return this.getState()
+    }
     const longitude = Number(data.longitude)
     const latitude = Number(data.latitude)
     if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
@@ -653,8 +658,8 @@ export class DispatchT1 {
       this.removeRouteFeatures(station.id)
       results.forEach((result, planIndex) => {
         const alternative = planIndex > 0
-        const projectedPath = result.fullPath.map((point) => fromLonLat(point))
-        const tmcFeatures = buildTmcFeatures(result.tmcs)
+        const projectedPath = projectCoords(result.fullPath)
+        const tmcFeatures = createRouteTmcFeatures(result.tmcs)
         if (tmcFeatures.length) {
           tmcFeatures.forEach((feature, index) => {
             const status = (feature.get('tmcStatus') ?? 'unknown') as AmapTmcStatus
@@ -664,7 +669,7 @@ export class DispatchT1 {
             feature.set('routePlanIndex', planIndex)
             feature.set('routeAlternative', alternative)
             // 候选方案半透明置底，避免与选中路线等权重叠。
-            feature.setStyle(alternative ? this.dimRouteStyle(style) : style)
+            feature.setStyle(alternative ? dimRouteStyle(style) : style)
           })
           this.routeSource.addFeatures(tmcFeatures)
         } else {
@@ -676,7 +681,7 @@ export class DispatchT1 {
           feature.set('routePlanIndex', planIndex)
           feature.set('routeAlternative', alternative)
           if (alternative) {
-            feature.setStyle(this.dimRouteStyle(createRouteLineStyle(this.routeColor(station.id), 6)))
+            feature.setStyle(dimRouteStyle(createRouteLineStyle(this.routeColor(station.id), 6)))
           } else {
             feature.set('color', this.routeColor(station.id))
           }
@@ -695,7 +700,7 @@ export class DispatchT1 {
           this.routeSource.addFeature(routePathFeature)
         }
         // 箭头按方案分别生成并随方案裁剪；共享路段重叠的箭头坐标一致，视觉无差异。
-        const directionFeatures = buildRouteDirectionFeatures([projectedPath])
+        const directionFeatures = createRouteArrowFeatures([projectedPath])
         directionFeatures.forEach((feature) => {
           feature.set('stationId', station.id)
           feature.set('routePlanIndex', planIndex)
@@ -958,22 +963,6 @@ export class DispatchT1 {
       .forEach((feature) => this.routeSource.removeFeature(feature))
   }
 
-  /** 候选路线样式：克隆原样式后描边透明度降到 70% 并置底，与选中方案区分。 */
-  private dimRouteStyle(style: Style | Style[]): Style | Style[] {
-    const styles = (Array.isArray(style) ? style : [style]).map((item) => {
-      const copy = item.clone()
-      const stroke = copy.getStroke()
-      const color = stroke?.getColor()
-      if (stroke && color) {
-        const rgba = asArray(color as string | number[]).slice()
-        rgba[3] = (rgba[3] ?? 1) * 0.7 //路线透明度，0~1，0为全透明，1为不透明
-        stroke.setColor(rgba)
-      }
-      copy.setZIndex((copy.getZIndex() ?? 0) - 10)
-      return copy
-    })
-    return Array.isArray(style) ? styles : styles[0]
-  }
 
   private cancelRoute(stationId: string): void {
     this.routeVersions.set(stationId, (this.routeVersions.get(stationId) ?? 0) + 1)

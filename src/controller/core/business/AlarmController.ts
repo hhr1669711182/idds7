@@ -11,7 +11,10 @@ import type { AlarmProfileSyncData } from '../protocol'
 import type { AlarmIncidentStateData } from '../protocol/LegacyMessageProtocol'
 import type { MessageEnvelope } from '@/types/message'
 import { toDispatchAlarmProfile } from '@/utils/alarmProfile'
+import { isTerminalIncidentState } from '@/utils/incidentState'
 import { usePendingDispatchAlarmStore } from '@/store/usePendingDispatchAlarmStore'
+import { useIncidentLocationStore } from '@/store/useIncidentLocationStore'
+import { useVehicleTrackStore } from '@/store/useVehicleTrackStore'
 import { useUserStore } from '@/store/useUserStore'
 import { PAGE_CONDITION, setPageCondition } from '@/register/pageCondition'
 
@@ -28,12 +31,36 @@ export class AlarmController {
    * [EC-05-2] 警情精确上图控制 / 警情画像状态更新
    */
   public syncAlarmProfile(data: AlarmProfileSyncData) {
+    const incidentId = String(data.incidentId ?? '').trim()
+    const trackStore = useVehicleTrackStore()
+    if (isTerminalIncidentState(data.incidentState) || trackStore.isTerminalIncident(incidentId)) {
+      trackStore.markTerminal(incidentId, String(data.incidentState ?? ''))
+      usePendingDispatchAlarmStore().consume()
+      useIncidentLocationStore().clearAll()
+      void setPageCondition(PAGE_CONDITION.DISPATCH, 'alarm.profile.sync.terminal')
+      return
+    }
+    if (incidentId && trackStore.terminalIncidentId && trackStore.terminalIncidentId !== incidentId)
+      trackStore.clearTerminal()
     usePendingDispatchAlarmStore().queue(data, this.contextKey)
     void setPageCondition(PAGE_CONDITION.DISPATCH, 'alarm.profile.sync')
   }
 
   public incidentStateChanged(envelope: MessageEnvelope<AlarmIncidentStateData>) {
-    if (String(envelope.data?.newState ?? '').toUpperCase() !== 'CREATED') return
+    const incidentId = String(envelope.data?.incidentId ?? '').trim()
+    const newState = String(envelope.data?.newState ?? '').trim().toUpperCase()
+    const trackStore = useVehicleTrackStore()
+    if (isTerminalIncidentState(newState)) {
+      // 终态警情只走车辆历史轨迹链路：清掉待调派画像并移除原有警情上图结果
+      trackStore.markTerminal(incidentId, newState)
+      usePendingDispatchAlarmStore().consume()
+      useIncidentLocationStore().clearAll()
+      void setPageCondition(PAGE_CONDITION.DISPATCH, 'alarm.terminal')
+      return
+    }
+    if (incidentId && trackStore.terminalIncidentId && trackStore.terminalIncidentId !== incidentId)
+      trackStore.clearTerminal()
+    if (newState !== 'CREATED') return
     const eventId = String(envelope.meta?.eventId ?? '')
     if (eventId && this.handledEvents.has(eventId)) return
     if (eventId) {

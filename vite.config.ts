@@ -131,6 +131,13 @@ export default defineConfig(({ mode, command }) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/a/, ''),
         },
+        // 车辆历史轨迹查询直连外部车辆定位服务（不走 bff-client），生产环境需由部署层做同等反代。
+        '/car-track-api': {
+          target: 'http://192.168.169.40:31319',//'http://192.168.172.50:8644',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/car-track-api/, ''),
+        },
         ...(env.VITE_DISPATCH_MOCK === 'true'
           ? {
               '/api/dispatch': {

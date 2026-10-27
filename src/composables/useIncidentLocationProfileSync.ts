@@ -2,6 +2,8 @@ import { watch } from 'vue'
 import { useUserStore } from '@/store/useUserStore'
 import { useMessageStore } from '@/store/useMessageStore'
 import { useIncidentLocationStore } from '@/store/useIncidentLocationStore'
+import { useVehicleTrackStore } from '@/store/useVehicleTrackStore'
+import { isTerminalIncidentState } from '@/utils/incidentState'
 import { fetchIncidentLocationProfile } from '@/apis/incidentProfile'
 import {
   getIncidentLocationContextKey,
@@ -26,12 +28,51 @@ export const createIncidentLocationProfileSync = (): (() => void) => {
   let sequence = 0
   let lastContextKey: string | null = null
   const readContext = () => readIncidentLocationContext(user, getSharedMapStage(user.rawState, user.MapMode))
+  /** 共享态 currentAlarm.lifecycleStage（受理席写入，用于区分 closed 的历史轨迹链路） */
+  const readLifecycleStage = (): string => {
+    const value = user.rawState?.currentAlarm?.lifecycleStage
+    return typeof value === 'string' ? value.trim().toLowerCase() : ''
+  }
 
   const stop = watch(
     () => user.sharedStateRevision,
     () => {
+      const track = useVehicleTrackStore()
       const context = readContext()
       const contextKey = getIncidentLocationContextKey(context)
+      const lifecycleStage = readLifecycleStage()
+      // 监听新警情：共享态 incidentId 与已标记/已加载的轨迹警情不一致时，删除旧警情缓存，
+      // 避免旧终态标记继续拦截新警情的画像补水
+      const staleTrackIds = [
+        String(track.terminalIncidentId ?? '').trim(),
+        String(track.incidentId ?? '').trim(),
+      ].filter(Boolean)
+      if (context.incidentId && staleTrackIds.some((id) => id !== context.incidentId)) {
+        track.clearTerminal()
+        track.reset()
+        lastContextKey = null
+      }
+      // 共享态已结案：与「警情上图」链路区分，只同步终态标记并交给车辆历史轨迹接管
+      if (context.incidentId && lifecycleStage === 'closed') {
+        track.markTerminal(context.incidentId, 'closed')
+        lastContextKey = contextKey
+        return
+      }
+      // 共享态删除/未写 lifecycleStage：撤销 closed 同步出的终态标记，避免刷新后仍回放轨迹
+      if (
+        context.incidentId &&
+        !lifecycleStage &&
+        track.terminalIncidentId === context.incidentId &&
+        track.terminalState === 'CLOSED'
+      ) {
+        track.clearTerminal()
+        track.reset()
+        // 结案撤销后允许非终态链路重新补水（恢复警情上图）
+        lastContextKey = null
+      }
+      // 终态警情只走车辆历史轨迹：共享态可能滞后于 WS 终态，终态标记有效时不拉画像补水，
+      // 否则刷新后会把已清空的主管队站/周边资源/路径规划重新画回图上。
+      if (String(track.terminalIncidentId ?? '').trim() && isTerminalIncidentState(track.terminalState)) return
       if (disposed || lastContextKey === contextKey) return
       lastContextKey = contextKey
       const requestSequence = ++sequence

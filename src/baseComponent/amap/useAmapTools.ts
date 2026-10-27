@@ -16,7 +16,6 @@ import Overlay from 'ol/Overlay'
 // import { EventBus } from "@/utils/mitt.ts";
 import { useDispatchStore } from '@/store' // useTabsStore,
 import {
-  createRouteDirectionArrowStyle,
   createSelectedTmcLineStyle,
   getStyle,
   MAP_ICON_SRC,
@@ -43,6 +42,7 @@ import {
   type LngLat,
   toRouteProxyLngLatString,
 } from './amapCoordinate.ts'
+import { createRouteArrowFeatures, createRouteTmcFeatures } from '@/baseComponent/tools/routeBase'
 
 export {
   parseAmapLocation,
@@ -86,8 +86,6 @@ const ROUTE_VIDEO_LEAD_SECONDS = 10
 const ROUTE_NETWORK_SAMPLE_METERS = 30
 const ROUTE_NETWORK_MERGE_TOLERANCE_METERS = 22
 const ROUTE_NETWORK_DIRECTION_TOLERANCE_RAD = Math.PI / 4
-const ROUTE_ARROW_SPACING_PIXELS = 40
-const ROUTE_ARROW_MERGE_TOLERANCE_PIXELS = 8
 const ROUTE_VIDEO_CHECKPOINT_COLORS: Record<RouteVideoCheckpointStatus, string> = {
   pending: '#22c55e',
   playing: '#facc15',
@@ -629,15 +627,8 @@ export const buildBoundaryFeature = (ringsLngLat: LngLat[][]) => {
 }
 
 export const buildTmcFeatures = (tmcs: AmapTmcSegment[]) => {
-  return tmcs
-    .map((t) => {
-      const coords = t.polyline.map((p) => olProj.fromLonLat(p))
-      if (coords.length < 2) return null
-      const f = new Feature({ geometry: new LineString(coords) })
-      f.set('tmcStatus', t.status)
-      return f
-    })
-    .filter(Boolean) as Feature<LineString>[]
+  // 统一委托路线底座，避免与 OpenlayersMap 消费方各写一套 TMC 建线
+  return createRouteTmcFeatures(tmcs)
 }
 
 /**
@@ -648,65 +639,8 @@ export const buildTmcFeatures = (tmcs: AmapTmcSegment[]) => {
 const getRouteArrowResolution = (resolution: number) => 2 ** Math.round(Math.log2(resolution))
 
 export const buildRouteDirectionFeatures = (routeCoordinates: number[][][], resolution = 1): Feature<Point>[] => {
-  if (!Number.isFinite(resolution) || resolution <= 0) return []
-  type ArrowSegment = {
-    from: number[]
-    to: number[]
-    length: number
-    startDistance: number
-  }
-  const routes = routeCoordinates
-    .map((coordinates) => {
-      const segments: ArrowSegment[] = []
-      let totalLength = 0
-      for (let index = 1; index < coordinates.length; index += 1) {
-        const from = coordinates[index - 1]
-        const to = coordinates[index]
-        const length = Math.hypot(to[0] - from[0], to[1] - from[1])
-        if (length <= 0) continue
-        segments.push({ from, to, length, startDistance: totalLength })
-        totalLength += length
-      }
-      return { segments, totalLength }
-    })
-    .filter((route) => route.segments.length && route.totalLength > 0)
-  if (!routes.length) return []
-
-  // 分级调整密度，避免缩放的每一帧都沿路线移动箭头。
-  // 相邻级别间距为两倍，已有锚点保留，只在中间增补或移除箭头。
-  const arrowResolution = getRouteArrowResolution(resolution)
-  const spacing = ROUTE_ARROW_SPACING_PIXELS * arrowResolution
-  const mergeTolerance = ROUTE_ARROW_MERGE_TOLERANCE_PIXELS * arrowResolution
-  const arrows: Feature<Point>[] = []
-  const acceptedPoints: number[][] = []
-
-  routes.forEach(({ segments, totalLength }) => {
-    // 从终点向起点取样，使共享同一终点的路线在合流段天然对齐；
-    // 使用距终点的整倍间距作为固定锚点，末端留一个间距。
-    for (let distance = totalLength - spacing; distance >= 0; distance -= spacing) {
-      const segment =
-        segments.find((candidate) => distance <= candidate.startDistance + candidate.length) ??
-        segments[segments.length - 1]
-      const ratio = Math.min(1, Math.max(0, (distance - segment.startDistance) / segment.length))
-      const point = [
-        segment.from[0] + (segment.to[0] - segment.from[0]) * ratio,
-        segment.from[1] + (segment.to[1] - segment.from[1]) * ratio,
-      ]
-      if (
-        acceptedPoints.some((accepted) => Math.hypot(accepted[0] - point[0], accepted[1] - point[1]) <= mergeTolerance)
-      )
-        continue
-
-      // 路线角度以朝上为基准；样式函数负责适配箭头素材的默认朝向。
-      const rotation = -Math.atan2(segment.to[1] - segment.from[1], segment.to[0] - segment.from[0]) + Math.PI / 2
-      const feature = new Feature({ geometry: new Point(point) }) as Feature<Point>
-      feature.set('routeDirectionArrow', true)
-      feature.setStyle(createRouteDirectionArrowStyle(rotation))
-      arrows.push(feature)
-      acceptedPoints.push(point)
-    }
-  })
-  return arrows
+  // 统一委托路线底座（分级密度 + 合流去重），与 OpenlayersMap 消费方共用同一实现
+  return createRouteArrowFeatures(routeCoordinates, resolution)
 }
 
 /** 缩放时分级增减固定锚点上的箭头，避免沿路线滑动。 */

@@ -118,6 +118,7 @@ import fireImg from "@/assets/map/icon/xfz.png";
 import {
   type JRAlarmData,
 } from "../amap/mapData.ts";
+import { queryCarHistoryTrack } from "@/apis/carTrack";
 import { useUnclosedIncidents } from '@/composables/useUnclosedIncidents'
 import { useFireStations } from '@/composables/useFireStations'
 import dayjs from 'dayjs'
@@ -126,6 +127,11 @@ import { EventBus } from "@/utils/mitt.ts";
 import AlarmDetailPopup from "./AlarmDetailPopup.vue";
 import IncidentDetailDialog from "./IncidentDetailDialog.vue";
 import { fetchIncidentDetail } from "@/apis/incidentProfile";
+import { extractLatestBatchFirstVehicleId } from "@/apis/carTrack";
+import { createVehicleTrackRenderer, type VehicleTrackRenderer } from "./VehicleTrackRenderer";
+import { useVehicleTrackStore } from "@/store/useVehicleTrackStore";
+import { isTerminalIncidentState } from "@/utils/incidentState";
+import { createLogger } from "@/utils/logger";
 import {
   toIncidentDetailData,
   type IncidentDetailData,
@@ -2266,8 +2272,12 @@ const initMap = () => {
     // 刷新恢复门控：dispatch / dispatchTrack 阶段（/dispatch1 且业务状态为
     // 调派或调派跟踪）允许持久化点位上图；其他阶段清空缓存，避免旧警情残留。
     // dispatchTrack 需保留警情定位数据以供模拟调派跟踪复用路线起点/终点。
+    // 终态警情只执行车辆历史轨迹：先判定，避免恢复持久化点位并重查主管队站/周边资源/路径。
+    // 共享态 currentAlarm 依赖受理席写入 localStorage，可能滞后于 WS 推送的终态，
+    // 因此刷新判定以持久化的终态标记为最高优先级，不再要求 currentAlarm 匹配。
     const stage = getSharedMapStage(userStore.rawState, userStore.MapMode);
-    if (stage !== "dispatch" && stage !== "dispatchTrack") {
+    const terminalIncident = isTerminalIncidentState(vehicleTrackStore.terminalState);
+    if (terminalIncident || (stage !== "dispatch" && stage !== "dispatchTrack")) {
       incidentLocationStore.clearAll();
     }
 
@@ -2355,7 +2365,8 @@ const initMap = () => {
     }
 
     // 刷新恢复：持久化点位已直接上图，异步重建辖区面/队站过滤/路径规划等派生数据
-    incidentLocationStore.restoreOnMapMount();
+    // 终态警情不重建，只由车辆历史轨迹链路接管
+    if (!terminalIncident) incidentLocationStore.restoreOnMapMount();
   }
 
   syncLayers(dispatchCheckedIds.value);
@@ -2430,6 +2441,8 @@ const initMap = () => {
  */
 const cleanup = () => {
   mockMapGeneration += 1;
+  vehicleTrackRenderer?.dispose();
+  vehicleTrackRenderer = null;
   detachBusinessMap?.();
   detachBusinessMap = null;
   resetRouteVideoPlayback();
@@ -2525,9 +2538,243 @@ const tabs = ref([
   },
 ]);
 
+/**
+ * 车辆历史轨迹：终态警情到达后按调派车辆查询外部定位服务，
+ * 面板显隐由 useVehicleTrackStore 驱动，地图侧只负责轨迹上图。
+ */
+const vehicleTrackStore = useVehicleTrackStore();
+const vehicleTrackLogger = createLogger('vehicle-track');
+let vehicleTrackRenderer: VehicleTrackRenderer | null = null;
+let vehicleTrackUnsubscribe: (() => void) | null = null;
+/** 查询序号，用于丢弃过期响应（警情快速切换时） */
+let vehicleTrackRequestSeq = 0;
+
+/** 共享态 currentAlarm.lifecycleStage（受理席写入，用于识别 closed 的历史轨迹链路） */
+const readCurrentLifecycleStage = () => {
+  const value = userStore.currentAlarm?.lifecycleStage;
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+};
+
+const ensureVehicleTrackRenderer = () => {
+  if (!map) return null;
+  if (!vehicleTrackRenderer) vehicleTrackRenderer = createVehicleTrackRenderer(map);
+  return vehicleTrackRenderer;
+};
+
+const syncVehicleTrackLayer = (fit: boolean) => {
+  const renderer = ensureVehicleTrackRenderer();
+  if (!renderer) return;
+  if (!vehicleTrackStore.panelVisible || !vehicleTrackStore.points.length) {
+    renderer.clear();
+    return;
+  }
+  renderer.render(vehicleTrackStore.points, vehicleTrackStore.cursor, { fit });
+};
+
+/**
+ * 终态警情上图前清理原有警情产物：路径规划、路线预览面板、模拟调派状态、
+ * 警情点位与主管队站/周边资源声明。终态地图只保留车辆历史轨迹。
+ */
+const clearOriginalIncidentArtifacts = () => {
+  resetRouteVideoPlayback();
+  clearMockTrackingTimers();
+  nav?.stop();
+  nav?.clearRoutes();
+  routePreviewVisible.value = false;
+  routePreviewLoading.value = false;
+  routePreviewStations.value = [];
+  lastRoutePlanResults = [];
+  pendingRoutePlan = null;
+  featureClickQuery?.close();
+  incidentLocationStore.clearAll();
+};
+
+/**
+ * 按警情查询调派车辆与历史轨迹：查不到车辆或轨迹时按钮仍保留，仅提示；
+ * 多车辆场景默认取最新批次第一辆车，后续按车辆所属消防站及车辆发车时间扩展。
+ */
+const loadVehicleTrack = async (incidentId: string, options?: { openPanel?: boolean }) => {
+  const seq = ++vehicleTrackRequestSeq;
+  vehicleTrackStore.loading = true;
+  try {
+    const detail = await fetchIncidentDetail<IncidentDetailResponseData>(incidentId);
+    if (seq !== vehicleTrackRequestSeq) return;
+    const vehicleId = extractLatestBatchFirstVehicleId(detail);
+    vehicleTrackLogger.info('警情详情车辆', { incidentId, vehicleId });
+    if (!vehicleId) {
+      vehicleTrackStore.markUnavailable(incidentId);
+      vehicleTrackLogger.info('按钮已显示但暂无调派车辆', { incidentId });
+      ElMessage.warning('该警情暂无调派车辆，请重新选择');
+      return;
+    }
+    // 查询车辆历史轨迹 '8aee87a783f84e21018432fe5e814311'
+    const result = await queryCarHistoryTrack(vehicleId);
+    if (seq !== vehicleTrackRequestSeq) return;
+    const points = (Array.isArray(result) ? result : [])
+      .filter((point) => Number.isFinite(point?.longitude) && Number.isFinite(point?.latitude))
+      .sort((a, b) => String(a.gpsTime).localeCompare(String(b.gpsTime)));
+    vehicleTrackLogger.info('历史轨迹查询结果', {
+      incidentId,
+      vehicleId,
+      count: points.length,
+    });
+    if (!points.length) {
+      vehicleTrackStore.markUnavailable(incidentId);
+      vehicleTrackLogger.info('按钮已显示但暂无轨迹数据', { incidentId, vehicleId });
+      ElMessage.warning('未查询到历史轨迹数据，请重新选择');
+      return;
+    }
+    vehicleTrackStore.setTrack(points, vehicleId, incidentId, options);
+  } catch (error) {
+    if (seq !== vehicleTrackRequestSeq) return;
+    vehicleTrackLogger.error('车辆历史轨迹查询失败', error);
+    vehicleTrackStore.markUnavailable(incidentId);
+    ElMessage.warning('未查询到历史轨迹数据，请重新选择');
+  }
+};
+
+/** 终态警情：清理原有警情产物并切换到历史轨迹，重复触发时沿用已加载轨迹。 */
+const beginVehicleTrack = (incidentId: string) => {
+  // 仅当前警情终态才清理图上产物，避免其他警情的终态消息误清当前渲染
+  const currentIncidentId = String(userStore.currentAlarm?.incidentId ?? "").trim();
+  if (!currentIncidentId || currentIncidentId === incidentId) clearOriginalIncidentArtifacts();
+  // 同一警情连续终态（到达→作业完成→返回…）保留已加载轨迹，避免反复清空
+  if (vehicleTrackStore.incidentId === incidentId && vehicleTrackStore.points.length) {
+    vehicleTrackLogger.info("同一警情终态重复到达，沿用已有轨迹", { incidentId });
+    return;
+  }
+  if (vehicleTrackStore.incidentId === incidentId && vehicleTrackStore.loading) return;
+  // 先让「车辆GPS」按钮出现，再异步查询轨迹；查询成功即打开面板并停在 0 点
+  vehicleTrackStore.markUnavailable(incidentId);
+  void loadVehicleTrack(incidentId, { openPanel: true });
+};
+
+/** 警情状态变更：终态转为历史轨迹并清理原有警情产物，非终态换警情时清空上一条轨迹。 */
+const handleAlarmStateChanged = (envelope: { data?: unknown }) => {
+  const data = envelope?.data as { incidentId?: string; newState?: string } | undefined;
+  vehicleTrackLogger.info('收到 ALARM_INCIDENT/STATE_CHANGED', data);
+  const incidentId = String(data?.incidentId ?? '').trim();
+  const newState = String(data?.newState ?? '').trim().toUpperCase();
+  if (!incidentId) return;
+  if (!isTerminalIncidentState(newState)) {
+    if (vehicleTrackStore.terminalIncidentId && vehicleTrackStore.terminalIncidentId !== incidentId)
+      vehicleTrackStore.clearTerminal();
+    if (vehicleTrackStore.incidentId && vehicleTrackStore.incidentId !== incidentId) {
+      vehicleTrackRequestSeq += 1;
+      vehicleTrackStore.reset();
+      vehicleTrackRenderer?.clear();
+    }
+    return;
+  }
+  vehicleTrackStore.markTerminal(incidentId, newState);
+  beginVehicleTrack(incidentId);
+};
+
+// 无轨迹时点击按钮：按当前警情重新查询，成功后自动打开面板
+watch(
+  () => vehicleTrackStore.reloadToken,
+  () => {
+    const incidentId = vehicleTrackStore.incidentId;
+    if (!incidentId) return;
+    vehicleTrackLogger.info('按钮点击重新查询', { incidentId });
+    void loadVehicleTrack(incidentId, { openPanel: true });
+  },
+);
+
+watch(
+  () => vehicleTrackStore.panelVisible,
+  (visible) => {
+    if (!visible) {
+      vehicleTrackRenderer?.clear();
+      return;
+    }
+    syncVehicleTrackLayer(true);
+  },
+);
+
+watch(
+  () => vehicleTrackStore.cursor,
+  (cursor) => {
+    if (!vehicleTrackStore.panelVisible) return;
+    vehicleTrackRenderer?.setCursor(cursor);
+  },
+);
+
+// 共享态 currentAlarm 变为 closed（可能没有 WS 终态消息）：同步终态标记并切换到历史轨迹
+watch(
+  () =>
+    JSON.stringify([
+      String(userStore.currentAlarm?.incidentId ?? "").trim(),
+      readCurrentLifecycleStage(),
+    ]),
+  (key) => {
+    const [incidentId, lifecycleStage] = JSON.parse(key) as [string, string];
+    if (!incidentId) return;
+    // 监听新警情：删除旧警情的轨迹缓存与终态标记，避免旧标记拦截新警情的警情上图
+    const staleTrackIds = [
+      String(vehicleTrackStore.terminalIncidentId ?? "").trim(),
+      String(vehicleTrackStore.incidentId ?? "").trim(),
+    ].filter(Boolean);
+    if (staleTrackIds.some((id) => id !== incidentId)) {
+      vehicleTrackRequestSeq += 1;
+      vehicleTrackStore.clearTerminal();
+      vehicleTrackStore.reset();
+    }
+    if (lifecycleStage === "closed") {
+      vehicleTrackStore.markTerminal(incidentId, lifecycleStage);
+      beginVehicleTrack(incidentId);
+      return;
+    }
+    // 共享态删除/未写 lifecycleStage：撤销 closed 同步出的终态标记与轨迹，避免刷新后继续回放
+    if (
+      !lifecycleStage &&
+      vehicleTrackStore.terminalIncidentId === incidentId &&
+      vehicleTrackStore.terminalState === "CLOSED"
+    ) {
+      vehicleTrackRequestSeq += 1;
+      vehicleTrackStore.clearTerminal();
+      vehicleTrackStore.reset();
+    }
+  },
+  { flush: "sync" },
+);
+
 onMounted(() => {
   nextTick(() => {
     initMap();
+    // 共享态已是 closed（无 WS 终态消息 / 首次打开）：同步终态标记后直接回放历史轨迹
+    const sharedIncidentId = String(userStore.currentAlarm?.incidentId ?? "").trim();
+    const sharedLifecycleStage = readCurrentLifecycleStage();
+    // 监听新警情：共享态警情与残留的轨迹警情不一致时，先删除旧警情缓存
+    const staleTrackIds = [
+      String(vehicleTrackStore.terminalIncidentId ?? "").trim(),
+      String(vehicleTrackStore.incidentId ?? "").trim(),
+    ].filter(Boolean);
+    if (sharedIncidentId && staleTrackIds.some((id) => id !== sharedIncidentId)) {
+      vehicleTrackStore.clearTerminal();
+      vehicleTrackStore.reset();
+    }
+    if (sharedIncidentId && sharedLifecycleStage === "closed") {
+      vehicleTrackStore.markTerminal(sharedIncidentId, sharedLifecycleStage);
+      beginVehicleTrack(sharedIncidentId);
+      return;
+    }
+    // 共享态已撤销结案标记（删除 lifecycleStage）：先清残留标记，避免下面按终态回放旧轨迹
+    if (
+      sharedIncidentId &&
+      !sharedLifecycleStage &&
+      vehicleTrackStore.terminalIncidentId === sharedIncidentId &&
+      vehicleTrackStore.terminalState === "CLOSED"
+    ) {
+      vehicleTrackStore.clearTerminal();
+      vehicleTrackStore.reset();
+    }
+    // 刷新后按持久化终态标记判定（优先于可能滞后的共享态）：清理原有上图产物后直接回放历史轨迹
+    const terminalIncidentId = String(vehicleTrackStore.terminalIncidentId ?? "").trim();
+    if (!terminalIncidentId || !isTerminalIncidentState(vehicleTrackStore.terminalState)) return;
+    clearOriginalIncidentArtifacts();
+    vehicleTrackStore.markUnavailable(terminalIncidentId);
+    void loadVehicleTrack(terminalIncidentId, { openPanel: true });
   });
   document.addEventListener("click", handleDocumentClick, true);
   // 受理席警情二次定位：传入警情 id + BroadcastChannel 关联标识，激活地图选点交互
@@ -2539,11 +2786,19 @@ onMounted(() => {
       incidentRelocate.start(d.incidentId, token)
     }),
   );
+  // 车辆历史轨迹：终态消息触发查询，订阅随地图实例销毁
+  vehicleTrackUnsubscribe = messageStore.subscribe(
+    MESSAGE_EVENT_KEY.ALARM_INCIDENT_STATE_CHANGED,
+    (envelope) => handleAlarmStateChanged(envelope as { data?: unknown }),
+  );
 
 });
 
 onUnmounted(() => {
   mockSpecialMapUnsubscribers.splice(0).forEach((unsubscribe) => unsubscribe());
+  vehicleTrackUnsubscribe?.();
+  vehicleTrackUnsubscribe = null;
+  vehicleTrackStore.reset();
   specialMapActive = false;
   specialMapMock?.clear();
   specialMapMock = null;

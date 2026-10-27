@@ -309,6 +309,19 @@
   --filter-hue-rotate: 200deg;
   --filter-saturate: 1400%;
   --filter-brightness: 84%;
+  /* 图层工具栏：深空蓝玻璃底 + OCEAN 青蓝描边 */
+  --toolbar-bg: rgba(8, 28, 48, 0.9);
+  --toolbar-border: rgba(76, 201, 240, 0.35);
+  --toolbar-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+  --toolbar-tile-bg: rgba(76, 201, 240, 0.12);
+  --toolbar-tile-border: rgba(76, 201, 240, 0.28);
+  --toolbar-tile-hover-bg: rgba(76, 201, 240, 0.22);
+  --toolbar-tile-hover-border: rgba(76, 201, 240, 0.55);
+  --toolbar-tile-active-bg: rgba(76, 201, 240, 0.28);
+  --toolbar-tile-active-border: #90e0ef;
+  --toolbar-tile-text: rgba(214, 238, 251, 0.92);
+  --toolbar-tile-active-text: #ffffff;
+  --toolbar-badge-bg: #4cc9f0;
 }
 
 :root[data-palette='OCEAN'][data-theme='DAY'] {
@@ -325,6 +338,19 @@
   --filter-hue-rotate: 0deg;
   --filter-saturate: 120%;
   --filter-brightness: 100%;
+  /* 图层工具栏：浅色玻璃底 + OCEAN 深青描边 */
+  --toolbar-bg: rgba(240, 250, 255, 0.88);
+  --toolbar-border: rgba(14, 116, 144, 0.32);
+  --toolbar-shadow: 0 8px 18px rgba(15, 40, 80, 0.16);
+  --toolbar-tile-bg: rgba(14, 116, 144, 0.08);
+  --toolbar-tile-border: rgba(14, 116, 144, 0.26);
+  --toolbar-tile-hover-bg: rgba(14, 116, 144, 0.15);
+  --toolbar-tile-hover-border: rgba(14, 116, 144, 0.48);
+  --toolbar-tile-active-bg: rgba(14, 116, 144, 0.2);
+  --toolbar-tile-active-border: #0e7490;
+  --toolbar-tile-text: #0c4a6e;
+  --toolbar-tile-active-text: #155e75;
+  --toolbar-badge-bg: #0e7490;
 }
 
 /* ---------- EMBER 琥珀暖调 ---------- */
@@ -343,6 +369,19 @@
   --filter-hue-rotate: 20deg;
   --filter-saturate: 1200%;
   --filter-brightness: 78%;
+  /* 图层工具栏：暖调玻璃底 + EMBER 琥珀描边 */
+  --toolbar-bg: rgba(32, 20, 12, 0.9);
+  --toolbar-border: rgba(245, 158, 11, 0.32);
+  --toolbar-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+  --toolbar-tile-bg: rgba(245, 158, 11, 0.14);
+  --toolbar-tile-border: rgba(245, 158, 11, 0.3);
+  --toolbar-tile-hover-bg: rgba(245, 158, 11, 0.24);
+  --toolbar-tile-hover-border: rgba(245, 158, 11, 0.55);
+  --toolbar-tile-active-bg: rgba(245, 158, 11, 0.3);
+  --toolbar-tile-active-border: #fbbf24;
+  --toolbar-tile-text: rgba(253, 232, 205, 0.92);
+  --toolbar-tile-active-text: #ffffff;
+  --toolbar-badge-bg: #f59e0b;
 }
 
 :root[data-palette='EMBER'][data-theme='DAY'] {
@@ -359,5 +398,85 @@
   --text-secondary: #92400e;
   --filter-hue-rotate: 0deg;
   --filter-saturate: 110%;
+  --filter-brightness: 100%;
+  /* 图层工具栏：暖色玻璃底 + EMBER 深棕描边 */
+  --toolbar-bg: rgba(255, 250, 240, 0.88);
+  --toolbar-border: rgba(180, 83, 9, 0.3);
+  --toolbar-shadow: 0 8px 18px rgba(80, 40, 10, 0.14);
+  --toolbar-tile-bg: rgba(180, 83, 9, 0.08);
+  --toolbar-tile-border: rgba(180, 83, 9, 0.26);
+  --toolbar-tile-hover-bg: rgba(180, 83, 9, 0.14);
+  --toolbar-tile-hover-border: rgba(180, 83, 9, 0.45);
+  --toolbar-tile-active-bg: rgba(180, 83, 9, 0.2);
+  --toolbar-tile-active-border: #b45309;
+  --toolbar-tile-text: #7c2d12;
+  --toolbar-tile-active-text: #92400e;
+  --toolbar-badge-bg: #b45309;
+}
+
+/* ---------- GLASS 毛玻璃（Apple 风格磨砂质感） ---------- */
+:root[data-palette='GLASS'][data-theme='NIGHT'] {
+  --accent-cyan: #5ac8fa;
+  --accent-cyan-strong: #7dd8ff;
+  --accent-cyan-soft: rgba(90, 200, 250, 0.14);
+  --accent-glow: rgba(90, 200, 250, 0.3);
+  --panel-bg: rgba(28, 30, 38, 0.46);
+  --panel-bg-solid: #1c1e26;
+  --panel-border: rgba(255, 255, 255, 0.18);
+  --panel-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
+  --card-bg: rgba(28, 30, 38, 0.38);
+  --card-border: rgba(255, 255, 255, 0.1);
+  --text-primary: #f5f7fa;
+  --text-secondary: rgba(235, 240, 248, 0.72);
+  --glass-bg: rgba(28, 30, 38, 0.32);
+  --glass-blur: 28px;
+  --toolbar-bg: rgba(28, 30, 38, 0.48);
+  --toolbar-border: rgba(255, 255, 255, 0.18);
+  --toolbar-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --toolbar-tile-bg: rgba(90, 200, 250, 0.14);
+  --toolbar-tile-border: rgba(90, 200, 250, 0.28);
+  --toolbar-tile-hover-bg: rgba(90, 200, 250, 0.22);
+  --toolbar-tile-hover-border: rgba(90, 200, 250, 0.55);
+  --toolbar-tile-active-bg: rgba(90, 200, 250, 0.28);
+  --toolbar-tile-active-border: #7dd8ff;
+  --toolbar-tile-text: #f5f7fa;
+  --toolbar-tile-active-text: #ffffff;
+  --toolbar-badge-bg: #5ac8fa;
+  --filter-hue-rotate: 180deg;
+  --filter-invert: 100%;
+  --filter-saturate: 1600%;
+  --filter-brightness: 80%;
+  --filter-contrast: 90%;
+}
+
+:root[data-palette='GLASS'][data-theme='DAY'] {
+  --accent-cyan: #0a84ff;
+  --accent-cyan-strong: #0060df;
+  --accent-cyan-soft: rgba(10, 132, 255, 0.1);
+  --accent-glow: rgba(10, 132, 255, 0.24);
+  --panel-bg: rgba(255, 255, 255, 0.55);
+  --panel-bg-solid: #f5f6f8;
+  --panel-border: rgba(255, 255, 255, 0.7);
+  --panel-shadow: 0 8px 24px rgba(15, 40, 80, 0.16);
+  --card-bg: rgba(255, 255, 255, 0.42);
+  --card-border: rgba(120, 140, 170, 0.24);
+  --text-primary: #1d2733;
+  --text-secondary: rgba(40, 60, 85, 0.72);
+  --glass-bg: rgba(255, 255, 255, 0.32);
+  --glass-blur: 24px;
+  --toolbar-bg: rgba(255, 255, 255, 0.55);
+  --toolbar-border: rgba(255, 255, 255, 0.7);
+  --toolbar-shadow: 0 8px 24px rgba(15, 40, 80, 0.14);
+  --toolbar-tile-bg: rgba(10, 132, 255, 0.08);
+  --toolbar-tile-border: rgba(10, 132, 255, 0.24);
+  --toolbar-tile-hover-bg: rgba(10, 132, 255, 0.14);
+  --toolbar-tile-hover-border: rgba(10, 132, 255, 0.45);
+  --toolbar-tile-active-bg: rgba(10, 132, 255, 0.18);
+  --toolbar-tile-active-border: #0a84ff;
+  --toolbar-tile-text: #1d2733;
+  --toolbar-tile-active-text: #0060df;
+  --toolbar-badge-bg: #0a84ff;
+  --filter-hue-rotate: 0deg;
+  --filter-saturate: 100%;
   --filter-brightness: 100%;
 }

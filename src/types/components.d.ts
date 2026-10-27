@@ -87,6 +87,7 @@ declare module 'vue' {
     TopicLayerCard: typeof import('./../components/map/component/topicLayerCard.vue')['default']
     Trp: typeof import('./../components/map/trp.vue')['default']
     VectorLayerHight: typeof import('./../components/map/component/Panels/vectorLayerHight.vue')['default']
+    VehicleTrackPanel: typeof import('./../components/dispatchMap1/VehicleTrackPanel.vue')['default']
     ViewerInquiryBuilding: typeof import('./../components/BIM/viewerInquiryBuilding.vue')['default']
     WaterMarkerControl: typeof import('./../components/map/dragPanel/waterMarkerControl.vue')['default']
     WeatherPanel: typeof import('./../components/common/WeatherPanel.vue')['default']
