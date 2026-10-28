@@ -3,7 +3,9 @@ import { onBeforeUnmount, onMounted, ref, watch, computed } from "vue";
 import { ElMessage } from "element-plus";
 import { storeToRefs } from "pinia";
 import { EventBus } from "@/utils/mitt";
-import { usePanelStore, useSearchPanelStore } from "@/store";
+import { usePanelStore } from "@/store";
+import { useSearchPanelStore } from "@/store/useSearchPanelStore";
+import { useSearchActions } from "@/composables/useSearchActions";
 import {
   ALL_RESOURCE_TYPES,
   type CircleQuerySourceData,
@@ -35,8 +37,10 @@ const {
   selectedItem,
   searchPanelCollapsed,
   searchPanelClosed,
-  viewOptions,
 } = storeToRefs(searchStore);
+
+// 检索 API 调用（从 composable 拿，store 只管状态）
+const { viewOptions, runKeywordSearch, runViewSearch, runCircleSearch } = useSearchActions();
 
 // ===== 圈选工具状态（原有逻辑保持不变） =====
 const visible = ref(false);
@@ -170,7 +174,7 @@ const syncCircleResults = async (snapshot: CircleQuerySourceData) => {
     return;
   }
   const tool = ensureResultTool();
-  const filter = await searchStore.runCircleSearch(
+  const filter = await runCircleSearch(
     snapshot.centerLonLat,
     snapshot.radiusMeters,
     typeNames,
@@ -262,7 +266,7 @@ const onQuery = async () => {
   if (searchStore.routePlanOpen && !searchStore.routePanelCollapsed) {
     searchStore.toggleRoutePanelCollapse();
   }
-  await searchStore.runKeywordSearch(queryText.value, getViewportExtent());
+  await runKeywordSearch(queryText.value, getViewportExtent());
   const filter = searchStore.activeFilter;
   if (filter.typeNames.length) tool.showResources(filter);
   else tool.clearResources();
@@ -284,7 +288,7 @@ const onSelectView = async (option: SearchViewOption) => {
   // 视图检索：以视图中文名回填输入框，并按名称同时做文本模糊，地址/资源双源都有数据
   const tool = ensureResultTool();
   if (!tool) return;
-  await searchStore.runViewSearch(option.id, option.name);
+  await runViewSearch(option.id, option.name);
   const filter = searchStore.activeFilter;
   if (filter.typeNames.length) tool.showResources(filter);
   else tool.clearResources();

@@ -1,7 +1,6 @@
 import Feature from 'ol/Feature'
 import LineString from 'ol/geom/LineString'
 import Point from 'ol/geom/Point'
-import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
 import type Map from 'ol/Map'
 import { Style, Stroke } from 'ol/style'
@@ -12,7 +11,7 @@ import {
   VEHICLE_HISTORY_TRACK_COLOR,
 } from './style'
 import { MAP_LAYER_Z_INDEX } from './layerOrder'
-import { createRouteArrowFeatures, projectCoords } from '@/baseComponent/tools/routeBase'
+import { createRouteDirectionOverlay, createRouteOverlayLayer, projectCoords } from '@/baseComponent/tools/routeBase'
 import type { CarTrackPoint } from '@/apis/carTrack'
 import type { LngLat } from '@/utils/coordTransform'
 
@@ -58,7 +57,7 @@ export interface VehicleTrackRenderer {
  */
 export const createVehicleTrackRenderer = (map: Map): VehicleTrackRenderer => {
   const source = new VectorSource()
-  const layer = new VectorLayer({
+  const layer = createRouteOverlayLayer({
     source,
     className: VEHICLE_HISTORY_TRACK_LAYER_CLASS,
     zIndex: VEHICLE_HISTORY_TRACK_LAYER_ZINDEX,
@@ -87,7 +86,7 @@ export const createVehicleTrackRenderer = (map: Map): VehicleTrackRenderer => {
   let rotation = 0
   /** 上一次渲染坐标，朝向按「上一渲染位置 → 本次渲染位置」的位移计算（同警情上图链路） */
   let lastRenderedCoordinate: number[] | null = null
-  let arrows: Feature<Point>[] = []
+  let arrows: ReturnType<typeof createRouteDirectionOverlay> | null = null
 
   /** 游标取整前后两点之间线性插值出车辆渲染坐标。 */
   const pointAt = (cursor: number): number[] => {
@@ -114,19 +113,18 @@ export const createVehicleTrackRenderer = (map: Map): VehicleTrackRenderer => {
   }
 
   const removeArrows = () => {
-    arrows.forEach((arrow) => source.removeFeature(arrow))
-    arrows = []
+    if (arrows) source.removeFeature(arrows)
+    arrows = null
   }
 
-  /** 复用调派路线的方向箭头，按当前视图分辨率生成；缩放后随线等比变化。 */
+  /** 缩放分级箭头 overlay：单 Feature + resolution 样式函数，缩放时分级增减，锚点不滑动。 */
   const buildArrows = () => {
     removeArrows()
     if (projected.length < 2) return
-    const resolution = map.getView().getResolution() ?? 1
-    const safeResolution = Number.isFinite(resolution) && resolution > 0 ? resolution : 1
-    arrows = createRouteArrowFeatures([projected], safeResolution)
-    arrows.forEach((arrow) => arrow.set('trackRank', TRACK_RANK_ARROW))
-    source.addFeatures(arrows)
+    const overlay = createRouteDirectionOverlay([projected])
+    overlay.set('trackRank', TRACK_RANK_ARROW)
+    arrows = overlay
+    source.addFeature(overlay)
   }
 
   const setCursor = (cursor: number) => {
@@ -174,12 +172,11 @@ export const createVehicleTrackRenderer = (map: Map): VehicleTrackRenderer => {
     if (options?.fit && projected.length) {
       const extent = source.getExtent()
       if (extent) {
-        // 拟合结束后按最终缩放重建箭头，避免沿用打开面板前的旧分辨率
+        // 箭头走 overlay（resolution 样式函数），fit 动画帧中自动按新分辨率分级，无需回调重建
         map.getView().fit(extent, {
           padding: [80, 80, 180, 80],
           duration: 400,
           maxZoom: 17,
-          callback: () => buildArrows(),
         })
       }
     }

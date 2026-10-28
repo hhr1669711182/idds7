@@ -22,7 +22,8 @@ import { MAP_LAYER_Z_INDEX } from './layerOrder'
 import { fetchDrivingRoutes, type AmapDrivingResult, type AmapTmcStatus } from '@/baseComponent/amap/useAmapTools'
 import { createRouteLineStyle, getStyle, MAP_ICON_SRC } from '@/baseComponent/OpenlayersMap/style'
 import {
-  createRouteArrowFeatures,
+  createRouteDirectionOverlay,
+  createRouteOverlayLayer,
   createRouteTmcFeatures,
   dimRouteStyle,
   projectCoords,
@@ -66,11 +67,8 @@ import {
   type StationCandidate,
   type Coordinate,
 } from '@/controller/core/business/IncidentStationQuery'
-import {
-  DISPATCH_T1_STATION_OWNER,
-  useIncidentLocationStore,
-  useStationLayerStore,
-} from '@/store/useIncidentLocationStore'
+import { useIncidentLocationStore } from '@/store/useIncidentLocationStore'
+import { DISPATCH_T1_STATION_OWNER, useStationLayerStore } from '@/store/useStationLayerStore'
 import { INCOMING_CALL_FOCUS_ZOOM, usePendingCallLocationStore } from '@/store/usePendingCallLocationStore'
 
 export { DISPATCH_T1_STATION_LAYER, DISPATCH_T1_JURISDICTION_LAYER }
@@ -202,21 +200,17 @@ export class DispatchT1 {
       styleGetter: (item) => this.getJurisdictionStyle(item.role),
     });
     */
-    this.routeLayer = new VectorLayer({
+    this.routeLayer = createRouteOverlayLayer({
       source: this.routeSource,
       zIndex: MAP_LAYER_Z_INDEX.route,
-      updateWhileAnimating: true,
-      updateWhileInteracting: true,
       style: (feature) => createRouteLineStyle(String(feature.get('color') ?? '#2563eb'), 6),
       properties: { name: 'dispatch_t1_routes' },
     })
 
     this.map.addLayer(this.routeLayer)
-    this.vehicleLayer = new VectorLayer({
+    this.vehicleLayer = createRouteOverlayLayer({
       source: this.vehicleSource,
       zIndex: MAP_LAYER_Z_INDEX.vehicle,
-      updateWhileAnimating: true,
-      updateWhileInteracting: true,
       properties: { name: 'dispatch_t1_vehicles' },
     })
     this.map.addLayer(this.vehicleLayer)
@@ -700,13 +694,13 @@ export class DispatchT1 {
           this.routeSource.addFeature(routePathFeature)
         }
         // 箭头按方案分别生成并随方案裁剪；共享路段重叠的箭头坐标一致，视觉无差异。
-        const directionFeatures = createRouteArrowFeatures([projectedPath])
-        directionFeatures.forEach((feature) => {
-          feature.set('stationId', station.id)
-          feature.set('routePlanIndex', planIndex)
-          feature.set('routeAlternative', alternative)
-        })
-        this.routeSource.addFeatures(directionFeatures)
+        // 缩放分级 overlay：单 Feature（MultiLineString）+ resolution 样式函数，缩放时分级增减箭头，
+        // 与 dispatch1 / 搜索工具共用同一底座；属性随单 Feature 携带，命中既有删除路径。
+        const directionOverlay = createRouteDirectionOverlay([projectedPath])
+        directionOverlay.set('stationId', station.id)
+        directionOverlay.set('routePlanIndex', planIndex)
+        directionOverlay.set('routeAlternative', alternative)
+        this.routeSource.addFeature(directionOverlay)
       })
       this.stateController.setRouteReady(station.id, selected.distanceMeters, selected.durationSeconds)
     } catch (error) {

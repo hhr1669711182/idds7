@@ -1,4 +1,4 @@
-import { useUserStore } from '@/store'
+import { useUserStore } from '@/store/useUserStore'
 
 export const MESSAGE_PROTOCOL_VERSION = '1.0.0' as const
 

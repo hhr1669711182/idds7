@@ -1,7 +1,8 @@
 // 路线上图公共底座：投影收口 + 建线 + 方向箭头 + 路况 + 候选置底。
 // 地图专属（OL 类型入参）工具，供调派/跟踪/查询/历史轨迹共用，消除各消费方自写的重复路线上图逻辑。
-import Feature from 'ol/Feature'
-import { LineString, Point } from 'ol/geom'
+import Feature, { type FeatureLike } from 'ol/Feature'
+import { LineString, MultiLineString, Point } from 'ol/geom'
+import VectorLayer from 'ol/layer/Vector'
 import type VectorSource from 'ol/source/Vector'
 import { fromLonLat } from 'ol/proj'
 import type { Style } from 'ol/style'
@@ -45,7 +46,8 @@ export const createLineFeature = (
   return feature
 }
 
-const getRouteArrowResolution = (resolution: number) => 2 ** Math.round(Math.log2(resolution))
+/** 分辨率量化到最近 2^n：缩放中箭头按级增减、同级不重算，锚点不滑动。 */
+export const getRouteArrowResolution = (resolution: number) => 2 ** Math.round(Math.log2(resolution))
 
 /**
  * 沿多条完整路线生成全局等距方向箭头。
@@ -115,6 +117,37 @@ export const createRouteArrowFeatures = (routeCoordinates: number[][][], resolut
   return arrows
 }
 
+/**
+ * 缩放分级箭头 Overlay：单 Feature（MultiLineString）+ 带 resolution 的样式函数。
+ *
+ * OL 原生机制：setStyle 的函数签名在每次视图渲染时收到当前 resolution，
+ * 量化到 2^n 级别后缓存，级别不变则复用 → 箭头锚点不滑动，只在跳变时增减。
+ * 消费方在图层开启 updateWhileInteracting / updateWhileAnimating 后
+ * 缩放动画中也能实时生效。
+ *
+ * 入参为已投影坐标（[x,y][]）。
+ */
+export const createRouteDirectionOverlay = (routeCoordinates: number[][][]): Feature<MultiLineString> => {
+  const overlay = new Feature({ geometry: new MultiLineString(routeCoordinates) }) as Feature<MultiLineString>
+  overlay.set('routeDirectionArrow', true)
+  let cachedResolution: number | undefined
+  let cachedStyles: Style[] = []
+  overlay.setStyle((_feature, resolution) => {
+    if (!Number.isFinite(resolution) || resolution <= 0) return []
+    const arrowResolution = getRouteArrowResolution(resolution)
+    if (arrowResolution !== cachedResolution) {
+      cachedResolution = arrowResolution
+      cachedStyles = createRouteArrowFeatures(routeCoordinates, arrowResolution).map((arrow) => {
+        const style = arrow.getStyle() as Style
+        style.setGeometry(arrow.getGeometry()!)
+        return style
+      })
+    }
+    return cachedStyles
+  })
+  return overlay
+}
+
 /** 路况分段 Feature（中性 status）：amap 的 buildTmcFeatures 下沉版，兼容传入 AmapTmcSegment。 */
 export const createRouteTmcFeatures = (tmcs: RouteTmcSegment[]): Feature<LineString>[] => {
   return tmcs
@@ -154,4 +187,43 @@ export const removeRouteFeatures = (source: VectorSource, predicate: (feature: F
     .getFeatures()
     .filter(predicate)
     .forEach((feature) => source.removeFeature(feature))
+}
+
+/**
+ * 路线 / 方向箭头 overlay 专用图层工厂。
+ *
+ * 收口「带 resolution 样式函数」的隐性契约：overlay 机制（createRouteDirectionOverlay）
+ * 依赖图层在交互 / 动画帧中持续渲染才会实时分级增减，故两个 flag 在此固定开启，
+ * 消费方只传差异项（zIndex / className / style / renderOrder / properties），
+ * 避免漏开 flag 导致箭头缩放不生效。
+ */
+export interface RouteOverlayLayerOptions {
+  source: VectorSource
+  zIndex?: number
+  className?: string
+  style?: (feature: FeatureLike, resolution: number) => Style | Style[]
+  renderOrder?: (left: FeatureLike, right: FeatureLike) => number
+  properties?: Record<string, unknown>
+}
+
+/**
+ * 路线 / 方向箭头 overlay 专用图层工厂。
+ *
+ * 收口「带 resolution 样式函数」的隐性契约：overlay 机制（createRouteDirectionOverlay）
+ * 依赖图层在交互 / 动画帧中持续渲染才会实时分级增减，故两个 flag 在此固定开启，
+ * 消费方只传差异项（zIndex / className / style / renderOrder / properties），
+ * 避免漏开 flag 导致箭头缩放不生效。
+ */
+export const createRouteOverlayLayer = (options: RouteOverlayLayerOptions): VectorLayer<VectorSource> => {
+  return new VectorLayer({
+    source: options.source,
+    zIndex: options.zIndex,
+    className: options.className,
+    style: options.style,
+    renderOrder: options.renderOrder,
+    properties: options.properties,
+    // overlay 契约：带 resolution 的样式函数须在交互 / 动画帧中生效
+    updateWhileInteracting: true,
+    updateWhileAnimating: true,
+  })
 }

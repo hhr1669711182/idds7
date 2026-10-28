@@ -8,7 +8,6 @@
  */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 
 const STORAGE_KEY = 'OPENLAYERS_ACTIVE_TAB'
 
@@ -18,20 +17,16 @@ const loadActiveTab = () => {
   return Number.isFinite(n) && n > 0 ? n : 1
 }
 
+/**
+ * 底部 tab 切换状态（store 只管「当前选中 tab」，不负责导航）。
+ * 路由跳转由调用方组件自行 router.push（避免 store 与 router 生命周期耦合）。
+ */
 export const useTabsStore = defineStore('tabsStore', () => {
-  const router = useRouter()
-
   const activeTab = ref<number>(loadActiveTab() || 1)
-  const tabs = ref<any>({
-    1: '/map',
-    2: '/ThreejsViewerRegion',
-    3: '/ThreejsViewerBuilding',
-  })
 
   const setActiveTab = (tab: number) => {
     activeTab.value = tab
     localStorage.setItem(STORAGE_KEY, `${tab}`)
-    router.push(tabs.value[tab])
   }
 
   return {

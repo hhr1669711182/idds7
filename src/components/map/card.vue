@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
-import { useCardStore, useMapStore } from "../../store";
+import { useCardStore } from "../../store/useCardStore";
+import { useMapStore } from "../../store";
+import { useDrawTool } from "@/composables/useDrawTool";
 import { CARD_TITLE } from "../../const/const.map";
 import pointForm from "./form/pointForm.vue";
 import lineForm from "./form/lineForm.vue";
@@ -10,6 +12,7 @@ import circleForm from "./form/circleForm.vue";
 import { TYPES } from "../../const/const.map";
 
 const cardstore = useCardStore();
+const { getCurrentTool } = useDrawTool();
 
 const { setShowUuid, getItem, removeItem, setItem } = cardstore;
 
@@ -41,7 +44,7 @@ const handleDelete = () => {
   if (targetOverlay) {
     MapStore.map?.removeOverlay(targetOverlay);
   }
-  const vectorLayer = (cardstore.drawTool as any)?.vectorLayer;
+  const vectorLayer = (getCurrentTool() as any)?.vectorLayer;
   if (vectorLayer) {
     if (targetMarker) {
       vectorLayer.getSource().removeFeature(targetMarker);

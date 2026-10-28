@@ -105,7 +105,7 @@ import {
   updateData,
 } from "./module/initThreeRegion.js";
 import { updateBIMType } from "./module/commonSetting.js";
-import { useDispatchStore } from "@/store";
+import { useDispatchStore } from "@/store/useDispatchStore";
 const route = useRoute()
 const dispatchStore = useDispatchStore();
 const formData = ref({

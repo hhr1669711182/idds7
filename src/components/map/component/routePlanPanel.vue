@@ -11,7 +11,7 @@ import { amapGcj02ToWgs84 } from "@/baseComponent/amap/amapCoordinate";
 
 
 import { amapApi, type PoiFeature, type PoiFeatureCollection } from "@/apis/amap";
-import { useSearchPanelStore } from "@/store";
+import { useSearchPanelStore } from "@/store/useSearchPanelStore";
 import { useCurrentMap } from "@/composables/useCurrentMap";
 import { appEnv } from "@/config/env";
 import { SearchResultTool } from "../MapTools/drawMapTools/SearchResultTool";

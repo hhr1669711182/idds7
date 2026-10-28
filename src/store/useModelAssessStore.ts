@@ -6,7 +6,7 @@ import { defineStore } from 'pinia'
 import { reactive, toRefs, computed } from 'vue'
 import type { SimilarAlarmCardItem, MasterAlarm, RealtimeFactors, TrappedFloorItem } from '@/const/const.modelAssess'
 import type { LayerTabKey } from '@/const/const.modelAssess'
-import { SIMILAR_CARDS_MOCK, MASTER_ALARM_MOCK, TRAPPED_FLOORS_MOCK } from '@/views/modelAssess/mock'
+import { SIMILAR_CARDS_MOCK, MASTER_ALARM_MOCK, TRAPPED_FLOORS_MOCK } from '@/const/const.modelAssessMock'
 
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 

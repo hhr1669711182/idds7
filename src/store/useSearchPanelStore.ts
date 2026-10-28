@@ -2,21 +2,19 @@
  * 检索面板 + 路径规划面板的状态中枢。
  * 检索状态跨「circleQueryPanel」「routePlanPanel」「SearchResultTool」三处共享，
  * 必须脱离组件生命周期，故收敛到 store。
+ * API 调用编排在 composables/useSearchActions.ts，本 store 只存状态。
  */
 import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
 import { piniaSession } from './piniaPersist'
 import {
-  SEARCH_MAX_FEATURES,
   type ResourceFilterSet,
   type RoutePlanForm,
   type RouteVehicleType,
-  type SearchQueryParams,
   type SearchResultBucket,
   type SearchResultItem,
   type SearchSourceTab,
-  type SearchViewOption,
 } from '@/types/search'
-import { getSearchViewOptions, runSearch } from '@/apis/searchQuery'
 
 const emptyBucket = (): SearchResultBucket => ({ items: [], truncated: false, failedLayers: 0 })
 
@@ -58,10 +56,7 @@ export const useSearchPanelStore = defineStore(
      * 面板互不排斥：cq-panel 与 route-plan-panel 可以同时打开，各自独立折叠。
      * input-panel 是常驻独立面板，不参与这里的显隐控制。
      */
-    // cq-panel 初始折叠：input-panel 常驻，检索结果面板由用户点输入框展开
     const searchPanelCollapsed = ref(true)
-    // cq-panel 是否被关闭（区别于折叠：关闭后整体隐藏，折叠只保留标题栏）
-    // 初始为 true：未发起输入框检索 / 圈选检索前，cq-panel 默认隐藏
     const searchPanelClosed = ref(true)
 
     const routePlanOpen = ref(false)
@@ -78,9 +73,6 @@ export const useSearchPanelStore = defineStore(
       endLngLat: null,
       truck: {},
     })
-
-    /** 视图下拉可选项：name 仅展示，id 为唯一数据依据 */
-    const viewOptions = computed<SearchViewOption[]>(() => getSearchViewOptions())
 
     /** 当前 tab 对应的结果桶 */
     const activeBucket = computed<SearchResultBucket>(() =>
@@ -107,126 +99,16 @@ export const useSearchPanelStore = defineStore(
       loading.value = false
     }
 
-    /** 纯文本检索：两源并行，默认落在地址信息 tab */
-    const runKeywordSearch = async (keyword: string, viewport?: [number, number, number, number]) => {
-      const text = keyword.trim()
-      if (!text) {
-        clearResults()
-        return
-      }
-      queryText.value = text
-      selectedView.value = null
-      loading.value = true
-      searchError.value = null
-      try {
-        const params: SearchQueryParams = {
-          keyword: text,
-          viewport,
-          maxFeatures: SEARCH_MAX_FEATURES,
-        }
-        const { address, resource, filter } = await runSearch(params)
-        addressResults.value = address
-        resourceResults.value = resource
-        activeFilter.value = filter
-        // 默认落在地址信息 tab；地址无结果时自动回落到资源 tab
-        activeTab.value = address.items.length ? 'address' : 'resource'
-      } catch (error) {
-        console.warn('[useSearchPanelStore] runKeywordSearch failed:', error)
-        searchError.value = '查询失败，请稍后重试'
-      } finally {
-        loading.value = false
-      }
-    }
-
-    /**
-     * 选中视图 id：资源按图层 id 精确查询，同时用视图中文名做一次文本模糊，
-     * 保证输入框有文本回显、地址 tab 也有数据可切换。
-     */
-    const runViewSearch = async (typeName: string, keyword?: string) => {
-      selectedView.value = typeName
-      queryText.value = keyword ?? ''
-      loading.value = true
-      searchError.value = null
-      searchPanelCollapsed.value = false
-      try {
-        // 资源源：按视图 id 精确查询该图层全部资源
-        const resourceParams: SearchQueryParams = {
-          keyword: '',
-          typeName,
-          maxFeatures: SEARCH_MAX_FEATURES,
-        }
-        const { resource, filter } = await runSearch(resourceParams)
-
-        // 地址源：用视图中文名做模糊检索，让两个 tab 都有数据可切换
-        const text = (keyword ?? '').trim()
-        let address: SearchResultBucket = emptyBucket()
-        if (text) {
-          try {
-            const addressParams: SearchQueryParams = {
-              keyword: text,
-              maxFeatures: SEARCH_MAX_FEATURES,
-            }
-            address = (await runSearch(addressParams)).address
-          } catch {
-            address = emptyBucket()
-          }
-        }
-
-        resourceResults.value = resource
-        addressResults.value = address
-        activeFilter.value = filter
-        // 有地址结果落地址 tab，否则落资源 tab（需求：默认展示消防资源）
-        // 需求：选中视图选项后默认展示消防资源 tab，地址 tab 也保留数据可切换
-        activeTab.value = 'resource'
-      } catch (error) {
-        console.warn('[useSearchPanelStore] runViewSearch failed:', error)
-        searchError.value = '视图检索失败，请稍后重试'
-      } finally {
-        loading.value = false
-      }
-    }
-
-    /** 圈选检索：按圈选中心与半径查询资源列表，并把 WMS 条件交给调用方上图 */
-    const runCircleSearch = async (center: [number, number], radiusMeters: number, typeNames: string[]) => {
-      loading.value = true
-      searchError.value = null
-      try {
-        const params: SearchQueryParams = {
-          keyword: '',
-          typeNames,
-          circle: { center, radiusMeters },
-          maxFeatures: SEARCH_MAX_FEATURES,
-        }
-        const { resource, filter } = await runSearch(params)
-        resourceResults.value = resource
-        activeFilter.value = filter
-        activeTab.value = 'resource'
-        selectedItem.value = null
-        return filter
-      } catch (error) {
-        console.warn('[useSearchPanelStore] runCircleSearch failed:', error)
-        searchError.value = '圈选查询失败，请稍后重试'
-        return null
-      } finally {
-        loading.value = false
-      }
-    }
-
     const selectItem = (item: SearchResultItem | null) => {
       selectedItem.value = item
     }
 
-    // ===== Panel linkage (requires 1 / 7) =====
-    // cq-panel and route-plan-panel are mutually independent: each can be opened and folded separately.
-    // The input-panel is always present, with no show / hide logic attached.
-
-    /** Expand the retrieval results panel */
+    // ===== Panel linkage =====
     const expandSearchPanel = () => {
       searchPanelClosed.value = false
       searchPanelCollapsed.value = false
     }
 
-    /** Close the resource fuzzy-search panel entirely; it differs from folding, which keeps only the header visible */
     const closeSearchPanel = () => {
       searchPanelClosed.value = true
       searchPanelCollapsed.value = true
@@ -241,7 +123,6 @@ export const useSearchPanelStore = defineStore(
       searchPanelCollapsed.value = !searchPanelCollapsed.value
     }
 
-    /** Open / close the route planning panel; both can coexist */
     const toggleRoutePanel = () => {
       routePlanOpen.value = !routePlanOpen.value
       if (routePlanOpen.value) routePanelCollapsed.value = false
@@ -263,7 +144,6 @@ export const useSearchPanelStore = defineStore(
     // ===== Route planning form =====
     const setRouteVehicle = (vehicle: RouteVehicleType) => {
       routeForm.value.vehicle = vehicle
-      // 小汽车 / 货车统一由「分析」按钮手动触发，选点不再自动查询
       routeForm.value.manualTrigger = true
       syncRouteHistory()
     }
@@ -293,7 +173,6 @@ export const useSearchPanelStore = defineStore(
       syncRouteHistory()
     }
 
-    // ===== Historical memory (goes through the piniaPersist unified wrapper; localStorage is not written inline) =====
     const syncRouteHistory = () => {
       routeHistory.value = {
         vehicle: routeForm.value.vehicle,
@@ -305,7 +184,7 @@ export const useSearchPanelStore = defineStore(
       }
     }
 
-    /** 面板打开时回填历史记忆：文本、端点坐标、车型与货车条件一并恢复，切换面板不再丢点位 */
+    /** 面板打开时回填历史记忆 */
     const hydrateRouteHistory = () => {
       const saved = routeHistory.value
       routeForm.value.vehicle = saved.vehicle ?? 'car'
@@ -322,7 +201,7 @@ export const useSearchPanelStore = defineStore(
     }
 
     return {
-      // Retrieval
+      // Retrieval state
       queryText,
       selectedView,
       activeTab,
@@ -334,12 +213,8 @@ export const useSearchPanelStore = defineStore(
       searchError,
       hasResults,
       activeBucket,
-      viewOptions,
       switchTab,
       clearResults,
-      runKeywordSearch,
-      runViewSearch,
-      runCircleSearch,
       selectItem,
       // Panels
       searchPanelCollapsed,

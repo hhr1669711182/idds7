@@ -52,6 +52,7 @@ nginx.conf
 tests/__artifacts__/
 playwright-report/
 test-results/
+demo
 
 # Playwright 本地缓存
 .playwright/

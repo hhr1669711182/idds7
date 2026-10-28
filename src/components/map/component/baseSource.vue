@@ -2,7 +2,7 @@
 import { storeToRefs } from "pinia";
 
 import { BASE_SOURCE_GROUPS } from "@/baseComponent/OpenlayersMap/baseSource.ts";
-import { useBaseSourceStore } from "@/store";
+import { useBaseSourceStore } from "@/store/useBaseSourceStore";
 import { useCurrentMap } from "@/composables/useCurrentMap";
 
 // @ts-expect-error TS6133: 引用处已注释，保留备用

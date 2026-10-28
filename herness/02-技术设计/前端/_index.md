@@ -14,6 +14,7 @@
 | [资源文件管理-技术方案.md](资源文件管理-技术方案.md) | 资源文件实测盘点（public 39 个 97.7MB + src 66 个 53.1MB，约 151MB）；**沿用 `src/assets/**` 作为唯一资源根** + R1/R2/R3 三条放置铁律；`assetPaths` 常量层 + manifest 校验；B0～B5 迁移批次 | **B0～B5 + B3 归位全部完成**（2026-10-20；资源 62.18MB/91 文件；铁律已回写 `设计规范速查.md`「四·之三」；B3 已把 61 个文件归位到 `src/assets/` 单一根，高德资源按用途并入 `map/`；模型与 gltf 因相对 uri 依赖仍留 public） |
 | [打包与首屏性能优化-技术方案.md](打包与首屏性能优化-技术方案.md) | 产物体积与首屏闭包实测；P0-1 全量 Element Plus CSS、P0-2 Cesium 样式阻塞、P0-3 store 桶导出、P1 vendor 分包、P2 资源迁 CDN；§10 记录第 1 批落地效果 | **第 1 批已落地**（P0-1/P1-2/P2-4 ✅，首屏 CSS −70%；第 2/3 批未启动）（2026-10-19） |
 | [地图样式管理重构Phase1-技术方案.md](地图样式管理重构Phase1-技术方案.md) | `featureStyle.ts` 按职责拆分迁移到 `OpenlayersMap/style/`；修 vehicle 共享样式串扰缺陷与 controller 分层倒挂 | **Phase 1 已落地并验证**（2026-10-19；lint 149/191 无新增、51 文件 559 测试全绿、双构建通过）；Phase 2 纳管散落样式待启动 |
+| [store分层与首屏优化-技术方案.md](store分层与首屏优化-技术方案.md) | store Tier 分层（barrel 收敛为 8 个 Tier 1）+ 越层修复（useCardStore/useModelAssessStore/useSearchPanelStore/useIncidentLocationStore）+ useTabsStore 去 useRouter + 删 useModalMap | **已落地**（2026-10-28；`pnpm lint` 0 报错；铁律回写 `设计规范速查.md`「八·之一、Store 分层铁律」） |
 | [主题调色盘体系-技术方案.md](主题调色盘体系-技术方案.md) | 主题/调色盘双维度切换；`tokens.less` + `palettes.less` 分层；底图 `context.filter` 参数化；组件主题适配补齐（36 → 0）；**§10 第二轮修复**（毛玻璃 Lightning CSS 去重坑、OL 控件桥接、工具栏变量化、compass 夜间图、调色盘逻辑优化）；**§11 第三轮修复**（鹰眼回归修复 + OL 控件样式收敛到唯一真源 `ol-controls.less`）；**§12 第四轮修复**（config 入口按钮被天气面板压住 + 右上角操作簇收敛为常量推导） | **已落地**（2026-10-21；规范见 `herness/05-共享上下文/代码样式规范.md` §4.5/§4.6，token 查表见 `主题与调色盘速查.md`） |
 | [单元测试/_index.md](单元测试/_index.md) | 单元测试文档索引 | 索引 |
 | [研发效能基线建设-技术方案.md](_archive/研发效能基线建设-技术方案.md) | 已生效部分见测试规范与共享上下文；原方案保留历史参考 | **已归档** |
@@ -29,6 +30,7 @@
 | 待填写 | 主题调色盘体系 | ✅ 已落地（四轮） | tokens/palettes 两层 + 调色盘抽屉（El Drawer）+ 底图滤镜参数化；未适配组件 36 → 0；样式规范入 herness。第二轮：OL 控件桥接官方 `--ol-*`、毛玻璃去 `-webkit-`、工具栏变量化、compass 夜间图、调色盘持久化与重置。第三轮：修复鹰眼回归（`overflow:hidden` 裁掉 0 尺寸定位盒内的缩略图）+ OL 控件样式从 4 文件 5 处副本收敛到 `ol-controls.less` 唯一真源。第四轮：修复 config 入口按钮被天气面板压住（「让位」让错了对象）+ 右上角「天气面板 + 三按钮」从 4 文件各写各的 `right` 魔法数字收敛为 `--top-actions-*` 常量推导、纵向对齐中心线、入口按钮 z-index 拉齐 |
 | 待填写 | 地图样式管理重构 | Phase 1 已落地，Phase 2 待启动 |
 | 待填写 | 打包与首屏性能优化 | ✅ 第 1 批已落地 | 首屏 CSS 476.5KB→141.8KB raw（−70%）；IIS 压缩 + chunkSizeWarningLimit(1024) 已配；第2批：advancedChunks 分包 + html2canvas 清理 + Cesium 样式；第3批：store 拆桶单独立项 + 资源迁 CDN |
+| 2026-10 | store 分层与首屏优化 | ✅ 已落地 | barrel 收敛为 8 个 Tier 1 store，14 个 Tier 2 直接文件导入；越层修复 4 处（Card/ModelAssess/SearchPanel/IncidentLocation）；useTabsStore 去 useRouter、useDispatchStore 清死代码、useModalMap 删除；useMapStore 持实例属存量例外不动 |
 | — | 团队协作与文档同步治理 | ✅ 已落地并归档 | herness 已入库 42 文件；.gitignore 已修；husky 两项门禁已接入；CI/CODEOWNERS 暂不实施 |
 
 ## 与外部文档的关系

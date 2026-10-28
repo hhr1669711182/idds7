@@ -74,7 +74,7 @@ import {
 import { updateBIMType } from "./module/commonSetting.js";
 
 // import { onLoadModel } from "@/controller/three"
-import { useDispatchStore } from "@/store";
+import { useDispatchStore } from "@/store/useDispatchStore";
 const dispatchStore = useDispatchStore();
 
 let currentBuildId = null;

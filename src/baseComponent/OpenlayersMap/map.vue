@@ -44,7 +44,8 @@ import { EventBus } from "@/utils/mitt.ts";
 import AlarmDetailPopup from "./AlarmDetailPopup.vue";
 import IncidentDetailDialog from "./IncidentDetailDialog.vue";
 import ZoomLevelControl from "./ZoomLevelControl.vue";
-import { useBaseSourceStore, useMapConfigStore } from "@/store"; // , useCommonStore
+import { useMapConfigStore } from "@/store"; // , useCommonStore
+import { useBaseSourceStore } from "@/store/useBaseSourceStore";
 // import { THEME_COLOR } from "../../const/const.common.ts";
 
 // import { storeToRefs } from "pinia";

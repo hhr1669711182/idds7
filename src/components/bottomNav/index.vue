@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { useTabsStore } from "@/store";
+import { useTabsStore } from "@/store/useTabsStore";
 import ljImg from "@/assets/icons-svg/lj.svg";
 import xcImg from "@/assets/icons-svg/xc.svg";
 import zjImg from "@/assets/icons-svg/jz.svg";

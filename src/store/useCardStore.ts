@@ -1,20 +1,5 @@
 import { defineStore } from 'pinia'
-import Map from 'ol/Map'
-import { v4 as uuidv4 } from 'uuid'
-import { TYPES, INIT_LINE_STATE, INIT_PLOYGON_STATE, INIT_CIRCLE_STATE, DRAW_TYPES } from '../const/const.map.ts'
-import {
-  DrawTool,
-  PointTool,
-  MeasureDistanceTool,
-  MeasureAreaTool,
-  MeasureAngleTool,
-  AzimuthTool,
-  SelectExtentTool,
-  CircleQueryTool,
-  PopulationTool,
-  BaseTool,
-} from '../components/map/MapTools/index.ts'
-import { Type } from 'ol/geom/Geometry'
+import { TYPES, INIT_LINE_STATE, INIT_PLOYGON_STATE, INIT_CIRCLE_STATE } from '../const/const.map.ts'
 
 type ListItem = {
   uuid: string
@@ -29,8 +14,8 @@ interface CardStoreDataStruct {
   list: Array<ListItem>
   showUuid: string
   active: string
-  drawTool: BaseTool | null
-  drawToolType: Type | string
+  // 当前绘制/量算工具类型标识（工具实例本体在 composables/useDrawTool 的模块级单例中，不存 store）
+  drawToolType: string
 }
 
 export const defaultState = {
@@ -47,74 +32,14 @@ export const useCardStore = defineStore('cardStore', {
       list: [],
       showUuid: '',
       active: '',
-      drawTool: null,
       drawToolType: '',
     }
   },
   actions: {
-    clearDrawTool() {
-      if (this.drawTool instanceof BaseTool) {
-        this.drawTool.destroy()
-      }
-      this.drawTool = null
-      this.drawToolType = ''
-      this.active = ''
-      this.showUuid = ''
-    },
-    setMapDrawTool({ drawType, map }: { drawType: Type; map: Map }) {
-      if (this.drawTool instanceof BaseTool) {
-        this.drawTool.destroy()
-        this.showUuid = ''
-      }
-      this.drawToolType = drawType
-      let uuid = uuidv4().replace(/-/g, '')
-
-      const cb = (data: { type: Type; uuid: string }) => {
-        this.addData({ ...data, type: drawType })
-      }
-
-      let p = { map, uuid, type: drawType, cb }
-      switch (drawType) {
-        case DRAW_TYPES.POINT:
-          this.drawTool = new PointTool(p)
-          break
-        case DRAW_TYPES.LINESTRING:
-        case DRAW_TYPES.POLYGON:
-        case DRAW_TYPES.CIRCLE:
-        case DRAW_TYPES.RECT:
-          this.drawTool = new DrawTool(p)
-          break
-        case DRAW_TYPES.MEASUREANGLE:
-          this.drawTool = new MeasureAngleTool(p)
-          break
-        case DRAW_TYPES.MEASUREDISTANCE:
-          this.drawTool = new MeasureDistanceTool(p)
-          break
-        case DRAW_TYPES.MEASUREPOLYGON:
-          this.drawTool = new MeasureAreaTool(p)
-          break
-        case DRAW_TYPES.AZIMUTH:
-          this.drawTool = new AzimuthTool(p)
-          break
-        case DRAW_TYPES.MEASURELENGTH:
-          this.drawTool = new SelectExtentTool(p)
-          break
-        case DRAW_TYPES.MEASUREAREA:
-          this.drawTool = new CircleQueryTool(p)
-          break
-        case DRAW_TYPES.POPULATION:
-          this.drawTool = new PopulationTool(p)
-          break
-        default:
-          this.drawTool = new BaseTool(p)
-      }
-
-      this.drawTool?.init()
-    },
     setActive(type: string) {
       this.active = type
     },
-    addData(data: { type: Type; uuid: string }) {
+    addData(data: { type: string; uuid: string }) {
       const { type } = data
       let p = { ...defaultState, ...data }
       switch (type) {

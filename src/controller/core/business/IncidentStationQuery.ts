@@ -244,7 +244,7 @@ export const queryJurisdictionAtPoint = async (coordinate: Coordinate): Promise<
       typeName: JURISDICTION_LAYER_NAME,
       outputFormat: 'application/json',
       srsName: 'EPSG:4326',
-      maxFeatures: 1,
+      maxFeatures: 5,
       filter,
     },
     'gis',
@@ -260,6 +260,14 @@ export const queryJurisdictionAtPoint = async (coordinate: Coordinate): Promise<
       geometry: feature.geometry as GeoJSON.Geometry,
     })
   }
+
+  // 同一警情点可能命中多个辖区，按 zone_name 关键词排序，优先最小独立管辖单元：
+  // 0 = 不含「总队/支队/大队/小型」；1 = 含「小型」；2 = 含其余关键词。
+  const EXCLUDE_KEYS = ['总队', '支队', '大队', '小型']
+  const rankOfZone = (zoneName: string) =>
+    !EXCLUDE_KEYS.some((k) => zoneName.includes(k)) ? 0 : zoneName.includes('小型') ? 1 : 2
+  result.sort((a, b) => rankOfZone(a.zoneName) - rankOfZone(b.zoneName))
+
   return result
 }
 

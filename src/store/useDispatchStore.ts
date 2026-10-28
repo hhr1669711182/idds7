@@ -7,20 +7,12 @@
  * @FilePath: \ids-gis-web\src\store\useDispatchStore.ts
  */
 import { defineStore } from 'pinia'
-import { reactive, toRefs, onUnmounted } from 'vue'
-// import { WebSocketClient } from '@/hooks/useWebSocket';
-// import { createEncryptedPersistStorage } from '@/hooks/useEncryptedStorage'
-
-// const encryptedStorage = createEncryptedPersistStorage({
-//   secretKey: import.meta.env.VITE_PERSIST_SECRET_KEY || 'dispatch-model-map',
-//   prefix: 'PINIA:',
-// })
+import { reactive, toRefs } from 'vue'
 
 export const useDispatchStore = defineStore(
   'dispatchStore',
   () => {
     const state = reactive({
-      // 外部调派数据
       dispatch: {
         fireBrigade: [
           {
@@ -36,63 +28,23 @@ export const useDispatchStore = defineStore(
             type: '消防支队',
           },
         ],
-      }, // 调派数据
-
+      },
       alarmData: {
-        gisX: null,
-        gisY: null,
-        info: {},
-        buildId: null,
-      }, // 报警数据
-
-      // 内部调派数据
-      navPathPlanData: {} as Record<string, { fullPath: any[]; tmcs: any[] }[]>, // 导航路径计划数据
-      wsStatus: false,
+        gisX: null as number | null,
+        gisY: null as number | null,
+        info: {} as Record<string, unknown>,
+        buildId: null as string | null,
+      },
+      navPathPlanData: {} as Record<string, { fullPath: any[]; tmcs: any[] }[]>,
     })
 
-    const setDispatch = (d: any) => {
+    const setDispatch = (d: Partial<typeof state>) => {
       Object.assign(state, d)
     }
-
-    // const wsClient = new WebSocketClient(import.meta.env.VITE_WS_URL, {
-    //   heartbeatMessage: { type: 'ping' },
-    //   onOpen: () => {
-    //     state.wsStatus = true;
-    //     console.log('调度 WebSocket 连接成功');
-    //   },
-    //   onMessage: (data) => {
-    //     // 收到推送消息后，动态更新调派数据或报警数据
-    //     console.log('调度 WebSocket 收到消息:', data);
-    //     switch (data?.type) {
-    //       case 'dispatchUpdate':
-    //         setDispatch({ dispatch: data.payload });
-    //         break;
-    //       case 'alarmUpdate':
-    //         setDispatch({ alarmData: data.payload });
-    //         break;
-    //       default:
-    //         break;
-    //     }
-    //   },
-    //   onClose: () => {
-    //     state.wsStatus = false;
-    //     console.log('调度 WebSocket 连接关闭');
-    //   }
-    // });
-
-    // @ts-expect-error TS6133: 引用处已注释，保留备用
-    const sendWsMessage = (data: any) => {
-      // wsClient.send(data);
-    }
-
-    onUnmounted(() => {
-      // wsClient.disconnect();
-    })
 
     return {
       ...toRefs(state),
       setDispatch,
-      sendWsMessage,
     }
   },
   {

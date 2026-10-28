@@ -27,7 +27,7 @@ import {
   disposeResource,
   drawPointMarker,
 } from "./module/initThreeBuilding.js";
-import { useDispatchStore } from "@/store";
+import { useDispatchStore } from "@/store/useDispatchStore";
 const dispatchStore = useDispatchStore();
 
 const container = ref(null);

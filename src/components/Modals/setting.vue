@@ -12,7 +12,8 @@ import { storeToRefs } from "pinia";
 import { SCALEPLATE_LIST } from "../../const/const.map.ts";
 import { MODAL_NULL } from "../../const/const.modals";
 import { ScaleLine } from "ol/control";
-import { useModalStore, useMapStore } from "../../store/index.ts";
+import { useModalStore } from "../../store/useModalStore";
+import { useMapStore } from "../../store/index.ts";
 import { Map } from "ol";
 
 const mapStore = useMapStore();

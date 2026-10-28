@@ -2,13 +2,14 @@
 import { computed, toRaw, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import {
-  useCardStore,
-  useTopicLayerStore,
-  useBaseSourceStore,
   usePanelStore,
   useMapConfigStore,
   useMapStore,
 } from "@/store";
+import { useTopicLayerStore } from "@/store/useTopicLayerStore";
+import { useBaseSourceStore } from "@/store/useBaseSourceStore";
+import { useCardStore } from "@/store/useCardStore";
+import { useDrawTool } from "@/composables/useDrawTool";
 import { useCurrentMap } from "@/composables/useCurrentMap";
 import { TYPES, PANEL_TYPES, DRAW_TYPES } from "@/const";
 import { useResponsive } from "@/composables/useResponsive.ts";
@@ -16,6 +17,7 @@ import { useResponsive } from "@/composables/useResponsive.ts";
 const { isMobile } = useResponsive();
 const { currentMap: MapInstance } = useCurrentMap();
 const cardStore = useCardStore();
+const { setMapDrawTool, clearDrawTool, getCurrentTool } = useDrawTool();
 const { active } = storeToRefs(cardStore);
 const panelStore = usePanelStore();
 const mapConfigStore = useMapConfigStore();
@@ -38,18 +40,18 @@ const handleClickOpIcon = (type: any) => {
   if (active.value === type && ![TYPES.TRAFFIC, TYPES.RESET].includes(type)) {
     topicLayerStore.setVisible(false);
     baseSourceStore.setVisible(false);
-    return cardStore.clearDrawTool();
+    return clearDrawTool();
   }
 
   // 点击已激活的图标，清除绘制工具并关闭菜单
   // if (active.value === type && ![TYPES.TRAFFIC, TYPES.RESET].includes(type)) {
-  //   return cardStore.clearDrawTool();
+  //   return clearDrawTool();
   //   ;
   // }
 
   const isDrawType = Object.values(DRAW_TYPES).includes(type);
   if (!isDrawType) {
-    cardStore.clearDrawTool();
+    clearDrawTool();
   }
 
   active.value = type;
@@ -75,10 +77,10 @@ const handleClickOpIcon = (type: any) => {
       break;
     default:
       if (isDrawType) {
-        cardStore.setMapDrawTool({ drawType: type, map: toRaw(MapInstance.value) as any });
+        setMapDrawTool({ drawType: type, map: toRaw(MapInstance.value) as any });
         if (type === TYPES.MEASUREAREA) {
           panelStore.setPanelType(PANEL_TYPES.CIRCLE_QUERY);
-          panelStore.setCircleQueryTool(cardStore.drawTool);
+          panelStore.setCircleQueryTool(getCurrentTool());
         }
       }
       break;
@@ -160,7 +162,7 @@ watch(
   () => ({ ...mapConfigStore.feature }),
   () => {
     if (active.value && !isToolVisible(active.value)) {
-      cardStore.clearDrawTool();
+      clearDrawTool();
     }
   },
 );

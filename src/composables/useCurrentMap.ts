@@ -8,7 +8,8 @@
  */
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useMapStore, useDispatchMapStore } from '@/store'
+import { useMapStore } from '@/store'
+import { useDispatchMapStore } from '@/store/useDispatchMapStore'
 import { useDispatch1MapStore } from '@/store/useDispatch1MapStore'
 
 export const useCurrentMap = () => {

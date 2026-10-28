@@ -8,10 +8,8 @@ import tlp from "../map/compass.vue";
 import brp from "../map/brp.vue";
 // import baseSource from "../map/component/baseSource.vue";
 import OpenlayersMap from "../../baseComponent/OpenlayersMap/dispatchMap.vue";
-import {
-  useMapConfigStore,
-  useDispatchMapStore,
-} from "@/store/index.ts";
+import { useMapConfigStore } from "@/store/index.ts";
+import { useDispatchMapStore } from "@/store/useDispatchMapStore";
 import { Icon } from "@iconify/vue";
 import { watch } from "vue";
 

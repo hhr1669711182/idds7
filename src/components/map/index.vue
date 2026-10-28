@@ -27,12 +27,12 @@ import ssrkPanel from "./component/ssrkPanel.vue";
 
 import OpenlayersMap from "../../baseComponent/OpenlayersMap/map.vue";
 import {
-  useLayersStore,
   useMapConfigStore,
   useMapStore,
   usePanelStore,
-  useTabsStore,
 } from "@/store/index.ts";
+import { useLayersStore } from "@/store/useLayersStore";
+import { useTabsStore } from "@/store/useTabsStore";
 import { PANEL_TYPES } from "../../const/const.panel.ts";
 import type { LayerChangeHandler } from "./layers.vue";
 

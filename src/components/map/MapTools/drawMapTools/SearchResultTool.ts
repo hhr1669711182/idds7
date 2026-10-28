@@ -15,7 +15,12 @@ import { getSVGForSrcById } from '@/utils'
 
 import { isOlMap } from '@/utils/mapTool'
 import { cssVar, themeAccent, withAlpha } from '@/utils/themeColor'
-import { createRouteArrowFeatures, createRouteLineFeature, projectCoords } from '@/baseComponent/tools/routeBase'
+import {
+  createRouteDirectionOverlay,
+  createRouteLineFeature,
+  createRouteOverlayLayer,
+  projectCoords,
+} from '@/baseComponent/tools/routeBase'
 import type { LngLat } from '@/utils/coordTransform'
 import type { ResourceFilterSet } from '@/types/search'
 import startImg from '@/assets/icons-svg/map/start.svg'
@@ -113,7 +118,7 @@ export class SearchResultTool {
       }),
     )
     this.routeLayer = markRaw(
-      new VectorLayer({
+      createRouteOverlayLayer({
         source: markRaw(new VectorSource()),
         className: LAYER_NAMES.SEARCH_ROUTE_LAYER,
         zIndex: 110,
@@ -330,11 +335,9 @@ export class SearchResultTool {
   private drawRouteArrows(coords: [number, number][]) {
     const source = this.routeLayer.getSource()
     if (!source || coords.length < 2) return
-    // 统一走路线底座的方向箭头（分级密度 + 合流去重），替代按线长自适应的旧实现
-    const projected = projectCoords(coords as LngLat[])
-    const resolution = this.map.getView().getResolution() ?? 1
-    const safeResolution = Number.isFinite(resolution) && resolution > 0 ? resolution : 1
-    source.addFeatures(createRouteArrowFeatures([projected], safeResolution))
+    // 统一走路线底座的缩放分级箭头 overlay（resolution 样式函数），与 dispatch1 共用；
+    // 缩放时按 2^n 级别增减箭头，锚点不滑动，交互/动画中实时生效
+    source.addFeature(createRouteDirectionOverlay([projectCoords(coords as LngLat[])]))
   }
   /** Path line style: consistent with the existing route planning tool (routePlan.vue) */
   private routeLineStyle() {

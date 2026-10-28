@@ -72,15 +72,17 @@ import { Fill, Stroke, Style } from "ol/style";
 import { getStyle, MAP_ICON_SRC } from '@/baseComponent/OpenlayersMap/style'
 import {
   useIncidentLocationStore,
-  useStationLayerStore,
-  useNearbyResourceLayerStore,
-  LOCATION_RESOURCE_OWNER_PREFIX,
   type IncidentLocationMarker,
   type IncidentLocationZone,
   type IncidentPrimaryStation,
   type IncidentLocationRoutePlanRequest,
+} from '@/store/useIncidentLocationStore'
+import {
+  useStationLayerStore,
+  useNearbyResourceLayerStore,
+  LOCATION_RESOURCE_OWNER_PREFIX,
   type NearbyResourceCircle,
-} from '@/store'
+} from '@/store/useStationLayerStore'
 import {
   STATION_LAYER_NAME,
   cqlLiteral,
@@ -153,12 +155,14 @@ import ZoomLevelControl from "./ZoomLevelControl.vue";
 import ljImg from "@/assets/icons-svg/lj.svg";
 import xcImg from "@/assets/icons-svg/xc.svg";
 import zjImg from "@/assets/icons-svg/jz.svg";
-import { useDispatchMapStore } from "@/store";
+import { useDispatchMapStore } from "@/store/useDispatchMapStore";
 import { storeToRefs } from "pinia";
 import TileWMS from "ol/source/TileWMS";
 import { getWMSLayerOptions } from "@/apis/layers";
 import { LAYER_SOURCE_CONFIGS } from "@/config/layers";
-import { useBaseSourceStore, useMapConfigStore, useTabsStore } from "@/store";
+import { useMapConfigStore } from "@/store";
+import { useBaseSourceStore } from "@/store/useBaseSourceStore";
+import { useTabsStore } from "@/store/useTabsStore";
 
 const props = withDefaults(defineProps<{
   mapId?: string;

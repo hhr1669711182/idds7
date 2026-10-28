@@ -4,7 +4,7 @@ import { markRaw } from 'vue'
 import Map from 'ol/Map'
 import View from 'ol/View'
 import Feature from 'ol/Feature'
-import { LineString, MultiLineString, Point, Polygon } from 'ol/geom'
+import { LineString, Point, Polygon } from 'ol/geom'
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
 import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style'
@@ -14,9 +14,15 @@ import type { EventsKey } from 'ol/events'
 import * as olProj from 'ol/proj'
 import Overlay from 'ol/Overlay'
 // import { EventBus } from "@/utils/mitt.ts";
-import { useDispatchStore } from '@/store' // useTabsStore,
+import { useDispatchStore } from '@/store/useDispatchStore' // useTabsStore,
 import {
-  createSelectedTmcLineStyle,
+  createSelectedTmcLineStyle, 
+
+
+
+
+
+  
   getStyle,
   MAP_ICON_SRC,
 } from '@/baseComponent/OpenlayersMap/style'
@@ -42,7 +48,7 @@ import {
   type LngLat,
   toRouteProxyLngLatString,
 } from './amapCoordinate.ts'
-import { createRouteArrowFeatures, createRouteTmcFeatures } from '@/baseComponent/tools/routeBase'
+import { createRouteArrowFeatures, createRouteDirectionOverlay, createRouteTmcFeatures } from '@/baseComponent/tools/routeBase'
 
 export {
   parseAmapLocation,
@@ -636,34 +642,13 @@ export const buildTmcFeatures = (tmcs: AmapTmcSegment[]) => {
  * 所有路线共用同一间距并从终点反向对齐，合流道路上的箭头按位置去重，
  * 既保证分支上的方向提示，也避免终点附近因多条路线叠加而变密。
  */
-const getRouteArrowResolution = (resolution: number) => 2 ** Math.round(Math.log2(resolution))
-
 export const buildRouteDirectionFeatures = (routeCoordinates: number[][][], resolution = 1): Feature<Point>[] => {
   // 统一委托路线底座（分级密度 + 合流去重），与 OpenlayersMap 消费方共用同一实现
   return createRouteArrowFeatures(routeCoordinates, resolution)
 }
 
-/** 缩放时分级增减固定锚点上的箭头，避免沿路线滑动。 */
-export const createRouteDirectionOverlay = (routeCoordinates: number[][][]) => {
-  const overlay = new Feature({ geometry: new MultiLineString(routeCoordinates) })
-  overlay.set('routeDirectionArrow', true)
-  let cachedResolution: number | undefined
-  let cachedStyles: Style[] = []
-  overlay.setStyle((_feature, resolution) => {
-    if (!Number.isFinite(resolution) || resolution <= 0) return []
-    const arrowResolution = getRouteArrowResolution(resolution)
-    if (arrowResolution !== cachedResolution) {
-      cachedResolution = arrowResolution
-      cachedStyles = buildRouteDirectionFeatures(routeCoordinates, arrowResolution).map((arrow) => {
-        const style = arrow.getStyle() as Style
-        style.setGeometry(arrow.getGeometry()!)
-        return style
-      })
-    }
-    return cachedStyles
-  })
-  return overlay
-}
+/** 缩放时分级增减固定锚点上的箭头，避免沿路线滑动；实现下沉路线底座，与 OpenlayersMap 消费方共用。 */
+export { createRouteDirectionOverlay, getRouteArrowResolution } from '@/baseComponent/tools/routeBase'
 
 const interpolateOnLine = (coords: number[][], distances: number[], targetDistance: number) => {
   if (!coords.length) return { point: null as number[] | null, bearing: 0 }

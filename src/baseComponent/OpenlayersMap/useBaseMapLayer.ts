@@ -19,7 +19,7 @@ import type XYZ from 'ol/source/XYZ.js'
 // import { storeToRefs } from 'pinia'
 import { createBaseSourceSource, getBaseSourceById } from './baseSource.ts'
 import { LAYER_NAMES } from './layers.ts'
-import { useBaseSourceStore } from '@/store'
+import { useBaseSourceStore } from '@/store/useBaseSourceStore'
 // import { THEME_COLOR } from '@/const/const.common'
 
 // ── 全局 source 单例缓存池 ──────────────────────────────────────────
