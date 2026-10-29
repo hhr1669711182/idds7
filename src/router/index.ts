@@ -80,14 +80,6 @@ export const staticRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/dispatch1',
-    name: ROUTE_NAMES.DISPATCH1,
-    component: () => import('@/views/dispatch1/index.vue'),
-    meta: {
-      title: '调派页面1',
-    }, //添加T1调派路由
-  },
-  {
     path: '/viewerInquiryBuilding',
     name: ROUTE_NAMES.VIEWER_INQUIRY_BUILDING,
     component: () => import('@/components/BIM/viewerInquiryBuilding.vue'),

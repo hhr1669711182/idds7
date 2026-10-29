@@ -15,17 +15,7 @@ import * as olProj from 'ol/proj'
 import Overlay from 'ol/Overlay'
 // import { EventBus } from "@/utils/mitt.ts";
 import { useDispatchStore } from '@/store/useDispatchStore' // useTabsStore,
-import {
-  createSelectedTmcLineStyle, 
-
-
-
-
-
-  
-  getStyle,
-  MAP_ICON_SRC,
-} from '@/baseComponent/OpenlayersMap/style'
+import { createSelectedTmcLineStyle, getStyle, MAP_ICON_SRC } from '@/baseComponent/OpenlayersMap/style'
 import { createDispatchVehicleLabel } from './dispatchVehicleLabel'
 import {
   normalizeRouteResults,
@@ -48,7 +38,11 @@ import {
   type LngLat,
   toRouteProxyLngLatString,
 } from './amapCoordinate.ts'
-import { createRouteArrowFeatures, createRouteDirectionOverlay, createRouteTmcFeatures } from '@/baseComponent/tools/routeBase'
+import {
+  createRouteArrowFeatures,
+  createRouteDirectionOverlay,
+  createRouteTmcFeatures,
+} from '@/baseComponent/tools/routeBase'
 
 export {
   parseAmapLocation,

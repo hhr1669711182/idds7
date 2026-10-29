@@ -25,7 +25,7 @@ import paletteDrawer from "./component/paletteDrawer.vue";
 import layers from "./layers.vue";
 import ssrkPanel from "./component/ssrkPanel.vue";
 
-import OpenlayersMap from "../../baseComponent/OpenlayersMap/map.vue";
+import OpenlayersMap from "@/baseComponent/OpenlayersMap/map.vue";
 import {
   useMapConfigStore,
   useMapStore,
@@ -33,7 +33,7 @@ import {
 } from "@/store/index.ts";
 import { useLayersStore } from "@/store/useLayersStore";
 import { useTabsStore } from "@/store/useTabsStore";
-import { PANEL_TYPES } from "../../const/const.panel.ts";
+import { PANEL_TYPES } from "@/const/const.panel.ts";
 import type { LayerChangeHandler } from "./layers.vue";
 
 type OpenlayersMapExpose = {

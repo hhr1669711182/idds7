@@ -8,10 +8,10 @@ export const getSharedStateRedirect = (
   store = useUserStore(),
 ): RouteLocationRaw | undefined => {
   if (store.mode === 'flood' && store.rawState?.auth !== null && store.MapMode !== 'loggedOut') {
-    if (routeName !== ROUTE_NAMES.DISPATCH1) return { name: ROUTE_NAMES.DISPATCH1, replace: true }
+    if (routeName !== ROUTE_NAMES.DISPATCH) return { name: ROUTE_NAMES.DISPATCH, replace: true }
     return
   }
-  if (routeName !== ROUTE_NAMES.DISPATCH1) return
+  if (routeName !== ROUTE_NAMES.DISPATCH) return
   const stage = getSharedMapStage(store.rawState, store.MapMode)
   if (stage !== 'dispatch' && stage !== 'dispatchTrack') return { name: ROUTE_NAMES.MAP, replace: true }
 }

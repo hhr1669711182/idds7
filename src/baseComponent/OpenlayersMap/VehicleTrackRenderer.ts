@@ -4,12 +4,7 @@ import Point from 'ol/geom/Point'
 import VectorSource from 'ol/source/Vector'
 import type Map from 'ol/Map'
 import { Style, Stroke } from 'ol/style'
-import {
-  createRouteLineStyle,
-  getStyle,
-  MAP_ICON_SRC,
-  VEHICLE_HISTORY_TRACK_COLOR,
-} from './style'
+import { createRouteLineStyle, getStyle, MAP_ICON_SRC, VEHICLE_HISTORY_TRACK_COLOR } from './style'
 import { MAP_LAYER_Z_INDEX } from './layerOrder'
 import { createRouteDirectionOverlay, createRouteOverlayLayer, projectCoords } from '@/baseComponent/tools/routeBase'
 import type { CarTrackPoint } from '@/apis/carTrack'
@@ -73,13 +68,15 @@ export const createVehicleTrackRenderer = (map: Map): VehicleTrackRenderer => {
   traveledFeature.setStyle(TRAVELED_STYLE)
   const carFeature = new Feature({ geometry: new Point([0, 0]) })
   carFeature.set('trackRank', TRACK_RANK_VEHICLE)
-  carFeature.setStyle(getStyle('vehicle', {
-    src: MAP_ICON_SRC.car,
-    rotation: 0,
-    scale: 0.65,
-    styleId: 'vehicle-history',
-    zIndex: 100,
-  }) as Style)
+  carFeature.setStyle(
+    getStyle('vehicle', {
+      src: MAP_ICON_SRC.car,
+      rotation: 0,
+      scale: 0.65,
+      styleId: 'vehicle-history',
+      zIndex: 100,
+    }) as Style,
+  )
   source.addFeatures([fullFeature, traveledFeature, carFeature])
 
   let projected: number[][] = []
@@ -152,13 +149,15 @@ export const createVehicleTrackRenderer = (map: Map): VehicleTrackRenderer => {
     if (direction) rotation = normalizeRotation(-Math.atan2(direction[1], direction[0]) + Math.PI / 2, rotation)
     lastRenderedCoordinate = coordinate
     ;(carFeature.getGeometry() as Point).setCoordinates(coordinate)
-    carFeature.setStyle(getStyle('vehicle', {
-      src: MAP_ICON_SRC.car,
-      rotation,
-      scale: 0.65,
-      styleId: 'vehicle-history',
-      zIndex: 100,
-    }) as Style)
+    carFeature.setStyle(
+      getStyle('vehicle', {
+        src: MAP_ICON_SRC.car,
+        rotation,
+        scale: 0.65,
+        styleId: 'vehicle-history',
+        zIndex: 100,
+      }) as Style,
+    )
   }
 
   const render = (points: CarTrackPoint[], cursor: number, options?: { fit?: boolean }) => {

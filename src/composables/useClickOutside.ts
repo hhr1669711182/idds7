@@ -10,10 +10,7 @@ import { onBeforeUnmount, onMounted, type Ref } from 'vue'
  * @param ref - 指向面板根节点的模板 ref（须为 HTML 元素）
  * @param handler - 外部点击回调
  */
-export function useClickOutside(
-  ref: Ref<HTMLElement | null | undefined>,
-  handler: () => void,
-): void {
+export function useClickOutside(ref: Ref<HTMLElement | null | undefined>, handler: () => void): void {
   const onMousedown = (e: MouseEvent): void => {
     const el = ref.value
     if (el && !el.contains(e.target as Node)) {

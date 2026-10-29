@@ -3,7 +3,7 @@ import type { BusinessMessageRuntime } from '@/controller/core/io/BusinessMessag
 import { ROUTE_NAMES } from '@/router/constants'
 
 export const bindBusinessMapLifecycle = (router: Router, runtime: BusinessMessageRuntime): (() => void) => {
-  const dispatchNames = [ROUTE_NAMES.DISPATCH, ROUTE_NAMES.DISPATCH1]
+  const dispatchNames = [ROUTE_NAMES.DISPATCH]
   const pending = new WeakMap<RouteLocationNormalized, () => void>()
   const stopBefore = router.beforeEach((to, from) => {
     if (dispatchNames.some((name) => name === from.name) && !dispatchNames.some((name) => name === to.name)) {

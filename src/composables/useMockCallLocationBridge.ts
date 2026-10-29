@@ -53,7 +53,7 @@ export interface MockCallLocationBridgeState {
 
 export interface MockCallLocationBridgeOptions {
   userStore?: MockCallLocationBridgeState
-  requestNavigation?: (request: PendingSpecialMapRender & { path: '/dispatch1' }) => void
+  requestNavigation?: (request: PendingSpecialMapRender & { path: '/dispatch' }) => void
 }
 
 export interface MockCallLocationBridge {
@@ -266,7 +266,7 @@ export const createMockCallLocationBridge = (options: MockCallLocationBridgeOpti
     }
     const current = pending
     emit(MESSAGE_EVENT_KEY.MOCK_SPECIAL_MAP_RENDER, null, 'seat-shared-state', current, current.updatedAt)
-    if (flood && isEmissionCurrent(current)) options.requestNavigation?.({ ...current, path: '/dispatch1' })
+    if (flood && isEmissionCurrent(current)) options.requestNavigation?.({ ...current, path: '/dispatch' })
   }
 
   const emitCall = (current: MockSnapshot, context: MockEmissionContext) => {

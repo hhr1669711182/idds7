@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
-import { useCardStore } from "../../store/useCardStore";
-import { useMapStore } from "../../store";
+import { useCardStore } from "@/store/useCardStore";
+import { useMapStore } from "@/store";
 import { useDrawTool } from "@/composables/useDrawTool";
-import { CARD_TITLE } from "../../const/const.map";
+import { CARD_TITLE } from "@/const/const.map";
 import pointForm from "./form/pointForm.vue";
 import lineForm from "./form/lineForm.vue";
 import polygonForm from "./form/polygonForm.vue";
 import circleForm from "./form/circleForm.vue";
-import { TYPES } from "../../const/const.map";
+import { TYPES } from "@/const/const.map";
 
 const cardstore = useCardStore();
 const { getCurrentTool } = useDrawTool();

@@ -1,256 +1,189 @@
+<!--
+ * @Author: ljh
+ * @Date: 2026-08-27 10:30:08
+ * @LastEditTime: 2026-10-29 17:49:00
+ * @LastEditors: huanghuanrong
+ * @Description: 消防力量调派地图页面组件（T1 转正，原 dispatch1）。
+ * @FilePath: src\components\dispatchMap\index.vue
+-->
 <script setup lang="ts">
-import { onMounted, ref, shallowRef } from "vue";
-// import { storeToRefs } from "pinia";
-
-import tlp from "../map/compass.vue";
-// import trp from "../map/trp.vue";
-// import clear from "../map/clear.vue";
-import brp from "../map/brp.vue";
-// import baseSource from "../map/component/baseSource.vue";
-import OpenlayersMap from "../../baseComponent/OpenlayersMap/dispatchMap.vue";
-import { useMapConfigStore } from "@/store/index.ts";
-import { useDispatchMapStore } from "@/store/useDispatchMapStore";
-import { Icon } from "@iconify/vue";
-import { watch } from "vue";
+import { nextTick, onActivated, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
+import type OlMap from 'ol/Map';
+import ScaleLine from 'ol/control/ScaleLine';
+import OpenlayersMap from '@/baseComponent/OpenlayersMap/dispatchMap.vue';
+import DispatchT1Panel from '@/baseComponent/OpenlayersMap/DispatchT1.vue';
+import type {
+  DispatchT1State,
+  DispatchT1VehicleCommand,
+} from '@/baseComponent/OpenlayersMap/DispatchT1';
+import { useDispatchMapStore } from '@/store/useDispatchMapStore';
+import { usePendingDispatchAlarmStore } from '@/store/usePendingDispatchAlarmStore';
+import { useLayersStore } from '@/store/useLayersStore';
+import {
+  fetchMapConfig,
+  getToolbarLayerConfigs,
+} from '@/config/mapConfig';
+import Compass from '@/components/map/compass.vue';
+import BottomRightPanel from '@/components/map/brp.vue';
+import DispatchLayers from './DispatchLayers.vue';
+import VehicleTrackPanel from './VehicleTrackPanel.vue';
+import { useVehicleTrackStore } from '@/store/useVehicleTrackStore';
+import { TEMP_FRONTEND_LAYER_IDS } from '@/baseComponent/OpenlayersMap/layers';
+import { readScaleLineUnit } from '@/config/scaleLine';
 
 type OpenlayersMapExpose = {
-  addLayer: (id: string) => boolean;
-  removeLayer: (id: string) => boolean;
-  syncLayers: (ids: string[], visible?: boolean) => void;
+  syncLayers: (ids: string[]) => void;
 };
 
 const dispatchMapStore = useDispatchMapStore();
-const mapConfigStore = useMapConfigStore();
+const pendingDispatchAlarmStore = usePendingDispatchAlarmStore();
+const layersStore = useLayersStore();
+const vehicleTrackStore = useVehicleTrackStore();
+const mapRef = shallowRef<OpenlayersMapExpose | null>(null);
+const olMap = shallowRef<OlMap | null>(null);
+const pageRef = ref<HTMLElement | null>(null);
 
-const dispatchMapRef = shallowRef<OpenlayersMapExpose | null>(null);
+const getDispatchLayerIds = (ids: string[]) =>
+  ids.filter((id) => id !== TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER);
 
-// 提取数据配置模板
-const filterData = ref<Record<string, any>>({
-  timeRangeMin: 1,
-  timeRangeMax: 30,
-  carType: "all",
-  showResourceCircle: false,
-});
+let viewportRefreshFrame: number | null = null;
+let viewportResizeObserver: ResizeObserver | null = null;
 
-const filterConfig = ref<any>([
-  {
-    type: "timeRange",
-    label: "预计时间 (min):",
-    modelMin: "timeRangeMin",
-    modelMax: "timeRangeMax",
-    minProps: { min: 1, max: 60, placeholder: "1" },
-    maxProps: { min: 1, max: 120, placeholder: "30" },
-  },
-  // {
-  //   type: "select",
-  //   label: "车辆类型:",
-  //   model: "carType",
-  //   options: [
-  //     { label: "全部", value: "all" },
-  //     { label: "水罐车", value: "water" },
-  //     { label: "泡沫车", value: "foam" },
-  //   ],
-  // },
-  {
-    type: "checkbox",
-    label: "资源圈",
-    model: "showResourceCircle",
-  },
-]);
+const refreshMapViewport = () => {
+  if (viewportRefreshFrame !== null) {
+    cancelAnimationFrame(viewportRefreshFrame);
+  }
+  viewportRefreshFrame = requestAnimationFrame(() => {
+    viewportRefreshFrame = requestAnimationFrame(() => {
+      viewportRefreshFrame = null;
+      const map = olMap.value;
+      if (!map || disposed) return;
 
-const layerCheckboxes = [
-  { id: "gis:view_res_org_dept", label: "消防站", icon: "mdi:home-variant" },
-  { id: "gis:view_juris_zone", label: "队站辖区", icon: "mdi:map-check-outline" },
-  // { id: "standby_car", label: "待命车辆", checked: true, icon: "mdi:car-emergency" },
-  // { id: "duty_point", label: "执勤点", checked: true, icon: "mdi:map-marker-radius" },
-  // { id: "full_time_team", label: "专职队", checked: false, icon: "mdi:account-group" },
-  // { id: "micro_station", label: "微站", checked: false, icon: "mdi:home-city" },
-  // { id: "linked_unit", label: "联动单位", checked: true, icon: "mdi:domain" },
-];
-
-watch(() => dispatchMapStore.checkedIds, (newIds) => {
-  dispatchMapRef.value?.syncLayers(newIds, true);
-}, { deep: true });
-
-const getMap = (map: any) => {
-  dispatchMapStore.setMap(map);
-  // dispatchMapRef.value?.syncLayers(dispatchMapStore.checkedIds);
+      map.updateSize();
+      const hasScaleLine = map
+        .getControls()
+        .getArray()
+        .some((control) => control instanceof ScaleLine);
+      if (!hasScaleLine) {
+        map.addControl(new ScaleLine({ units: readScaleLineUnit() }));
+      }
+      try { map.renderSync(); } catch { /* 地图过渡期 renderer 未就绪，忽略 */ }
+    });
+  });
 };
 
+watch(
+  () => dispatchMapStore.checkedIds,
+  (ids) => {
+    const nextIds = getDispatchLayerIds(ids);
+    if (nextIds.length !== ids.length) {
+      dispatchMapStore.setCheckedIds(nextIds);
+      return;
+    }
+    mapRef.value?.syncLayers(nextIds);
+  },
+  { deep: true, immediate: true },
+);
+
+const setMap = (map: OlMap) => {
+  dispatchMapStore.setMap(map);
+  olMap.value = map;
+  // 基础地图完成自身初始化后，再用调派页的独立状态覆盖初始图层。
+  nextTick(() => {
+    mapRef.value?.syncLayers(getDispatchLayerIds(dispatchMapStore.checkedIds));
+    refreshMapViewport();
+  });
+};
+
+const handleDispatch = (command: DispatchT1VehicleCommand) => {
+  console.info('[DispatchT1] 服务端已确认车辆调派', command);
+};
+
+const handleDispatchError = (error: unknown) => {
+  console.error('[DispatchT1] 消防调派处理失败', error);
+};
+
+const handleQuerySuccess = (state: Readonly<DispatchT1State>) => {
+  pendingDispatchAlarmStore.consume(state.incident?.id);
+  // 警情已上图，Overlay 弹出后地图容器尺寸与比例尺需要重算。
+  nextTick(refreshMapViewport);
+};
+
+let disposed = false;
+onUnmounted(() => {
+  disposed = true;
+  viewportResizeObserver?.disconnect();
+  viewportResizeObserver = null;
+  if (viewportRefreshFrame !== null) {
+    cancelAnimationFrame(viewportRefreshFrame);
+    viewportRefreshFrame = null;
+  }
+  if (dispatchMapStore.map === olMap.value) dispatchMapStore.map = null;
+  olMap.value = null;
+});
+
+onActivated(() => nextTick(refreshMapViewport));
+
 onMounted(async () => {
-  await mapConfigStore.loadConfig();
+  if (pageRef.value) {
+    viewportResizeObserver = new ResizeObserver(refreshMapViewport);
+    viewportResizeObserver.observe(pageRef.value);
+  }
+  try {
+    const mapConfig = await fetchMapConfig();
+    if (disposed) return;
+    // 与主界面共用图层定义，但不覆盖主界面的图层勾选状态。
+    layersStore.setLayerConfigs(getToolbarLayerConfigs(mapConfig));
+    const availableIds = new Set(layersStore.items.map((item) => item.id));
+    dispatchMapStore.setCheckedIds(
+      getDispatchLayerIds(
+        dispatchMapStore.checkedIds.filter((id) => availableIds.has(id)),
+      ),
+    );
+    await nextTick();
+    mapRef.value?.syncLayers(dispatchMapStore.checkedIds);
+    refreshMapViewport();
+  } catch (error) {
+    console.error('[dispatch] 加载图层配置失败', error);
+  }
 });
 </script>
 
 <template>
-  <OpenlayersMap ref="dispatchMapRef" mapId="dispatch-map" @setMap="getMap" />
-  <div class="dispatch-top-bar">
-    <!-- <el-button type="primary" color="#1c2438" class="menu-btn">
-      <Icon icon="mdi:format-list-bulleted" class="mr-2" />
-      待命列表
-    </el-button> -->
+  <div ref="pageRef" class="dispatch-page">
+    <OpenlayersMap ref="mapRef" map-id="dispatch-map" @set-map="setMap" />
+    <DispatchT1Panel
+      :map="olMap"
+      @dispatch="handleDispatch"
+      @query-success="handleQuerySuccess"
+      @error="handleDispatchError"
+    />
 
-    <div class="filter-group">
-      <div v-for="(item, index) in filterConfig" :key="index" :class="['filter-item', { 'ml-6': Number(index) > 0 }]">
-        <template v-if="item.type === 'timeRange'">
-          <span class="label">{{ item.label }}</span>
-          <el-input-number
-            size="small"
-            class="w-32"
-            v-model="filterData[item.modelMin]"
-            v-bind="item.minProps"
-            controls-position="right"
-          />
-          <span class="mx-2">-</span>
-          <el-input-number
-            size="small"
-            class="w-32"
-            v-model="filterData[item.modelMax]"
-            v-bind="item.maxProps"
-            controls-position="right"
-          />
-        </template>
-
-        <template v-else-if="item.type === 'select'">
-          <span class="label">{{ item.label }}</span>
-          <el-select size="small" class="!w-32" v-model="filterData[item.model]" placeholder="全部">
-            <el-option v-for="opt in item.options" :key="opt.value" :label="opt.label" :value="opt.value" />
-          </el-select>
-        </template>
-
-        <template v-else-if="item.type === 'checkbox'">
-          <el-checkbox v-model="filterData[item.model]">{{ item.label }}</el-checkbox>
-        </template>
-      </div>
-    </div>
+    <DispatchLayers />
+    <VehicleTrackPanel v-if="vehicleTrackStore.panelVisible" />
+    <Compass />
+    <BottomRightPanel />
   </div>
-
-  <!-- Bottom Bar (Dispatch specific) -->
-  <div class="dispatch-bottom-bar">
-    <!-- <div class="settings-btn">
-      <Icon icon="streamline-plump-color:map-fold" :size="20" class="mr-2" />
-      <span>地图图层显示:</span>
-    </div> -->
-    <div class="layer-checkboxes">
-      <el-checkbox-group v-model="dispatchMapStore.checkedIds" class="flex gap-3">
-        <el-checkbox v-for="item in layerCheckboxes" :key="item.id" :label="item.label" :value="item.id">
-          <div
-            :class="['flex items-center transition-colors', dispatchMapStore.checkedIds.includes(item.id) ? 'text-blue-500' : 'text-gray-400']"
-          >
-            <Icon :icon="item.icon" class="mr-1" />
-            {{ item.label }}
-          </div>
-        </el-checkbox>
-      </el-checkbox-group>
-    </div>
-  </div>
-
-  <tlp />
-  <brp />
-  <!-- <trp /> -->
-
-  <!-- <baseSource /> -->
-  <!-- <clear /> -->
-  <!-- <config @save="handleConfigSave" /> -->
-  <!-- <layers :onLayerChange="handleLayerChange" /> -->
 </template>
 
 <style scoped>
-
-.dispatch-top-bar {
-  position: absolute;
-  top: 10px;
-  left: 20px;
-  display: flex;
-  align-items: center;
-  z-index: 100;
-  gap: 16px;
-}
-
-.menu-btn {
-  font-size: 16px;
-  padding: 10px 20px;
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  background: var(--panel-bg-solid);
-  border: 1px solid var(--widget-border);
-}
-
-.filter-group {
-  display: flex;
-  align-items: center;
-  background-color: var(--panel-bg-solid);
-  padding: 4px 8px;
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  border: 1px solid var(--widget-border);
-}
-
-.filter-item {
-  display: flex;
-  align-items: center;
-  color: var(--text-secondary);
-}
-
-.filter-item .label {
-  margin-right: 8px;
-  color: var(--text-muted);
-}
-
-:deep(.el-input-number__decrease), :deep(.el-input-number__increase) {
-  background-color: var(--card-bg);
-  border-color: var(--widget-border);
-  color: var(--text-primary);
-}
-
-:deep(.el-input__wrapper),
-:deep(.el-select__wrapper) {
-  background-color: var(--widget-bg);
-  box-shadow: 0 0 0 1px var(--widget-border) inset;
-}
-
-:deep(.el-input__inner),
-:deep(.el-select__placeholder) {
-  color: var(--text-primary);
-}
-
-:deep(.el-checkbox__label) {
-  color: var(--text-primary);
-}
-
-.dispatch-bottom-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
+.dispatch-page {
+  position: relative;
   width: 100%;
-  /* background-color: #1c2438; */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* padding: 10px 20px; */
-  z-index: 100;
+  height: 100%;
+  min-height: 100vh;
+  overflow: hidden;
 }
-
-.settings-btn {
-  display: flex;
-  align-items: center;
-  color: var(--text-muted);
-  margin-right: 24px;
-  font-size: 14px;
+:global(#dispatch-map) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
 }
-
-.layer-checkboxes {
-  display: flex;
-  gap: 12px;
-  background-color: var(--panel-bg-solid);
-  padding: 2px 12px;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-  border: 1px solid var(--widget-border);
-  border-bottom: none;
-}
-
-:deep(.layer-checkboxes .el-checkbox__label) {
-  display: flex;
-  align-items: center;
+:global(#dispatch-map .ol-scale-line) {
+  left: 4em !important;
+  bottom: 0 !important;
+  z-index: 2;
 }
 </style>

@@ -10,7 +10,7 @@ import { unByKey } from "ol/Observable";
 import type { EventsKey } from "ol/events";
 import TileLayer from "ol/layer/Tile";
 import { ScaleLine, OverviewMap } from "ol/control";
-import { readScaleLineUnit } from "../../config/scaleLine.ts";
+import { readScaleLineUnit } from "@/config/scaleLine.ts";
 // import { KeyboardPan } from "ol/interaction";
 import { FeatureClickQuery } from "./FeatureClickQuery.ts";
 // 限制视图范围 要保留 lint检查不清除
@@ -22,9 +22,9 @@ import {
   isTempFrontendLayerId,
 } from "./layers.ts";
 import { useBaseMapLayer } from "./useBaseMapLayer.ts";
-import { TrafficTools } from "../../components/map/MapTools";
+import { TrafficTools } from "@/components/map/MapTools";
 import { ZOOM, CENTER } from "./const.map.ts";
-import { useResponsive } from "../../composables/useResponsive.ts";
+import { useResponsive } from "@/composables/useResponsive.ts";
 import {
   AmapRealtimeNav,
   FIRE_STATION_LAYER_Z_INDEX,

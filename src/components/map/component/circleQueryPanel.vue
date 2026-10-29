@@ -432,93 +432,93 @@ onBeforeUnmount(() => {
       </div>
       <template v-if="!searchPanelCollapsed">
         <div class="cq-content">
-        <!-- 双数据源 tab -->
-        <el-tabs v-model="activeTab" class="cq-tabs" @tab-change="onTabChange">
-          <el-tab-pane :label="`地址信息 (${searchStore.addressResults.items.length})`" name="address" />
-          <el-tab-pane :label="`消防资源 (${searchStore.resourceResults.items.length})`" name="resource" />
-        </el-tabs>
+          <!-- 双数据源 tab -->
+          <el-tabs v-model="activeTab" class="cq-tabs" @tab-change="onTabChange">
+            <el-tab-pane :label="`地址信息 (${searchStore.addressResults.items.length})`" name="address" />
+            <el-tab-pane :label="`消防资源 (${searchStore.resourceResults.items.length})`" name="resource" />
+          </el-tabs>
 
-        <div v-if="activeBucket?.truncated" class="cq-truncated">结果已截断，仅显示前 10000 条</div>
-        <div v-if="searchError" class="cq-error">{{ searchError }}</div>
+          <div v-if="activeBucket?.truncated" class="cq-truncated">结果已截断，仅显示前 10000 条</div>
+          <div v-if="searchError" class="cq-error">{{ searchError }}</div>
 
-        <div class="cq-list">
-          <div v-if="loading" class="cq-empty">查询中…</div>
-          <div v-else-if="!activeCount" class="cq-empty">未找到匹配结果</div>
-          <div
-            v-for="item in activeBucket?.items"
-            v-else
-            :key="item.key"
-            class="cq-list-item"
-            :class="{ active: selectedItem?.key === item.key, disabled: !item.locatable }"
-            @click="onSelectResult(item)"
-          >
-            <div class="cq-item-title">{{ item.title }}</div>
-            <div class="cq-item-sub">{{ item.subtitle }}</div>
-          </div>
-        </div>
-
-        <!-- 圈选配置（保留原有统计） -->
-        <template v-if="visible">
-          <div class="cq-divider" />
-          <div class="cq-section">
-            <div class="cq-section-header">
-              <div class="cq-section-title">搜索半径</div>
-              <div class="cq-radius-value">{{ (radiusMeters / 1000).toFixed(2) }} 公里</div>
-            </div>
-            <div class="cq-radius">
-              <el-slider
-                :model-value="radiusMeters"
-                :min="RADIUS_MIN_METERS"
-                :max="RADIUS_MAX_METERS"
-                :step="RADIUS_STEP_METERS"
-                :show-tooltip="true"
-                :format-tooltip="(v: number) => `${(v / 1000).toFixed(2)} 公里`"
-                @update:modelValue="onSliderChange"
-              />
+          <div class="cq-list">
+            <div v-if="loading" class="cq-empty">查询中…</div>
+            <div v-else-if="!activeCount" class="cq-empty">未找到匹配结果</div>
+            <div
+              v-for="item in activeBucket?.items"
+              v-else
+              :key="item.key"
+              class="cq-list-item"
+              :class="{ active: selectedItem?.key === item.key, disabled: !item.locatable }"
+              @click="onSelectResult(item)"
+            >
+              <div class="cq-item-title">{{ item.title }}</div>
+              <div class="cq-item-sub">{{ item.subtitle }}</div>
             </div>
           </div>
 
-          <div class="cq-divider" />
-
-          <div class="cq-section">
-            <div class="cq-section-title">设施类型</div>
-            <div class="cq-types">
-              <label
-                v-for="t in ALL_RESOURCE_TYPES"
-                :key="t.key"
-                class="cq-type"
-                :class="{ active: selectedTypes.includes(t.key) }"
-              >
-                <el-checkbox
-                  :model-value="selectedTypes.includes(t.key)"
-                  @update:modelValue="(v: boolean | string | number) => onToggleType(t.key, Boolean(v))"
+          <!-- 圈选配置（保留原有统计） -->
+          <template v-if="visible">
+            <div class="cq-divider" />
+            <div class="cq-section">
+              <div class="cq-section-header">
+                <div class="cq-section-title">搜索半径</div>
+                <div class="cq-radius-value">{{ (radiusMeters / 1000).toFixed(2) }} 公里</div>
+              </div>
+              <div class="cq-radius">
+                <el-slider
+                  :model-value="radiusMeters"
+                  :min="RADIUS_MIN_METERS"
+                  :max="RADIUS_MAX_METERS"
+                  :step="RADIUS_STEP_METERS"
+                  :show-tooltip="true"
+                  :format-tooltip="(v: number) => `${(v / 1000).toFixed(2)} 公里`"
+                  @update:modelValue="onSliderChange"
                 />
-                <span class="cq-type-dot" :style="{ background: t.color }" />
-                <span class="cq-type-label">{{ t.label }}</span>
-                <span class="cq-type-count" :class="{ dim: !selectedTypes.includes(t.key) }">
-                  {{ data?.stats.perType[t.key] ?? 0 }}
-                </span>
-              </label>
+              </div>
             </div>
-          </div>
 
-          <div class="cq-divider" />
+            <div class="cq-divider" />
 
-          <div class="cq-section">
-            <div class="cq-result">
-              <span class="cq-result-label">查询结果</span>
-              <span class="cq-result-num">{{ data?.stats.total ?? 0 }}</span>
-              <span class="cq-result-unit">个</span>
+            <div class="cq-section">
+              <div class="cq-section-title">设施类型</div>
+              <div class="cq-types">
+                <label
+                  v-for="t in ALL_RESOURCE_TYPES"
+                  :key="t.key"
+                  class="cq-type"
+                  :class="{ active: selectedTypes.includes(t.key) }"
+                >
+                  <el-checkbox
+                    :model-value="selectedTypes.includes(t.key)"
+                    @update:modelValue="(v: boolean | string | number) => onToggleType(t.key, Boolean(v))"
+                  />
+                  <span class="cq-type-dot" :style="{ background: t.color }" />
+                  <span class="cq-type-label">{{ t.label }}</span>
+                  <span class="cq-type-count" :class="{ dim: !selectedTypes.includes(t.key) }">
+                    {{ data?.stats.perType[t.key] ?? 0 }}
+                  </span>
+                </label>
+              </div>
             </div>
-          </div>
 
-          <div class="cq-divider" />
+            <div class="cq-divider" />
 
-          <!-- 需求 10：清空圈，回到可重新绘制 -->
-          <div class="cq-section">
-            <el-button class="cq-clear-btn" @click="onClearCircle">清空圈选</el-button>
-          </div>
-        </template>
+            <div class="cq-section">
+              <div class="cq-result">
+                <span class="cq-result-label">查询结果</span>
+                <span class="cq-result-num">{{ data?.stats.total ?? 0 }}</span>
+                <span class="cq-result-unit">个</span>
+              </div>
+            </div>
+
+            <div class="cq-divider" />
+
+            <!-- 需求 10：清空圈，回到可重新绘制 -->
+            <div class="cq-section">
+              <el-button class="cq-clear-btn" @click="onClearCircle">清空圈选</el-button>
+            </div>
+          </template>
         </div>
       </template>
     </div>

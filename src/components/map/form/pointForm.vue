@@ -3,9 +3,9 @@ import { reactive } from "vue";
 import { storeToRefs } from "pinia";
 import { Icon } from "ol/style";
 import Style from "ol/style/Style";
-import { useCardStore } from "../../../store/useCardStore";
+import { useCardStore } from "@/store/useCardStore";
 import { getSVGForSrcById } from "@/utils/index.ts";
-import { POINT_IMG_OPTIONS } from "../../../const/const.form.ts";
+import { POINT_IMG_OPTIONS } from "@/const/const.form.ts";
 
 const cardstore = useCardStore();
 const { getItem: getMarkerData } = cardstore;

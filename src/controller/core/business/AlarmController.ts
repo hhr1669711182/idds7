@@ -48,7 +48,9 @@ export class AlarmController {
 
   public incidentStateChanged(envelope: MessageEnvelope<AlarmIncidentStateData>) {
     const incidentId = String(envelope.data?.incidentId ?? '').trim()
-    const newState = String(envelope.data?.newState ?? '').trim().toUpperCase()
+    const newState = String(envelope.data?.newState ?? '')
+      .trim()
+      .toUpperCase()
     const trackStore = useVehicleTrackStore()
     if (isTerminalIncidentState(newState)) {
       // 终态警情只走车辆历史轨迹链路：清掉待调派画像并移除原有警情上图结果

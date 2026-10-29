@@ -175,8 +175,8 @@ export const initMessage = () => {
             if (wasFlood && isFlood) return
             const triggered = mockBridge.applySpecialMapRenderFromSharedState(event.newValue)
             if (triggered) {
-                if (router.currentRoute.value.name !== ROUTE_NAMES.DISPATCH1) {
-                    router.replace({ name: ROUTE_NAMES.DISPATCH1 })
+                if (router.currentRoute.value.name !== ROUTE_NAMES.DISPATCH) {
+                    router.replace({ name: ROUTE_NAMES.DISPATCH })
                 }
             } else if (wasFlood) {
                 // 从特灾模式切出：清除特殊地图上图数据

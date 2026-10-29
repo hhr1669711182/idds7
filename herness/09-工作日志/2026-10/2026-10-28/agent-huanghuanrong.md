@@ -83,3 +83,24 @@ resolution 快照一次），缩放后密度/数量不变，观感和 dispatch1 
 - `当前状态摘要.md`：更新"首屏 JS 仍偏重"条目为 Tier 分层已落地；追加 2026-10-28 决策记录。
 - 新建 `02-技术设计/前端/store分层与首屏优化-技术方案.md` + 登记进 `_index.md`（文档列表 + 近期方案索引）。
 - 遗留：`useMapStore` 等持 ol.Map 实例属存量例外，待 controller 层重构统一处理；`vite manualChunks` 分包另立项。
+
+## 追加：循环依赖修复 + S7 约束 + 全项目格式化
+
+### 背景
+Tier 拆分后 dev 运行报 carLocation.ts 顶层 Cannot access MESSAGE_SUBSCRIBE_TOPIC before initialization。根因：const.message.type.ts 从 @/store barrel 导入 useUserStore，barrel 又拉入 useMessageStore → interceptor → carLocation.ts，形成循环依赖。barrel 拆分改变执行顺序后该环被触发。
+
+### 改动
+| 文件 | 改动 |
+|------|------|
+| src/const/const.message.type.ts | useUserStore 改按文件直接导入，断开 barrel 循环依赖 |
+| herness/05-共享上下文/设计规范速查.md | 新增 S7：底层文件禁从 @/store 总入口导入 store，一律按文件直接导入 |
+| 全项目 prettier | 12 个文件格式不合规（useAmapTools.ts / DispatchT1.ts / circleQueryPanel.vue / vite.config.ts 等），pnpm format 修复，format:check 通过 |
+
+### 验证
+- pnpm lint 0 报错
+- pnpm build 成功
+- pnpm format:check 通过
+
+## 追加：涉及文件跨子树相对 import 规范化为 @/ 别名
+
+本次 store 优化涉及的 ~40 个文件中，把跨出 src 子树的相对 import（../../ 及以上，如 ../../store、../../../const）统一改为 @/ 别名共 38 处（14 个文件：form/*、card.vue、clear.vue、map/index.vue、topicLayerCard.vue、dispatchMap/index.vue、Modals/*、baseComponent/OpenlayersMap/{map,dispatchMap}.vue）；单级 ../ 同子树引用（如 ../MapTools）保留不动。验证：pnpm lint 0 报错、pnpm build 成功、pnpm format:check 通过。

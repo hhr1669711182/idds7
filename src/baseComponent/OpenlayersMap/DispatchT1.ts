@@ -957,7 +957,6 @@ export class DispatchT1 {
       .forEach((feature) => this.routeSource.removeFeature(feature))
   }
 
-
   private cancelRoute(stationId: string): void {
     this.routeVersions.set(stationId, (this.routeVersions.get(stationId) ?? 0) + 1)
   }

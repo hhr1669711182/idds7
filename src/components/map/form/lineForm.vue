@@ -2,11 +2,11 @@
 import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { Style, Stroke } from "ol/style";
-import { useCardStore } from "../../../store/useCardStore";
+import { useCardStore } from "@/store/useCardStore";
 import rightImg from "@/assets/ui/buttons/right.png";
 import { getSVGForSrcById, getStyleFunction } from "@/utils/index.ts";
-import { LINE_FORM_LINE_STYLES } from "../../../const/const.map.ts";
-import Slider from "../../../baseComponent/Slider.vue";
+import { LINE_FORM_LINE_STYLES } from "@/const/const.map.ts";
+import Slider from "@/baseComponent/Slider.vue";
 import { Feature } from "ol";
 import { StyleLike } from "ol/style/Style";
 

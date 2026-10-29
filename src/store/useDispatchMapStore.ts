@@ -1,14 +1,13 @@
-﻿/*
- * @Author: hhr
- * @Date: 2026-08-14 18:57:09
- * @LastEditTime: 2026-08-17 17:47:25
- * @LastEditors: hhr
- * @Description: 文件描述
+/*
+ * @Author: ljh
+ * @Date: 2026-08-27 10:30:08
+ * @LastEditTime: 2026-08-27 10:39:46
+ * @LastEditors: ljh
+ * @Description: 调派页面地图状态（消防力量调派，图层选择与主图隔离）。
  * @FilePath: \ids-gis-web\src\store\useDispatchMapStore.ts
  */
 import { defineStore } from 'pinia'
-import { markRaw, toRaw } from 'vue'
-import { Map } from 'ol'
+import type Map from 'ol/Map'
 
 export interface DispatchMapState {
   map: Map | null
@@ -16,19 +15,16 @@ export interface DispatchMapState {
 }
 
 export const useDispatchMapStore = defineStore('dispatchMapStore', {
-  state: (): DispatchMapState => {
-    return {
-      map: null,
-      checkedIds: ['gis:view_res_org_dept', 'gis:view_juris_zone'],
-    }
-  },
-
+  state: (): DispatchMapState => ({
+    map: null,
+    checkedIds: ['gis:view_res_org_dept'],
+  }),
   actions: {
-    setMap(val: Map) {
-      this.map = markRaw(toRaw(val))
+    setMap(map: Map) {
+      this.map = map
     },
     setCheckedIds(ids: string[]) {
-      this.checkedIds = ids
+      this.checkedIds = [...new Set(ids)]
     },
   },
   persist: {

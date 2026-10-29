@@ -1,0 +1,8 @@
+refactor(dispatch): 将 dispatch1 转正为 /dispatch 并删除旧 dispatch 底座引用
+
+- views/dispatch1 -> views/dispatch，删旧 views/dispatch
+- components/dispatchMap1 -> components/dispatchMap（Dispatch1Layers->DispatchLayers），删旧 wrapper
+- store/useDispatch1MapStore -> useDispatchMapStore（id=dispatchMapStore），删旧 store
+- 路由删 /dispatch1，/dispatch 指向 T1 内容；ROUTE_NAMES 删 DISPATCH1
+- 引用归一：sharedStateGuard/businessMapLifecycle/register+Control pageCondition/initMessage/useCurrentMap/DispatchT1.vue
+- pnpm lint 归零

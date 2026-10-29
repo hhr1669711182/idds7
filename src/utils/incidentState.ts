@@ -15,4 +15,8 @@ const TERMINAL_STATE_SET: ReadonlySet<string> = new Set(TERMINAL_INCIDENT_STATES
 
 /** 判断警情状态是否为 5 个终态之一（忽略大小写与首尾空白） */
 export const isTerminalIncidentState = (state?: string | null): boolean =>
-  TERMINAL_STATE_SET.has(String(state ?? '').trim().toUpperCase())
+  TERMINAL_STATE_SET.has(
+    String(state ?? '')
+      .trim()
+      .toUpperCase(),
+  )

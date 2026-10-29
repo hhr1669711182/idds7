@@ -39,7 +39,10 @@ export class IncidentLocationController {
     const messageIncidentId = String(envelope.data?.incidentId ?? '').trim()
     const terminalMarked =
       Boolean(String(trackStore.terminalIncidentId ?? '').trim()) && isTerminalIncidentState(trackStore.terminalState)
-    if ((messageIncidentId && trackStore.isTerminalIncident(messageIncidentId)) || (!messageIncidentId && terminalMarked)) {
+    if (
+      (messageIncidentId && trackStore.isTerminalIncident(messageIncidentId)) ||
+      (!messageIncidentId && terminalMarked)
+    ) {
       this.store.clearAll()
       return { accepted: false, reason: 'terminal' }
     }

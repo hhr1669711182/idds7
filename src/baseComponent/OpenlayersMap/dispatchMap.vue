@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, nextTick, onUnmounted, ref, computed, watch, markRaw } from "vue";
 import OLMap from "ol/Map";
-import { readScaleLineUnit } from "../../config/scaleLine.ts";
+import { readScaleLineUnit } from "@/config/scaleLine.ts";
 import { MAP_LAYER_Z_INDEX } from "./layerOrder";
 import View from "ol/View";
 import * as olProj from "ol/proj";
@@ -39,10 +39,10 @@ import {
   isTempFrontendLayerId,
 } from "./layers.ts";
 import { useBaseMapLayer } from "./useBaseMapLayer.ts";
-import { TrafficTools } from "../../components/map/MapTools";
+import { TrafficTools } from "@/components/map/MapTools";
 import { ZOOM, CENTER } from "./const.map.ts";
 // import { EXTENT } from "./const.map.ts";  // TS6133: 仅被注释代码引用，import 保留备用
-import { useResponsive, useTouch } from "../../composables/useResponsive.ts";
+import { useResponsive, useTouch } from "@/composables/useResponsive.ts";
 import {
   AmapRealtimeNav,
   FIRE_STATION_LAYER_Z_INDEX,

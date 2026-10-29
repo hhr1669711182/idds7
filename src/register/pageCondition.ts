@@ -70,7 +70,7 @@ const queueNavigation = (condition: PageCondition, special: boolean): Promise<vo
       state.pending = undefined
       if (intent.epoch !== store.sessionEpoch) continue
       if (intent.special ? !isSpecialNavigationAllowed(store) : store.mode === 'flood') continue
-      const routeName = intent.condition === PAGE_CONDITION.DISPATCH ? ROUTE_NAMES.DISPATCH1 : ROUTE_NAMES.MAP
+      const routeName = intent.condition === PAGE_CONDITION.DISPATCH ? ROUTE_NAMES.DISPATCH : ROUTE_NAMES.MAP
       if (router.currentRoute.value.name === routeName) continue
       try {
         await router.replace({ name: routeName })

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, toRaw, markRaw } from "vue";
 import { storeToRefs } from "pinia";
-import { PANEL_MAP_TYPE, THEMATIC_MAP_TYPES } from "../../../const/index";
-import { useMapStore, usePanelStore } from "../../../store";
-import { useTopicLayerStore } from "../../../store/useTopicLayerStore";
+import { PANEL_MAP_TYPE, THEMATIC_MAP_TYPES } from "@/const/index";
+import { useMapStore, usePanelStore } from "@/store";
+import { useTopicLayerStore } from "@/store/useTopicLayerStore";
 import {
   HeatMapTools,
   ClusterTools,

@@ -30,7 +30,7 @@ export const parsePageCondition = (raw: string | null): PageCondition | null => 
 
 const routeForCondition = (condition: PageCondition) =>
   condition === PAGE_CONDITION.DISPATCH
-    ? ROUTE_NAMES.DISPATCH1
+    ? ROUTE_NAMES.DISPATCH
     : ROUTE_NAMES.MAP
 
 /** 特灾模式（mode=flood）：所有切页操作一律拦截，留在特殊地图 */
