@@ -351,11 +351,11 @@ describe('Control 迁移应用生命周期（回归 2026-10-15 F4/F8/F10）', ()
       history: createMemoryHistory(),
       routes: [
         { path: '/map', name: ROUTE_NAMES.MAP, component: {} },
-        { path: '/dispatch1', name: ROUTE_NAMES.DISPATCH1, component: {} },
+        { path: '/dispatch', name: ROUTE_NAMES.DISPATCH, component: {} },
       ],
     })
     const stop = bindBusinessMapLifecycle(router, runtime)
-    await router.push('/dispatch1')
+    await router.push('/dispatch')
     let release: () => void = () => {}
     let entered: () => void = () => {}
     const blocked = new Promise<void>((resolve) => {
@@ -384,7 +384,7 @@ describe('Control 迁移应用生命周期（回归 2026-10-15 F4/F8/F10）', ()
     }
     release()
     await leaving
-    await router.push('/dispatch1')
+    await router.push('/dispatch')
     const render = vi.fn()
     const disasterSite = vi.fn()
     runtime.attachMap(createPort(), {
@@ -403,11 +403,11 @@ describe('Control 迁移应用生命周期（回归 2026-10-15 F4/F8/F10）', ()
       history: createMemoryHistory(),
       routes: [
         { path: '/map', name: ROUTE_NAMES.MAP, component: {} },
-        { path: '/dispatch1', name: ROUTE_NAMES.DISPATCH1, component: {} },
+        { path: '/dispatch', name: ROUTE_NAMES.DISPATCH, component: {} },
       ],
     })
     const stop = bindBusinessMapLifecycle(router, runtime)
-    await router.push('/dispatch1')
+    await router.push('/dispatch')
     useMessageStore().ingest(
       { eventKey: MESSAGE_EVENT_KEY.MOCK_SPECIAL_MAP_DISASTER_SITE, data: null },
       MESSAGE_CHANNEL.LOCAL_STORAGE,

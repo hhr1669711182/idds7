@@ -9,7 +9,6 @@ import { unByKey } from "ol/Observable";
 import type { EventsKey } from "ol/events";
 import type Overlay from "ol/Overlay";
 // import OSM from "ol/source/OSM.js";  // TS6133: 未使用，import 保留备用
-import TileLayer from "ol/layer/Tile";
 import {
   // ZoomSlider,  // TS6133: 模板功能已注释，import 保留备用
   // FullScreen,  // TS6133: 模板功能已注释，import 保留备用
@@ -36,7 +35,6 @@ import {
   GOOGLE_LAYER,
   TEMP_FRONTEND_LAYER_IDS,
   VECTOR_LAYER,
-  isTempFrontendLayerId,
 } from "./layers.ts";
 import { useBaseMapLayer } from "./useBaseMapLayer.ts";
 import { TrafficTools } from "@/components/map/MapTools";
@@ -157,9 +155,9 @@ import xcImg from "@/assets/icons-svg/xc.svg";
 import zjImg from "@/assets/icons-svg/jz.svg";
 import { useDispatchMapStore } from "@/store/useDispatchMapStore";
 import { storeToRefs } from "pinia";
-import TileWMS from "ol/source/TileWMS";
 import { getWMSLayerOptions } from "@/apis/layers";
 import { LAYER_SOURCE_CONFIGS } from "@/config/layers";
+import { useGisBaseMap } from "./useGisBaseMap.ts";
 import { useMapConfigStore } from "@/store";
 import { useBaseSourceStore } from "@/store/useBaseSourceStore";
 import { useTabsStore } from "@/store/useTabsStore";
@@ -213,7 +211,46 @@ const {
 const { stations: fireStations, load: loadFireStations, getNearestFireStation } = useFireStations();
 /** WFS 全量队站原始列表；主管队站改由独立 zhu.png 图标上图，fireManager 填充时排除主管 id 避免图标重叠 */
 let allFireStations: typeof fireStations.value = [];
-const wmsLayerMap = new globalThis.Map<string, TileLayer<TileWMS>>();
+// 统一底座共用层（WMS 图层 + zoom）：dispatch 用 LAYER_SOURCE_CONFIGS 配置，共享池不 dispose，
+// CQL 强占消防站/周边资源层时经 guardRemoveLayer 阻止开关移除。
+const gisBaseMap = useGisBaseMap({
+  getLayerConfig: (id) => {
+    const config = LAYER_SOURCE_CONFIGS.find((c) => c.id === id);
+    if (!config) return undefined;
+    const options = getWMSLayerOptions(config);
+    return {
+      url: options.url,
+      params: options.params,
+      serverType: options.serverType,
+      crossOrigin: options.crossOrigin,
+      opacity: options.opacity,
+      minZoom: config.minZoom,
+      visible: config.visible,
+      zIndex: id === STATION_LAYER_NAME ? FIRE_STATION_LAYER_Z_INDEX : undefined,
+    };
+  },
+  disposeSourceOnRemove: false,
+  disposeLayerOnRemove: false,
+  setLayerId: false,
+  respectConfigVisible: false,
+  syncTempInvisible: true,
+  guardRemoveLayer: (id) => {
+    // 警情/调派正在复用消防站 WMS 图层显示主管+支撑队站时，禁止开关移除
+    if (id === STATION_LAYER_NAME && stationLayerStore.selectedStationIds.length) return true;
+    // 警情定位正在复用消防栓/重点单位/队站辖区/建筑 WMS 图层显示 500 米圈内资源时，禁止开关移除
+    if (
+      (id === FIRE_HYDRANT_LAYER_NAME || id === KEY_ENTERPRISE_LAYER_NAME || id === JURIS_ZONE_LAYER_NAME || id === BUILDING_LAYER_NAME)
+      && nearbyResourceLayerStore.circles.length
+    ) return true;
+    return false;
+  },
+  handleTempFrontendLayer: (id, visible) => setTempFrontendLayerVisible(id, visible),
+});
+/** WMS 图层访问器：CQL 强制过滤等直接读/判图层存在，等价原 wmsLayerMap 的 has/get */
+const wmsLayerMap = {
+  has: gisBaseMap.hasWmsLayer,
+  get: gisBaseMap.getWmsLayer,
+};
 // 底图 TileLayer：跟随全局 baseSourceStore 切换，共享 source 缓存池
 const baseLayer = useBaseMapLayer({
   onMaxZoomChange: (_mz: number) => nextTick(() => applyFeatureZoomLimits()),
@@ -222,17 +259,7 @@ const overviewLayer = useBaseMapLayer();
 let trafficTool: TrafficTools | null = null;
 
 const applyFeatureZoomLimits = () => {
-  if (!map) return;
-  const { minZoom, maxZoom } = mapConfigStore.config.feature;
-  const effectiveMaxZoom = maxZoom;
-  const view = map.getView();
-  view.setMinZoom(minZoom);
-  view.setMaxZoom(effectiveMaxZoom);
-
-  const zoom = view.getZoom();
-  if (typeof zoom === "number") {
-    view.setZoom(Math.min(Math.max(zoom, minZoom), effectiveMaxZoom));
-  }
+  gisBaseMap.applyZoomLimits(mapConfigStore.config.feature);
 };
 
 watch(
@@ -894,78 +921,14 @@ watch(
  * @param action 'add' | 'remove'
  * @param id 图层配置 ID
  */
-const addLayer = (id: string) => {
-  if (!map) return false;
-  if (isTempFrontendLayerId(id)) {
-    return setTempFrontendLayerVisible(id, true);
-  }
+const addLayer = (id: string) => gisBaseMap.addLayer(id);
 
-  const config = LAYER_SOURCE_CONFIGS.find((c) => c.id === id);
-  if (!config || wmsLayerMap.has(id)) return false;
-
-  const options = getWMSLayerOptions(config);
-  const wmsLayer = markRaw(new TileLayer({
-    source: markRaw(new TileWMS({
-      url: options.url,
-      params: options.params,
-      serverType: options.serverType,
-      crossOrigin: options.crossOrigin,
-    })),
-    opacity: options.opacity,
-    minZoom: config.minZoom,
-    zIndex: id === STATION_LAYER_NAME ? FIRE_STATION_LAYER_Z_INDEX : undefined,
-  }));
-
-  map.addLayer(wmsLayer);
-  wmsLayerMap.set(id, wmsLayer);
-  return true;
-};
-
-const removeLayer = (id: string) => {
-  if (!map) return false;
-  // 警情/调派正在复用消防站 WMS 图层显示主管+支撑队站时，禁止开关移除
-  if (
-    id === STATION_LAYER_NAME
-    && stationLayerStore.selectedStationIds.length
-  ) {
-    return false;
-  }
-  // 警情定位正在复用消防栓/重点单位/队站辖区/建筑 WMS 图层显示 500 米圈内资源时，禁止开关移除
-  if (
-    (id === FIRE_HYDRANT_LAYER_NAME || id === KEY_ENTERPRISE_LAYER_NAME || id === JURIS_ZONE_LAYER_NAME || id === BUILDING_LAYER_NAME)
-    && nearbyResourceLayerStore.circles.length
-  ) {
-    return false;
-  }
-  if (isTempFrontendLayerId(id)) {
-    return setTempFrontendLayerVisible(id, false);
-  }
-
-  const layer = wmsLayerMap.get(id);
-  if (!layer) return false;
-
-  map.removeLayer(layer);
-  wmsLayerMap.delete(id);
-  return true;
-};
+const removeLayer = (id: string) => gisBaseMap.removeLayer(id);
 
 const dispatchMapStore = useDispatchMapStore();
 const { checkedIds: dispatchCheckedIds } = storeToRefs(dispatchMapStore);
 
-const syncLayers = (ids: string[]) => {
-  const targetIds = new Set(ids);
-
-  Object.values(TEMP_FRONTEND_LAYER_IDS).forEach((id) => {
-    setTempFrontendLayerVisible(id, targetIds.has(id));
-  });
-
-  Array.from(wmsLayerMap.keys()).forEach((id) => {
-    if (!targetIds.has(id)) removeLayer(id);
-  });
-  ids.forEach((id) => {
-    if (!isTempFrontendLayerId(id)) addLayer(id);
-  });
-};
+const syncLayers = (ids: string[]) => gisBaseMap.syncLayers(ids);
 
 defineExpose({
   addLayer,
@@ -2064,16 +2027,14 @@ const initMap = () => {
     }),
   }));
   map = mapInstance;
-  applyFeatureZoomLimits();
+  gisBaseMap.attach(mapInstance, mapConfigStore.config.feature);
   emit("setMap", mapInstance);
   callLocationGenericController = new GenericController(mapInstance);
   callLocationController = businessRuntime.business.call;
   updateMapZoomLevel();
   if (!mapInstance) return;
 
-  zoomLevelChangeKey = mapInstance
-    .getView()
-    .on("change:resolution", updateMapZoomLevel);
+  zoomLevelChangeKey = gisBaseMap.watchZoom(updateMapZoomLevel);
 
   featureClickQuery = new FeatureClickQuery(mapInstance, getStationRouteInfo);
   featureClickQuery.activate();
@@ -2273,7 +2234,7 @@ const initMap = () => {
 
   // 画像地址变更（警情定位）点位：初始数据取自 store，后续由 watcher 增量同步
   if (map) {
-    // 刷新恢复门控：dispatch / dispatchTrack 阶段（/dispatch1 且业务状态为
+    // 刷新恢复门控：dispatch / dispatchTrack 阶段（/dispatch 且业务状态为
     // 调派或调派跟踪）允许持久化点位上图；其他阶段清空缓存，避免旧警情残留。
     // dispatchTrack 需保留警情定位数据以供模拟调派跟踪复用路线起点/终点。
     // 终态警情只执行车辆历史轨迹：先判定，避免恢复持久化点位并重查主管队站/周边资源/路径。
@@ -2454,6 +2415,7 @@ const cleanup = () => {
     unByKey(zoomLevelChangeKey);
     zoomLevelChangeKey = null;
   }
+  gisBaseMap.dispose();
   if (featureClickQuery) {
     featureClickQuery.destroy();
     featureClickQuery = null;
@@ -2507,8 +2469,6 @@ const cleanup = () => {
     trafficTool = null;
   }
   if (map) {
-    wmsLayerMap.forEach((layer) => map?.removeLayer(layer));
-    wmsLayerMap.clear();
     // source 由 useBaseMapLayer 全局缓存池共享，卸载时只销毁图层，不 dispose 共享 source
     overviewLayer.dispose();
     baseLayer.dispose();

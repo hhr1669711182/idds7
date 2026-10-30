@@ -24,7 +24,7 @@ test('Given 已挂载地图 When 另一标签更新共享阶段和F10模式 Then
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await writer.evaluate((snapshot) => localStorage.setItem('seat-shared-state', JSON.stringify(snapshot)), shared)
-  await expect(page).toHaveURL(/#\/dispatch1/, { timeout: 60_000 })
+  await expect(page).toHaveURL(/#\/dispatch/, { timeout: 60_000 })
   await writer.evaluate((snapshot) => localStorage.setItem('seat-shared-state', JSON.stringify(snapshot)), {
     ...shared,
     updatedAt: 2,
@@ -75,7 +75,7 @@ test('Given 库入口 When 挂载卸载两次再重新挂载 Then 新实例仍�
       }),
     ),
   )
-  await expect(page).toHaveURL(/#\/dispatch1/, { timeout: 60_000 })
+  await expect(page).toHaveURL(/#\/dispatch/, { timeout: 60_000 })
   expect(errors).toEqual([])
   await writer.close()
 })

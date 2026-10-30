@@ -15,12 +15,7 @@ import { readScaleLineUnit } from "@/config/scaleLine.ts";
 import { FeatureClickQuery } from "./FeatureClickQuery.ts";
 // 限制视图范围 要保留 lint检查不清除
 // import { useExtent } from "@/components/map/MapTools/commonTools/useExtent.ts";
-import {
-  GOOGLE_LAYER,
-  TEMP_FRONTEND_LAYER_IDS,
-  VECTOR_LAYER,
-  isTempFrontendLayerId,
-} from "./layers.ts";
+import { GOOGLE_LAYER, TEMP_FRONTEND_LAYER_IDS, VECTOR_LAYER } from "./layers.ts";
 import { useBaseMapLayer } from "./useBaseMapLayer.ts";
 import { TrafficTools } from "@/components/map/MapTools";
 import { ZOOM, CENTER } from "./const.map.ts";
@@ -52,10 +47,10 @@ import { useBaseSourceStore } from "@/store/useBaseSourceStore";
 import { GenericController } from "@/controller/core/generic";
 import { getBusinessMessageRuntime } from '@/controller/core/io/BusinessMessageRuntime';
 import { createBusinessMapPort } from './businessMapPort';
-import TileWMS from "ol/source/TileWMS";
 import { getWMSLayerOptions } from "@/apis/layers";
 import { STATION_LAYER_NAME } from "@/controller/core/business/IncidentStationQuery";
 import { useLayersStore } from "@/store/useLayersStore";
+import { useGisBaseMap } from "./useGisBaseMap.ts";
 
 import NavPanel from "./NavPanel.vue";
 import { useMapPopups, carTypeLabel, carStatusLabel } from "./useMapPopups.ts";
@@ -116,7 +111,29 @@ const {
   fetch: fetchUnclosedIncidents,
 } = useUnclosedIncidents();
 const { load: loadFireStations } = useFireStations();
-const wmsLayerMap = new globalThis.Map<string, TileLayer<TileWMS>>();
+// 统一底座共用层（WMS 图层 + zoom）：main 用 useLayersStore 配置，独立 dispose
+const gisBaseMap = useGisBaseMap({
+  getLayerConfig: (id) => {
+    const config = layersStore.getConfig(id);
+    if (!config) return undefined;
+    const options = getWMSLayerOptions(config);
+    return {
+      url: options.url,
+      params: options.params,
+      serverType: options.serverType,
+      crossOrigin: options.crossOrigin,
+      opacity: options.opacity,
+      minZoom: config.minZoom,
+      visible: config.visible,
+      zIndex: id === STATION_LAYER_NAME ? FIRE_STATION_LAYER_Z_INDEX : undefined,
+    };
+  },
+  disposeSourceOnRemove: true,
+  disposeLayerOnRemove: true,
+  setLayerId: true,
+  syncTempInvisible: false,
+  handleTempFrontendLayer: (id, visible) => setTempFrontendLayerVisible(id, visible),
+});
 // 底图 TileLayer：跟随全局 baseSourceStore 切换，共享 source 缓存池
 const baseLayer = useBaseMapLayer({
   onMaxZoomChange: (_mz: number) => nextTick(() => applyFeatureZoomLimits()),
@@ -127,17 +144,7 @@ const baseLayer = useBaseMapLayer({
 const overviewLayer = useBaseMapLayer();
 
 const applyFeatureZoomLimits = () => {
-  if (!map) return;
-  const { minZoom, maxZoom } = mapConfigStore.config.feature;
-  const effectiveMaxZoom = maxZoom;
-  const view = map.getView();
-  view.setMinZoom(minZoom);
-  view.setMaxZoom(effectiveMaxZoom);
-
-  const zoom = view.getZoom();
-  if (typeof zoom === "number") {
-    view.setZoom(Math.min(Math.max(zoom, minZoom), effectiveMaxZoom));
-  }
+  gisBaseMap.applyZoomLimits(mapConfigStore.config.feature);
 };
 
 watch(
@@ -169,64 +176,16 @@ watch(
   syncConfiguredControls,
 );
 
-const addLayer = (id: string, visible?: boolean) => {
-  if (!map) return;
-  if (isTempFrontendLayerId(id)) return setTempFrontendLayerVisible(id, true);
-  const config = layersStore.getConfig(id);
-  if (!config || wmsLayerMap.has(id)) return;
-  const options = getWMSLayerOptions(config);
-  const wmsLayer = new TileLayer({
-    source: new TileWMS({
-      url: options.url,
-      params: options.params,
-      serverType: options.serverType,
-      crossOrigin: options.crossOrigin,
-    }),
-    opacity: options.opacity,
-    minZoom: config.minZoom,
-    zIndex: id === STATION_LAYER_NAME ? FIRE_STATION_LAYER_Z_INDEX : undefined,
-  });
-  map.addLayer(wmsLayer);
-  wmsLayer.set('id', id);
-  wmsLayer.setVisible(visible ?? config.visible ?? true);
-  wmsLayerMap.set(id, wmsLayer);
-  return true;
-};
+const addLayer = (id: string, visible?: boolean) => gisBaseMap.addLayer(id, visible);
 
-const removeLayer = (id: string) => {
-  if (!map) return false;
-  if (isTempFrontendLayerId(id)) return setTempFrontendLayerVisible(id, false);
-  const layer = wmsLayerMap.get(id);
-  if (!layer) return;
-  map.removeLayer(layer);
-  layer.getSource()?.dispose();
-  layer.dispose();
-  wmsLayerMap.delete(id);
-  return true;
-};
+const removeLayer = (id: string) => gisBaseMap.removeLayer(id);
 
 const visibleLayer = (id: string, bol: boolean) => {
   if (!map) return;
-  wmsLayerMap.get(id)?.setVisible(bol);
-  // getLayerByClassName(map, id)?.setVisible(bol);
-}
-
-const syncLayers = (ids: string[], visible?: boolean) => {
-
-  const targetIds = new Set(ids);
-
-  Array.from(wmsLayerMap.keys()).forEach((id) => {
-    if (!targetIds.has(id)) removeLayer(id);
-  });
-
-  Object.values(TEMP_FRONTEND_LAYER_IDS).forEach((id) =>
-    targetIds.has(id) && setTempFrontendLayerVisible(id, targetIds.has(id)),
-  );
-
-  ids.forEach((id) => {
-    if (!isTempFrontendLayerId(id)) addLayer(id, visible);
-  });
+  gisBaseMap.visibleLayer(id, bol);
 };
+
+const syncLayers = (ids: string[], visible?: boolean) => gisBaseMap.syncLayers(ids, visible);
 
 defineExpose({ addLayer, removeLayer, syncLayers, visibleLayer });
 
@@ -277,7 +236,7 @@ const initMap = async () => {
         maxZoom: mapConfigStore.config.feature.maxZoom,
       }),
     });
-  applyFeatureZoomLimits();
+  gisBaseMap.attach(map, mapConfigStore.config.feature);
 
   const startup = waitForBaseMap(map);
   cancelStartup = startup.cancel;
@@ -297,9 +256,7 @@ const initMap = async () => {
   genericCtrl = new GenericController(map);
 
   updateMapZoomLevel();
-  zoomLevelChangeKey = map
-    .getView()
-    .on("change:resolution", updateMapZoomLevel);
+  zoomLevelChangeKey = gisBaseMap.watchZoom(updateMapZoomLevel);
   featureClickQuery = new FeatureClickQuery(map);
   featureClickQuery.activate();
 
@@ -435,6 +392,7 @@ const cleanup = () => {
     unByKey(zoomLevelChangeKey);
     zoomLevelChangeKey = null;
   }
+  gisBaseMap.dispose();
   if (featureClickQuery) {
     featureClickQuery.destroy();
     featureClickQuery = null;
@@ -456,12 +414,6 @@ const cleanup = () => {
     trafficTool = null;
   }
   if (map) {
-    wmsLayerMap.forEach((layer) => {
-      map?.removeLayer(layer);
-      layer.getSource()?.dispose();
-      layer.dispose();
-    });
-    wmsLayerMap.clear();
     // source 由 useBaseMapLayer 全局缓存池共享，卸载时只销毁图层，不 dispose 共享 source
     overviewLayer.dispose();
     baseLayer.dispose();

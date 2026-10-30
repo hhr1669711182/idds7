@@ -100,7 +100,7 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
       }),
     )
     await settle()
-    expect(navigation.replace).toHaveBeenLastCalledWith({ name: ROUTE_NAMES.DISPATCH1 })
+    expect(navigation.replace).toHaveBeenLastCalledWith({ name: ROUTE_NAMES.DISPATCH })
     dispose()
     window.dispatchEvent(
       new StorageEvent('storage', {
@@ -121,7 +121,7 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
     store.applySharedState(shared({ phase: 'dispatchTrack' }))
     await settle()
     expect(navigation.replace).toHaveBeenCalledOnce()
-    expect(navigation.replace).toHaveBeenLastCalledWith({ name: ROUTE_NAMES.DISPATCH1 })
+    expect(navigation.replace).toHaveBeenLastCalledWith({ name: ROUTE_NAMES.DISPATCH })
     const calls = usePendingCallLocationStore()
     const consume = vi.spyOn(calls, 'consume')
     store.applySharedState('{broken')
@@ -154,7 +154,7 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
     finishFirst()
     await first
     expect(navigation.replace.mock.calls.map(([target]) => target.name)).toEqual([
-      ROUTE_NAMES.DISPATCH1,
+      ROUTE_NAMES.DISPATCH,
       ROUTE_NAMES.MAP,
     ])
   })
@@ -176,7 +176,7 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
     expect(navigation.replace).not.toHaveBeenCalled()
     store.applySharedState(shared({ mode: null, phase: 'dispatchTrack' }))
     await settle()
-    expect(navigation.replace).toHaveBeenLastCalledWith({ name: ROUTE_NAMES.DISPATCH1 })
+    expect(navigation.replace).toHaveBeenLastCalledWith({ name: ROUTE_NAMES.DISPATCH })
   })
 
   it('Given 排队普通导航 When flood/非法输入/dispose 在执行前到达 Then 旧意图失效；回归 §10.4', async () => {
@@ -207,7 +207,7 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
     store.applySharedState(shared({ mode: 'flood', updatedAt: 2 }))
     await first
     expect(navigation.replace).toHaveBeenCalledOnce()
-    expect(navigation.replace).toHaveBeenLastCalledWith({ name: ROUTE_NAMES.DISPATCH1 })
+    expect(navigation.replace).toHaveBeenLastCalledWith({ name: ROUTE_NAMES.DISPATCH })
     await pageCondition.requestSpecialMapNavigation()
     expect(navigation.replace).toHaveBeenCalledOnce()
   })
@@ -218,7 +218,7 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
       const store = useUserStore()
       store.applySharedState(shared({ mode: 'flood', ...overrides }))
       expect(getSharedStateRedirect(ROUTE_NAMES.MAP, store)).toBeUndefined()
-      expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH1, store)).toEqual({ name: ROUTE_NAMES.MAP, replace: true })
+      expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH, store)).toEqual({ name: ROUTE_NAMES.MAP, replace: true })
     },
   )
 
@@ -257,10 +257,10 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
   it('Given flood 快照缺 auth When 守卫与特灾导航执行 Then 保留旧兼容语义', async () => {
     const store = useUserStore()
     store.applySharedState(shared({ mode: 'flood', auth: undefined }))
-    expect(getSharedStateRedirect(ROUTE_NAMES.MAP, store)).toEqual({ name: ROUTE_NAMES.DISPATCH1, replace: true })
-    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH1, store)).toBeUndefined()
+    expect(getSharedStateRedirect(ROUTE_NAMES.MAP, store)).toEqual({ name: ROUTE_NAMES.DISPATCH, replace: true })
+    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH, store)).toBeUndefined()
     await pageCondition.requestSpecialMapNavigation()
-    expect(navigation.replace).toHaveBeenCalledExactlyOnceWith({ name: ROUTE_NAMES.DISPATCH1 })
+    expect(navigation.replace).toHaveBeenCalledExactlyOnceWith({ name: ROUTE_NAMES.DISPATCH })
   })
 
   it.each(['normal', 'exit', 'session', 'logout', 'dispose'] as const)(
@@ -283,7 +283,7 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
 
   it('Given 普通导航在途 When flood 请求进入 Then 特灾与普通导航共用串行队列；回归 F10', async () => {
     const store = useUserStore()
-    navigation.currentRoute.value = { name: ROUTE_NAMES.DISPATCH1 }
+    navigation.currentRoute.value = { name: ROUTE_NAMES.DISPATCH }
     let finishFirst: () => void = () => {}
     navigation.replace.mockImplementationOnce(
       ({ name }: { name: string }) =>
@@ -304,7 +304,7 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
     await Promise.all([ordinary, special])
     expect(navigation.replace.mock.calls.map(([target]) => target.name)).toEqual([
       ROUTE_NAMES.MAP,
-      ROUTE_NAMES.DISPATCH1,
+      ROUTE_NAMES.DISPATCH,
     ])
   })
 
@@ -326,14 +326,14 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
       throw new Error('shared storage read')
     })
     store.applySharedState(shared({ phase: 'inquiry', currentAlarm: { incidentId: 'I1' } }))
-    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH1, store)).toBeUndefined()
+    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH, store)).toBeUndefined()
     store.applySharedState(shared({ phase: 'dispatchTrack' }))
-    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH1, store)).toBeUndefined()
+    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH, store)).toBeUndefined()
     store.applySharedState(shared({ phase: 'dispatch' }))
-    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH1, store)).toEqual({ name: ROUTE_NAMES.MAP, replace: true })
+    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH, store)).toEqual({ name: ROUTE_NAMES.MAP, replace: true })
     store.applySharedState(shared({ phase: 'popup', mode: 'flood' }))
-    expect(getSharedStateRedirect(ROUTE_NAMES.MAP, store)).toEqual({ name: ROUTE_NAMES.DISPATCH1, replace: true })
-    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH1, store)).toBeUndefined()
+    expect(getSharedStateRedirect(ROUTE_NAMES.MAP, store)).toEqual({ name: ROUTE_NAMES.DISPATCH, replace: true })
+    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH, store)).toBeUndefined()
     expect(readStorage).not.toHaveBeenCalled()
   })
 })

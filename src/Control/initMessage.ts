@@ -228,7 +228,7 @@ export const initMessage = () => {
     mockBridge.applyMockCallLocation(localStorage.getItem(SEAT_SHARED_STATE_MOCK_KEY), true)
 
     // F5 刷新：检查 seat-shared-state 的 mode=flood，设 pending 标志
-    // router 守卫已负责从 /map 切到 /dispatch1，dispatchMap 挂载后消费 pending 渲染
+    // router 守卫已负责从 /map 切到 /dispatch，dispatchMap 挂载后消费 pending 渲染
     mockBridge.applySpecialMapRenderFromSharedState(localStorage.getItem(SEAT_SHARED_STATE_KEY))
 
     return () => {

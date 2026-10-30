@@ -64,7 +64,7 @@ describe('F10 committed store bridge（回归 Control 迁移 F10）', () => {
     const requestNavigation = vi.fn()
     start({ requestNavigation })
     expect(keys()).toEqual([KEY.MOCK_SPECIAL_MAP_RENDER, KEY.MAP_LOCATE_CALL])
-    expect(requestNavigation).toHaveBeenCalledWith(expect.objectContaining({ path: '/dispatch1', sessionEpoch: 1 }))
+    expect(requestNavigation).toHaveBeenCalledWith(expect.objectContaining({ path: '/dispatch', sessionEpoch: 1 }))
     harness.ingest.mockClear()
     commitMock(blob(fields(), 2))
     expect(keys()).toEqual([])
