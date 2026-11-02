@@ -74,7 +74,10 @@ export const staticRoutes: RouteRecordRaw[] = [
   {
     path: '/dispatch',
     name: ROUTE_NAMES.DISPATCH,
-    component: () => import('@/views/dispatch/index.vue'),
+    // 合并归一（路线 X）：/dispatch 退化为 thin redirect → /map。调派 UI 改由
+    // home.vue 内 isDispatchVariant 派生互斥挂 DispatchMapPage 承载；宿主 #/dispatch
+    // 命中后自动归一到 /map，name 保留以兼容 router.replace({ name: 'dispatch' })。
+    redirect: '/map',
     meta: {
       title: '调派页面',
     },

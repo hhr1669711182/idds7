@@ -197,7 +197,7 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
     expect(navigation.replace).not.toHaveBeenCalled()
   })
 
-  it('Given flood When 多次特灾意图及普通意图混合 Then 单次导航且普通意图不覆盖；回归 F10 唯一路由出口', async () => {
+  it('Given flood When 多次特灾意图及普通意图混合 Then 不再导航（flood 不跳路由，调派 UI 改在 /map 内按 variant 呈现）；回归 合并归一', async () => {
     const store = useUserStore()
     disposers.push(initPageConditionListener())
     store.applySharedState(shared({ mode: 'flood' }))
@@ -206,10 +206,9 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
     void navigateByCondition(PAGE_CONDITION.REQUEST)
     store.applySharedState(shared({ mode: 'flood', updatedAt: 2 }))
     await first
-    expect(navigation.replace).toHaveBeenCalledOnce()
-    expect(navigation.replace).toHaveBeenLastCalledWith({ name: ROUTE_NAMES.DISPATCH })
+    expect(navigation.replace).not.toHaveBeenCalled()
     await pageCondition.requestSpecialMapNavigation()
-    expect(navigation.replace).toHaveBeenCalledOnce()
+    expect(navigation.replace).not.toHaveBeenCalled()
   })
 
   it.each([{ auth: null }, { phase: 'loggedOut' }])(
@@ -250,17 +249,22 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
     store.applySharedState(shared({ mode: 'flood' }))
     await done
     expect(navigation.replace).not.toHaveBeenCalled()
+    // 合并归一：requestSpecialMapNavigation 已降级 no-op（flood 不跳路由，调派 UI 改在 /map 内按 variant 呈现），
+    // 同会话恢复后也不复活旧特灾导航意图。
     await pageCondition.requestSpecialMapNavigation()
-    expect(navigation.replace).toHaveBeenCalledOnce()
+    expect(navigation.replace).not.toHaveBeenCalled()
   })
 
-  it('Given flood 快照缺 auth When 守卫与特灾导航执行 Then 保留旧兼容语义', async () => {
+  it('Given flood 快照缺 auth When 守卫与特灾导航执行 Then flood 不再导航（不跳路由）；回归 合并归一', async () => {
     const store = useUserStore()
     store.applySharedState(shared({ mode: 'flood', auth: undefined }))
-    expect(getSharedStateRedirect(ROUTE_NAMES.MAP, store)).toEqual({ name: ROUTE_NAMES.DISPATCH, replace: true })
-    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH, store)).toBeUndefined()
+    // 合并归一后守卫不再含 flood 分支：MAP 路由名直接返回 undefined，
+    // DISPATCH 路由名仅在 stage 非 dispatch/dispatchTrack 时兜底回 MAP（此快照 stage=null → 回 MAP）。
+    expect(getSharedStateRedirect(ROUTE_NAMES.MAP, store)).toBeUndefined()
+    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH, store)).toEqual({ name: ROUTE_NAMES.MAP, replace: true })
+    // requestSpecialMapNavigation 已降级 no-op（flood 不跳路由，调派 UI 改在 /map 内按 variant 呈现）。
     await pageCondition.requestSpecialMapNavigation()
-    expect(navigation.replace).toHaveBeenCalledExactlyOnceWith({ name: ROUTE_NAMES.DISPATCH })
+    expect(navigation.replace).not.toHaveBeenCalled()
   })
 
   it.each(['normal', 'exit', 'session', 'logout', 'dispose'] as const)(
@@ -281,7 +285,7 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
     },
   )
 
-  it('Given 普通导航在途 When flood 请求进入 Then 特灾与普通导航共用串行队列；回归 F10', async () => {
+  it('Given 普通导航在途 When flood 请求进入 Then 普通导航到 MAP，特灾请求 no-op（flood 不跳路由）；回归 合并归一', async () => {
     const store = useUserStore()
     navigation.currentRoute.value = { name: ROUTE_NAMES.DISPATCH }
     let finishFirst: () => void = () => {}
@@ -299,13 +303,12 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
     store.applySharedState(shared({ mode: 'flood' }))
     const special = pageCondition.requestSpecialMapNavigation()
     await settle()
+    // 普通导航（REQUEST→MAP）在 flood 生效前已完成一次；特灾请求已降级 no-op（flood 不跳路由），不再产生 DISPATCH 导航。
     expect(navigation.replace).toHaveBeenCalledOnce()
+    expect(navigation.replace).toHaveBeenLastCalledWith({ name: ROUTE_NAMES.MAP })
     finishFirst()
     await Promise.all([ordinary, special])
-    expect(navigation.replace.mock.calls.map(([target]) => target.name)).toEqual([
-      ROUTE_NAMES.MAP,
-      ROUTE_NAMES.DISPATCH,
-    ])
+    expect(navigation.replace.mock.calls.map(([target]) => target.name)).toEqual([ROUTE_NAMES.MAP])
   })
 
   it('Given 导航失败 When 后续新意图到达 Then 可继续导航；回归 F9', async () => {
@@ -331,9 +334,12 @@ describe('register/pageCondition / Control 迁移 §10.4', () => {
     expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH, store)).toBeUndefined()
     store.applySharedState(shared({ phase: 'dispatch' }))
     expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH, store)).toEqual({ name: ROUTE_NAMES.MAP, replace: true })
+    // 合并归一：守卫不再含 flood 分支。flood 快照（stage=popup）下：
+    //   MAP 路由名 → 直接 undefined（不强制跳调派）；
+    //   DISPATCH 路由名 → stage 非 dispatch/dispatchTrack → 兜底重定向回 MAP（避免 #/dispatch 残留死循环）。
     store.applySharedState(shared({ phase: 'popup', mode: 'flood' }))
-    expect(getSharedStateRedirect(ROUTE_NAMES.MAP, store)).toEqual({ name: ROUTE_NAMES.DISPATCH, replace: true })
-    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH, store)).toBeUndefined()
+    expect(getSharedStateRedirect(ROUTE_NAMES.MAP, store)).toBeUndefined()
+    expect(getSharedStateRedirect(ROUTE_NAMES.DISPATCH, store)).toEqual({ name: ROUTE_NAMES.MAP, replace: true })
     expect(readStorage).not.toHaveBeenCalled()
   })
 })

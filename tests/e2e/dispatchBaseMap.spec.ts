@@ -3,10 +3,15 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 /**
  * 合并后底座交互回归 E2E（统一底座共用层 useGisBaseMap 落地后，/map 与 /dispatch 共用 WMS 层）。
  *
+ * 合并归一（路线 X）后：/dispatch 退化为 thin redirect → /map，调派 UI 改由 home.vue
+ * 内 isDispatchVariant（共享态派生：stage=dispatch/dispatchTrack 或 mode=flood）互斥挂
+ * DispatchMapPage 承载，URL 恒为 /map。本 spec 断言「.dispatch-page 渲染 + 业务链路消费
+ * + 无 pageerror」，不断言 URL=dispatch。
+ *
  * 覆盖两条关键路径（路由切换由 controlMigration.spec.ts 已覆盖，此处补齐业务链路）：
- *  1) 终态警情 → 车辆历史轨迹（假数据模拟）：进 /dispatch 时 onMounted 恢复链路
- *     （detail 取 vehicleId → track 喂假轨迹点）。用 page.route 拦截两个外部 API 注入
- *     假数据，断言 track 请求被真实消费 + 全程无未捕获异常；
+ *  1) 终态警情 → 车辆历史轨迹（假数据模拟）：dispatch variant 下 DispatchMapPage 的
+ *     onMounted 恢复链路（detail 取 vehicleId → track 喂假轨迹点）。用 page.route 拦截
+ *     两个外部 API 注入假数据，断言 track 请求被真实消费 + 全程无未捕获异常；
  *  2) 模拟调派（跨 tab 写入 seat-shared-state-mock 注入 dispatchVehicles）：
  *     驱动 MOCK_DISPATCH_VEHICLES 事件被 DispatchT1 消费，全程无崩溃。
  *
@@ -85,7 +90,7 @@ test('终态警情 When 进 /dispatch 则历史轨迹链路消费假轨迹数据
   })
 
   const errors: string[] = []
-  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('pageerror', (error) => errors.push(`[${error.message}]\n${error.stack ?? String(error)}`))
 
   await warmup(page)
   const writer = await makeWriter(context)
@@ -95,7 +100,9 @@ test('终态警情 When 进 /dispatch 则历史轨迹链路消费假轨迹数据
     seedShared({ incidentId: INCIDENT_ID, lifecycleStage: 'closed' }),
   )
 
-  await expect(page).toHaveURL(/#\/dispatch/, { timeout: 60_000 })
+  // 合并归一：flood 不再跳路由，调派 UI 改在 /map 内按 variant 渲染（.dispatch-page 专属）。
+  await expect(page.locator('.dispatch-page')).toBeVisible({ timeout: 60_000 })
+  expect(page.url()).toMatch(/#\/map/)
   // 链路跑通：detail 取到 vehicleId → track 被真实请求。两个请求都被消费即底座轨迹链路无中断。
   await expect
     .poll(() => trackCalls, { timeout: 30_000, message: '历史轨迹请求未发出（detail→vehicleId→track 链路中断）' })
@@ -111,9 +118,12 @@ test('模拟调派 When 注入 seat-shared-state-mock 则车辆事件被消费�
 
   await warmup(page)
   const writer = await makeWriter(context)
-  // 先进 /dispatch（flood + 带 currentAlarm，stage=dispatch 可停留）
+  // 先进 /dispatch 语义（flood + 带 currentAlarm，stage=dispatch；合并归一后不跳路由，
+  // 改在 /map 内按 variant 渲染调派包装层）
   await writer.evaluate((s) => localStorage.setItem('seat-shared-state', JSON.stringify(s)), seedShared({ incidentId: INCIDENT_ID }))
-  await expect(page).toHaveURL(/#\/dispatch/, { timeout: 60_000 })
+  // 合并归一：URL 恒为 /map，调派 UI 由 variant 派生渲染（.dispatch-page 专属）。
+  await expect(page.locator('.dispatch-page')).toBeVisible({ timeout: 60_000 })
+  expect(page.url()).toMatch(/#\/map/)
 
   // 注入模拟调派车辆清单：storage 事件驱动 MOCK_DISPATCH_VEHICLES，DispatchT1 校验队站后触发模拟跟踪
   const mock = {
@@ -125,7 +135,8 @@ test('模拟调派 When 注入 seat-shared-state-mock 则车辆事件被消费�
   // 给事件消费 + 模拟跟踪启动留时间（canvas 动画不断言像素，以无崩溃为底线）
   await page.waitForTimeout(2000)
 
-  expect(page.url()).toMatch(/#\/dispatch/)
+  // 合并归一：URL 恒为 /map（不跳路由），断言停留 /map + 无崩溃。
+  expect(page.url()).toMatch(/#\/map/)
   expect(errors, `未捕获异常：\n${errors.join('\n')}`).toEqual([])
   await writer.close()
 })

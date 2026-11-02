@@ -7,22 +7,19 @@
  * @FilePath: \ids-gis-web\src\composables\useCurrentMap.ts
  */
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
 import { useMapStore } from '@/store'
 import { useDispatchMapStore } from '@/store/useDispatchMapStore'
+import { isDispatchVariant } from '@/baseComponent/OpenlayersMap/gisMapConfig'
 
 export const useCurrentMap = () => {
-  const route = useRoute()
   const mapStore = useMapStore()
   const dispatchMapStore = useDispatchMapStore()
 
-  const currentMap = computed(() => {
-    const path = route?.path || window.location.hash
-    if (path.includes('/dispatch')) {
-      return dispatchMapStore.map
-    }
-    return mapStore.map
-  })
+  // 合并归一（路线 X）：/dispatch 已退化为 redirect → /map，route.path 恒为 /map，
+  // 不能再按 path 切实例；改按共享态派生 variant 选择激活 map：调派态用 dispatch 实例。
+  const currentMap = computed(() =>
+    isDispatchVariant() ? dispatchMapStore.map : mapStore.map,
+  )
 
   return { currentMap }
 }

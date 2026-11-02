@@ -7,6 +7,9 @@
  *               sharedStateGuard/businessMapLifecycle 承担。
  */
 
+import { useUserStore } from '@/store/useUserStore';
+import { getSharedMapStage } from '@/utils/seatSharedState';
+
 export type GisMapVariant = 'main' | 'dispatch';
 
 /** 底座 attach BusinessMessageRuntime 的 kind，与 drainMock 约定一致。 */
@@ -50,4 +53,18 @@ export const resolveGisMapFlags = (variant: string): GisMapFeatureFlags => {
     console.warn('[gisMapConfig] 未知 variant，按 main 兜底', variant);
   }
   return MAIN_FLAGS;
+};
+
+/**
+ * 运行期派生"是否处于调派业务态"（合并归一路线 X）。
+ *
+ * 不再由路由/组件决定（原 /dispatch 路由已退化为 thin redirect），改由共享态单一事实源
+ * 派生：归一 stage 为 dispatch/dispatchTrack，或业务模式为 flood（flood 不再跳路由，
+ * 改在 /map 内按 variant 显示调派 UI）。调用方包进 computed 以获得响应式切换。
+ * 无新增 state 字段，仅读 useUserStore 现成字段，避免第二状态源。
+ */
+export const isDispatchVariant = (): boolean => {
+  const store = useUserStore();
+  const stage = getSharedMapStage(store.rawState, store.MapMode);
+  return stage === 'dispatch' || stage === 'dispatchTrack' || store.mode === 'flood';
 };

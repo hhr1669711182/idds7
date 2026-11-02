@@ -85,7 +85,12 @@ const queueNavigation = (condition: PageCondition, special: boolean): Promise<vo
 
 export const navigateByCondition = (condition: PageCondition): Promise<void> => queueNavigation(condition, false)
 
-export const requestSpecialMapNavigation = (): Promise<void> => queueNavigation(PAGE_CONDITION.DISPATCH, true)
+/**
+ * 合并归一（路线 X）后 flood 不再跳路由：调派业务态改由 home.vue 内 isDispatchVariant
+ * 派生切换包装层承载（/map 内显示调派 UI）。此处的 flood 专属"特殊导航"降级为 no-op，
+ * 仅保留签名供 lib 注入点兼容；MOCK_SPECIAL_MAP_RENDER 事件仍由 bridge 正常发出。
+ */
+export const requestSpecialMapNavigation = (): Promise<void> => Promise.resolve()
 
 export const setPageCondition = (condition: PageCondition, source = 'ids-gis-web') => {
   localStorage.setItem(PAGE_CONDITION_STORAGE_KEY, JSON.stringify({ condition, updatedAt: Date.now(), source }))

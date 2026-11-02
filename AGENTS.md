@@ -83,7 +83,7 @@
 
 1. **分层不可越界**。本项目采用控制层分层（详见 `herness/00-SOP.md`「分层铁律」）：
    - `src/controller/core/generic/**` 是**通用图形控制**，必须零业务
-   - `src/controller/core/business/**` 是**业务控制**，只组装通用 DTO，**不得 `import 'ol/...'` 或 `'three'`**
+   - `src/controller/core/business/**` 是**业务控制**，可直接 `import 'ol/...'` 实现上图业务；跨层数据仍须用 `src/controller/core/protocol/**` 的 interface，禁止 `any`
    - 跨层数据必须用 `src/controller/core/protocol/**` 的 interface，禁止 `any`
 
 2. **消息收发只有一个出口**：必须经 `useMessageStore().publish/subscribe`，禁止裸 `new WebSocket()`、禁止裸 `window.addEventListener('message')` 处理业务。改消息事件键或 DTO 时必须同步 `docs/source/07-协议事件清单.md` 与 `docs/source/协议层DTO Schema.tsd`。

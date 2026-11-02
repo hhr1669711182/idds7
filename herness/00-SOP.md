@@ -118,7 +118,7 @@
     ↓ 业务状态、消息中枢（useMessageStore 是唯一消息总线）
 控制器层  src/controller/**
     core/generic/    通用图形控制：view/geometry/spatial/kinematic —— 只执行图形指令，无业务语义
-    core/business/   业务控制：alarm/call/dispatch/tracking/duty/config/addressRobot —— 只组装通用控制 DTO
+    core/business/   业务控制：alarm/call/dispatch/tracking/duty/config/addressRobot —— 可直接 import 'ol/...' 实现上图业务
     core/io/         输入输出控制：input/output
     core/protocol/   协议 DTO 定义：Generic/Business/IO 三份 interface 文件
     publish/index.ts 消息发送统一门面（controller/map、controller/three 已废弃）
@@ -131,7 +131,7 @@
 | 规则 | 说明 |
 |------|------|
 | 通用控制层零业务 | `core/generic/**` 不得出现 alarm/call/dispatch 等业务词与业务状态 |
-| 业务控制层不碰引擎 | `core/business/**` 不得 `import 'ol/...'` 或 `import 'three'` |
+| 业务控制层允许直接 import | `core/business/**` 可直接 `import 'ol/...'` 实现上图业务；跨层数据仍须用 `core/protocol/**` 的 interface，禁止 `any` |
 | DTO 唯一来源 | 控制器方法入参必须是 `core/protocol/**` 里的 interface，禁止用 `any` 承接跨层数据 |
 | 跨系统通信唯一出口 | 所有 WS / postMessage 收发必须走 `useMessageStore().publish/subscribe`，禁止裸 `WebSocket`、禁止裸 `window.addEventListener('message')` |
 | 新增控制器必须登记 | 新增 `XxxController` 必须同时在所属 `index.ts` 导出，并在 `05-共享上下文/项目结构速查.md` 补录 |
