@@ -74,7 +74,11 @@ export interface UseBaseMapLayerOptions {
 export const useBaseMapLayer = (options?: UseBaseMapLayerOptions): TileLayer => {
   const {
     layerName,
-    preload = 4,
+    // 默认 0：预载 TileLayer 会在 renderFrame 排游离 setTimeout(enqueueTiles)，
+    // 图层被 dispose 后该定时器仍触发 → getLayer() 已 undefined → 崩（getRenderSource）。
+    // 路线 X 双包装层每次 variant 切换都 unmount 底图，必中此竞态；置 0 根治。
+    // 路线 Y 单实例常驻后底图不再 unmount，可恢复 4 换取缩放预载流畅。
+    preload = 0,
     background = '#fcf9f2',
     switchDebounce = 150,
     onMaxZoomChange,

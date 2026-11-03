@@ -59,3 +59,30 @@ e2e（`reuseExistingServer:!CI` 本地恒 true）复用它时误报。该进程�
 
 ### 提交
 - 待用户确认 e2e 环境干净后，连同路线 X 改动一起提交（`refactor(gis-base)`）。
+
+---
+
+## 补记（同日，修正上文 e2e 归因 + 崩溃根治落地）
+
+**推翻上文"e2e 环境噪音"判定**：干净环境（8888 无残留、Playwright 自起 dev server）复跑 e2e，
+`getRenderSource` 崩溃**稳定复现**（4 失败 + 1 flaky），证实是**真回归，非 HMR 污染**。
+
+**根因（读 OL 10.x 源码定位）**：`CanvasTileLayerRenderer.renderFrame` 里只要 `preload>0`
+就会排一个裸 `setTimeout(enqueueTiles,0)` 游离预载任务；图层被 `dispose()` 后
+renderer `delete this.layer_`，游离 preloader 下一 tick 触发时 `this.getLayer()` 已 undefined → 崩。
+
+**修复（最小止血，本轮）**：`useBaseMapLayer` 默认 `preload 4→0`（根治游离 preloader；
+主/调派 baseLayer+overviewLayer 全覆盖，无调用点显式传 preload），
+`useGisBaseMap` WMS 瓦片层 `preload→0`（运行期 dispose 的 WMS 层同样命中，保险）。
+→ e2e **9/9 全绿**，`pnpm lint` 0 error，`pnpm build` 通过，调派单测 65/65。
+
+**代价与 Y 的关系**：`preload=0` 关闭"预载更低级别瓦片"，底图缩放流畅度理论轻微下降。
+**单实例（路线 Y）下底图永不 unmount，可安全恢复 `preload=4` 找回流畅**——
+这是本轮先止血、Y 再恢复的性能权衡。WMS 业务层保留 preload=0（运行期 dispose 仍需根治）。
+
+**SOP 放宽**：`core/business/**` 允许直接 `import 'ol/...'` 实现上图业务（原"不碰引擎"铁律）。
+同步 AGENTS.md + 00-SOP + 02 架构设计说明 + 05 设计规范速查共 4 处（publish 层"不碰引擎"保留，语义不同）。
+
+**路线 Y（下一轮）更新**：单 OLMap 常驻 map.vue，dispatchMap.vue（~3300 行）逐行搬迁为注入式
+`useDispatchBusinessLayers.ts`（attach/detach 业务层+面板，底图永不清除），
+落地后恢复底图 `preload=4`。搬迁必须逐段保真（override CQL 快照/mock-generation 计数复杂），不可重写。

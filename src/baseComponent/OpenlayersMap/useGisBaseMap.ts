@@ -91,7 +91,9 @@ export const useGisBaseMap = (options: GisBaseMapOptions): GisBaseMapApi => {
     if (isTempFrontendLayerId(id)) return options.handleTempFrontendLayer(id, true);
     const config = options.getLayerConfig(id);
     if (!config || wmsLayerMap.has(id)) return false;
+    // 路线 Y B-6c：单实例常驻永不 unmount，恢复 preload=4 找回缩放流畅度（原路线 X 止血补丁 preload=0 撤销）
     const layer = markRaw(new TileLayer({
+      preload: 4,
       source: markRaw(new TileWMS({
         url: config.url,
         params: config.params,

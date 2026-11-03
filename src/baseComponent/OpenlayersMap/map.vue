@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, nextTick, onUnmounted, ref, shallowRef, watch } from "vue";
+import { onMounted, nextTick, onUnmounted, ref, shallowRef, watch, computed } from "vue";
 import OLMap from "ol/Map";
 import { waitForBaseMap } from "./startup.ts";
 let cancelStartup: (() => void) | undefined;
@@ -51,6 +51,13 @@ import { getWMSLayerOptions } from "@/apis/layers";
 import { STATION_LAYER_NAME } from "@/controller/core/business/IncidentStationQuery";
 import { useLayersStore } from "@/store/useLayersStore";
 import { useGisBaseMap } from "./useGisBaseMap.ts";
+import { isDispatchVariant } from "./gisMapConfig";
+import {
+  attachDispatchBusiness,
+  detachDispatchBusiness,
+} from "./dispatchBusiness";
+import { useDispatchEntangled } from "./useDispatchEntangled";
+import DispatchRoutePreview from "./DispatchRoutePreview.vue";
 
 import NavPanel from "./NavPanel.vue";
 import { useMapPopups, carTypeLabel, carStatusLabel } from "./useMapPopups.ts";
@@ -99,6 +106,14 @@ let featureClickQuery: FeatureClickQuery | null = null;
 let detachBusinessMap: (() => void) | null = null;
 let genericCtrl: GenericController | null = null;
 let trafficTool: TrafficTools | null = null;
+/** 路线 Y B-3c：调派纠缠体 composable（variant→dispatch 时 activate，常驻 map） */
+let entangled: ReturnType<typeof useDispatchEntangled> | null = null;
+/** 路线 Y B-6c：调派路线预览暴露（template 绑定，entangled 未激活时全空） */
+const dispatchRoutePreview = computed(() => ({
+  visible: entangled?.routePreviewVisible.value ?? false,
+  stations: entangled?.routePreviewStations.value ?? [],
+  loading: entangled?.routePreviewLoading.value ?? false,
+}));
 const overviewControl = shallowRef<OverviewMap | null>(null);
 const scaleLineControl = shallowRef<ScaleLine | null>(null);
 
@@ -381,12 +396,52 @@ const initMap = async () => {
   detachBusinessMap = getBusinessMessageRuntime().attachMap(attachment.port, { kind: 'map', dispose: attachment.dispose });
 
   emit("setMap", map);
+
+  // 路线 Y B-3c：创建调派纠缠体 composable（共享 4 个前端图层 manager + B-1/B-2 设施）
+  entangled = useDispatchEntangled({
+    map,
+    nav: nav.value!,
+    gisBaseMap,
+    fireManager,
+    carManager,
+    alarmOverlayManager,
+    jrAlarmManager,
+  });
+
+  // 路线 Y B-1/B-2/B-3c：初始化完成后，若当前处于调派 variant 则 attach 调派业务 + 纠缠体
+  if (isDispatchVariant()) {
+    attachDispatchBusiness({ map, nav: nav.value! });
+    entangled.activate();
+  }
 };
+
+/** 路线 Y B-6c：调派路线预览选择（桥接纠缠体 selectStationRoute） */
+const handleRoutePreviewSelect = (stationId: string, routeId: string) => {
+  entangled?.selectStationRoute(stationId, routeId);
+};
+
+// 路线 Y B-1/B-2/B-3c：variant 切换时 attach/detach 调派业务设施 + 纠缠体（main 下不触发，功能零影响）
+watch(
+  () => isDispatchVariant(),
+  (isDispatch) => {
+    if (!map || !nav.value) return; // initMap 未完成，不 attach
+    if (isDispatch) {
+      attachDispatchBusiness({ map, nav: nav.value });
+      entangled?.activate();
+    } else {
+      entangled?.deactivate();
+      detachDispatchBusiness();
+    }
+  },
+);
 
 const cleanup = () => {
   disposed = true;
   detachBusinessMap?.();
   detachBusinessMap = null;
+  detachDispatchBusiness(); // 路线 Y：调派业务设施随卸载一并 detach
+  entangled?.dispose(); // 路线 Y B-3c：纠缠体自有资源随卸载一并清理
+  entangled = null;
   cancelStartup?.();
   if (zoomLevelChangeKey) {
     unByKey(zoomLevelChangeKey);
@@ -495,6 +550,14 @@ onUnmounted(() => {
       v-model="popups.incidentDetailVisible.value"
       :data="popups.incidentDetailData.value"
       :loading="popups.incidentDetailLoading.value"
+    />
+
+    <!-- 路线 Y B-6c：调派路线预览面板（纠缠体挂载，dispatch variant 下有效） -->
+    <DispatchRoutePreview
+      v-if="dispatchRoutePreview.visible"
+      :stations="dispatchRoutePreview.stations"
+      :loading="dispatchRoutePreview.loading"
+      @select="handleRoutePreviewSelect"
     />
 
     <div
