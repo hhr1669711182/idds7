@@ -11,8 +11,6 @@ import Feature from 'ol/Feature'
 import { Draw } from 'ol/interaction'
 import { Polygon } from 'ol/geom'
 import { Style, Stroke, Fill, Text } from 'ol/style'
-import { unByKey } from 'ol/Observable'
-import { EventsKey } from 'ol/events'
 import WFS from 'ol/format/WFS'
 import type { Coordinate } from 'ol/coordinate'
 import { v4 as uuidv4 } from 'uuid'
@@ -299,7 +297,6 @@ const insertPopulationZone = async (zone: PopulationZone, rings: Coordinate[][])
 export class PopulationTool extends BaseTool {
   draw!: Draw
   sketch: Feature | null = null
-  pointerListener!: EventsKey
 
   private closed = false
   private zoneSeq = 0
@@ -325,7 +322,7 @@ export class PopulationTool extends BaseTool {
       this.helpTooltip.setPosition(evt.coordinate)
     }
 
-    this.pointerListener = this.map.on('pointermove', this.setHelpTooltip as any)
+    this.bindPointermove(this.setHelpTooltip as any)
   }
 
   /** 单次框选：绘制结束后统计人口并结束工具 */
@@ -498,9 +495,6 @@ export class PopulationTool extends BaseTool {
     this.closed = true
     if (this.draw) {
       this.map.removeInteraction(this.draw)
-    }
-    if (this.pointerListener) {
-      unByKey(this.pointerListener)
     }
     this.sketch = null
     super.destroy()

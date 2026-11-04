@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { runInNewContext } from 'node:vm'
-import { parse } from 'vue/compiler-sfc'
 import ts from 'typescript'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, disposePinia, getActivePinia, setActivePinia } from 'pinia'
@@ -23,9 +22,32 @@ import type { SharedDispatchVehicleMock } from '@/composables/useMockCallLocatio
 vi.mock('@/store', async () => ({ useUserStore: (await import('@/store/useUserStore')).useUserStore }))
 vi.mock('@/apis/geoserver', () => ({ geoserverApi: {} }))
 
-const filename = resolve('src/baseComponent/OpenlayersMap/dispatchMap.vue')
-const script = parse(readFileSync(filename, 'utf8')).descriptor.scriptSetup!.content
-const source = ts.createSourceFile(filename, script, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+// 路线 Y B-3c 起，调派纠缠体从 dispatchMap.vue 迁到 useDispatchEntangled.ts
+// （composable 形态，dispatchMap.vue 已删除）。本用例沿用「静态提取实现 → 沙箱执行」
+// 的手法，但提取目标改为 useDispatchEntangled 箭头函数体内的声明。
+const filename = resolve('src/baseComponent/OpenlayersMap/useDispatchEntangled.ts')
+const moduleText = readFileSync(filename, 'utf8')
+const source = ts.createSourceFile(filename, moduleText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+
+// 定位 useDispatchEntangled 箭头函数体
+let entangledBody: ts.ArrowFunction | undefined
+const findEntangled = (node: ts.Node): void => {
+  if (ts.isVariableStatement(node)) {
+    for (const declaration of node.declarationList.declarations) {
+      if (
+        declaration.name.getText(source) === 'useDispatchEntangled' &&
+        declaration.initializer &&
+        ts.isArrowFunction(declaration.initializer)
+      ) {
+        entangledBody = declaration.initializer
+      }
+    }
+  }
+  ts.forEachChild(node, findEntangled)
+}
+findEntangled(source)
+if (!entangledBody) throw new Error('useDispatchEntangled not found')
+
 const names = new Set([
   'MOCK_DISPATCH_STATION_OWNER',
   'applyMockDispatchStationIcons',
@@ -36,12 +58,13 @@ const names = new Set([
   'resolveStationCoordinates',
   'receiveMockDispatchVehicles',
 ])
-const declarations = source.statements.filter(
+// 只取函数体第一层声明（composable 内部的局部闭包变量）
+const declarations = entangledBody.body.statements.filter(
   (statement) =>
     ts.isVariableStatement(statement) &&
     statement.declarationList.declarations.some((declaration) => names.has(declaration.name.getText(source))),
 )
-if (declarations.length !== names.size) throw new Error('dispatchMap vehicle declarations changed')
+if (declarations.length !== names.size) throw new Error('dispatch entangled vehicle declarations changed')
 let mockPortSource = ''
 const findMockPort = (node: ts.Node): void => {
   if (ts.isCallExpression(node) && node.expression.getText(source) === 'businessRuntime.attachMap') {
@@ -55,8 +78,8 @@ const findMockPort = (node: ts.Node): void => {
   }
   ts.forEachChild(node, findMockPort)
 }
-findMockPort(source)
-if (!mockPortSource) throw new Error('dispatchMap mock port changed')
+findMockPort(entangledBody)
+if (!mockPortSource) throw new Error('dispatch entangled mock port changed')
 const executable = ts.transpileModule(
   declarations.map((declaration) => declaration.getText(source)).join('\n') + '\n(' + mockPortSource + ');',
   { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } },
@@ -112,6 +135,14 @@ const setup = () => {
   const environment = {
     nav: createPlanner(),
     map: createMap(),
+    featureClickQuery: { close: vi.fn() },
+    incidentVideoController: { close: vi.fn() },
+    lastRoutePlanResults: [],
+    routePreviewVisible: ref(false),
+    routePreviewLoading: ref(false),
+    regionCfg: { adcode: '440300', city: '深圳市' },
+    fetchInputTips: vi.fn(async () => []),
+    mockDispatchPrimaryGate: null,
     pendingRoutePlan: null as Promise<void> | null,
     routeVideoGeneration: 0,
     mockMapGeneration: 0,

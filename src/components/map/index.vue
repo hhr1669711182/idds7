@@ -25,6 +25,7 @@ import layers from "./layers.vue";
 import ssrkPanel from "./component/ssrkPanel.vue";
 
 import OpenlayersMap from "@/baseComponent/OpenlayersMap/map.vue";
+import type OlMap from "ol/Map";
 import DispatchT1Panel from "@/baseComponent/OpenlayersMap/DispatchT1.vue";
 import type { DispatchT1State, DispatchT1VehicleCommand } from "@/baseComponent/OpenlayersMap/DispatchT1";
 import { isDispatchVariant } from "@/baseComponent/OpenlayersMap/gisMapConfig";
@@ -63,6 +64,8 @@ const vehicleTrackStore = useVehicleTrackStore();
 
 const { type, ssrkPanelOpen } = storeToRefs(PanelStore);
 const openLayersMapRef = shallowRef<OpenlayersMapExpose | null>(null);
+/** 路线 Y B-6c：本地 shallowRef 持裸 OL Map（避免 pinia 深度响应式 Proxy 破坏 OL 方法绑定），传给 DispatchT1Panel */
+const dispatchOlMap = shallowRef<OlMap | null>(null);
 const { feature } = storeToRefs(mapConfigStore);
 const dispatchVariant = computed(() => isDispatchVariant());
 let viewportRefreshFrame: number | null = null;
@@ -84,6 +87,7 @@ const refreshMapViewport = () => {
 
 const getMap = (map: any) => {
   MapStore.setMap(map);
+  dispatchOlMap.value = map as OlMap;
   openLayersMapRef.value?.syncLayers(layersStore.checkedIds, true);
   refreshMapViewport();
 };
@@ -121,6 +125,8 @@ const getDispatchLayerIds = (ids: string[]) =>
 watch(
   () => dispatchMapStore.checkedIds,
   (ids) => {
+    // 调派图层与主图图层共用同一 OLMap，仅调派态允许改写图层集合
+    if (!dispatchVariant.value) return;
     const nextIds = getDispatchLayerIds(ids);
     if (nextIds.length !== ids.length) {
       dispatchMapStore.setCheckedIds(nextIds);
@@ -130,6 +136,7 @@ watch(
   },
   { deep: true, immediate: true },
 );
+
 
 const handleDispatch = (command: DispatchT1VehicleCommand) => {
   console.info('[DispatchT1] 服务端已确认车辆调派', command);
@@ -181,16 +188,16 @@ onUnmounted(() => {
     <circleQueryPanel v-if="feature.showCircleQuery" />
 
     <!-- 路线 Y B-6c：调派变体专属面板（原 DispatchMapPage 迁入，isDispatchVariant 响应式） -->
-    <template v-if="dispatchVariant">
+    <div v-if="dispatchVariant" class="dispatch-variant-ui">
       <DispatchT1Panel
-        :map="MapStore.map"
+        :map="dispatchOlMap"
         @dispatch="handleDispatch"
         @query-success="handleQuerySuccess"
         @error="handleDispatchError"
       />
       <DispatchLayers />
       <VehicleTrackPanel v-if="vehicleTrackStore.panelVisible" />
-    </template>
+    </div>
   </OpenlayersMap>
 
   <brp />

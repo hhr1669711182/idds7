@@ -5,7 +5,7 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test'
  *
  * 合并归一（路线 X）后：/dispatch 退化为 thin redirect → /map，调派 UI 改由 home.vue
  * 内 isDispatchVariant（共享态派生：stage=dispatch/dispatchTrack 或 mode=flood）互斥挂
- * DispatchMapPage 承载，URL 恒为 /map。本 spec 断言「.dispatch-page 渲染 + 业务链路消费
+ * 调派面板承载（B-6c 收口后），URL 恒为 /map。本 spec 断言「.dispatch-variant-ui 渲染 + 业务链路消费
  * + 无 pageerror」，不断言 URL=dispatch。
  *
  * 覆盖两条关键路径（路由切换由 controlMigration.spec.ts 已覆盖，此处补齐业务链路）：
@@ -100,8 +100,8 @@ test('终态警情 When 进 /dispatch 则历史轨迹链路消费假轨迹数据
     seedShared({ incidentId: INCIDENT_ID, lifecycleStage: 'closed' }),
   )
 
-  // 合并归一：flood 不再跳路由，调派 UI 改在 /map 内按 variant 渲染（.dispatch-page 专属）。
-  await expect(page.locator('.dispatch-page')).toBeVisible({ timeout: 60_000 })
+  // 路线 Y B-6c：flood 不再跳路由，调派面板 div 在 /map 内按 dispatchVariant 条件渲染（.dispatch-variant-ui 专属，子组件 hidden 不影响 div 存在性）。
+  await expect(page.locator('.dispatch-variant-ui')).toHaveCount(1, { timeout: 60_000 })
   expect(page.url()).toMatch(/#\/map/)
   // 链路跑通：detail 取到 vehicleId → track 被真实请求。两个请求都被消费即底座轨迹链路无中断。
   await expect
@@ -121,8 +121,8 @@ test('模拟调派 When 注入 seat-shared-state-mock 则车辆事件被消费�
   // 先进 /dispatch 语义（flood + 带 currentAlarm，stage=dispatch；合并归一后不跳路由，
   // 改在 /map 内按 variant 渲染调派包装层）
   await writer.evaluate((s) => localStorage.setItem('seat-shared-state', JSON.stringify(s)), seedShared({ incidentId: INCIDENT_ID }))
-  // 合并归一：URL 恒为 /map，调派 UI 由 variant 派生渲染（.dispatch-page 专属）。
-  await expect(page.locator('.dispatch-page')).toBeVisible({ timeout: 60_000 })
+  // 路线 Y B-6c：URL 恒为 /map，调派面板 div 由 dispatchVariant 派生渲染（.dispatch-variant-ui 专属）。
+  await expect(page.locator('.dispatch-variant-ui')).toHaveCount(1, { timeout: 60_000 })
   expect(page.url()).toMatch(/#\/map/)
 
   // 注入模拟调派车辆清单：storage 事件驱动 MOCK_DISPATCH_VEHICLES，DispatchT1 校验队站后触发模拟跟踪

@@ -1,5 +1,64 @@
 # agent-huanghuanrong 工作日志 2026-11-03
 
+## 方法论入 herness：模块设计速查 + 测试接缝规范 + 术语 GLOSSARY 化 + ADR 规范（并本地安装 27 个 skill）
+
+### 背景
+用户问「有哪些 mattpocock/skills 的方法论可以写进 harness 提升项目能力」，确认走**推荐方案**：
+P0 两项（模块设计方法论、测试接缝方法论）＋ P1 两项（ADR 规范、术语表 GLOSSARY 化）写入 herness，
+其余 skill 作为**个人工具**安装到本地 codex 与 agnes 两处，不进仓库。
+
+### 落地内容（herness 文档 4 份 + 索引 5 处）
+
+| 文件 | 性质 | 要点 |
+|------|------|------|
+| `herness/05-共享上下文/模块设计速查.md`（新增，P0） | 形状约束 | 深/浅模块判断（删除测试）、seam 纪律、依赖四分类、接口即测试面、6 项自检表 |
+| `herness/03-测试/测试接缝规范.md`（新增，P0） | 测试落点 | 先定接缝再写用例、本项目接缝表、按依赖类别定测法、替换而非叠加 |
+| `herness/05-共享上下文/决策记录规范.md`（新增，P1） | ADR | 三判据（难逆转/无上下文费解/有真实权衡）、模板、落位 `05-共享上下文/adr/` |
+| `herness/05-共享上下文/核心概念术语.md`（改造，P1） | 术语统一 | 加 §零（怎么用 + 禁用词示例表 + 定义写法）、29 行补「禁用词（勿用）」列 |
+
+- **索引同步**：`05-共享上下文/_index.md`（文件列表 + AI 工作流 + 维护责任）、`03-测试/_index.md`、`herness/README.md`（目录导航 + 读取策略）、`AGENTS.md`（任务路由表加「新增/重构模块」「测试/验收」两行）、`00-SOP.md`（第 3 步共享上下文清单 + 新增第 15 条行为规则「模块形状先定再写」）。
+- **状态摘要**：`05-共享上下文/当前状态摘要.md` 关键决策记录加 2 行（方法论落地、skill 本地安装）。
+
+### 核心结论（写进 herness 的判断）
+
+1. **一个 adapter = 假想 seam，两个 adapter = 真 seam** —— 没有第二个实现就别抽象 port，
+   那只是多一层间接、不换来可测性。
+2. **删除测试**：想象删掉这个模块，复杂度消失 → 透传浅模块（合并）；复杂度散回 N 个调用方 → 深模块（保留）。
+3. **接口即测试面**：调用方与测试穿同一个 seam；想测穿界面说明**模块形状错了**，不是测试写错了。
+4. **替换而非叠加**：浅模块深化后，旧浅模块上的单测是 waste，应删；留着会把形状锁死在浅模块上。
+5. **依赖四分类**（进程内 / 可本地替代 / 远程自有 / 真外部）决定 seam 放哪、mock 什么。
+   推论：本项目**不该** mock OpenLayers / Three / Cesium 内部，应断言业务可观察结果。
+6. **ADR 三判据缺一不可**；**落位 `05-共享上下文/adr/` 而非 `docs/adr/`**——
+   `docs/source/**` 是业务契约真相源（给外部系统看），ADR 是工程决策（给团队看），混入会污染契约源边界。
+7. **术语表统一「禁用词」列**：同一概念多个叫法是多人协作最常见的隐性成本（席位/坐席、接缝/边界、深度/复杂度）。
+
+### 本地 skill 安装（不进仓库）
+
+- 源：`mattpocock/skills`（sparse checkout engineering + productivity + misc）
+- 安装 **27 个**：engineering 20（ask-matt, code-review, codebase-design, diagnosing-bugs, domain-modeling,
+  grill-with-docs, implement, implement-spec, improve-codebase-architecture, pr, prototype, research, retro,
+  setup-matt-pocock-skills, tdd, to-spec, to-tickets, triage, wayfinder, wizard）
+  ＋ productivity 7（grill-me, grilling, handoff, teach, to-questionnaire, wait-what, writing-for-agents）
+- 目标：`C:/Users/16697/.codex/skills/`（43 个）、`C:/Users/16697/.agnes/skills/`（42 个），已存在则覆盖为最新
+- **未装**：`misc/setup-pre-commit`、`misc/git-guardrails-claude-code`（本项目 husky + lint 基线已覆盖，避免两套 git 钩子冲突）
+- **刻意不装进 herness**：`research`（属流程不是知识，个人 skill 用）、`improve-codebase-architecture`（属工具产出，herness 是规范与事实）
+- **刻意不引入**：`tdd`/`diagnosing-bugs`/`grill-me`/`code-review`/`handoff`/`to-spec` 等 12 项——
+  herness 规范 + 本地 superpowers 已覆盖，再引入会造成两套流程冲突
+
+### 验证
+| 门禁 | 结果 |
+|---|---|
+| `pnpm harness:check` | ✅ 通过（无体量告警） |
+| `pnpm lint:baseline` | ✅ 0 项 / 0 项（本次纯文档改动，未动 `src/**`） |
+| `pnpm test` | ✅ 全绿（本次未动测试代码） |
+| 术语表列数自检 | ✅ 脚本校验所有表格行 4 列一致 |
+
+### 踩坑
+- **PowerShell 传中文给 `apply_patch` 会报 UTF-8 错误** → 改用 node 脚本读写文件（`Set-Content -Encoding UTF8` 写临时 `.cjs` 再 `node` 执行）。
+- **表格列数不齐**：给术语表批量加列时，只在 `avoidMap` 里的行加了「禁用词」列，其余行表头已是 4 列 → 表格错位。
+  必须**脚本校验每一行单元格数**，不能只看新增的行。
+
+
 ## 路线 Y B-3c：调派「纠缠体」composable 落地并接线 map.vue（单实例常驻，阶段 3/6）
 
 ### 背景
@@ -65,3 +124,39 @@ incidentRelocate / callLocation*）抽成注入式 attach/detach。
 
 ### 提交
 - 连同 B-1/B-2 后续改动一起 `refactor(gis-base)` 提交（含 `useDispatchEntangled.ts` 新增 + dispatchBusiness 访问器 + map.vue 接线）。
+
+## 路线 Y B-6c：原子收口 + e2e 全量回归（阶段 6/6，全部收口完成）
+
+### 落地内容（一次性闭环）
+- **home.vue 恒渲染 `<Map/>`**：删 `DispatchMapPage` import + `v-if="dispatchVariant"` 互斥分支 + 冗余 state（ref/reactive/watch/computed/useRouter/storeToRefs 等），调派态由主 Map 内 watch 切纠缠体承载。
+- **调派 UI 面板迁入主 Map 包装层**（`components/map/index.vue`）：`DispatchT1Panel`/`DispatchLayers`/`VehicleTrackPanel` 以 `v-if="dispatchVariant"` 条件渲染 + 外层 `<div class="dispatch-variant-ui">`，图层 watch（checkedIds→syncLayers）同步迁入。
+- **map.vue 挂 `DispatchRoutePreview`**：`entangled` 是 module-level let，经 `dispatchRoutePreview` computed（读 `routePreviewVisible/Loading/Stations`）+ `handleRoutePreviewSelect` 桥接 `selectStationRoute`。
+- **恢复 `preload=4`**：`useGisBaseMap.ts` 底图 TileLayer `preload 0→4`（路线 X 止血补丁撤销，单实例永不 unmount 找回缩放流畅度）。
+- **清理 `useDispatchMapStore.map`**：删 `map` 字段 + `setMap` action；`useCurrentMap` 简化为只返回 `mapStore.map`。
+- **删双包装层**：`dispatchMap.vue`（3295行）+ `components/dispatchMap/index.vue` + `views/dispatch/index.vue`（路由已 thin redirect → /map 的死文件，删除后 build 报 UNLOADABLE_DEPENDENCY 的漏网引用一并清掉）。
+- **删 3 文件后路由注释更新**（`/dispatch` → B-6c 语义）。
+
+### 验证
+| 门禁 | 结果 |
+|---|---|
+| `pnpm lint`（vue-tsc） | ✅ 0 报错 |
+| `pnpm lint:baseline` | ✅ 0 项 / 0 项 |
+| `pnpm build` | ✅ 通过（17.37s，0 error，仅预存 lightningcss/three.js 警告） |
+| `pnpm e2e`（9 项） | ✅ **9/9 全绿**（26.0s，chromium，单 worker 串行） |
+
+### e2e 回归暴露的 bug（已当场修，重要踩坑）
+初版 B-6c 迁 `DispatchT1Panel` 时传 `:map="MapStore.map"`（**Pinia 深度响应式 state**）→ OL Map 被 Vue Proxy 深代理包裹
+→ `DispatchT1.vue` 的 `watch(props.map, immediate)` 拿到真值立即 `createService()` → `new DispatchT1(map)` 构造器里
+`this.map.addLayer()` 方法绑定在 Proxy 上丢失 → 抛 `TypeError: this.map.addLayer is not a function`
+→ 污染 Vue 组件实例（第二个 error `instance.update is not a function`）→ 整棵 `.dispatch-variant-ui` 子树渲染中断 → div 不进 DOM。
+**修复**：复刻原 `dispatchMap/index.vue` 的 `shallowRef<OlMap>` 时序——本地 `dispatchOlMap` shallowRef + `@set-map`
+回调赋值 + template 传 `dispatchOlMap`（裸 OL 实例，shallow 不深代理）。
+**教训**：传 OL 实例给带 `immediate watch + 构造器副作用` 的组件，必须用 `shallowRef`/裸实例，绝不能直接传 pinia 深度 state。
+
+### e2e spec 同步
+`.dispatch-page`（已删包装层专属 class）→ `.dispatch-variant-ui`（新条件渲染 div，子组件 hidden 不影响 div 存在性，
+断言改 `toHaveCount`）。两个 spec（controlMigration + dispatchBaseMap）全过。
+
+### 提交
+`refactor(gis-base): 路线Y B-6c 原子收口——删双包装层 + 恒渲染 Map + 恢复 preload=4 + e2e 全量回归`
+**路线 Y 全量收口完成**：单实例常驻永不 unmount、调派业务寄生常驻 OLMap、双包装层彻底删除、底图 preload=4 流畅度找回、e2e 9/9 全绿。

@@ -80,7 +80,7 @@ export class DrawTool extends BaseTool {
       this.helpTooltipElement.style.display = 'block'
     }
 
-    this.map.on('pointermove', this.setHelpTooltip)
+    this.bindPointermove(this.setHelpTooltip)
     this.draw.on('drawstart', (evt: { feature: Feature }) => {
       this.drawIng = true
       if ([TYPES.LINESTRING, TYPES.POLYGON].includes(this.type)) {
@@ -108,7 +108,7 @@ export class DrawTool extends BaseTool {
     })
     this.mapEl?.classList.remove('draw')
 
-    this.map.un('pointermove', this.setHelpTooltip)
+    this.unbindPointermove()
     super.destroy()
   }
 
@@ -116,7 +116,7 @@ export class DrawTool extends BaseTool {
     if (this.draw) {
       this.map.removeInteraction(this.draw)
     }
-    this.map.un('pointermove', this.setHelpTooltip)
+    this.unbindPointermove()
     this.sketch = null
     super.destroy()
   }

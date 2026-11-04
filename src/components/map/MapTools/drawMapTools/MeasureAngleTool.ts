@@ -72,7 +72,7 @@ export class MeasureAngleTool extends BaseTool {
       }
     }
 
-    this.map.on('pointermove', this.setHelpTooltip)
+    this.bindPointermove(this.setHelpTooltip)
 
     this.draw.on('drawstart', this.handleMeasureLineStart.bind(this))
     this.draw.on('drawend', this.handleMeasureLineEnd.bind(this))
@@ -130,7 +130,7 @@ export class MeasureAngleTool extends BaseTool {
     this.mapEl?.classList.remove('draw')
 
     this.helpTooltipElement.style.display = 'none'
-    this.map.un('pointermove', this.setHelpTooltip)
+    this.unbindPointermove()
     this.Points = []
     super.destroy()
   }
@@ -165,7 +165,6 @@ export class MeasureAngleTool extends BaseTool {
     if (this.draw) {
       this.map.removeInteraction(this.draw)
     }
-    // this.map.un("pointermove", this.setHelpTooltip);
     // if (this.marker) {
     //   this.vectorLayer?.getSource().removeFeature(this.marker);
     // }

@@ -38,12 +38,12 @@ export class PointTool extends BaseTool {
       this.helpTooltipElement.innerHTML = helpMsg
     }
 
-    this.map.on('pointermove', this.setHelpTooltip)
+    this.bindPointermove(this.setHelpTooltip)
   }
 
   removeListener() {
     this.map.un('click', this.handle)
-    this.map.un('pointermove', this.setHelpTooltip)
+    this.unbindPointermove()
     this.helpTooltipElement.style.display = 'none'
     this.drawIng = false
 

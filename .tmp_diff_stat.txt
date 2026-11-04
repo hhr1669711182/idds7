@@ -1,0 +1,842 @@
+ .claude/commands/handoff-resume.md                 |     9 +
+ .claude/commands/handoff.md                        |     9 +
+ .cursor/commands/handoff-resume.md                 |    12 +
+ .cursor/commands/handoff.md                        |    12 +
+ .cursor/rules/herness.mdc                          |    69 +
+ .dockerignore                                      |     5 -
+ .editorconfig                                      |    35 +
+ .env.development                                   |    47 +-
+ .env.local.example                                 |    43 +
+ .env.production                                    |    38 +-
+ .env.test                                          |    43 +
+ .gemini/GEMINI.md                                  |    55 +
+ .gemini/commands/handoff-resume.md                 |     9 +
+ .gemini/commands/handoff.md                        |     9 +
+ .gitattributes                                     |    44 +
+ .github/commands/handoff-resume.md                 |     9 +
+ .github/commands/handoff.md                        |     9 +
+ .github/copilot-instructions.md                    |    34 +
+ .gitignore                                         |    37 +-
+ .husky/_ husky.sh                                  |    15 +
+ .husky/commit-msg                                  |     4 +
+ .husky/pre-commit                                  |    20 +
+ .husky/pre-push                                    |    20 +
+ .prettierignore                                    |    52 +
+ .prettierrc.json                                   |    28 +
+ .trae/rules/project_rules.md                       |    37 +
+ .windsurfrules                                     |    52 +
+ AGENTS.md                                          |   132 +
+ ARCHITECTURE.md                                    |   244 +
+ CLAUDE.md                                          |    13 +
+ Dockerfile                                         |    31 -
+ commitlint.config.js                               |    98 +
+ docs/asset-manifest.json                           |  1059 ++
+ docs/husky/HUSKY_SETUP.md                          |   227 +
+ ...274\225\344\270\216\345\211\215\350\250\200.md" |   103 +
+ ...240\274\350\257\264\346\230\216\344\271\246.md" |   156 +
+ ...272\247\345\223\201\345\256\232\344\275\215.md" |    99 +
+ ...212\241\346\265\201\347\250\213\345\233\276.md" |   319 +
+ ...235\203\351\231\220\347\237\251\351\230\265.md" |   149 +
+ ...250\241\345\236\213\350\256\276\350\256\241.md" |   341 +
+ ...201\214\350\264\243\350\257\264\346\230\216.md" |   164 +
+ ...272\213\344\273\266\346\270\205\345\215\225.md" |   348 +
+ ...200\201\346\234\272\345\256\232\344\271\211.md" |   222 +
+ ...200\273\350\276\221\350\256\276\350\256\241.md" |   246 +
+ ...257\204\345\210\206\350\247\204\345\210\231.md" |   158 +
+ ...210\244\346\226\255\351\200\273\350\276\221.md" |   160 +
+ ...244\204\347\220\206\346\265\201\347\250\213.md" |   319 +
+ ...\215\217\350\256\256\345\261\202DTO Schema.tsd" |   997 ++
+ ...(v1.0 \345\256\214\346\225\264\347\211\210).md" |   358 +
+ eslint.config.js                                   |    85 +
+ ...205\245\345\217\243\350\257\264\346\230\216.md" |    79 +
+ herness/00-SOP.md                                  |   256 +
+ .../_index.md"                                     |    22 +
+ ...265\201\347\250\213\350\247\204\350\214\203.md" |    56 +
+ ...226\207\346\241\243\346\250\241\346\235\277.md" |    41 +
+ .../_index.md"                                     |    16 +
+ ...265\201\347\250\213\350\247\204\350\214\203.md" |   123 +
+ ...240\270\351\252\214\346\212\245\345\221\212.md" |   116 +
+ ...233\277\346\215\242\346\226\271\346\241\210.md" |   558 +
+ ...212\200\346\234\257\346\226\271\346\241\210.md" |   207 +
+ ...212\200\346\234\257\346\226\271\346\241\210.md" |   459 +
+ ...212\200\346\234\257\346\226\271\346\241\210.md" |   582 +
+ .../\345\211\215\347\253\257/_index.md"            |    38 +
+ ...212\200\346\234\257\346\226\271\346\241\210.md" |   312 +
+ ...212\200\346\234\257\346\226\271\346\241\210.md" |   108 +
+ ...212\200\346\234\257\346\226\271\346\241\210.md" |   489 +
+ .../_index.md"                                     |    26 +
+ ...212\200\346\234\257\346\226\271\346\241\210.md" |   137 +
+ ...212\200\346\234\257\346\226\271\346\241\210.md" |   288 +
+ ...226\271\346\241\210\346\250\241\346\235\277.md" |    84 +
+ ...212\200\346\234\257\346\226\271\346\241\210.md" |   320 +
+ ...256\276\350\256\241\350\257\264\346\230\216.md" |   443 +
+ "herness/03-\346\265\213\350\257\225/_index.md"    |    37 +
+ ...265\201\347\250\213\350\247\204\350\214\203.md" |    97 +
+ ...233\236\345\275\222\346\212\245\345\221\212.md" |    71 +
+ ...274\226\345\206\231\350\247\204\350\214\203.md" |    58 +
+ ...274\226\345\206\231\350\247\204\350\214\203.md" |    57 +
+ .../_archive/README.md"                            |     9 +
+ .../_index.md"                                     |    35 +
+ ...256\276\350\256\241\344\272\247\347\211\251.md" |     5 +
+ ...272\247\347\211\251\350\256\241\345\210\222.md" |    17 +
+ ...272\247\347\211\251\346\261\207\346\200\273.md" |    16 +
+ ...256\276\350\256\241\344\272\247\347\211\251.md" |     6 +
+ ...265\213\350\257\225\344\272\247\347\211\251.md" |     6 +
+ .../_index.md"                                     |    54 +
+ ...211\262\347\233\230\351\200\237\346\237\245.md" |   176 +
+ ...240\267\345\274\217\350\247\204\350\214\203.md" |   518 +
+ ...263\250\351\207\212\350\247\204\350\214\203.md" |   221 +
+ ...267\245\345\205\267\351\200\237\346\237\245.md" |   292 +
+ ...217\220\344\272\244\350\247\204\350\214\203.md" |   250 +
+ ...212\266\346\200\201\346\221\230\350\246\201.md" |   133 +
+ ...234\257\346\240\210\351\200\237\346\237\245.md" |   171 +
+ ...246\202\345\277\265\346\234\257\350\257\255.md" |   101 +
+ ...215\217\350\256\256\351\200\237\346\237\245.md" |   321 +
+ ...247\204\350\214\203\351\200\237\346\237\245.md" |   358 +
+ ...273\223\346\236\204\351\200\237\346\237\245.md" |   304 +
+ ...265\201\347\250\213\350\247\204\350\214\203.md" |   118 +
+ .../_index.md"                                     |    40 +
+ ...265\201\347\250\213\350\247\204\350\214\203.md" |    88 +
+ .../20261019-172500-huanghuanrong-handoff-v1.md"   |    98 +
+ ...272\244\346\216\245\346\250\241\346\235\277.md" |    92 +
+ .../2026-10/2026-10-09/agent-huanghuanrong.md"     |     9 +
+ .../2026-10/2026-10-10/agent-huanghuanrong.md"     |    12 +
+ .../2026-10/2026-10-11/agent-huanghuanrong.md"     |     8 +
+ .../2026-10/2026-10-12/agent-huanghuanrong.md"     |    17 +
+ .../2026-10/2026-10-13/agent-huanghuanrong.md"     |    33 +
+ .../2026-10/2026-10-14/agent-huanghuanrong.md"     |    12 +
+ .../2026-10/2026-10-15/agent-huanghuanrong.md"     |    19 +
+ .../2026-10/2026-10-16/agent-huanghuanrong.md"     |    14 +
+ ...265\204\346\272\220\346\262\273\347\220\206.md" |    14 +
+ .../2026-10/2026-10-19/agent-huanghuanrong.md"     |    78 +
+ .../2026-10/2026-10-20/agent-huanghuanrong.md"     |    16 +
+ .../2026-10/2026-10-21/agent-YeFeng.md"            |     9 +
+ .../2026-10/2026-10-21/agent-huanghuanrong.md"     |    10 +
+ .../2026-10/2026-10-22/agent-huanghuanrong.md"     |    32 +
+ .../2026-10/2026-10-23/agent-YeFeng.md"            |    12 +
+ .../2026-10/2026-10-23/agent-huanghuanrong.md"     |   106 +
+ .../2026-10/2026-10-26/agent-YeFeng.md"            |    21 +
+ .../2026-10/2026-10-26/agent-huanghuanrong.md"     |    68 +
+ .../2026-10/2026-10-27/agent-YeFeng.md"            |     8 +
+ .../2026-10/2026-10-27/agent-huanghuanrong.md"     |    64 +
+ .../2026-10/2026-10-28/agent-YeFeng.md"            |     8 +
+ .../2026-10/2026-10-28/agent-huanghuanrong.md"     |   106 +
+ .../2026-10/2026-10-29/agent-huanghuanrong.md"     |    46 +
+ .../2026-10/2026-10-30/agent-huanghuanrong.md"     |    44 +
+ .../2026-11/2026-11-02/agent-huanghuanrong.md"     |    88 +
+ .../_index.md"                                     |    91 +
+ herness/README.md                                  |   100 +
+ ...57\264\346\230\216-\347\244\272\344\276\213.md" |    51 +
+ herness/examples/README.md                         |    14 +
+ ...65\213\350\257\225-\347\244\272\344\276\213.md" |    52 +
+ ...26\271\346\241\210-\347\244\272\344\276\213.md" |    52 +
+ ...24\250\344\276\213-\347\244\272\344\276\213.md" |    50 +
+ ...55\226\347\225\245-\347\244\272\344\276\213.md" |    37 +
+ ...10\206\346\236\220-\347\244\272\344\276\213.md" |    53 +
+ index.html                                         |    37 +-
+ lint-baseline.json                                 |     6 +
+ ...257\246\347\273\206\350\256\276\350\256\241.md" |   476 +
+ ...236\266\346\236\204\350\256\276\350\256\241.md" |   246 +
+ ...212\241\346\265\201\347\250\213\345\233\276.md" |   305 +
+ ...225\205\344\272\213\346\226\207\346\241\243.md" |   523 +
+ ...234\215\345\212\241\346\270\205\345\215\225.md" |   503 +
+ ...272\222\346\227\266\345\272\217\345\233\276.md" |   347 +
+ ...200\201\346\234\272\345\256\232\344\271\211.md" |   270 +
+ ...225\260\346\215\256\345\255\227\345\205\270.md" |   962 ++
+ ...216\245\345\217\243\350\257\264\346\230\216.md" |   155 +
+ ...212\237\350\203\275\347\274\235\345\220\210.md" |   165 +
+ "mds/external/GIS\346\216\247\345\210\266-6-25.md" |   692 +
+ "mds/external/GIS\346\216\247\345\210\266-6-30.md" |  1321 ++
+ "mds/external/GIS\346\216\247\345\210\266.md"      |  1112 ++
+ mds/external/dispatch-message-events.md            |   155 +
+ mds/external/map-message-events-minmax.md          |   343 +
+ mds/external/map-message-events.md                 |   268 +
+ ...7\345\210\266\351\205\215\347\275\256config.md" |   116 +
+ ...\243\346\230\240\345\260\204\350\241\250-01.md" |   147 +
+ ...217\243\346\230\240\345\260\204\350\241\250.md" |   145 +
+ ...272\222\346\227\266\345\272\217\345\233\276.md" |   285 +
+ ...203\275\345\212\233\346\270\205\345\215\225.md" |   201 +
+ ...225\264\344\275\223\346\236\266\346\236\204.md" |    89 +
+ ...\264\344\275\223\346\236\266\346\236\204_v2.md" |   504 +
+ mds/internal/map-message-events.md                 |   162 +
+ nginx.conf                                         |    19 -
+ package-lock.json                                  | 12525 -----------------
+ package.json                                       |    67 +-
+ playwright.config.ts                               |    56 +
+ pnpm-lock.yaml                                     | 10866 +++++++++++----
+ public/assets/file/hanyang_build.tif               |   Bin 28865409 -> 0 bytes
+ public/fav.jpg                                     |   Bin 5111 -> 0 bytes
+ public/icons.svg                                   |  2000 ++-
+ public/main-screen.html                            |   315 +
+ .../model3d}/gltf/B370921843501063A0.bin           |   Bin
+ .../model3d}/gltf/B370921843501063A0.gltf          |   Bin
+ .../model3d}/gltf/B370921843501063A0_001.jpg       |   Bin
+ .../model3d}/gltf/B370921843501063A0_002.jpg       |   Bin
+ .../model3d}/gltf/B370921843501063A0_003.jpg       |   Bin
+ .../model3d}/gltf/B370921843501063A0_004.jpg       |   Bin
+ .../model3d}/gltf/B370921843501063A0_005.jpg       |   Bin
+ .../model3d}/gltf/B370921843501063A0_006.jpg       |   Bin
+ .../model3d}/gltf/B370921843501063A0_007.jpg       |   Bin
+ .../model3d}/gltf/B370921843501063A0_008.jpg       |   Bin
+ .../model3d}/gltf/B370921843501063A0_009.jpg       |   Bin
+ .../model3d}/gltf/B370921843501063A0_010.jpg       |   Bin
+ .../model3d}/gltf/B370921843501063A0_011.jpg       |   Bin
+ .../model3d}/gltf/B370921843501063A0_012.jpg       |   Bin
+ public/model3d/xf_entrance.png                     |   Bin 0 -> 2837 bytes
+ .../data => public/model3d}/xf_extinguisher.glb    |   Bin
+ .../data => public/model3d}/xf_fire_hydrant.obj    |   Bin
+ .../data => public/model3d}/xf_fire_truck.glb      |   Bin
+ .../data => public/model3d}/xf_firefighter.glb     |   Bin
+ .../data/smoke1.png => public/model3d/xf_smoke.png |   Bin
+ public/model3d/xf_trapped_man.glb                  |   Bin 0 -> 11236280 bytes
+ public/model3d/xf_zddw.png                         |   Bin 0 -> 4247 bytes
+ public/publicLink.js                               |    37 +-
+ public/tw.svg                                      |    15 +
+ public/vehicle-api-test.html                       |   145 +
+ public/video/MVI_39031.mp4                         |   Bin 0 -> 2833447 bytes
+ public/web.config                                  |    11 +-
+ scripts/check-backdrop-filter.mjs                  |    80 +
+ scripts/check-code-convention.mjs                  |   217 +
+ scripts/check-css-vars.mjs                         |   126 +
+ scripts/check-handoff-format.mjs                   |   227 +
+ scripts/check-herness-size.mjs                     |   105 +
+ scripts/check-lint-baseline.mjs                    |   105 +
+ scripts/fix-js-clipper-utf8.mjs                    |    38 +-
+ scripts/manifest-assets.mjs                        |   290 +
+ scripts/mock-dispatch.cjs                          |   113 +
+ scripts/mock-ws.cjs                                |   270 +
+ scripts/restart-mock-server.mjs                    |   207 +
+ scripts/sync-element-style-registry.mjs            |    49 +
+ scripts/verify-element-styles.mjs                  |    88 +
+ scripts/vite-plugin-element-styles.mjs             |   161 +
+ server/.env                                        |     6 +
+ server/README.md                                   |    55 +
+ server/api/routePlan.js                            |    88 +
+ server/api/routes.js                               |    26 +
+ server/index.js                                    |   443 +
+ src/App.vue                                        |     9 +-
+ src/Control/Swiper.ts                              |     2 +-
+ src/Control/alarmCallMessage.ts                    |    91 +
+ src/Control/alarmMessage.ts                        |   206 +
+ src/Control/carLocationMessage.ts                  |   140 +
+ src/Control/dispatchVehicleAdapter.ts              |   131 +
+ src/Control/incidentLocationMessage.ts             |   431 +
+ src/Control/incidentLocationProfileSync.ts         |   167 +
+ src/Control/initMessage.ts                         |   237 +
+ src/Control/initMessage916.ts                      |   134 +
+ src/Control/mapMessageHandlers.ts                  |   148 +
+ src/Control/mapRelayReader.ts                      |   278 +
+ src/Control/messageStageGate.ts                    |    68 +
+ src/Control/mockCallLocationBridge.ts              |   315 +
+ src/Control/pageCondition.ts                       |   121 +
+ src/Control/positionMessage.ts                     |   104 +
+ src/Control/seatSharedState.ts                     |   136 +
+ src/apis/alarm.ts                                  |    80 +
+ src/apis/amap.ts                                   |   303 +
+ src/apis/auth.ts                                   |    36 +
+ src/apis/carTrack.ts                               |    62 +
+ src/apis/common.ts                                 |    18 +
+ src/apis/dispatch.ts                               |    15 +
+ src/apis/dispatchVehicleAdapter.ts                 |   130 +
+ src/apis/dispatchVehicles.ts                       |   229 +
+ src/apis/envArea.ts                                |   321 +
+ src/apis/geoserver.ts                              |   102 +
+ src/apis/incidentProfile.ts                        |    22 +
+ src/apis/layers.ts                                 |    59 +
+ src/apis/router.ts                                 |    44 +
+ src/apis/searchQuery.ts                            |   252 +
+ src/apis/types.ts                                  |    11 +
+ src/apis/unclosedIncidents.ts                      |   104 +
+ src/assets/data/CesiumMilkTruck.glb                |   Bin 441972 -> 0 bytes
+ src/assets/data/GroundVehicle.glb                  |   Bin 6135996 -> 0 bytes
+ src/assets/data/xf_fire_truck2.glb                 |   Bin 9270260 -> 0 bytes
+ src/assets/fav.jpg                                 |   Bin 5111 -> 0 bytes
+ src/assets/file/hanyang_build.tif                  |   Bin 28865409 -> 0 bytes
+ src/assets/file/no-overviews.tif                   |   Bin 25830599 -> 0 bytes
+ .../fixtures/addressRobot/backendResult.json       |   238 +
+ src/assets/fixtures/addressRobot/gis_search.json   |    71 +
+ src/assets/geo/ssrk.json                           |   231 +
+ src/assets/geo/ssrk.sld                            |   111 +
+ src/assets/geo/ssrk123.sld                         |   198 +
+ src/assets/{svg => icons-svg}/jz.svg               |     0
+ src/assets/{svg => icons-svg}/lj.svg               |     0
+ .../map/assets => assets/icons-svg/map}/end.svg    |     0
+ .../assets => assets/icons-svg/map}/pointIng.png   |   Bin
+ src/assets/icons-svg/map/routeArrow.svg            |     1 +
+ .../map/assets => assets/icons-svg/map}/start.svg  |     0
+ .../icons-svg/map/\344\272\244\351\233\206.svg"    |     0
+ .../icons-svg/map/\345\267\256\351\233\206.svg"    |     0
+ .../icons-svg/map/\345\271\266\351\233\206.svg"    |     0
+ .../icons-svg/map/\347\224\273\345\234\206.svg"    |     0
+ src/assets/{svg => icons-svg}/xc.svg               |     0
+ src/assets/icons/.gitkeep                          |     1 -
+ src/assets/lands.json                              |   184 -
+ src/assets/map/config/data.json                    |    11 +
+ src/assets/map/geo/hongshang.json                  |  1276 ++
+ src/assets/map/geo/lands.json                      | 13306 +++++++++++++++++++
+ .../amap/imgs => assets/map/icon}/alarm.png        |   Bin
+ src/assets/map/icon/alarm_high.png                 |   Bin 0 -> 2987 bytes
+ src/assets/map/icon/blue-fire.svg                  |    21 +
+ src/assets/map/icon/blue-rescue.svg                |    20 +
+ src/assets/map/icon/blue-society.svg               |    31 +
+ .../amap/imgs => assets/map/icon}/car.png          |   Bin
+ .../amap/imgs => assets/map/icon}/carTap.png       |   Bin
+ src/assets/map/icon/fire-engine.svg                |    13 +
+ src/assets/map/icon/poi.png                        |   Bin 0 -> 720 bytes
+ src/assets/map/icon/poi1.png                       |   Bin 0 -> 780 bytes
+ src/assets/map/icon/red-fire.svg                   |    21 +
+ src/assets/map/icon/red-rescue.svg                 |    20 +
+ src/assets/map/icon/red-society.svg                |    31 +
+ src/assets/map/icon/shui.png                       |   Bin 0 -> 4142 bytes
+ .../amap/imgs => assets/map/icon}/xfz.png          |   Bin
+ src/assets/map/icon/zhu.png                        |   Bin 0 -> 18309 bytes
+ ...7\266\350\255\246\346\203\205-\347\201\260.png" |   Bin 0 -> 16076 bytes
+ ...15\263\346\227\266\350\255\246\346\203\205.png" |   Bin 0 -> 15782 bytes
+ .../map/assets => assets/map/imgs}/cluster.png     |   Bin
+ .../map/assets => assets/map/imgs}/heatMap.jpg     |   Bin
+ .../map/assets => assets/map/imgs}/logo-dark.svg   |     0
+ .../map/assets => assets/map/imgs}/mask.jpg        |   Bin
+ .../map/assets => assets/map/imgs}/north.svg       |     0
+ .../map/assets => assets/map/imgs}/setting.png     |   Bin
+ .../map/assets => assets/map/imgs}/time.jpg        |   Bin
+ .../map/assets => assets/map/imgs}/vector.png      |   Bin
+ .../map/assets => assets/map/imgs}/weather.jpg     |   Bin
+ src/assets/modal.png                               |   Bin 269 -> 0 bytes
+ src/assets/{ => ui/buttons}/arrow.png              |   Bin
+ src/assets/{ => ui/buttons}/bottomBg.png           |   Bin
+ src/assets/{ => ui/buttons}/lineOption.png         |   Bin
+ src/assets/{ => ui/buttons}/loc.png                |   Bin
+ src/assets/{ => ui/buttons}/marker.png             |   Bin
+ src/assets/{ => ui/buttons}/polygon3.png           |   Bin
+ src/assets/{ => ui/buttons}/polygon4.png           |   Bin
+ src/assets/{ => ui/buttons}/polygon5.png           |   Bin
+ src/assets/{ => ui/buttons}/right.png              |   Bin
+ src/assets/ui/icons/three_draw.png                 |   Bin 0 -> 1134 bytes
+ src/assets/ui/icons/three_move.png                 |   Bin 0 -> 1274 bytes
+ .../ui/sprites/earth-navi-control-pc4-night.png    |   Bin 0 -> 2714 bytes
+ .../{ => ui/sprites}/earth-navi-control-pc4.png    |   Bin
+ .../{ => ui/sprites}/gl-navi-control-pc4.png       |   Bin
+ src/assets/{ => ui/theme}/day.svg                  |     0
+ src/assets/{ => ui/theme}/night.svg                |     0
+ src/assets/vue.svg                                 |     1 -
+ .../OpenlayersMap/AddressRobotRenderer.ts          |   226 +
+ .../AddressRobotUtils/featureRenderOrder.d.ts      |     3 +
+ .../AddressRobotUtils/featureRenderOrder.js        |    40 +
+ .../AddressRobotUtils/searchFeatureStyle.d.ts      |     6 +
+ .../AddressRobotUtils/searchFeatureStyle.js        |   352 +
+ .../OpenlayersMap/AlarmDetailPopup.vue             |    67 +
+ .../OpenlayersMap/AreaFenceRenderer.ts             |   231 +
+ .../OpenlayersMap/DispatchRoutePreview.vue         |    69 +
+ src/baseComponent/OpenlayersMap/DispatchT1.ts      |   996 ++
+ src/baseComponent/OpenlayersMap/DispatchT1.vue     |   915 ++
+ .../OpenlayersMap/FeatureClickQuery.ts             |   375 +
+ .../OpenlayersMap/IncidentDetailDialog.vue         |   455 +
+ .../OpenlayersMap/IncomingCallOverlay.vue          |   265 +
+ src/baseComponent/OpenlayersMap/NavPanel.vue       |   233 +
+ src/baseComponent/OpenlayersMap/SwipeControl.css   |    78 +
+ src/baseComponent/OpenlayersMap/SwipeControl.ts    |   321 +
+ src/baseComponent/OpenlayersMap/VehicleRenderer.ts |   706 +
+ .../OpenlayersMap/VehicleTrackRenderer.ts          |   201 +
+ .../OpenlayersMap/ZoomLevelControl.vue             |    64 +
+ src/baseComponent/OpenlayersMap/baseSource.ts      |   422 +
+ src/baseComponent/OpenlayersMap/businessMapPort.ts |    28 +
+ src/baseComponent/OpenlayersMap/const.map.ts       |    50 +-
+ .../OpenlayersMap/dispatchBusiness.ts              |   101 +
+ src/baseComponent/OpenlayersMap/dispatchMap.vue    |  3294 +++++
+ src/baseComponent/OpenlayersMap/gisMapConfig.ts    |    70 +
+ .../OpenlayersMap/incidentRelocate.ts              |   263 +
+ src/baseComponent/OpenlayersMap/layerOrder.ts      |    12 +
+ src/baseComponent/OpenlayersMap/layers.ts          |   113 +-
+ src/baseComponent/OpenlayersMap/map.less           |   372 +
+ src/baseComponent/OpenlayersMap/map.vue            |  1437 +-
+ src/baseComponent/OpenlayersMap/mapold.vue         |   863 --
+ src/baseComponent/OpenlayersMap/mountPointLayer.ts |   185 +
+ .../OpenlayersMap/mountPolygonLayer.ts             |   114 +
+ .../OpenlayersMap/overlayTemplate.vue              |    35 +-
+ src/baseComponent/OpenlayersMap/specialMapMock.ts  |   266 +
+ src/baseComponent/OpenlayersMap/startup.ts         |    17 +
+ src/baseComponent/OpenlayersMap/style/factory.ts   |   265 +
+ src/baseComponent/OpenlayersMap/style/icons.ts     |    33 +
+ src/baseComponent/OpenlayersMap/style/index.ts     |    74 +
+ src/baseComponent/OpenlayersMap/style/palette.ts   |    99 +
+ src/baseComponent/OpenlayersMap/style/registry.ts  |    79 +
+ src/baseComponent/OpenlayersMap/style/types.ts     |    72 +
+ src/baseComponent/OpenlayersMap/useBaseMapLayer.ts |   141 +
+ src/baseComponent/OpenlayersMap/useGisBaseMap.ts   |   209 +
+ src/baseComponent/OpenlayersMap/useMapPopups.ts    |   315 +
+ src/baseComponent/Slider.vue                       |     9 +-
+ src/baseComponent/ThemeSwitch.vue                  |    35 +-
+ src/baseComponent/amap/amapCoordinate.ts           |    60 +
+ src/baseComponent/amap/data.json                   |    11 -
+ src/baseComponent/amap/dispatchVehicleLabel.css    |    43 +
+ src/baseComponent/amap/dispatchVehicleLabel.ts     |    58 +
+ src/baseComponent/amap/featureStyle.ts             |   168 -
+ src/baseComponent/amap/mapData.ts                  |   422 +-
+ src/baseComponent/amap/routeAlternatives.ts        |   108 +
+ src/baseComponent/amap/routeCongestion.ts          |    20 +
+ src/baseComponent/amap/routeMetrics.ts             |    82 +
+ src/baseComponent/amap/routeMetrics.worker.ts      |    16 +
+ src/baseComponent/amap/useAmapTools.ts             |  2839 ++--
+ src/baseComponent/keyboardNote.vue                 |    12 +-
+ src/baseComponent/tools/Common.ts                  |    20 +
+ src/baseComponent/tools/FeatureHandler.js          |  2119 +++
+ src/baseComponent/tools/address.ts                 |    94 +
+ src/baseComponent/tools/amap.ts                    |   191 +
+ src/baseComponent/tools/baidu.ts                   |   268 +
+ src/baseComponent/tools/routeBase.ts               |   229 +
+ src/baseComponent/tools/transform.ts               |    78 +
+ src/components/AddressRobotDrawer/data.ts          |    52 +
+ src/components/AddressRobotDrawer/index.vue        |   337 +
+ src/components/AddressRobotDrawer/mock.ts          |     1 +
+ src/components/AddressRobotDrawer/types.ts         |   142 +
+ src/components/BIM/CesiumDuty.vue                  |   168 +
+ src/components/BIM/ThreejsViewerBuilding.vue       |   688 +-
+ src/components/BIM/ThreejsViewerRegion.vue         |  1086 +-
+ src/components/BIM/module/commonSetting.js         |   109 +
+ src/components/BIM/module/commonThree.js           |    42 +
+ .../BIM/module/createAroundFacilities.js           |   268 +
+ src/components/BIM/module/createBIMBuilding.js     |    26 +
+ .../BIM/module/createBuildingByFloors.js           |   222 +
+ src/components/BIM/module/createFireFacilities.js  |   125 +
+ src/components/BIM/module/createWhiteBuildings.js  |   208 +
+ src/components/BIM/module/drawTruckPath.js         |    98 +
+ src/components/BIM/module/generateFireSprite.js    |   168 +
+ src/components/BIM/module/initThreeBuilding.js     |   139 +
+ src/components/BIM/module/initThreeRegion.js       |   317 +
+ src/components/BIM/module/transformCoordinate.js   |    74 +
+ src/components/BIM/module/viewerInquiryBuilding.js |   169 +
+ src/components/BIM/viewerInquiryBuilding.vue       |   371 +
+ src/components/Icon/src/Icon.vue                   |    14 +-
+ src/components/MarkDraw/README.md                  |    99 +
+ .../MarkDraw/components/MarkDrawImporter.vue       |   164 +
+ .../MarkDraw/components/MarkDrawResultBar.vue      |    97 +
+ .../MarkDraw/components/MarkDrawSurface.vue        |   604 +
+ .../MarkDraw/components/MarkDrawToolbar.vue        |   292 +
+ src/components/MarkDraw/composables/useMarkDraw.ts |    25 +
+ .../MarkDraw/composables/useMarkDrawEmitter.ts     |    22 +
+ src/components/MarkDraw/engine/FeatureHistory.ts   |   182 +
+ .../MarkDraw/engine/MarkDrawHighlight.ts           |   215 +
+ .../MarkDraw/engine/MarkDrawSelectInteraction.ts   |   151 +
+ .../MarkDraw/engine/MarkDrawVectorLayer.ts         |    51 +
+ .../MarkDraw/engine/createMarkDrawEngine.ts        |   527 +
+ src/components/MarkDraw/engine/emitter.ts          |    41 +
+ src/components/MarkDraw/engine/types.ts            |   135 +
+ .../MarkDraw/form/FeatureEditorPanel.vue           |   678 +
+ src/components/MarkDraw/form/useFeatureEditor.ts   |    86 +
+ .../MarkDraw/form/wfst/featureTypeCache.ts         |     5 +
+ src/components/MarkDraw/form/wfst/nsResolver.ts    |     7 +
+ src/components/MarkDraw/form/wfst/transaction.ts   |   116 +
+ src/components/MarkDraw/form/wfst/wfsXml.ts        |   233 +
+ src/components/MarkDraw/index.ts                   |    47 +
+ src/components/MarkDraw/store/persist.ts           |    19 +
+ src/components/MarkDraw/store/useMarkDrawStore.ts  |    45 +
+ src/components/MarkDraw/styles/markdraw.less       |   140 +
+ src/components/MarkDraw/styles/toast.less          |   279 +
+ src/components/MarkDraw/tools/BaseTool.ts          |   112 +
+ src/components/MarkDraw/tools/DrawTools.ts         |   102 +
+ src/components/MarkDraw/tools/MeasureTools.ts      |   369 +
+ src/components/MarkDraw/tools/MilitarySymbols.ts   |   216 +
+ src/components/MarkDraw/tools/QueryTools.ts        |    28 +
+ src/components/MarkDraw/tools/index.ts             |    87 +
+ src/components/MarkDraw/ui/MdButton.vue            |   112 +
+ src/components/MarkDraw/ui/MdContextMenu.ts        |   148 +
+ src/components/MarkDraw/ui/MdInput.vue             |    99 +
+ src/components/MarkDraw/ui/MdMessage.ts            |   101 +
+ src/components/MarkDraw/ui/MdModal.vue             |    59 +
+ src/components/MarkDraw/ui/MdTable.vue             |   166 +
+ src/components/MarkDraw/ui/MdTag.vue               |    62 +
+ src/components/MarkDraw/ui/index.ts                |    11 +
+ src/components/MarkDraw/utils/featureType.ts       |   184 +
+ src/components/MarkDraw/utils/fenceConstraint.ts   |   389 +
+ src/components/MarkDraw/utils/geojson.ts           |    96 +
+ src/components/MarkDraw/utils/layerStyle.ts        |   120 +
+ src/components/MarkDraw/utils/proj.ts              |    77 +
+ src/components/MarkDraw/utils/styleSerializer.ts   |   111 +
+ src/components/MarkDraw/view/FeatureListPanel.vue  |   375 +
+ .../MarkDraw/view/LayerHierarchyPanel.vue          |   191 +
+ src/components/MarkDraw/view/layerConfig.ts        |    97 +
+ src/components/MarkDraw/view/useLayerHierarchy.ts  |    13 +
+ src/components/Modals/index.vue                    |     7 +-
+ src/components/Modals/setting.vue                  |    30 +-
+ src/components/bottomNav/index.vue                 |   118 +
+ src/components/common/ModeChange.vue               |    19 +-
+ src/components/common/WeatherPanel.vue             |   570 +
+ src/components/dispatchMap/DispatchLayers.vue      |   197 +
+ src/components/dispatchMap/VehicleTrackPanel.vue   |   223 +
+ src/components/dispatchMap/index.vue               |   189 +
+ src/components/map/MapTools/Overlay.ts             |    46 +-
+ .../map/MapTools/ThemeTools/ClusterTools.ts        |    99 +-
+ .../map/MapTools/ThemeTools/HeatMapTools.ts        |   104 +-
+ .../map/MapTools/ThemeTools/MaskTools.ts           |   111 +-
+ .../map/MapTools/ThemeTools/TimeTools.ts           |    45 +-
+ .../map/MapTools/ThemeTools/TrafficTools.ts        |    48 +
+ .../map/MapTools/ThemeTools/WeatherTools.ts        |    65 +-
+ src/components/map/MapTools/ThemeTools/index.ts    |     4 +-
+ .../map/MapTools/commonTools/useExtent.ts          |   165 +
+ .../map/MapTools/drawMapTools/AzimuthTool.ts       |   229 +-
+ .../map/MapTools/drawMapTools/BaseTool.ts          |   219 +-
+ .../map/MapTools/drawMapTools/CircleQueryTool.ts   |   476 +
+ .../map/MapTools/drawMapTools/DrawTool.ts          |   169 +-
+ .../map/MapTools/drawMapTools/MeasureAngleTool.ts  |   188 +-
+ .../map/MapTools/drawMapTools/MeasureAreaTool.ts   |   184 +-
+ .../MapTools/drawMapTools/MeasureDistanceTool.ts   |   237 +-
+ .../map/MapTools/drawMapTools/PointTool.ts         |    72 +-
+ .../map/MapTools/drawMapTools/PopulationTool.ts    |   508 +
+ .../map/MapTools/drawMapTools/SearchResultTool.ts  |   439 +
+ .../map/MapTools/drawMapTools/SelectExtentTool.ts  |    40 +
+ .../map/MapTools/drawMapTools/addressRobot.ts      |   194 +
+ src/components/map/MapTools/drawMapTools/index.ts  |    18 +-
+ src/components/map/MapTools/index.ts               |    10 +-
+ src/components/map/assets/hongshang.json           |  5027 -------
+ src/components/map/brp.vue                         |    99 +-
+ src/components/map/card.vue                        |   100 +-
+ src/components/map/clear.vue                       |   121 +-
+ src/components/map/compass.vue                     |    97 +-
+ src/components/map/component/Panels/analyseMap.vue |    67 +-
+ .../map/component/Panels/animationMap.vue          |    26 +-
+ .../map/component/Panels/vectorLayerHight.vue      |    50 +-
+ src/components/map/component/baseSource.vue        |   364 +
+ src/components/map/component/bigPanel.vue          |    54 +-
+ src/components/map/component/card-setting.vue      |    40 +
+ src/components/map/component/circleQueryPanel.vue  |   884 ++
+ src/components/map/component/d25Panel.vue          |   190 -
+ src/components/map/component/d3Panel.vue           |   188 -
+ src/components/map/component/paletteDrawer.vue     |   336 +
+ src/components/map/component/routePlan.vue         |   186 +-
+ src/components/map/component/routePlanPanel.vue    |   886 ++
+ src/components/map/component/setting.vue           |    24 -
+ src/components/map/component/ssrkPanel.vue         |    52 +
+ src/components/map/component/topicLayerCard.vue    |   111 +-
+ src/components/map/config.vue                      |   769 ++
+ src/components/map/dragPanel/gridControl.vue       |     6 +-
+ src/components/map/dragPanel/index.vue             |    14 +-
+ src/components/map/dragPanel/swipeControl.vue      |    10 +-
+ .../map/dragPanel/waterMarkerControl.vue           |    12 +-
+ src/components/map/form/circleForm.vue             |    39 +-
+ src/components/map/form/lineForm.vue               |    44 +-
+ src/components/map/form/pointForm.vue              |   101 +-
+ src/components/map/form/polygonForm.vue            |    70 +-
+ src/components/map/index.vue                       |   196 +-
+ src/components/map/layers.vue                      |   223 +
+ src/components/map/trp.vue                         |   266 +-
+ src/components/three/fontLoader.vue                |   104 +-
+ src/composables/Swiper/Swiper.css                  |    78 +
+ src/composables/Swiper/Swiper.ts                   |   320 +
+ src/composables/useAlarmHotspot.ts                 |   117 +
+ src/composables/useAlova.ts                        |    21 +
+ src/composables/useBroadcastChannelBridge.ts       |    31 +
+ src/composables/useCarFeatures.ts                  |   331 +
+ src/composables/useClickOutside.ts                 |    28 +
+ src/composables/useCurrentMap.ts                   |    25 +
+ src/composables/useDrawTool.ts                     |    90 +
+ src/composables/useFireStations.ts                 |   164 +
+ src/composables/useGisPointSelection.ts            |   295 +
+ src/composables/useIncidentLocationProfileSync.ts  |   138 +
+ src/composables/useIncomingCallFeatures.ts         |   658 +
+ src/composables/useMapRelayReader.ts               |   111 +
+ src/composables/useMockCallLocationBridge.ts       |   391 +
+ src/composables/useResponsive.ts                   |    67 +-
+ src/composables/useSSRKFeatures.ts                 |   228 +
+ src/composables/useSearchActions.ts                |   125 +
+ src/composables/useUnclosedIncidents.ts            |   187 +
+ src/composables/useVehicleTrackPlayback.ts         |   108 +
+ src/config/env.ts                                  |    71 +
+ src/config/layers.ts                               |   307 +
+ src/config/mapConfig.ts                            |   327 +
+ src/config/scaleLine.ts                            |    22 +
+ .../openlayer/index.ts => config/tools.ts}         |     0
+ src/const/assetPaths.ts                            |    92 +
+ src/const/const.business.type.ts                   |    14 +
+ src/const/const.common.ts                          |    54 +-
+ src/const/const.form.ts                            |    38 +-
+ src/const/const.map.ts                             |   147 +-
+ src/const/const.message.type.ts                    |   175 +
+ src/const/const.modals.ts                          |     4 +-
+ src/const/const.modelAssess.ts                     |    76 +
+ src/const/const.modelAssessMock.ts                 |    65 +
+ src/const/const.panel.ts                           |    37 +-
+ src/const/index.ts                                 |    21 +-
+ .../core/business/AddressRobotController.ts        |    14 +
+ .../AddressRobotUtils/featureRenderOrder.js        |    40 +
+ .../AddressRobotUtils/searchFeatureStyle.js        |   352 +
+ .../business/AddressRobotUtils/searchFeatures.js   |   235 +
+ src/controller/core/business/AlarmController.ts    |   102 +
+ .../core/business/AreaWeatherController.ts         |   351 +
+ src/controller/core/business/CallController.ts     |   195 +
+ src/controller/core/business/ConfigController.ts   |    35 +
+ src/controller/core/business/DispatchController.ts |   160 +
+ .../core/business/DispatchController1.ts           |   113 +
+ src/controller/core/business/DutyController.ts     |    35 +
+ .../core/business/IncidentLocationController.ts    |    70 +
+ .../core/business/IncidentNearbyResourceQuery.ts   |   375 +
+ .../core/business/IncidentStationQuery.ts          |   475 +
+ .../business/IncidentVideoOverlayController.ts     |   468 +
+ src/controller/core/business/TrackingController.ts |    13 +
+ src/controller/core/business/index.ts              |    44 +
+ src/controller/core/business/vehicleManager.ts     |     2 +
+ src/controller/core/generic/GeometryController.ts  |   475 +
+ src/controller/core/generic/KinematicController.ts |   128 +
+ src/controller/core/generic/SpatialController.ts   |   116 +
+ src/controller/core/generic/ViewController.ts      |   269 +
+ src/controller/core/generic/index.ts               |    63 +
+ src/controller/core/index.ts                       |     4 +
+ src/controller/core/io/BusinessMessageRuntime.ts   |   361 +
+ src/controller/core/io/InputController.ts          |   148 +
+ src/controller/core/io/OutputController.ts         |    62 +
+ src/controller/core/io/index.ts                    |    25 +
+ src/controller/core/io/messageStagePolicy.ts       |   182 +
+ src/controller/core/protocol/BusinessMapPort.ts    |    82 +
+ src/controller/core/protocol/BusinessProtocol.ts   |   257 +
+ src/controller/core/protocol/GenericProtocol.ts    |   132 +
+ src/controller/core/protocol/IOProtocol.ts         |    43 +
+ .../core/protocol/IncidentLocationProtocol.ts      |    73 +
+ .../core/protocol/LegacyMessageProtocol.ts         |    77 +
+ .../core/protocol/SharedStateProtocol.ts           |    48 +
+ src/controller/core/protocol/index.ts              |    12 +
+ src/controller/index.ts                            |    14 +
+ src/controller/publish/host.ts                     |    19 +
+ src/controller/publish/index.ts                    |    26 +
+ src/controller/publish/map.ts                      |    31 +
+ src/controller/publish/three.ts                    |    19 +
+ src/controller/publish/types.ts                    |    24 +
+ src/data/buildDemo.js                              | 11126 +++++++++++++++-
+ src/directives/drag.ts                             |    79 +-
+ src/directives/index.ts                            |     2 +-
+ src/hooks/useBroadcastChannel.ts                   |    77 +
+ src/hooks/useDesign.ts                             |    18 +
+ src/hooks/useEncryptedStorage.md                   |    41 +
+ src/hooks/useEncryptedStorage.ts                   |   107 +
+ src/hooks/usePostMessage.ts                        |    62 +
+ src/hooks/useRouteMetricsWorker.ts                 |    65 +
+ src/hooks/useWebSocket.ts                          |   242 +
+ src/hooks/useWebSocketAuth.ts                      |   170 +
+ src/interceptor/README.md                          |    98 +
+ src/interceptor/index.ts                           |    22 +
+ src/interceptor/install.ts                         |    66 +
+ src/interceptor/matcher.ts                         |   142 +
+ src/interceptor/registry.ts                        |   114 +
+ src/interceptor/subscriptions.ts                   |    42 +
+ src/interceptor/transforms/addressRobot.ts         |    33 +
+ src/interceptor/transforms/alarm.ts                |    86 +
+ src/interceptor/transforms/alarmCall.ts            |    70 +
+ src/interceptor/transforms/business.ts             |    25 +
+ src/interceptor/transforms/carLocation.ts          |    71 +
+ .../transforms/dispatchers/addressRobot.ts         |    29 +
+ .../transforms/dispatchers/locateCall.ts           |     7 +
+ src/interceptor/transforms/incidentLocation.ts     |    61 +
+ src/interceptor/transforms/position.ts             |    57 +
+ src/interceptor/transforms/seat.ts                 |    59 +
+ src/interceptor/transforms/t1.ts                   |    30 +
+ src/interceptor/types.ts                           |    64 +
+ src/interceptor/unwrap.ts                          |   189 +
+ src/layout/MainLayout.vue                          |    17 +-
+ src/lib/index.ts                                   |   140 +-
+ src/main.ts                                        |    23 +-
+ src/map.svg                                        |   610 +-
+ src/ol.d.ts                                        |    22 +-
+ src/plugins/crypto/index.ts                        |   345 +
+ src/plugins/mapPlugins/README.md                   |   239 +
+ src/plugins/mapPlugins/core/MapCore.ts             |    71 +
+ .../mapPlugins/core/transform.ts}                  |     0
+ src/plugins/mapPlugins/core/types.ts               |    24 +
+ src/plugins/mapPlugins/index.ts                    |    15 +
+ src/plugins/mapPlugins/plugins/useBaseMap.ts       |    76 +
+ src/plugins/mapPlugins/plugins/useBusUpWMS.ts      |   103 +
+ src/plugins/mapPlugins/plugins/useCoreControl.ts   |    76 +
+ src/plugins/mapPlugins/plugins/useDraw.ts          |    98 +
+ src/plugins/mapPlugins/plugins/useFeatureStyle.ts  |    52 +
+ src/plugins/mapPlugins/plugins/useMapStatus.ts     |    79 +
+ src/plugins/mapPlugins/plugins/useMapUtils.ts      |    63 +
+ src/plugins/mapPlugins/plugins/useOverlay.ts       |    74 +
+ src/plugins/mapPlugins/plugins/useRoutePlan.ts     |    93 +
+ src/register/businessMapLifecycle.ts               |    22 +
+ src/register/initMessage.ts                        |   183 +
+ src/register/messageSubscriptions.ts               |    10 +
+ src/register/pageCondition.ts                      |   146 +
+ src/router/constants.ts                            |    14 +
+ src/router/dynamic.ts                              |   101 +
+ src/router/guard/authGuard.ts                      |    35 +
+ src/router/guard/dynamicRouteGuard.ts              |    34 +
+ src/router/guard/index.ts                          |    16 +
+ src/router/index.ts                                |   169 +-
+ src/router/sharedStateGuard.ts                     |    19 +
+ src/service/alova.ts                               |   112 +
+ src/service/alovaGeo.ts                            |    23 +
+ src/service/alovaMapProxy.ts                       |    61 +
+ src/service/authHeaders.ts                         |    30 +
+ src/service/error.ts                               |    48 +
+ src/shims-vue.d.ts                                 |     8 +-
+ src/store/index.ts                                 |    42 +-
+ src/store/piniaPersist.ts                          |    25 +
+ src/store/useBaseSourceStore.ts                    |    42 +
+ src/store/useCardStore.ts                          |   143 +-
+ src/store/useCommonStore.ts                        |   183 +-
+ src/store/useDispatchMapStore.ts                   |    34 +
+ src/store/useDispatchStore.ts                      |    55 +
+ src/store/useDispatchT1Store.ts                    |   317 +
+ src/store/useIncidentLocationStore.ts              |   634 +
+ src/store/useLayersStore.ts                        |   100 +
+ src/store/useMapConfigStore.ts                     |    68 +
+ src/store/useMapStore.ts                           |    56 +-
+ src/store/useMessageStore.ts                       |   402 +
+ src/store/useMessageStore916.ts                    |   422 +
+ src/store/useModalMap.ts                           |    13 -
+ src/store/useModalStore.ts                         |    12 +-
+ src/store/useModelAssessStore.ts                   |   250 +
+ src/store/usePanelStore.ts                         |    76 +-
+ src/store/usePendingCallLocationStore.ts           |    44 +
+ src/store/usePendingDispatchAlarmStore.ts          |    47 +
+ src/store/useSearchPanelStore.ts                   |   253 +
+ src/store/useStationLayerStore.ts                  |   113 +
+ src/store/useTabsStore.ts                          |    42 +-
+ src/store/useTopicLayerStore.ts                    |    10 +-
+ src/store/useUserStore.ts                          |   295 +
+ src/store/useVehicleTrackStore.ts                  |   151 +
+ src/style.css                                      |    44 +-
+ src/styles/day.css                                 |     8 -
+ src/styles/day.less                                |     6 +
+ src/styles/element-theme.less                      |   182 +
+ src/styles/element.less                            |     0
+ src/styles/index.less                              |    36 +
+ src/styles/night.css                               |     7 -
+ src/styles/night.less                              |     8 +
+ src/styles/ol-controls.less                        |   186 +
+ src/styles/palettes.less                           |   482 +
+ src/styles/themed-panel.less                       |    95 +
+ src/styles/tokens.less                             |   124 +
+ src/styles/variables.module.less                   |    10 +
+ src/types/auto-imports.d.ts                        |     1 +
+ src/types/components.d.ts                          |    58 -
+ src/types/global.d.ts                              |    41 +-
+ src/types/images.d.ts                              |     9 +-
+ src/types/message.ts                               |    59 +
+ src/types/router.d.ts                              |     8 +-
+ src/types/search.ts                                |   116 +
+ src/util/index.ts                                  |     5 -
+ src/util/mapTool.ts                                |   373 -
+ src/util/mitt.ts                                   |     3 -
+ src/utils/alarmProfile.ts                          |    24 +
+ src/utils/assetUrl.ts                              |    59 +
+ src/utils/clipboard.ts                             |    45 +
+ src/utils/coordTransform.ts                        |    72 +
+ src/utils/coordinateText.ts                        |   120 +
+ src/utils/crypto.ts                                |    94 +
+ src/utils/elementStyleRegistry.ts                  |   107 +
+ src/utils/incidentLocation.ts                      |   107 +
+ src/utils/incidentState.ts                         |    22 +
+ src/utils/index.ts                                 |    10 +
+ src/utils/logger.ts                                |   143 +
+ src/utils/mapTool.ts                               |   444 +
+ src/utils/mitt.ts                                  |     3 +
+ src/utils/propTypes.ts                             |    24 +
+ src/utils/seatSharedState.ts                       |    98 +
+ src/utils/sharedStateWatch.ts                      |    34 +
+ src/utils/storage.ts                               |   190 +
+ src/{util => utils}/svgTools.ts                    |    90 +-
+ src/utils/themeColor.ts                            |   132 +
+ src/views/amap/AmapApiDemo.vue                     |   288 +
+ src/views/dispatch/index.vue                       |    18 +
+ src/views/home.vue                                 |    24 +-
+ src/views/markDraw/index.vue                       |    82 +
+ src/views/modelAssess/components/Compass3D.vue     |   102 +
+ .../components/ComponentDetailPopover.vue          |   288 +
+ src/views/modelAssess/components/FloorPlan2D.vue   |   133 +
+ .../modelAssess/components/MasterAlarmPanel.vue    |   929 ++
+ src/views/modelAssess/components/MiniMap.vue       |   120 +
+ .../modelAssess/components/RouteDebugPanel.vue     |   116 +
+ .../modelAssess/components/SimilarAlarmCard.vue    |   289 +
+ src/views/modelAssess/components/ThreeViewer.vue   |   186 +
+ src/views/modelAssess/components/TiltMapView.vue   |   184 +
+ .../modelAssess/components/TrappedRescuePanel.vue  |   122 +
+ .../modelAssess/composables/useThreeController.ts  |    88 +
+ src/views/modelAssess/composables/useThreeScene.ts |   848 ++
+ src/views/modelAssess/index.vue                    |   114 +
+ src/views/modelAssess/mock.ts                      |     6 +
+ src/views/modelAssess/model3d/commonSetting.ts     |    41 +
+ src/views/modelAssess/model3d/commonThree.ts       |   137 +
+ .../model3d/createBuildingAnnotations.ts           |   256 +
+ .../modelAssess/model3d/createBuildingByFloors.ts  |   120 +
+ .../modelAssess/model3d/createFireFacilities.ts    |   131 +
+ src/views/modelAssess/model3d/createPersonMesh.ts  |    69 +
+ .../modelAssess/model3d/createRouteAnimation.ts    |   675 +
+ .../modelAssess/model3d/createTrappedMarkers.ts    |    68 +
+ .../modelAssess/model3d/createWhiteBuildings.ts    |    48 +
+ .../modelAssess/model3d/generateFireSprite.ts      |    92 +
+ .../modelAssess/model3d/initModelAssessScene.ts    |   372 +
+ src/views/modelAssess/styles/model-assess.less     |   854 ++
+ src/views/modelAssess/styles/model3d.less          |    91 +
+ src/views/modelAssess/styles/plan-2d.less          |    56 +
+ src/views/modelAssess/styles/three-viewer.less     |   104 +
+ src/views/region.vue                               |    12 +-
+ src/views/test/index.vue                           |     6 +-
+ src/views/three_platform.vue                       |     7 -
+ src/vite-env.d.ts                                  |    25 +
+ tests/components/circleQueryPanel.spec.ts          |   159 +
+ .../components/dispatchT1TrackingBoundary.spec.ts  |   411 +
+ tests/components/routePlanPanel.spec.ts            |   138 +
+ tests/e2e/controlMigration.spec.ts                 |    87 +
+ tests/e2e/dispatchBaseMap.spec.ts                  |   142 +
+ tests/e2e/smoke.spec.ts                            |    62 +
+ tests/e2e/theme.spec.ts                            |    51 +
+ tests/fixtures/coordinates.ts                      |    24 +
+ tests/fixtures/messageNormalizationReplay.ts       |   120 +
+ tests/harness/README.md                            |   149 +
+ tests/harness/setup.ts                             |    45 +
+ tests/unit/alarmProfileMigration.spec.ts           |    18 +
+ tests/unit/amapCoordinateBoundary.spec.ts          |    54 +
+ tests/unit/areaWeatherPanel.spec.ts                |   296 +
+ tests/unit/assetCleanup.spec.ts                    |    68 +
+ tests/unit/assetPaths.spec.ts                      |    47 +
+ tests/unit/assetRuntimeRefs.spec.ts                |    93 +
+ tests/unit/assetUrl.spec.ts                        |    71 +
+ tests/unit/authHeaders.spec.ts                     |    60 +
+ tests/unit/baidu.spec.ts                           |    60 +
+ tests/unit/baseSource.spec.ts                      |    49 +
+ tests/unit/bimCommonSetting.spec.ts                |    30 +
+ tests/unit/broadcastChannelBridge.spec.ts          |    83 +
+ tests/unit/businessMessageRuntime.spec.ts          |   464 +
+ tests/unit/clipboard.spec.ts                       |    58 +
+ tests/unit/common.spec.ts                          |    18 +
+ tests/unit/coordinateText.spec.ts                  |    63 +
+ tests/unit/disasterProfileV2Frame.spec.ts          |   263 +
+ tests/unit/dispatchMapMockVehicles.spec.ts         |   278 +
+ tests/unit/dispatchVehicles.spec.ts                |   216 +
+ tests/unit/error.spec.ts                           |    48 +
+ tests/unit/f6F7EngineBoundary.spec.ts              |   300 +
+ tests/unit/featureStyle.spec.ts                    |   135 +
+ tests/unit/gisPointSelectionMigration.spec.ts      |   166 +
+ tests/unit/incidentLocationNearbyRetry.spec.ts     |    83 +
+ tests/unit/incidentLocationNormalization.spec.ts   |    55 +
+ tests/unit/incidentLocationQueries.spec.ts         |    30 +
+ tests/unit/incidentLocationSources.spec.ts         |   248 +
+ tests/unit/incidentLocationStore.spec.ts           |   304 +
+ tests/unit/incidentRelocateMigration.spec.ts       |    97 +
+ tests/unit/logger.spec.ts                          |   100 +
+ tests/unit/mapConfig.spec.ts                       |   105 +
+ tests/unit/mapData.spec.ts                         |    59 +
+ tests/unit/mapStartup.spec.ts                      |    29 +
+ tests/unit/matcher.spec.ts                         |    96 +
+ tests/unit/messageNormalization.spec.ts            |   302 +
+ tests/unit/messageNormalization916Replay.spec.ts   |   627 +
+ tests/unit/messageNormalizationErrors.spec.ts      |    58 +
+ tests/unit/messageNormalizationParity.spec.ts      |   123 +
+ tests/unit/messageSession.spec.ts                  |   160 +
+ tests/unit/messageStore.spec.ts                    |   179 +
+ tests/unit/mockCallLocationBridge.spec.ts          |   371 +
+ tests/unit/mockCallLocationBridgeStore.spec.ts     |   121 +
+ tests/unit/pageCondition.spec.ts                   |   345 +
+ tests/unit/publish.spec.ts                         |   123 +
+ tests/unit/routeMetrics.spec.ts                    |    46 +
+ tests/unit/specialMapMockGeneration.spec.ts        |   121 +
+ tests/unit/stagePolicy.spec.ts                     |   293 +
+ tests/unit/swipeControlMigration.spec.ts           |    67 +
+ tests/unit/transform.spec.ts                       |    44 +
+ tests/unit/unwrap.spec.ts                          |    91 +
+ tests/unit/useUserStore.spec.ts                    |   321 +
+ tests/unit/webSocketClientV2.spec.ts               |   155 +
+ tsconfig.json                                      |     8 +-
+ uno.config.ts                                      |    13 +-
+ vite.config.ts                                     |   147 +-
+ vitest.config.ts                                   |    71 +
+ yarn.lock                                          |  6337 ---------
+ 841 files changed, 146744 insertions(+), 35583 deletions(-)

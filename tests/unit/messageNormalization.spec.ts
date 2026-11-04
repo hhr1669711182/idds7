@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MESSAGE_EVENT_KEY as KEY } from '@/const/const.message.type'
 import { installDefaultInterceptors, interceptorRegistry } from '@/interceptor'
 
-vi.mock('@/store', () => ({ useUserStore: () => ({ seatNumber: '8001' }) }))
+// store 分层后 useUserStore 已移出 @/store barrel（见 2026-10-28 分层重构），
+// const.message.type 直接按文件导入，故 mock 必须打在文件路径上，否则 mock 不生效。
+vi.mock('@/store/useUserStore', () => ({ useUserStore: () => ({ seatNumber: '8001' }) }))
 
 const position = {
   content: { taskType: 'weizhiwang', eventid: 'call-1', lng: '113.9', lat: '22.5', latLngType: 'GPS' },

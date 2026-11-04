@@ -40,7 +40,7 @@ describe('components/map/routePlanPanel 路径规划面板', () => {
   })
 
   it('Given 未打开时不渲染任何 DOM（省掉无谓计算）', async () => {
-    const { useSearchPanelStore } = await import('@/store')
+    const { useSearchPanelStore } = await import('@/store/useSearchPanelStore')
     const store = useSearchPanelStore()
     store.routePlanOpen = false
 
@@ -50,7 +50,7 @@ describe('components/map/routePlanPanel 路径规划面板', () => {
   })
 
   it('打开且未折叠：渲染起点 / 终点 / 分析按钮', async () => {
-    const { useSearchPanelStore } = await import('@/store')
+    const { useSearchPanelStore } = await import('@/store/useSearchPanelStore')
     const store = useSearchPanelStore()
     store.routePlanOpen = true
 
@@ -65,7 +65,7 @@ describe('components/map/routePlanPanel 路径规划面板', () => {
   })
 
   it('起终点未选时分析按钮 disabled 且给出提示文案', async () => {
-    const { useSearchPanelStore } = await import('@/store')
+    const { useSearchPanelStore } = await import('@/store/useSearchPanelStore')
     const store = useSearchPanelStore()
     store.routePlanOpen = true
 
@@ -77,7 +77,7 @@ describe('components/map/routePlanPanel 路径规划面板', () => {
   })
 
   it('起终点都有坐标时分析按钮可点击（回归：坐标丢失导致无法分析）', async () => {
-    const { useSearchPanelStore } = await import('@/store')
+    const { useSearchPanelStore } = await import('@/store/useSearchPanelStore')
     const store = useSearchPanelStore()
     store.routePlanOpen = true
     store.routeForm.start.lngLat = [113.92, 22.53]
@@ -90,7 +90,7 @@ describe('components/map/routePlanPanel 路径规划面板', () => {
   })
 
   it('折叠：标题栏保留，表单收起', async () => {
-    const { useSearchPanelStore } = await import('@/store')
+    const { useSearchPanelStore } = await import('@/store/useSearchPanelStore')
     const store = useSearchPanelStore()
     store.routePlanOpen = true
 
@@ -107,7 +107,7 @@ describe('components/map/routePlanPanel 路径规划面板', () => {
   })
 
   it('关闭：整体隐藏并清空 open 标记', async () => {
-    const { useSearchPanelStore } = await import('@/store')
+    const { useSearchPanelStore } = await import('@/store/useSearchPanelStore')
     const store = useSearchPanelStore()
     store.routePlanOpen = true
 
@@ -122,7 +122,7 @@ describe('components/map/routePlanPanel 路径规划面板', () => {
   })
 
   it('切到货车：渲染载重 / 限高 / 限宽约束（契约）', async () => {
-    const { useSearchPanelStore } = await import('@/store')
+    const { useSearchPanelStore } = await import('@/store/useSearchPanelStore')
     const store = useSearchPanelStore()
     store.routePlanOpen = true
     store.routeForm.vehicle = 'truck'

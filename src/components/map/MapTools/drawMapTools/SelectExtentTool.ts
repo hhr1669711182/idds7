@@ -27,14 +27,14 @@ export class SelectExtentTool extends BaseTool {
       this.helpTooltip.setPosition(evt.coordinate)
     }
 
-    this.map.on('pointermove', this.setHelpTooltip as any)
+    this.bindPointermove(this.setHelpTooltip as any)
   }
 
   destroy() {
     if (this.dragZoom) {
       this.map.removeInteraction(this.dragZoom)
     }
-    this.map.un('pointermove', this.setHelpTooltip as any)
+    this.unbindPointermove()
     super.destroy()
   }
 }

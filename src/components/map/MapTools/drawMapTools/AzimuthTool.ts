@@ -71,7 +71,7 @@ export class AzimuthTool extends BaseTool {
       }
     }
 
-    this.map.on('pointermove', this.setHelpTooltip)
+    this.bindPointermove(this.setHelpTooltip)
     this.draw.on('drawstart', this.handleMeasureLineStart.bind(this))
     this.draw.on('drawend', this.handleMeasureLineEnd.bind(this))
   }
@@ -165,7 +165,7 @@ export class AzimuthTool extends BaseTool {
     this.mapEl?.classList.remove('draw')
 
     this.helpTooltipElement.style.display = 'none'
-    this.map.un('pointermove', this.setHelpTooltip)
+    this.unbindPointermove()
 
     const startP = transform(this.Points[1], 'EPSG:3857', 'EPSG:4326')
     const endP = transform(this.Points[2], 'EPSG:3857', 'EPSG:4326')
@@ -209,9 +209,6 @@ export class AzimuthTool extends BaseTool {
     // if (this.marker && this.vectorLayer) {
     //   this.vectorLayer.getSource().removeFeature(this.marker);
     //   this.marker = (null as unknown) as Feature;
-    // }
-    // if (this.setHelpTooltip) {
-    //   this.map.un("pointermove", this.setHelpTooltip);
     // }
     // this.Points = [];
     super.destroy()

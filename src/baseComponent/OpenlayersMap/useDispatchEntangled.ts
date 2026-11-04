@@ -1,24 +1,6 @@
-/**
- * 路线 Y B-3c：调派「纠缠体」composable。
- *
- * 将 dispatchMap.vue 中调派专属的地图纠缠逻辑（警情定位点位 / 主管支撑队站 CQL、
- * 周边资源范围圈、路径规划 + 模拟调派、地址模拟与警情详情、车辆历史轨迹）抽为
- * 一个可 attach/detach 的 composable，绑定到 map.vue 常驻 OLMap 实例上。
- *
- * 设计约束：
- * - 共享设施（fireManager/carManager/alarmOverlayManager/jrAlarmManager）由 map.vue 创建，
- *   经 deps 注入，本 composable 内不 mount。
- * - B-1/B-2 设施（incidentVideoController/specialMapMock/incidentRelocate/
- *   callLocationGenericController/callLocationController）经 getDispatchBusiness() 取句柄。
- * - map/nav/gisBaseMap 常驻，经 deps 注入；所有原 `let map`/`nav` 处一律改用 deps。
- * - FeatureClickQuery 为调派独立实例（带 getStationRouteInfo），activate 建 + activate()，
- *   deactivate 销毁。
- * - CQL / 范围圈经共享 gisBaseMap 操作 WMS，不新建。
- *
- * 生命周期：activate() 建 watch + manager + WS 订阅 + attachMap dispatch mock + 终态回放；
- * deactivate() 停 watch + 销毁 manager/FCQ + 清 mock timers/unsubscribe + 调 dispatch detacher；
- * dispose() 纠缠体自有清理（不碰 map/nav/共享 4 manager）。
- */
+// 用途：调派「纠缠体」——把调派专属地图逻辑（警情定位点位 / 队站 CQL / 周边资源范围圈 /
+// 模拟调派 / 车辆轨迹）绑到 map.vue 常驻 OLMap 上，可 attach/detach。设计见
+// herness/02-技术设计/前端/路线X-Y地图实例归一重构.md。
 import { watch, markRaw, ref, computed } from "vue";
 import type OLMap from "ol/Map";
 import { Modify } from "ol/interaction";
@@ -224,12 +206,7 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
   let unifiedPopupClickKey: EventsKey | null = null;
 
   /** 队站图层强制过滤的现场快照：CQL 占用消防站 WMS 后释放时恢复 */
-  let forcedStationLayerSnapshot: {
-    existed: boolean;
-    prevVisible: boolean;
-    hadCqlFilter: boolean;
-    prevMinZoom: number;
-  } | null = null;
+  let forcedStationLayerSnapshot: WmsLayerSnapshot | null = null;
 
   // 非调派状态下支撑队站不渲染；模拟调派期间通过该 owner 按调派支撑 id 过滤上图
   const MOCK_DISPATCH_STATION_OWNER = "mockDispatch";
@@ -268,6 +245,35 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
   // =========================================================================
   const buildStationCqlFilter = (ids: string[]) =>
     ids.map((id) => `id=${cqlLiteral(id)}`).join(" OR ");
+
+  /** WMS 图层被 CQL 强占前的现场快照（visible/minZoom/CQL_FILTER 原值） */
+  type WmsLayerSnapshot = {
+    existed: boolean;
+    prevVisible: boolean;
+    hadCqlFilter: boolean;
+    prevMinZoom: number;
+  };
+
+  /** 释放 CQL 强占：按快照恢复图层可见性、缩放下限与过滤条件（原本不存在的图层直接移除） */
+  const restoreWmsLayerSnapshot = (
+    layerName: string,
+    snapshot: WmsLayerSnapshot,
+  ) => {
+    const layer = gisBaseMap.getWmsLayer(layerName);
+    const source = layer?.getSource();
+    if (layer && source) {
+      if (snapshot.hadCqlFilter) {
+        source.updateParams({ CQL_FILTER: "1=1" });
+      } else {
+        const params = { ...source.getParams() };
+        delete params.CQL_FILTER;
+        source.updateParams(params);
+      }
+      layer.setVisible(snapshot.prevVisible);
+      layer.setMinZoom(snapshot.prevMinZoom);
+      if (!snapshot.existed) gisBaseMap.removeLayer(layerName);
+    }
+  };
 
   /** 按共享队站 store 的并集对唯一 WMS 消防站图层应用/恢复 CQL_FILTER */
   const syncStationLayerOverride = () => {
@@ -316,20 +322,7 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
     if (!forcedStationLayerSnapshot) return;
     const snapshot = forcedStationLayerSnapshot;
     forcedStationLayerSnapshot = null;
-    const layer = gisBaseMap.getWmsLayer(STATION_LAYER_NAME);
-    const source = layer?.getSource();
-    if (layer && source) {
-      if (snapshot.hadCqlFilter) {
-        source.updateParams({ CQL_FILTER: "1=1" });
-      } else {
-        const params = { ...source.getParams() };
-        delete params.CQL_FILTER;
-        source.updateParams(params);
-      }
-      layer.setVisible(snapshot.prevVisible);
-      layer.setMinZoom(snapshot.prevMinZoom);
-      if (!snapshot.existed) gisBaseMap.removeLayer(STATION_LAYER_NAME);
-    }
+    restoreWmsLayerSnapshot(STATION_LAYER_NAME, snapshot);
   };
 
   const onStationLayerChange = () => {
@@ -413,20 +406,7 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
     const snapshot = forcedResourceLayerSnapshots.get(layerName);
     if (!snapshot) return;
     forcedResourceLayerSnapshots.delete(layerName);
-    const layer = gisBaseMap.getWmsLayer(layerName);
-    const source = layer?.getSource();
-    if (layer && source) {
-      if (snapshot.hadCqlFilter) {
-        source.updateParams({ CQL_FILTER: "1=1" });
-      } else {
-        const params = { ...source.getParams() };
-        delete params.CQL_FILTER;
-        source.updateParams(params);
-      }
-      layer.setVisible(snapshot.prevVisible);
-      layer.setMinZoom(snapshot.prevMinZoom);
-      if (!snapshot.existed) gisBaseMap.removeLayer(layerName);
-    }
+    restoreWmsLayerSnapshot(layerName, snapshot);
   };
 
   /** 范围圈填充色（淡橙），与来电定位圈（蓝）区分 */
@@ -596,6 +576,12 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
       (station) => !excludedIds.has(String(station.id).trim()),
     );
     fireManager.setStations?.(visibleStations);
+  };
+
+  /** 主图态口径：排除集合清空后须把全量队站还回消防站图层 */
+  const restoreAllFireStations = () => {
+    if (!fireManager || !fireStations.value.length) return;
+    fireManager.setStations?.([...fireStations.value]);
   };
 
   const onPrimaryStationIdsChange = () => {
@@ -2328,8 +2314,33 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
     specialMapActive = false;
 
     // 释放 CQL 占用的 WMS 图层，恢复开关原始状态
-    forcedStationLayerSnapshot = null;
+    // watch 已在上一步全部 stop，恢复分支不会被触发，必须在此显式还原
+    if (forcedStationLayerSnapshot) {
+      const snapshot = forcedStationLayerSnapshot;
+      forcedStationLayerSnapshot = null;
+      restoreWmsLayerSnapshot(STATION_LAYER_NAME, snapshot);
+    }
+    forcedResourceLayerSnapshots.forEach((snapshot, layerName) => {
+      restoreWmsLayerSnapshot(layerName, snapshot);
+    });
     forcedResourceLayerSnapshots.clear();
+
+    // 队站口径回主图态：主管排除集合清空后还回全量队站
+    clearMockDispatchStationIcons();
+    restoreAllFireStations();
+
+    // 范围圈矢量层与 Modify 交互属调派态资源，离开时清圈并摘交互
+    if (resourceCircleLayer) {
+      const source = resourceCircleLayer.getSource();
+      const feature = source?.getFeatureById(RESOURCE_CIRCLE_FEATURE_ID);
+      if (feature) source?.removeFeature(feature);
+    }
+    if (resourceCircleModify) {
+      map?.removeInteraction(resourceCircleModify);
+      resourceCircleModify = null;
+    }
+    resourceCircleDragging = false;
+
     mockDispatchState = null;
 
     if (documentClickBound) {

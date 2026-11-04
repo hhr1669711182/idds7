@@ -67,7 +67,7 @@ describe('components/map/circleQueryPanel 检索面板', () => {
     expect(button.attributes('disabled')).toBeDefined()
 
     // 直接改 store（等价于用户输入）
-    const { useSearchPanelStore } = await import('@/store')
+    const { useSearchPanelStore } = await import('@/store/useSearchPanelStore')
     const store = useSearchPanelStore()
     store.queryText = '消防站'
     await nextTick()
@@ -77,11 +77,15 @@ describe('components/map/circleQueryPanel 检索面板', () => {
 
   it('聚焦输入框只展开视图下拉，不擅自打开结果面板（契约）', async () => {
     const wrapper = await mountPanel()
-    const { useSearchPanelStore } = await import('@/store')
+    const { useSearchPanelStore } = await import('@/store/useSearchPanelStore')
     const store = useSearchPanelStore()
+    // viewOptions 是纯派生数据（config → apis），按 2026-10-28 store 分层重构已迁到
+    // composables/useSearchActions，不在 store 上；从 composable 取。
+    const { useSearchActions } = await import('@/composables/useSearchActions')
+    const { viewOptions } = useSearchActions()
 
     expect(store.searchPanelClosed).toBe(true)
-    expect(store.viewOptions.length).toBeGreaterThan(0)
+    expect(viewOptions.value.length).toBeGreaterThan(0)
 
     await wrapper.find('.input-panel-inner').trigger('click')
     await nextTick()
@@ -89,13 +93,13 @@ describe('components/map/circleQueryPanel 检索面板', () => {
     // 结果面板仍未打开（打开由查询触发，非聚焦触发）
     expect(store.searchPanelClosed).toBe(true)
     expect(wrapper.find('.cq-panel').exists()).toBe(false)
-    // 但视图下拉已展开，选项数与 store 一致
+    // 但视图下拉已展开，选项数与 composable 一致
     expect(wrapper.find('.view-dropdown').exists()).toBe(true)
-    expect(wrapper.findAll('.view-option').length).toBe(store.viewOptions.length)
+    expect(wrapper.findAll('.view-option').length).toBe(viewOptions.value.length)
   })
   it('无结果时显示「未找到匹配结果」空态（回归：空列表白屏）', async () => {
     const wrapper = await mountPanel()
-    const { useSearchPanelStore } = await import('@/store')
+    const { useSearchPanelStore } = await import('@/store/useSearchPanelStore')
     const store = useSearchPanelStore()
     store.searchPanelClosed = false
     store.searchPanelCollapsed = false
@@ -107,7 +111,7 @@ describe('components/map/circleQueryPanel 检索面板', () => {
 
   it('折叠 / 关闭按钮分别切换对应 store 状态', async () => {
     const wrapper = await mountPanel()
-    const { useSearchPanelStore } = await import('@/store')
+    const { useSearchPanelStore } = await import('@/store/useSearchPanelStore')
     const store = useSearchPanelStore()
     store.searchPanelClosed = false
     store.searchPanelCollapsed = false
@@ -128,7 +132,7 @@ describe('components/map/circleQueryPanel 检索面板', () => {
 
   it('结果条目点击后标记 active（回归：选中态丢失）', async () => {
     const wrapper = await mountPanel()
-    const { useSearchPanelStore } = await import('@/store')
+    const { useSearchPanelStore } = await import('@/store/useSearchPanelStore')
     const store = useSearchPanelStore()
     store.searchPanelClosed = false
     store.searchPanelCollapsed = false

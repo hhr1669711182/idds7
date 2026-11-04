@@ -172,7 +172,7 @@ export class CircleQueryTool extends BaseTool {
       this.helpTooltip.setPosition(evt.coordinate)
     }
 
-    this.map.on('pointermove', this.setHelpTooltip as any)
+    this.bindPointermove(this.setHelpTooltip as any)
 
     // 需求 10：地图上只允许一个圈。已有圈时直接进入编辑态（二次拉半径），不再新建。
     if (this.restorePersistedCircle()) {
@@ -466,7 +466,7 @@ export class CircleQueryTool extends BaseTool {
     if (this.radiusTooltip) {
       this.map.removeOverlay(this.radiusTooltip)
     }
-    this.map.un('pointermove', this.setHelpTooltip as any)
+    this.unbindPointermove()
     super.destroy()
   }
 

@@ -1,4 +1,5 @@
 import Map from 'ol/Map'
+import { unByKey } from 'ol/Observable'
 import { Coordinate } from 'ol/coordinate'
 import { Type } from 'ol/geom/Geometry'
 import { Point } from 'ol/geom'
@@ -21,6 +22,23 @@ export class BaseTool {
   drawIng = false
 
   private destroyed = false
+
+  /** pointermove 监听解绑 key（子类经 bindPointermove/unbindPointermove 管理，destroy 兜底幂等解绑） */
+  private pointermoveKey: any = null
+
+  /** 绑定 pointermove（统一入口；重复绑定不会叠加，内部先解绑旧 key） */
+  bindPointermove(handler: any) {
+    this.unbindPointermove()
+    this.pointermoveKey = this.map.on('pointermove', handler)
+  }
+
+  /** 解绑 pointermove（幂等，可在 destroy/正常结束路径各调一次） */
+  unbindPointermove() {
+    if (this.pointermoveKey != null) {
+      unByKey(this.pointermoveKey)
+      this.pointermoveKey = null
+    }
+  }
 
   private handleViewportMouseLeave = () => {
     if (this.helpTooltipElement) {
@@ -169,6 +187,7 @@ export class BaseTool {
     if (this.destroyed) return
     this.destroyed = true
 
+    this.unbindPointermove()
     this.drawIng = false
     this.mapEl?.classList.remove('draw')
     if (this.mapEl) {

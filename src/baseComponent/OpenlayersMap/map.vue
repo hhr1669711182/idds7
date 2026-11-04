@@ -431,6 +431,16 @@ watch(
     } else {
       entangled?.deactivate();
       detachDispatchBusiness();
+      // attachMap 为单槽位：进调派时被 kind:'dispatch' 顶掉，切回主图须重新挂回 kind:'map'
+      if (genericCtrl) {
+        const attachment = createBusinessMapPort(genericCtrl);
+        detachBusinessMap = getBusinessMessageRuntime().attachMap(attachment.port, {
+          kind: 'map',
+          dispose: attachment.dispose,
+        });
+      }
+      // 调派期被强占/改写的 WMS 图层按主图图层集合复原（顺序：先释放强占，再复原集合）
+      syncLayers(layersStore.checkedIds, true);
     }
   },
 );

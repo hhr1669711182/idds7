@@ -30,7 +30,6 @@ export class MeasureAreaTool extends BaseTool {
 
   draw!: any
   listener!: EventsKey
-  pointerListener!: EventsKey
   measureTooltip: any
   sketch!: Feature | null
 
@@ -52,7 +51,7 @@ export class MeasureAreaTool extends BaseTool {
       this.helpTooltipElement.style.display = 'block'
     }
 
-    this.pointerListener = this.map.on('pointermove', setHelpTooltip)
+    this.bindPointermove(setHelpTooltip)
 
     this.draw.on('drawstart', (evt: { feature: Feature; coordinate: Coordinate }) => {
       const { feature }: any = evt
@@ -91,7 +90,7 @@ export class MeasureAreaTool extends BaseTool {
       this.mapEl?.classList.remove('draw')
 
       this.helpTooltipElement.style.display = 'none'
-      unByKey(this.pointerListener)
+      this.unbindPointermove()
       super.destroy()
     })
   }
@@ -99,9 +98,6 @@ export class MeasureAreaTool extends BaseTool {
   destroy() {
     if (this.listener) {
       unByKey(this.listener)
-    }
-    if (this.pointerListener) {
-      unByKey(this.pointerListener)
     }
     if (this.draw) {
       this.map.removeInteraction(this.draw)

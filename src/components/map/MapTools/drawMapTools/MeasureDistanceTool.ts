@@ -51,7 +51,7 @@ export class MeasureDistanceTool extends BaseTool {
       this.helpTooltipElement.style.display = 'block'
     }
 
-    this.map.on('pointermove' as any, this.setHelpTooltip as any)
+    this.bindPointermove(this.setHelpTooltip as any)
     this.draw.on('drawstart', this.handleMeasureLineStart.bind(this) as any)
     this.draw.on('drawend', this.handleMeasureLineEnd.bind(this) as any)
   }
@@ -120,7 +120,7 @@ export class MeasureDistanceTool extends BaseTool {
     if (this.draw) {
       this.map.removeInteraction(this.draw)
     }
-    this.map.un('pointermove' as any, this.setHelpTooltip as any)
+    this.unbindPointermove()
     this.mapEl?.classList.remove('draw')
     this.helpTooltipElement.style.display = 'none'
 
