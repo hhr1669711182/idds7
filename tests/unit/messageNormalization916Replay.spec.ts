@@ -68,7 +68,7 @@ const replay = async (side: ReplaySide, frames: unknown[], entry: 'ws' | 'ingest
   const { default: persist } = await import('pinia-plugin-persistedstate')
   const { interceptorRegistry: registry } = await import('@/interceptor')
   const { useMessageStore } =
-    side === '916' ? await import('@/store/useMessageStore916') : await import('@/store/useMessageStore')
+    side === '916' ? await import('../fixtures/control-baseline/useMessageStore916') : await import('@/store/useMessageStore')
   const pinia = createPinia().use(persist)
   createApp({}).use(pinia)
   registry.clear()

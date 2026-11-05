@@ -89,10 +89,8 @@ GPS 点字段为 carId、longitude、latitude、plateNumber，可选 orgId/orgNa
 
 HTTP 是入站补水通道，store.publish 对 HTTP 返回 false。仅 F12 GIS 选点/ACK 会话按现有 V1.0 协议等价迁位，既有可靠性问题保持冻结；不得将此冻结范围扩到 F11 relay 或 F13 HTTP。PICK_* / relay kind 是各自线协议字段，不是新增 MESSAGE_EVENT_KEY。
 
-## 7. 保留对照与清理条件
+## 7. 对照基准与清理记录
 
-`src/Control/**` 与 `src/store/useMessageStore916.ts` 保留对照。916 仍引用旧 normalizer，旧测试/兼容入口也可能引用，不能标注为「全部无引用」。`src/Control/messageStageGate.ts` 仍存在，活动阶段门控为 `core/io/messageStagePolicy.ts`。
+`src/Control/**` 与 `src/store/useMessageStore916.ts` 已于 2026-11-05 删除（用户授权提前解锁 P3 门禁，36 项人工验收台账见桌面《Control迁移人工验收清单36项.md》）。旧链归一基准快照下沉为 `tests/fixtures/control-baseline/`（alarmMessage / alarmCallMessage / carLocationMessage / positionMessage / incidentLocationMessage / seatSharedState @ commit 6fe1b18），供 `tests/unit/messageNormalizationParity.spec.ts` 与 `tests/unit/alarmProfileMigration.spec.ts` 做 A/B 回放对照。活动阶段门控为 `core/io/messageStagePolicy.ts`（原 `messageStageGate.ts` 已随之删除）。
 
 迁位索引：normalizers → interceptor/transforms/**；订阅声明 → interceptor/subscriptions.ts（register/messageSubscriptions.ts 兼容导出）；共享态工具 → utils/seatSharedState.ts；装配/导航 → register/initMessage.ts、pageCondition.ts；F10～F13 桥 → 上表 composables。
-
-完整人工验收后，须由用户另行确认清理 Control/916；本轮文档同步不授权删除。

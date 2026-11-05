@@ -120,7 +120,12 @@ const handleConfigSave = () => {
 
 // ===== 路线 Y B-6c：调派变体面板（原 DispatchMapPage 迁入） =====
 const getDispatchLayerIds = (ids: string[]) =>
-  ids.filter((id) => id !== TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER);
+  ids.filter(
+    (id) =>
+      id !== TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER &&
+      // 持久化的旧 id 可能已被后台下线，过滤掉避免「全选」恒为未选
+      layersStore.items.some((item) => item.id === id),
+  );
 
 watch(
   () => dispatchMapStore.checkedIds,
@@ -136,7 +141,6 @@ watch(
   },
   { deep: true, immediate: true },
 );
-
 
 const handleDispatch = (command: DispatchT1VehicleCommand) => {
   console.info('[DispatchT1] 服务端已确认车辆调派', command);

@@ -12,7 +12,7 @@ import {
   parseSharedMapStage,
   SEAT_SHARED_STATE_KEY,
   type SharedMapStage,
-} from '@/Control/seatSharedState'
+} from './seatSharedState'
 
 /**
  * 画像地址/经纬度变更消息（DISASTER_PROFILE / ADDRESS_UPDATED）

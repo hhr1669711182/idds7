@@ -167,3 +167,49 @@ pnpm lint 0 报错；pnpm build 成功（16.29s，仅 pre-existing sRGBEncoding/
 
 ### 影响面
 src/components/map/MapTools/drawMapTools/*.ts（10 文件），零行为变化（OL un 幂等），未提交。
+
+
+---
+
+## 评审缺陷修复闭环（2 P0 + 2 P1 + 2 P2 遗漏）
+
+### 本轮改动
+
+| 文件 | 改动 |
+|---|---|
+| `src/components/map/index.vue` | 调派图层 watch 加 `dispatchVariant` 门控；调派图层 id 按 `layersStore.items` 过滤可用性（F-2） |
+| `src/baseComponent/OpenlayersMap/map.vue` | variant watch else 分支补 `attachMap(kind:'map')` 复原主图业务端口；补 `syncLayers(layersStore.checkedIds, true)` 复原图层集合 |
+| `src/baseComponent/OpenlayersMap/useDispatchEntangled.ts` | 抽出 `restoreWmsLayerSnapshot()` 复用恢复逻辑；`deactivate()` 显式恢复 CQL 强占 / 队站全量口径 / 范围圈矢量层与 Modify 交互；`onFireStationsLoaded` 补队站弹窗重开联动（F-1）；文件头 JSDoc 20 行 → 3 行 + herness 链接 |
+| `tests/e2e/variantRoundTrip.spec.ts`（新增） | 两条往返回归：图层复原 / attachment 复原 |
+
+### 关键设计决策
+
+- **图层复原归口 `map.vue`**（而非 `components/map/index.vue`）：map.vue 是 OLMap 的持有者，
+  复原动作与「释放调派强占」必须同处一个 variant watch，才能保证顺序（先释放强占 → 再复原集合）。
+- **`deactivate()` 不依赖 watch 还原**：watch 已 stop，恢复逻辑必须显式调用，
+  这是单实例常驻架构与旧「销毁整个 map」架构的关键差异。
+- **`attachMap` 单槽位是结构性隐患**：当前靠「切回主图态重新 attach」维持，已列入技术债 K-3。
+
+### e2e 反向验证
+
+两条新用例均做过「撤销修复 → 确认用例失败 → 恢复修复」：
+- 撤销 `syncLayers` 复原 → 图层复原用例失败 ✅
+- 撤销 `attachMap(kind:'map')` → attachment 复原用例失败 ✅
+
+证明用例非假阳性。
+
+### 门禁
+
+`pnpm lint:baseline` 0 项 / `pnpm test` 55 文件 579 项全绿（连跑 5 轮）/ `pnpm e2e` 11-11 全绿 / `pnpm harness:check` 通过。
+
+### 功能对比评审（用户追加需求）
+
+另出一份 `herness/06-PR审查/评审报告/dev-reset重构vs原版功能对比评审.md`，
+以 `8ef37c6b^`（路线 X 之前）为基线做 6 维度核查。
+
+**基线选择说明**：`dev` 分支是 2026-04-16 的 `init` 骨架（仅 2 个 commit），是项目初始状态而非重构前状态，
+不能用作重构对比基线；`dev` 上的 `util/` `Control/` 在重构前已迁至 `src/utils/` `src/controller/core/`，
+10+3 个导出逐一确认有等价实现且有引用。
+
+结论：功能整体无损，仅 2 处 P2 展示完整性遗漏（F-1 队站弹窗重开、F-2 图层 id 过滤），已顺手修掉；
+识别 3 项架构技术债（K-1 双源写同一图层集合、K-2 `isLayerVisible` 数据源口径、K-3 `attachMap` 单槽位）。

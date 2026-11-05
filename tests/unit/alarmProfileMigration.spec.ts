@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { toDispatchAlarmProfile as legacy } from '@/Control/alarmMessage'
+import { toDispatchAlarmProfile as legacy } from '../fixtures/control-baseline/alarmMessage'
 import { toDispatchAlarmProfile } from '@/utils/alarmProfile'
 import type { AlarmIncidentStateData } from '@/controller/core/protocol/LegacyMessageProtocol'
 

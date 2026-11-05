@@ -13,11 +13,11 @@ import {
 } from '@/const/const.message.type'
 import type { MessageEnvelope } from '@/types/message'
 import { WebSocketClient, type WebSocketOptions } from '@/hooks/useWebSocket'
-import { normalizeAlarmStateFrame } from '@/Control/alarmMessage' //来电消息T1
-import { normalizePositionFrames } from '@/Control/positionMessage' //来电位置T1
-import { normalizeAlarmCallFrame } from '@/Control/alarmCallMessage'
-import { normalizeCarLocationFrames } from '@/Control/carLocationMessage'
-import { normalizeAddressUpdatedFrame } from '@/Control/incidentLocationMessage' //画像地址变更（警情定位）
+import { normalizeAlarmStateFrame } from './alarmMessage' //来电消息T1
+import { normalizePositionFrames } from './positionMessage' //来电位置T1
+import { normalizeAlarmCallFrame } from './alarmCallMessage'
+import { normalizeCarLocationFrames } from './carLocationMessage'
+import { normalizeAddressUpdatedFrame } from './incidentLocationMessage' //画像地址变更（警情定位）
 
 type AnyRecord = Record<string, any>
 
