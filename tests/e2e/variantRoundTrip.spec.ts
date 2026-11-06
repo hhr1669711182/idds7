@@ -85,8 +85,16 @@ test('Given 主图态 When 进调派态改图层再切回主图态 Then 图层�
   await writer.evaluate((s) => localStorage.setItem('seat-shared-state', JSON.stringify(s)), DISPATCH_SHARED)
   await expect(page.locator('.dispatch-variant-ui')).toHaveCount(1, { timeout: 60_000 })
 
+  // 归并不变量：主图态与调派态共用同一个图层工具栏，页面中不得出现第二个工具栏
+  await expect(
+    page.locator('[role="toolbar"][aria-label="图层工具栏"]'),
+    '归并后页面只应存在一个图层工具栏（不得再有独立调派工具栏）',
+  ).toHaveCount(1, { timeout: 30_000 })
+
   // 调派态点图层工具栏（点第二个 tile，改写共用图层的可见集合）
-  const dispatchTiles = page.locator('.dispatch-layer-toolbar .tile')
+  // 2026-11-06：图层工具栏已归并到 components/map/layers.vue（唯一根 class .lt），
+  // 原 DispatchLayers.vue 的 .dispatch-layer-toolbar 已随 9ce236bc 删除。
+  const dispatchTiles = page.locator('.lt .tile')
   await expect(dispatchTiles.first()).toBeVisible({ timeout: 30_000 })
   const tileCount = await dispatchTiles.count()
   for (let i = 0; i < tileCount; i += 1) {

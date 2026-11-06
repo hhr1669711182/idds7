@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IDS-GIS 业务模拟测试台</title>
+  <style>
+    :root { --bg: #0f172a; --panel: #1e293b; --border: #334155; --text: #e2e8f0; --dim: #94a3b8; --accent: #38bdf8; --pass: #4ade80; --fail: #f87171; --skip: #fbbf24; }
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 18px; margin-bottom: 4px; }
+    .sub { color: var(--dim); font-size: 12px; margin-bottom: 16px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .row label { font-size: 13px; color: var(--dim); }
+    select, input[type="text"] { background: #0b1220; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+    input[type="checkbox"] { accent-color: var(--accent); }
+    button { background: var(--accent); color: #0b1220; border: none; border-radius: 6px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    button.secondary { background: var(--border); color: var(--text); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .steps { list-style: none; }
+    .steps li { padding: 6px 10px; border-left: 3px solid var(--border); margin-bottom: 4px; font-size: 13px; }
+    .steps li .detail { color: var(--dim); font-size: 12px; margin-top: 2px; }
+    .st-PASS { border-left-color: var(--pass) !important; }
+    .st-FAIL { border-left-color: var(--fail) !important; }
+    .st-SKIP { border-left-color: var(--skip) !important; }
+    .st-PENDING { opacity: .6; }
+    .badge { display: inline-block; min-width: 44px; font-weight: 700; font-size: 11px; }
+    .summary { font-size: 14px; font-weight: 600; }
+    .summary.ok { color: var(--pass); }
+    .summary.bad { color: var(--fail); }
+    .hint { font-size: 11px; color: var(--dim); margin-top: 8px; line-height: 1.6; }
+    code { background: #0b1220; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <h1>IDS-GIS 业务模拟测试台</h1>
+  <div class="sub">驱动 mock-ws（:18080）向已连接的前端推送业务报文，验证数据链路。前端需先启动 <code>pnpm dev</code> 并完成登录/WS 连接。</div>
+
+  <div class="panel">
+    <div class="row">
+      <label>模式</label>
+      <select id="mode"><option value="加载中…">加载中…</option></select>
+      <label><input type="checkbox" id="full" /> 全流程（含 extra 步骤）</label>
+    </div>
+    <div class="row">
+      <label>目标身份（userId / sessionState）</label>
+      <input type="text" id="userId" placeholder="留空 = 默认 alarm-debug-user" style="width:180px" />
+      <input type="text" id="sessionState" placeholder="留空 = 默认 alarm-debug-session" style="width:200px" />
+    </div>
+    <div class="row">
+      <button id="run">▶ 执行</button>
+      <button id="stop" class="secondary" disabled>■ 中止</button>
+      <span id="status" style="font-size:13px;color:var(--dim)"></span>
+    </div>
+    <div class="hint">
+      前端连接：登录态 WS 指向 <code>ws://localhost:18080/message-client/ws</code>（.env.local 设 <code>VITE_WS_URL</code> + <code>VITE_DISPATCH_MOCK=true</code>）。
+      留空目标身份时使用内置默认；执行前会先做「前端 WS 连接确认」步骤，未连接直接 FAIL 提示。
+    </div>
+  </div>
+
+  <div class="panel" id="resultPanel" hidden>
+    <div class="row"><span class="summary" id="summary"></span></div>
+    <ul class="steps" id="steps"></ul>
+  </div>
+
+  <div class="panel">
+    <div class="row"><label>历史（本进程，含轮询中的运行）</label><button class="secondary" id="refresh">刷新</button></div>
+    <ul class="steps" id="history"></ul>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

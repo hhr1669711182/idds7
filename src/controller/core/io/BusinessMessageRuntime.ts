@@ -13,7 +13,7 @@ import type { TrackingVehicleGpsUpdateData, AddressRobotGisSearchData } from '..
 import { MESSAGE_EVENT_KEY, type MessageEventKey } from '@/const/const.message.type'
 
 const logger = createLogger('BusinessMessageRuntime')
-type Attachment = { port: BusinessMapPort; options: BusinessMapAttachment }
+type Attachment = { port: BusinessMapPort; options: BusinessMapAttachment; kind: string }
 type MockJob = { eventKey: MessageEventKey; data: unknown; epoch: number; generation: number }
 
 const emptyPort: BusinessMapPort = {
@@ -56,7 +56,11 @@ const guardMethods = <Target extends object>(target: Target, valid: () => boolea
   })
 
 export class BusinessMessageRuntime {
-  private active: Attachment | null = null
+  /**
+   * 按 kind 分别持有的地图端口槽位（'map' 主图 / 'dispatch' 调派）。
+   * 单实例常驻架构下主图与调派共用同一个 OLMap，两者端口同时存活、互不顶替。
+   */
+  private attachments = new Map<string, Attachment>()
   private started = false
   private disposed = false
   private stops: Array<() => void> = []
@@ -81,20 +85,21 @@ export class BusinessMessageRuntime {
         if (property === 'addressRobotGisSearch')
           return (data: AddressRobotGisSearchData, options?: { businessId?: string }) => {
             this.latestAddress = { data, options }
-            return this.active?.port.addressRobotGisSearch(data, options)
+            return this.activeSlot()?.port.addressRobotGisSearch(data, options)
           }
         if (property === 'addressRobotClear')
           return (options?: { businessId?: string }) => {
             this.latestAddress = null
-            this.active?.port.addressRobotClear(options)
+            this.activeSlot()?.port.addressRobotClear(options)
           }
-        const attachment = this.active
+        const attachment = this.activeSlot()
         const port = attachment?.port ?? emptyPort
         const epoch = this.user.sessionEpoch
         const incidentId = this.user.currentAlarm?.incidentId
         const valid = () =>
           !this.disposed &&
-          this.active === attachment &&
+          attachment !== undefined &&
+          this.activeSlot() === attachment &&
           epoch === this.user.sessionEpoch &&
           incidentId === this.user.currentAlarm?.incidentId
         if (property === 'view' || property === 'geometry' || property === 'kinematic')
@@ -136,7 +141,7 @@ export class BusinessMessageRuntime {
           this.latestGps = null
           this.latestAddress = null
           this.alarmProfileListener = null
-          this.active?.port.addressRobotClear()
+          this.activeSlot()?.port.addressRobotClear()
           this.business.call.clearLocateCalls()
           this.business.alarm.reset()
           usePendingCallLocationStore().consume()
@@ -150,11 +155,17 @@ export class BusinessMessageRuntime {
 
   public attachMap(port: BusinessMapPort, options: BusinessMapAttachment = {}) {
     if (this.disposed) return () => {}
-    this.pauseMock()
-    this.active?.options.mock?.clear()
-    this.active?.options.dispose?.()
-    const attachment: Attachment = { port, options }
-    const valid = () => !this.disposed && this.active === attachment
+    const kind = options.kind ?? 'map'
+    // 同槽位重复 attach：顶掉旧的（并释放其资源），不同槽位互不影响
+    const previous = this.attachments.get(kind)
+    if (previous) {
+      this.pauseMock()
+      previous.options.mock?.clear()
+      previous.options.dispose?.()
+      this.attachments.delete(kind)
+    }
+    const attachment: Attachment = { port, options, kind }
+    const valid = () => !this.disposed && this.attachments.get(kind) === attachment
     attachment.port = {
       ...port,
       view: guardMethods(port.view, valid),
@@ -179,7 +190,7 @@ export class BusinessMessageRuntime {
         if (valid()) port.addressRobotClear(clearOptions)
       },
     }
-    this.active = attachment
+    this.attachments.set(kind, attachment)
     const call = usePendingCallLocationStore().getActive()
     const hasPreciseLocation = Object.values(useIncidentLocationStore().markers).some(
       (entry) => entry.coordinateSource === 'slotChanges',
@@ -194,12 +205,20 @@ export class BusinessMessageRuntime {
     }
     void this.drainMock()
     return () => {
-      if (this.active !== attachment) return
-      this.active = null
+      if (this.attachments.get(kind) !== attachment) return
+      this.attachments.delete(kind)
       this.pauseMock()
       options.mock?.clear()
       options.dispose?.()
     }
+  }
+
+  /**
+   * 当前业务活跃槽位：调派优先（调派态下主图端口不承载业务动作），
+   * 无调派槽位时回落主图槽位；两者皆无返回 undefined。
+   */
+  private activeSlot(): Attachment | undefined {
+    return this.attachments.get('dispatch') ?? this.attachments.get('map')
   }
 
   public attachTracking(handler: (data: TrackingVehicleGpsUpdateData) => void) {
@@ -247,7 +266,7 @@ export class BusinessMessageRuntime {
     this.draining = null
     this.executing = null
     this.jobs = []
-    this.active?.options.mock?.clear()
+    this.attachments.forEach((attachment) => attachment.options.mock?.clear())
   }
 
   private pauseMock() {
@@ -276,8 +295,8 @@ export class BusinessMessageRuntime {
     this.draining = run
     try {
       while (this.jobs.length && !this.disposed && this.draining === run) {
-        const attachment = this.active
-        const mock = attachment?.options.kind === 'dispatch' ? attachment.options.mock : undefined
+        const attachment = this.attachments.get('dispatch')
+        const mock = attachment?.options.mock
         if (!mock) break
         const job = this.jobs.shift()!
         if (job.epoch !== this.user.sessionEpoch || job.generation !== this.generation) continue
@@ -303,12 +322,12 @@ export class BusinessMessageRuntime {
         } finally {
           if (this.executing === executing) this.executing = null
         }
-        if (this.active !== attachment) break
+        if (this.attachments.get('dispatch') !== attachment) break
       }
     } finally {
       if (this.draining === run) {
         this.draining = null
-        if (this.jobs.length && this.active?.options.mock && !this.disposed) void this.drainMock()
+        if (this.jobs.length && this.attachments.get('dispatch')?.options.mock && !this.disposed) void this.drainMock()
       }
     }
   }
@@ -335,8 +354,8 @@ export class BusinessMessageRuntime {
     this.invalidateMock()
     this.input.destroy()
     this.stops.splice(0).forEach((stop) => stop())
-    this.active?.options.dispose?.()
-    this.active = null
+    this.attachments.forEach((attachment) => attachment.options.dispose?.())
+    this.attachments.clear()
     this.tracker = null
     this.latestGps = null
     this.latestAddress = null

@@ -92,15 +92,23 @@ const ROUTE_VIDEO_CHECKPOINT_COLORS: Record<RouteVideoCheckpointStatus, string> 
   played: '#ef4444',
 }
 
-const createRouteVideoCheckpointStyle = (status: RouteVideoCheckpointStatus) =>
-  new Style({
-    image: new CircleStyle({
-      radius: 6,
-      fill: new Fill({ color: ROUTE_VIDEO_CHECKPOINT_COLORS[status] }),
-      stroke: new Stroke({ color: '#ffffff', width: 2 }),
+const createRouteVideoCheckpointStyle = (status: RouteVideoCheckpointStatus): Style[] => {
+  const color = ROUTE_VIDEO_CHECKPOINT_COLORS[status]
+  return [
+    new Style({
+      image: new CircleStyle({ radius: 7, stroke: new Stroke({ color: '#ffffff', width: 2 }) }),
+      zIndex: 300,
     }),
-    zIndex: 300,
-  })
+    new Style({
+      image: new CircleStyle({ radius: 5, stroke: new Stroke({ color, width: 2 }) }),
+      zIndex: 301,
+    }),
+    new Style({
+      image: new CircleStyle({ radius: 4, fill: new Fill({ color: '#ffffff' }) }),
+      zIndex: 302,
+    }),
+  ]
+}
 
 // 本文件已导入 OpenLayers Map，键值表必须显式使用原生 globalThis.Map，避免名称遮蔽。
 type RouteCheckpointArrivalMap = globalThis.Map<number, number>

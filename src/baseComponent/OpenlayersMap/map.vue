@@ -141,6 +141,7 @@ const gisBaseMap = useGisBaseMap({
       minZoom: config.minZoom,
       visible: config.visible,
       zIndex: id === STATION_LAYER_NAME ? FIRE_STATION_LAYER_Z_INDEX : undefined,
+      disposeOnHide: config.disposeOnHide,
     };
   },
   disposeSourceOnRemove: true,
@@ -202,7 +203,11 @@ const visibleLayer = (id: string, bol: boolean) => {
 
 const syncLayers = (ids: string[], visible?: boolean) => gisBaseMap.syncLayers(ids, visible);
 
-defineExpose({ addLayer, removeLayer, syncLayers, visibleLayer });
+const showLayer = (id: string) => gisBaseMap.showLayer(id);
+
+const hideLayer = (id: string) => gisBaseMap.hideLayer(id);
+
+defineExpose({ addLayer, removeLayer, syncLayers, visibleLayer, showLayer, hideLayer });
 
 const setTempFrontendLayerVisible = (id: string, visible: boolean) => {
   if (id === TEMP_FRONTEND_LAYER_IDS.ONLINE_CAR && carManager) {
@@ -431,14 +436,8 @@ watch(
     } else {
       entangled?.deactivate();
       detachDispatchBusiness();
-      // attachMap 为单槽位：进调派时被 kind:'dispatch' 顶掉，切回主图须重新挂回 kind:'map'
-      if (genericCtrl) {
-        const attachment = createBusinessMapPort(genericCtrl);
-        detachBusinessMap = getBusinessMessageRuntime().attachMap(attachment.port, {
-          kind: 'map',
-          dispose: attachment.dispose,
-        });
-      }
+      // attachMap 已改多槽位（按 kind 分别持有）：主图 kind:'map' 端口全程存活，
+      // 切回主图态无需重新 attach；业务动作自动回落主图槽位。
       // 调派期被强占/改写的 WMS 图层按主图图层集合复原（顺序：先释放强占，再复原集合）
       syncLayers(layersStore.checkedIds, true);
     }

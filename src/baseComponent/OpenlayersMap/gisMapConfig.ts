@@ -9,6 +9,7 @@
 
 import { useUserStore } from '@/store/useUserStore';
 import { getSharedMapStage } from '@/utils/seatSharedState';
+import type { LayerViewMode } from '@/config/layers';
 
 export type GisMapVariant = 'main' | 'dispatch';
 
@@ -67,4 +68,18 @@ export const isDispatchVariant = (): boolean => {
   const store = useUserStore();
   const stage = getSharedMapStage(store.rawState, store.MapMode);
   return stage === 'dispatch' || stage === 'dispatchTrack' || store.mode === 'flood';
+};
+
+/**
+ * 图层工具栏展示模式派生（粒度 = MapPhase 6 阶段 + flood 特灾轴，比 variant 更细）。
+ *
+ * 特灾轴优先：shared.mode === 'flood' 直接归 'flood'（特灾有独立图层配置位）；
+ * 其余回落阶段轴：归一 stage ?? 'onDuty'。调用方包进 computed 以获得响应式切换。
+ * 无新增 state 字段，仅读 useUserStore 现成字段，避免第二状态源。
+ * 未识别 stage（null）落 'onDuty' 兜底，保证任何共享态下都有确定图层集。
+ */
+export const resolveLayerViewMode = (): LayerViewMode => {
+  const store = useUserStore();
+  if (store.mode === 'flood') return 'flood';
+  return getSharedMapStage(store.rawState, store.MapMode) ?? 'onDuty';
 };

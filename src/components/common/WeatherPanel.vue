@@ -95,8 +95,7 @@ const handleSelectStation = async (stationId: string) => {
 onMounted(async () => {
   await controller.init(defaultAdcode);
   timer = window.setInterval(() => {
-    const code = selected.value?.areaCode;
-    if (code) void controller.selectArea(code);
+    void controller.refreshWeather();
   }, props.refreshIntervalMs);
 });
 

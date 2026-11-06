@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>车辆定位广播订阅示例（消息服务 V2）</title>
+<style>
+  body { font-family: monospace; margin: 20px; }
+  #log { white-space: pre-wrap; background: #111; color: #0f0; padding: 10px; height: 480px; overflow-y: auto; }
+  .car { border-bottom: 1px solid #333; padding: 2px 0; }
+</style>
+</head>
+<body>
+<h2>车辆定位广播（ids-message-client WebSocket V2）订阅示例</h2>
+<p>
+  按 <code>integration-guide-v2.md</code>：连接单入口 <code>/message-client/ws</code>，
+  连接后<strong>首帧发送 CONNECT</strong>（携带登录 JWT 完成鉴权），再订阅层级 topic：
+  <code>{"action":"subscribe","topic":"GPS_MSG/car-location-broadcast-all"}</code>
+  （原 CUSTOM Topic <code>customType=GPS_MSG, key=car-location-broadcast-all</code> 的 v2 层级翻译，
+  对应 <code>carlocation.message.custom-type</code> / <code>carlocation.message.topics</code>）。
+</p>
+<div id="log"></div>
+
+<script>
+/**
+ * 本示例按 integration-guide-v2.md（消息服务 V2 连接与订阅协议）实现：
+ *
+ * 1. 连接地址（§2.1）：ws://{host}/message-client/ws（单入口，HTTP 层匿名，鉴权在首帧）。
+ *
+ * 2. CONNECT 首帧（§2.2，必须最先发送，默认 5s 内未 connect 服务端断开）：
+ *    {"action":"connect","token":"<登录 JWT>","clientId":"ids-seat-web"}
+ *    - token：登录后的 JWT；服务端取 sub 为 userId、session_state（缺失时 sid）为 sessionState；
+ *    - clientId：端标识（企业端 / 坐席端等），也是 topic 根；
+ *    - 成功应答：{"action":"connected","userId":"...","sessionState":"...","clientId":"..."}；
+ *      失败：{"action":"connected","result":"denied","reason":"invalid_token"}，随后服务端关闭连接。
+ *    - 鉴权成功后服务端自动订阅 {clientId}/user/{userId}（§3.3 用户收件箱）。
+ *
+ * 3. 订阅指令（§4.1）：{"action":"subscribe","topic":"GPS_MSG/car-location-broadcast-all"}
+ *    - topic 相对 clientId 书写，可用通配 +（单层）/ #（多层，仅末尾）；
+ *    - 订阅结果（§4.3）：{"action":"subscribed","topic":"...","result":"ok"} 或 denied；
+ *    - 换订阅 = unsubscribe 旧的 + subscribe 新的（不再有 exclusion）。
+ *
+ * 4. 心跳（§2.5，不变）：客户端每 30s 发纯文本 "ping"，服务端回 "pong"。
+ *
+ * 5. 推送消息（§5）：
+ *    {clientId, topics:["GPS_MSG/car-location-broadcast-all"], sender, notifyType,
+ *     notifySubType, title, content, customContent}
+ *    车辆定位这条消息 content 字段本身是一段 JSON 字符串（服务端原样透传），要拿到车辆数组
+ *    需要自己再 JSON.parse 一次 content：
+ *    {"datas":[{"carId":...,"orgId":...,"orgName":...,"latitude":...,"longitude":...,
+ *               "plateNumber":...,"gpsTime":"yyyy-MM-dd HH:mm:ss"}, ...]}
+ */
+
+// ---- 按你的实际部署环境改这几行 ----
+// 直连消息服务实例：ws://<消息服务host>:<port>/message-client/ws
+// 走网关：ws://<网关host>/message-client/ws（/message-client 为网关路由前缀）
+const WS_BASE_URL = "ws://ids-dev.ks.telewave.tech/message-client";
+const TOKEN = "<登录 JWT，必填>";               // CONNECT 首帧鉴权用（与 HTTP 请求同一个 token）
+const CLIENT = "ids-seat-web";                 // 端标识（topic 根），与后端发布时 clientDto.code 一致
+
+const CONNECT_FRAME = { action: "connect", token: TOKEN, clientId: CLIENT };
+const SUBSCRIBE_TOPIC = "GPS_MSG/car-location-broadcast-all";
+const HEARTBEAT_INTERVAL_MS = 30000;
+
+const logEl = document.getElementById("log");
+function log(msg) {
+  const line = document.createElement("div");
+  line.textContent = "[" + new Date().toLocaleTimeString() + "] " + msg;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function connect() {
+  const url = `${WS_BASE_URL}/ws`;
+  log("正在连接 " + url);
+  const ws = new WebSocket(url);
+  let authenticated = false;
+
+  ws.onopen = () => {
+    log("已连接，发送 CONNECT 首帧: " + JSON.stringify({ ...CONNECT_FRAME, token: TOKEN.slice(0, 12) + "..." }));
+    ws.send(JSON.stringify(CONNECT_FRAME)); // §2.2 首帧必须是 connect
+  };
+
+  ws.onmessage = (event) => {
+    if (event.data === "pong") {
+      return; // 心跳响应，不用处理
+    }
+    let payload;
+    try {
+      payload = JSON.parse(event.data);
+    } catch (e) {
+      log("收到无法解析的消息: " + event.data);
+      return;
+    }
+    if (payload.action === "connected") {
+      if (payload.result === "denied") {
+        log("鉴权被拒（" + payload.reason + "），服务端将关闭连接，不重连");
+        clearInterval(heartbeatTimer);
+        return;
+      }
+      authenticated = true;
+      log(`鉴权成功 userId=${payload.userId} sessionState=${payload.sessionState} clientId=${payload.clientId}，发送订阅指令`);
+      ws.send(JSON.stringify({ action: "subscribe", topic: SUBSCRIBE_TOPIC }));
+      return;
+    }
+    if (payload.action === "subscribed") {
+      log("订阅结果: " + JSON.stringify(payload));
+      return;
+    }
+    if (payload.notifyType !== "CAR_LOCATION_SYNC") {
+      log("收到非车辆定位消息, notifyType=" + payload.notifyType);
+      return;
+    }
+    let carData;
+    try {
+      carData = JSON.parse(payload.content); // content 是二次 JSON 字符串，见上面第5点说明
+    } catch (e) {
+      log("车辆定位消息 content 解析失败: " + payload.content);
+      return;
+    }
+    const datas = carData.datas || [];
+    log(`收到车辆定位广播，共 ${datas.length} 辆车（topics=${JSON.stringify(payload.topics)}）:`);
+    datas.forEach(car => {
+      const line = document.createElement("div");
+      line.className = "car";
+      line.textContent = `  ${car.plateNumber}（${car.orgName}）@ ${car.gpsTime} -> lng=${car.longitude}, lat=${car.latitude}`;
+      logEl.appendChild(line);
+    });
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  ws.onclose = (event) => {
+    log(`连接关闭 code=${event.code}, reason=${event.reason}` + (authenticated ? "，3秒后重连" : "（未完成鉴权，不重连）"));
+    clearInterval(heartbeatTimer);
+    if (authenticated) setTimeout(connect, 3000);
+  };
+
+  ws.onerror = (event) => {
+    log("连接发生错误");
+  };
+
+  const heartbeatTimer = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send("ping");
+    }
+  }, HEARTBEAT_INTERVAL_MS);
+}
+
+connect();
+</script>
+</body>
+</html>

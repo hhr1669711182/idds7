@@ -22,7 +22,6 @@ declare module 'vue' {
     Clear: typeof import('./../components/map/clear.vue')['default']
     Compass: typeof import('./../components/map/compass.vue')['default']
     Config: typeof import('./../components/map/config.vue')['default']
-    DispatchLayers: typeof import('./../components/dispatchMap/DispatchLayers.vue')['default']
     DragPanel: typeof import('./../components/map/dragPanel/index.vue')['default']
     ElAutocomplete: typeof import('element-plus/es')['ElAutocomplete']
     ElButton: typeof import('element-plus/es')['ElButton']

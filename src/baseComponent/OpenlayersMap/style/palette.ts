@@ -1,6 +1,6 @@
 import type { AmapTmcStatus } from '@/baseComponent/amap/useAmapTools'
 import type { JRAlarmStatus } from '@/baseComponent/amap/mapData'
-import { cssVar, withAlpha } from '@/utils/themeColor'
+import { cssVar, shiftHue, withAlpha } from '@/utils/themeColor'
 
 /**
  * 地图样式配色集中在此。
@@ -76,6 +76,25 @@ export const VEHICLE_LABEL_FONT = '700 12px sans-serif'
 
 /** 车辆历史轨迹全轨迹线颜色，与实时路线蓝区分 */
 export const VEHICLE_HISTORY_TRACK_COLOR = '#1D9BF0'
+
+/** 历史轨迹多路线配色：从 VEHICLE_HISTORY_TRACK_COLOR 派生同色系 4 色，色相偏移 40° × 4 */
+export const VEHICLE_HISTORY_TRACK_ROUTE_COLORS = [
+  VEHICLE_HISTORY_TRACK_COLOR,
+  shiftHue(VEHICLE_HISTORY_TRACK_COLOR, 40),
+  shiftHue(VEHICLE_HISTORY_TRACK_COLOR, 80),
+  shiftHue(VEHICLE_HISTORY_TRACK_COLOR, 120),
+] as const
+
+/**
+ * 按分组 index 取历史轨迹路线颜色；超过 4 组时在基色基础上继续偏移避免撞色。
+ * 保持同色系（蓝-青-绿-紫冷色系），与 DispatchT1 的强对比色池形成"历史/实时"两套视觉语言。
+ */
+export const getHistoryTrackRouteColor = (index: number): string => {
+  const pool = VEHICLE_HISTORY_TRACK_ROUTE_COLORS
+  if (index < pool.length) return pool[index]
+  const extraOffset = (index % 4) * 40 + 160
+  return shiftHue(VEHICLE_HISTORY_TRACK_COLOR, extraOffset)
+}
 
 /** 消防站使用率进度条底色 */
 export const FIRE_STATION_USAGE_TRACK_COLOR = 'rgba(148,163,184,0.36)'

@@ -461,4 +461,69 @@ describe('Control 迁移应用生命周期（回归 2026-10-15 F4/F8/F10）', ()
     await vi.advanceTimersByTimeAsync(0)
     expect(thirdSite).not.toHaveBeenCalled()
   })
+
+  it('Given 主图与调派双槽位 When 调派 attach 后 Then 主图端口不被顶掉且业务动作回落主图', async () => {
+    const runtime = start()
+    const mapPort = createPort()
+    const dispatchPort = createPort()
+    runtime.attachMap(mapPort, { kind: 'map' })
+    runtime.attachMap(dispatchPort, { kind: 'dispatch' })
+
+    // 调派态：业务动作走 dispatch 槽位
+    locate()
+    await vi.advanceTimersByTimeAsync(500)
+    expect(dispatchPort.geometry.addMarker).toHaveBeenCalledTimes(1)
+    expect(mapPort.geometry.addMarker).not.toHaveBeenCalled()
+
+    // 摘掉 dispatch 槽位后，业务动作自动回落主图槽位（无需重新 attach）
+    const detachDispatch = runtime.attachMap(createPort(), { kind: 'dispatch' })
+    detachDispatch()
+    locate()
+    await vi.advanceTimersByTimeAsync(500)
+    expect(mapPort.geometry.addMarker).toHaveBeenCalledTimes(1)
+  })
+
+  it('Given 主图槽位已挂 When 调派槽位挂载后 detach Then 主图槽位仍存活且 dispose 未被提前调用', () => {
+    const runtime = start()
+    const mapDispose = vi.fn()
+    const mapPort = createPort()
+    runtime.attachMap(mapPort, { kind: 'map', dispose: mapDispose })
+    const detachDispatch = runtime.attachMap(createPort(), { kind: 'dispatch' })
+
+    // 调派槽位顶替只影响 dispatch 自身，主图槽位不得被 dispose
+    expect(mapDispose).not.toHaveBeenCalled()
+
+    detachDispatch()
+    expect(mapDispose).not.toHaveBeenCalled()
+
+    runtime.dispose()
+    expect(mapDispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('Given 同槽位重复 attach When 后者顶替前者 Then 前者端口失效且 dispose 被调用', () => {
+    const runtime = start()
+    const firstDispose = vi.fn()
+    const first = createPort()
+    const detachFirst = runtime.attachMap(first, { kind: 'map', dispose: firstDispose })
+    const second = createPort()
+    runtime.attachMap(second, { kind: 'map' })
+
+    expect(firstDispose).toHaveBeenCalledTimes(1)
+    // 同槽位顶替：旧端口的守卫失效，业务动作不再落到旧端口
+    locate()
+    detachFirst()
+    expect(first.geometry.addMarker).not.toHaveBeenCalled()
+  })
+
+  it('Given 双槽位并存 When 主图槽位 detach Then 不影响调派槽位继续接收', async () => {
+    const runtime = start()
+    const dispatchPort = createPort()
+    const detachMap = runtime.attachMap(createPort(), { kind: 'map' })
+    runtime.attachMap(dispatchPort, { kind: 'dispatch' })
+
+    detachMap()
+    locate()
+    await vi.advanceTimersByTimeAsync(500)
+    expect(dispatchPort.geometry.addMarker).toHaveBeenCalledTimes(1)
+  })
 })

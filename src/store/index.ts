@@ -13,7 +13,8 @@
  * 路由专属的 Tier 2 store（useCardStore / useLayersStore / useTopicLayerStore /
  * useBaseSourceStore / useModalStore / useTabsStore / useDispatchStore /
  * useDispatchT1Store / useIncidentLocationStore / useStationLayerStore /
- * useDispatchMapStore / useModelAssessStore / useSearchPanelStore 等）
+ * useModelAssessStore / useSearchPanelStore 等）
+ * （useDispatchMapStore 已于 2026-11-05 归并进 useLayersStore，文件删除）
  * 不再进 barrel，调用方直接按文件路径导入（如 @/store/useCardStore），
  * 避免首屏把全部 store 拉进同一 chunk。
  */

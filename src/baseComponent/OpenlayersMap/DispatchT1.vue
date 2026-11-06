@@ -39,7 +39,7 @@ import TileWMS from 'ol/source/TileWMS';
 import { unByKey } from 'ol/Observable';
 import type { EventsKey } from 'ol/events';
 import { useDispatchT1Store, isStandbyVehicleStatus } from '@/store/useDispatchT1Store';//T1调派状态
-import { useDispatchMapStore } from '@/store/useDispatchMapStore';//T1调派状态
+import { useLayersStore } from '@/store/useLayersStore';//T1调派状态
 import { getBusinessMessageRuntime } from '@/controller/core/io/BusinessMessageRuntime';
 import { VEHICLE_STATUS_TEXT } from '@/const/const.business.type';
 import type {
@@ -73,7 +73,7 @@ const emit = defineEmits<{
 }>();
 
 const dispatchT1Store = useDispatchT1Store();
-const dispatchMapStore = useDispatchMapStore();
+const layersStore = useLayersStore();
 const userStore = useUserStore();
 const realtimeFocus = trackingFocusStates.get(userStore) ?? { context: '', done: false };
 trackingFocusStates.set(userStore, realtimeFocus);
@@ -170,7 +170,6 @@ const createService = (map: OlMap) => {
   destroyService();
   const instance = new DispatchT1(map, {
     amapKey: props.amapKey,
-    isLayerVisible: (layerId) => dispatchMapStore.checkedIds.includes(layerId),
     onDispatch: async (command) => emit('dispatch', command),
   });
   service.value = instance;
@@ -327,7 +326,7 @@ const queryHydrant = async (coordinate: number[]) => {
   }
 
   try {
-    if (!dispatchMapStore.checkedIds.includes(HYDRANT_LAYER)) {
+    if (!layersStore.checkedIds.includes(HYDRANT_LAYER)) {
       closeHydrantPopup();
       return;
     }

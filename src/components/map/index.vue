@@ -28,16 +28,14 @@ import OpenlayersMap from "@/baseComponent/OpenlayersMap/map.vue";
 import type OlMap from "ol/Map";
 import DispatchT1Panel from "@/baseComponent/OpenlayersMap/DispatchT1.vue";
 import type { DispatchT1State, DispatchT1VehicleCommand } from "@/baseComponent/OpenlayersMap/DispatchT1";
-import { isDispatchVariant } from "@/baseComponent/OpenlayersMap/gisMapConfig";
+import { isDispatchVariant, resolveLayerViewMode } from "@/baseComponent/OpenlayersMap/gisMapConfig";
 import { TEMP_FRONTEND_LAYER_IDS } from "@/baseComponent/OpenlayersMap/layers";
-import DispatchLayers from "@/components/dispatchMap/DispatchLayers.vue";
 import VehicleTrackPanel from "@/components/dispatchMap/VehicleTrackPanel.vue";
 import {
   useMapConfigStore,
   useMapStore,
   usePanelStore,
 } from "@/store/index.ts";
-import { useDispatchMapStore } from "@/store/useDispatchMapStore";
 import { useLayersStore } from "@/store/useLayersStore";
 import { useTabsStore } from "@/store/useTabsStore";
 import { useVehicleTrackStore } from "@/store/useVehicleTrackStore";
@@ -50,6 +48,8 @@ type OpenlayersMapExpose = {
   removeLayer: (id: string) => boolean;
   syncLayers: (ids: string[], visible?: boolean) => void;
   visibleLayer: (id: string, bol: boolean) => void;
+  showLayer: (id: string) => boolean;
+  hideLayer: (id: string) => boolean;
 };
 
 const MapStore = useMapStore();
@@ -58,7 +58,6 @@ const PanelStore = usePanelStore();
 const tabsStore = useTabsStore();
 const layersStore = useLayersStore();
 const mapConfigStore = useMapConfigStore();
-const dispatchMapStore = useDispatchMapStore();
 const pendingDispatchAlarmStore = usePendingDispatchAlarmStore();
 const vehicleTrackStore = useVehicleTrackStore();
 
@@ -68,6 +67,9 @@ const openLayersMapRef = shallowRef<OpenlayersMapExpose | null>(null);
 const dispatchOlMap = shallowRef<OlMap | null>(null);
 const { feature } = storeToRefs(mapConfigStore);
 const dispatchVariant = computed(() => isDispatchVariant());
+/** 图层工具栏展示模式（MapPhase 6 阶段 + flood 特灾轴），驱动 useLayersStore 的隐藏过滤与默认集回落 */
+const layerMode = computed(resolveLayerViewMode);
+watch(layerMode, (mode) => layersStore.setMode(mode), { immediate: true });
 let viewportRefreshFrame: number | null = null;
 
 const refreshMapViewport = () => {
@@ -93,14 +95,10 @@ const getMap = (map: any) => {
 };
 
 const handleLayerChange: LayerChangeHandler = (action, id) => {
-  // visible 显示隐藏
-  // openLayersMapRef.value?.visibleLayer(id, action === "add");
-
-  // 选项注册
   if (action === "add") {
-    openLayersMapRef.value?.addLayer(id);
+    openLayersMapRef.value?.showLayer(id);
   } else {
-    openLayersMapRef.value?.removeLayer(id);
+    openLayersMapRef.value?.hideLayer(id);
   }
 };
 
@@ -128,13 +126,13 @@ const getDispatchLayerIds = (ids: string[]) =>
   );
 
 watch(
-  () => dispatchMapStore.checkedIds,
+  () => layersStore.checkedIds,
   (ids) => {
     // 调派图层与主图图层共用同一 OLMap，仅调派态允许改写图层集合
     if (!dispatchVariant.value) return;
     const nextIds = getDispatchLayerIds(ids);
     if (nextIds.length !== ids.length) {
-      dispatchMapStore.setCheckedIds(nextIds);
+      layersStore.setCheckedIds(nextIds);
       return;
     }
     openLayersMapRef.value?.syncLayers(nextIds);
@@ -199,7 +197,7 @@ onUnmounted(() => {
         @query-success="handleQuerySuccess"
         @error="handleDispatchError"
       />
-      <DispatchLayers />
+      <!-- 图层工具栏已并入主图 <layers>（双变体共用，按 activeMode 隐藏表过滤），不再独立渲染 -->
       <VehicleTrackPanel v-if="vehicleTrackStore.panelVisible" />
     </div>
   </OpenlayersMap>

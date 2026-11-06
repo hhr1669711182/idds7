@@ -117,6 +117,56 @@ export const getBasemapFilter = (): BasemapFilter => {
   }
 }
 
+/**
+ * 把 hex 颜色的色相（HSL 中的 H）偏移指定角度，返回新的 hex。
+ * 用于从基色派生出同色系的多条路线配色，避免跨色系跳跃。
+ * 支持 #rgb / #rrggbb；无法解析时原样返回基色。
+ * @param hex 基色，如 '#1D9BF0'。
+ * @param deltaDeg 色相偏移量（度），正数顺时针，负数逆时针。
+ */
+export const shiftHue = (hex: string, deltaDeg: number): string => {
+  const value = hex.trim()
+  const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value)
+  if (!hexMatch) return value
+  const raw = hexMatch[1]
+  const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw
+  const r = parseInt(full.slice(0, 2), 16) / 255
+  const g = parseInt(full.slice(2, 4), 16) / 255
+  const b = parseInt(full.slice(4, 6), 16) / 255
+
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  let h = 0
+  let s = 0
+  if (max !== min) {
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break
+      case g: h = ((b - r) / d + 2) / 6; break
+      case b: h = ((r - g) / d + 4) / 6; break
+    }
+  }
+  let hue = (h * 360 + deltaDeg) % 360
+  if (hue < 0) hue += 360
+
+  const hueToRgb = (p: number, q: number, t: number) => {
+    if (t < 0) t += 1
+    if (t > 1) t -= 1
+    if (t < 1 / 6) return p + (q - p) * 6 * t
+    if (t < 1 / 2) return q
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
+    return p
+  }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+  const p = 2 * l - q
+  const newR = Math.round(hueToRgb(p, q, hue / 360 + 1 / 3) * 255)
+  const newG = Math.round(hueToRgb(p, q, hue / 360) * 255)
+  const newB = Math.round(hueToRgb(p, q, hue / 360 - 1 / 3) * 255)
+  return `#${[newR, newG, newB].map((v) => v.toString(16).padStart(2, '0')).join('')}`
+}
+
 /** 把滤镜参数拼成 CSS filter 字符串 */
 export const buildFilterString = (filter: BasemapFilter): string => {
   const hue = filter.hueRotate === 0 ? '0deg' : `${filter.hueRotate}deg`

@@ -6,7 +6,15 @@ import { useVehicleTrackStore } from '@/store/useVehicleTrackStore'
 import { useVehicleTrackPlayback } from '@/composables/useVehicleTrackPlayback'
 
 const store = useVehicleTrackStore()
-const { points, cursor, speed, playing, maxCursor } = storeToRefs(store)
+const {
+  points,
+  cursor,
+  speed,
+  playing,
+  maxCursor,
+  routeGroups,
+  activeRouteKey,
+} = storeToRefs(store)
 const { toggle, pause } = useVehicleTrackPlayback()
 
 const pointAtCursor = computed(() => {
@@ -49,9 +57,18 @@ const marks = computed(() => {
   })
 })
 
+/** 当前选中的路线分组（多车多路线场景下用） */
+const activeGroup = computed(() =>
+  routeGroups.value.find((g) => g.key === activeRouteKey.value),
+)
+
 /** 拖拽时间轴即视为接管控制权，暂停自动播放，避免时间基准错位。 */
 const onSeek = () => {
   pause()
+}
+
+const onChangeRoute = (key: string) => {
+  store.setActiveRoute(key)
 }
 </script>
 
@@ -59,6 +76,29 @@ const onSeek = () => {
   <div class="vehicle-track-panel" role="region" aria-label="车辆历史轨迹回放">
     <div class="vtp-header">
       <span class="vtp-title">车辆历史轨迹回放</span>
+
+      <!-- 多路线场景：路线分组切换器 -->
+      <span v-if="routeGroups.length > 1" class="vtp-route-switch">
+        <em>路线</em>
+        <el-select
+          :model-value="activeRouteKey"
+          size="small"
+          class="vtp-route-select"
+          placeholder="选择路线"
+          @change="onChangeRoute"
+        >
+          <el-option
+            v-for="group in routeGroups"
+            :key="group.key"
+            :value="group.key"
+          >
+            <span class="vtp-route-swatch" :style="{ background: group.color }"></span>
+            {{ group.stationName ?? group.stationId ?? '未知路线' }}
+            <span class="vtp-route-count">{{ group.vehicles.length }} 车</span>
+          </el-option>
+        </el-select>
+      </span>
+
       <span class="vtp-datetime">{{ cursorDateTime }}</span>
       <span class="vtp-speed">
         <em>速度</em>
@@ -69,6 +109,12 @@ const onSeek = () => {
         </el-select>
       </span>
     </div>
+
+    <!-- 当前路线多车辆摘要 -->
+    <div v-if="activeGroup && activeGroup.vehicles.length > 1" class="vtp-route-summary">
+      当前路线共 {{ activeGroup.vehicles.length }} 辆车
+    </div>
+
     <div class="vtp-body">
       <button class="vtp-play" type="button" :aria-label="playing ? '暂停' : '播放'" @click="toggle">
         <Icon :icon="playing ? 'mdi:pause' : 'mdi:play'" :size="20" />
@@ -151,6 +197,50 @@ const onSeek = () => {
 
 .vtp-speed-select {
   width: 74px;
+}
+
+.vtp-route-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  opacity: 0.9;
+
+  em {
+    font-style: normal;
+  }
+}
+
+.vtp-route-select {
+  width: 180px;
+}
+
+:deep(.vtp-route-select .el-select-dropdown__item) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vtp-route-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.vtp-route-count {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.vtp-route-summary {
+  padding: 6px 0;
+  font-size: 12px;
+  opacity: 0.8;
+  border-bottom: 1px solid var(--toolbar-tile-border);
+  margin-bottom: 2px;
 }
 
 .vtp-body {

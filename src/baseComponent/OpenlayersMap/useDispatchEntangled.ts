@@ -1,7 +1,7 @@
 // 用途：调派「纠缠体」——把调派专属地图逻辑（警情定位点位 / 队站 CQL / 周边资源范围圈 /
 // 模拟调派 / 车辆轨迹）绑到 map.vue 常驻 OLMap 上，可 attach/detach。设计见
 // herness/02-技术设计/前端/路线X-Y地图实例归一重构.md。
-import { watch, markRaw, ref, computed } from 'vue'
+import { watch, markRaw, ref, computed, nextTick } from 'vue'
 import type OLMap from 'ol/Map'
 import { Modify } from 'ol/interaction'
 import VectorLayer from 'ol/layer/Vector'
@@ -80,8 +80,14 @@ import { MESSAGE_EVENT_KEY, MOCK_CALL_LOCATION_ID } from '@/const/const.message.
 import { useMessageStore } from '@/store/useMessageStore'
 import { INCOMING_CALL_FOCUS_ZOOM, usePendingCallLocationStore } from '@/store/usePendingCallLocationStore'
 import type { SharedDispatchVehicleMock } from '@/composables/useMockCallLocationBridge'
-import { queryCarHistoryTrack, extractLatestBatchFirstVehicleId } from '@/apis/carTrack'
-import { useVehicleTrackStore } from '@/store/useVehicleTrackStore'
+import {
+  queryCarHistoryTrack,
+  extractLatestBatchFirstVehicleId,
+  queryIncidentTurnoutVehicles,
+  groupTurnoutVehiclesByStation,
+  supplementTrackTimeFromDetail,
+} from '@/apis/carTrack'
+import { useVehicleTrackStore, type VehicleTrackEntry } from '@/store/useVehicleTrackStore'
 import { isTerminalIncidentState } from '@/utils/incidentState'
 import { createLogger } from '@/utils/logger'
 import {
@@ -1575,10 +1581,35 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
     return vehicleTrackRenderer
   }
 
+  /**
+   * 将 vehicleTrackStore 的轨迹数据渲染到 OpenLayers 图层。
+   * 双轨制：trackEntries（多车新模式）非空时走 renderMulti + setCursorAll，
+   * 否则回退到单车旧模式 points → render；panel 隐藏或数据空时 clear。
+   * @param fit 渲染时是否让地图自动缩放定位到轨迹范围
+   */
   const syncVehicleTrackLayer = (fit: boolean) => {
     const renderer = ensureVehicleTrackRenderer()
     if (!renderer) return
-    if (!vehicleTrackStore.panelVisible || !vehicleTrackStore.points.length) {
+    if (!vehicleTrackStore.panelVisible) {
+      renderer.clear()
+      return
+    }
+
+    // 多车新模式：trackEntries 非空时优先用 renderMulti
+    if (vehicleTrackStore.trackEntries.size > 0) {
+      const entries = [...vehicleTrackStore.trackEntries.values()]
+      if (!entries.length) {
+        renderer.clear()
+        return
+      }
+      // 以 activeRoute 下的轨迹时间跨度为准 fit；所有分组 setCursorAll 同步推进
+      renderer.renderMulti(entries, { fit })
+      renderer.setCursorAll(vehicleTrackStore.cursor)
+      return
+    }
+
+    // 单车旧模式：points 直接 render
+    if (!vehicleTrackStore.points.length) {
       renderer.clear()
       return
     }
@@ -1606,47 +1637,180 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
     incidentLocationStore.clearAll()
   }
 
-  /** 按警情查询调派车辆与历史轨迹：查不到车辆或轨迹时按钮仍保留，仅提示 */
+  /**
+   * 多车辆多路线场景：按警情查询出动车辆 → 按 stationId 分组 → 每组独立查轨迹 → 并行上图。
+   * 新接口整体失败（未上 dev / 上游不可用）时自动降级为单车旧逻辑。
+   */
   const loadVehicleTrack = async (incidentId: string, options?: { openPanel?: boolean }) => {
     const seq = ++vehicleTrackRequestSeq
     vehicleTrackStore.loading = true
     try {
-      const detail = await fetchIncidentDetail<IncidentDetailResponseData>(incidentId)
+      // 1. 查询出动车辆列表
+      const [turnoutResult] = await Promise.allSettled([
+        queryIncidentTurnoutVehicles(incidentId),
+      ])
+
       if (seq !== vehicleTrackRequestSeq) return
-      const vehicleId = extractLatestBatchFirstVehicleId(detail)
-      vehicleTrackLogger.info('警情详情车辆', { incidentId, vehicleId })
-      if (!vehicleId) {
-        vehicleTrackStore.markUnavailable(incidentId)
-        vehicleTrackLogger.info('按钮已显示但暂无调派车辆', { incidentId })
-        ElMessage.warning('该警情暂无调派车辆，请重新选择')
+
+      // 2. 新接口整体失败 → 降级到单车旧逻辑
+      if (turnoutResult.status === 'rejected') {
+        vehicleTrackLogger.warn('出动车辆接口失败，降级为单车旧逻辑', {
+          incidentId,
+          error: (turnoutResult.reason as Error)?.message,
+        })
+        await loadVehicleTrackFallbackSingle(incidentId, options)
         return
       }
-      const result = await queryCarHistoryTrack(vehicleId)
-      if (seq !== vehicleTrackRequestSeq) return
-      const points = (Array.isArray(result) ? result : [])
-        .filter((point) => Number.isFinite(point?.longitude) && Number.isFinite(point?.latitude))
-        .sort((a, b) => String(a.gpsTime).localeCompare(String(b.gpsTime)))
-      vehicleTrackLogger.info('历史轨迹查询结果', {
-        incidentId,
-        vehicleId,
-        count: points.length,
-      })
-      if (!points.length) {
+
+      const turnoutData = turnoutResult.value
+
+      const vehicles = turnoutData.vehicles
+      if (vehicles === null) {
         vehicleTrackStore.markUnavailable(incidentId)
-        vehicleTrackLogger.info('按钮已显示但暂无轨迹数据', {
-          incidentId,
-          vehicleId,
+        vehicleTrackLogger.info('车辆数据暂不可用（后端依赖服务出错）', { incidentId })
+        ElMessage.warning('车辆信息暂不可用，请稍后重试')
+        return
+      }
+      if (!vehicles.length) {
+        vehicleTrackStore.markUnavailable(incidentId)
+        vehicleTrackLogger.info('暂无出动车辆', { incidentId })
+        ElMessage.warning('该警情暂无出动车辆，请重新选择')
+        return
+      }
+
+      // 3. 按 stationId 分组（同 stationId → 同一路线；不同 stationId → 不同路线）
+      const groups = groupTurnoutVehiclesByStation(vehicles)
+      vehicleTrackLogger.info('出动车辆路线分组', {
+        incidentId,
+        groups: groups.map((g) => ({
+          key: g.key,
+          stationName: g.stationName,
+          vehicleCount: g.vehicles.length,
+        })),
+      })
+
+      // 4. 并行查询每辆车的历史轨迹（Promise.allSettled：个别失败不阻塞整体）
+      const vehicleEntries: VehicleTrackEntry[] = []
+      const settled = await Promise.allSettled(
+        vehicles.map(async (vehicle) => {
+          const { beginTime, endTime } = supplementTrackTimeFromDetail(vehicle)
+          const points = await queryCarHistoryTrack(vehicle.vehicleId, { beginTime, endTime })
+          return { vehicle, points }
+        }),
+      )
+
+      for (let i = 0; i < settled.length; i += 1) {
+        const result = settled[i]
+        if (result.status === 'rejected') {
+          vehicleTrackLogger.warn('单车轨迹查询失败，跳过', {
+            incidentId,
+            vehicleId: vehicles[i]?.vehicleId,
+            error: (result.reason as Error)?.message,
+          })
+          continue
+        }
+        const { vehicle, points } = result.value
+        const filtered = (Array.isArray(points) ? points : [])
+          .filter((p) => Number.isFinite(p?.longitude) && Number.isFinite(p?.latitude))
+          .sort((a, b) => String(a.gpsTime).localeCompare(String(b.gpsTime)))
+        if (filtered.length < 2) continue
+
+        // 找到该车所属路线分组，取路线颜色
+        const group = groups.find((g) =>
+          g.vehicles.some((v) => v.vehicleId === vehicle.vehicleId),
+        )
+        const routeKey = group?.key ?? 'unknown-station'
+        const routeColor = group?.color ?? '#1D9BF0'
+
+        vehicleEntries.push({
+          trackId: `${routeKey}:${vehicle.vehicleId}`,
+          routeKey,
+          routeColor,
+          vehicleId: vehicle.vehicleId,
+          plateNumber: vehicle.plateNumber,
+          startTime: vehicle.startTime,
+          endTime: vehicle.endTime,
+          stationId: vehicle.stationId,
+          stationName: vehicle.stationName,
+          points: filtered,
         })
+      }
+
+      if (seq !== vehicleTrackRequestSeq) return
+
+      vehicleTrackLogger.info('多车历史轨迹查询完成', {
+        incidentId,
+        totalVehicles: vehicles.length,
+        successCount: vehicleEntries.length,
+      })
+
+      if (!vehicleEntries.length) {
+        vehicleTrackStore.markUnavailable(incidentId)
+        vehicleTrackLogger.info('全部车辆轨迹查空', { incidentId })
         ElMessage.warning('未查询到历史轨迹数据，请重新选择')
         return
       }
-      vehicleTrackStore.setTrack(points, vehicleId, incidentId, options)
+
+      // 5. 过滤掉无轨迹的车辆后，只保留有车辆的路线分组
+      const vehicleIdsWithTrack = new Set(vehicleEntries.map((e) => e.vehicleId))
+      const activeGroups = groups
+        .map((g) => ({
+          ...g,
+          vehicles: g.vehicles.filter((v) => vehicleIdsWithTrack.has(v.vehicleId)),
+        }))
+        .filter((g) => g.vehicles.length > 0)
+
+      vehicleTrackStore.setMultiTracks(vehicleEntries, activeGroups)
+      vehicleTrackStore.incidentId = incidentId
+
+      // 打开面板并立即渲染（syncVehicleTrackLayer 会被 watch panelVisible 触发）
+      if (options?.openPanel) {
+        nextTick(() => {
+          vehicleTrackStore.panelVisible = true
+          syncVehicleTrackLayer(true)
+        })
+      } else {
+        // 不打开面板时也要确保按钮显示状态正确
+        vehicleTrackStore.buttonVisible = true
+      }
     } catch (error) {
       if (seq !== vehicleTrackRequestSeq) return
-      vehicleTrackLogger.error('车辆历史轨迹查询失败', error)
+      vehicleTrackLogger.error('多车历史轨迹查询失败，降级为单车旧逻辑', error)
+      try {
+        await loadVehicleTrackFallbackSingle(incidentId, options)
+      } catch (fallbackError) {
+        vehicleTrackLogger.error('降级单车逻辑也失败', fallbackError)
+        vehicleTrackStore.markUnavailable(incidentId)
+        ElMessage.warning('未查询到历史轨迹数据，请重新选择')
+      }
+    }
+  }
+
+  /**
+   * 降级单车旧逻辑：取最新批次第一辆车 + 写死时间范围。
+   * 仅在新接口整体失败（未上 dev / 上游不可用）时作为兜底。
+   */
+  const loadVehicleTrackFallbackSingle = async (
+    incidentId: string,
+    options?: { openPanel?: boolean },
+  ) => {
+    const detail = await fetchIncidentDetail<IncidentDetailResponseData>(incidentId)
+    const vehicleId = extractLatestBatchFirstVehicleId(detail)
+    if (!vehicleId) {
+      vehicleTrackStore.markUnavailable(incidentId)
+      ElMessage.warning('该警情暂无调派车辆，请重新选择')
+      return
+    }
+    const result = await queryCarHistoryTrack(vehicleId)
+    const points = (Array.isArray(result) ? result : [])
+      .filter((point) => Number.isFinite(point?.longitude) && Number.isFinite(point?.latitude))
+      .sort((a, b) => String(a.gpsTime).localeCompare(String(b.gpsTime)))
+    if (!points.length) {
       vehicleTrackStore.markUnavailable(incidentId)
       ElMessage.warning('未查询到历史轨迹数据，请重新选择')
+      return
     }
+    vehicleTrackStore.setTrack(points, vehicleId, incidentId, options)
   }
 
   /** 终态警情：清理原有警情产物并切换到历史轨迹，重复触发时沿用已加载轨迹 */

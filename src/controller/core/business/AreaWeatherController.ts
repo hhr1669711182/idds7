@@ -176,6 +176,15 @@ export class AreaWeatherController {
     this.port.areaFenceClear?.()
   }
 
+  /** 仅刷新当前选中区划的天气，不触发围栏定位/闪烁（供定时器轮询使用） */
+  public async refreshWeather(): Promise<void> {
+    if (this.disposed) return
+    const node = this.state.value.selected
+    if (!node) return
+    const seq = ++this.requestSeq
+    await this.loadWeather(node, seq)
+  }
+
   /**
    * 选中某个队站：定位到该队站的主管辖区面并高亮。
    * 辖区缺失时清掉现有围栏，避免残留上一层的描边。

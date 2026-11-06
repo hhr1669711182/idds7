@@ -134,7 +134,8 @@ const getSavedState = (layer?: MapConfigPayload['layer']) => {
 }
 
 const createResource = (source: LayerSourceConfig, saved?: MapLayerResource): MapLayerResource => {
-  const enabled = saved?.enabled ?? source.enabled
+  // locked 图层是某模式默认集必备组件，enabled 恒 true（持久化/传入数据不可绕过）
+  const enabled = source.locked ? true : saved?.enabled ?? source.enabled
 
   return {
     ...toLayerConfig(source),

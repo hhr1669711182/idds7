@@ -1,55 +1,14 @@
-# Mock WebSocket Server
+# 独立 WS 测试控制台与 GIS 反向代理
 
-启动：
+1. 在 ids-gis-web 启动 GIS 开发服务（默认 8888）。开发 WS 地址指向 v2 单入口 ws://localhost:18080/message-client/ws，连接后首帧发送 {"action":"connect","token":"<accessToken>","clientId":"ids-seat-web"} 完成鉴权（见 integration-guide-v2.md §2）。
+2. 在 ids-gis-test 执行 npm.cmd run dev。
+3. 打开 http://localhost:18080/__test/ ，填写测试身份和 Token，选择状态并写入。
+4. 点击“打开 GIS 地图”，打开 http://localhost:18080/#/map 。连接控制服务并推送消息。
 
-```bash
-npm run mock:server
-```
+控制台和代理地图同源，共用 localStorage。写入会通过浏览器 storage 事件通知已打开的地图。请勿使用 8888 地图测试共享状态；原有 8888 的 localStorage 不会迁移，需要在新控制台重新填写。
 
-重启并清理旧进程：
+/__test/ 是控制台；其余 HTTP 请求代理到 GIS_TARGET（默认 http://localhost:8888），包括 Vite 模块、地图资源及业务接口。模拟 WS 地址和 /mock-control 由测试服务处理，其他 WS 升级代理到 Vite，用于热更新。
 
-```bash
-npm run mock:server:restart
-```
+可设置 GIS_TARGET、PORT、HOST 环境变量。更改 PORT 时需要同时调整 GIS 的开发 WS 配置。服务仅供可信本地开发环境使用。
 
-只清理旧进程：
-
-```bash
-npm run mock:server:stop
-```
-
-默认监听：
-
-- WebSocket: `ws://本机IPv4:8787/`
-- 前端开发环境使用：`ws://192.168.173.94:8787/`
-
-可选环境变量：
-
-配置文件只读取 `server/.env`，不会读取前端工程的 `.env.development`。
-
-示例：
-
-```ini
-MOCK_WS_PORT=8787
-MOCK_WS_PUSH_INTERVAL_MS=60000
-MOCK_WS_FIRST_PUSH_DELAY_MS=2000
-MOCK_WS_INCOMING_CALL_DELAY_MS=1200
-```
-
-- `MOCK_WS_HOST`：监听地址，默认自动选择本机 IPv4
-- `MOCK_WS_PORT`：监听端口，默认 `8787`
-- `MOCK_WS_PUSH_INTERVAL_MS`：定时推送间隔，默认 `60000`
-- `MOCK_WS_FIRST_PUSH_DELAY_MS`：首次连接后的第一次数据推送延迟，默认 `2000`
-- `MOCK_WS_INCOMING_CALL_DELAY_MS`：首次数据推送后的来电提示延迟，默认 `1200`
-
-HTTP API：
-
-- `GET /api/health`
-- `GET /api/routes`
-- `GET /api/route-plan-request`
-- `POST /api/broadcast-route-plan`
-- `POST /api/broadcast-incoming-call`
-
-WebSocket 客户端连接成功 2 秒后收到第一次 `route.plan.request`，之后按定时器持续推送。
-
-服务正常退出时会关闭 HTTP listener、WebSocket clients 和定时推送任务。开发时如果 `8787` 被旧 mock server 占用，优先使用 `npm run mock:server:restart`。
+不需要 ids-gis-web 中的桥接路由、桥接 HTML 或任何 .ws-* 临时目录。生产环境配置不受影响。

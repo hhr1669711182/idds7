@@ -19,6 +19,8 @@ import {
 import { featureRenderOrder } from './AddressRobotUtils/featureRenderOrder'
 
 type SearchRenderState = {
+  /** 实际占用的图层名（多槽位并存时可能带实例后缀） */
+  layerName: string
   layer: VectorLayer<VectorSource>
   generation: number
   delay?: ReturnType<typeof setTimeout>
@@ -30,10 +32,14 @@ type SearchRenderState = {
 
 const fitAnimationOwners = new WeakMap<View, () => void>()
 
+let rendererInstanceSeq = 0
+
 export class AddressRobotRenderer {
   private readonly searches = new Map<string, SearchRenderState>()
   private disposed = false
   private readonly owner = {}
+  /** 同一 OLMap 上多 renderer 并存时用于区分图层名 */
+  private readonly instanceSeq = ++rendererInstanceSeq
 
   constructor(private readonly genericController: GenericController) {}
 
@@ -46,7 +52,14 @@ export class AddressRobotRenderer {
     const previous = this.searches.get(businessId)
     if (previous) this.cancelTimers(previous)
 
-    let layer = this.genericController.getVectorLayer(businessId)
+    // 多槽位并存时（如主图 kind:'map' 与调派 kind:'dispatch' 同时存活）：
+    // 同名图层若已被其它 renderer 占用，不得复用，否则会抢走他人图层归属
+    // （他人 isCurrent 判定随之失效，表现为搜索结果静默不渲染）。
+    // 这种情况改用带实例序号的独立图层名，两侧互不干扰。
+    const reused = this.genericController.getVectorLayer(businessId)
+    const ownedByOther = !!reused && reused.get('addressRobotRendererOwner') !== undefined
+    const layerName = ownedByOther ? `${businessId}__${this.instanceSeq}` : businessId
+    let layer = this.genericController.getVectorLayer(layerName)
     if (!layer) {
       layer = new VectorLayer({
         source: new VectorSource(),
@@ -54,12 +67,13 @@ export class AddressRobotRenderer {
         renderOrder: featureRenderOrder,
         declutter: true,
         zIndex: 20,
-        properties: { name: businessId },
+        properties: { name: layerName },
       })
       this.genericController.addLayer(layer)
     }
     layer.set('addressRobotRendererOwner', this.owner)
     const state: SearchRenderState = {
+      layerName,
       layer,
       generation: (previous?.generation ?? 0) + 1,
     }
@@ -70,7 +84,7 @@ export class AddressRobotRenderer {
       this.searches.get(businessId) === state &&
       state.generation === generation &&
       layer.get('addressRobotRendererOwner') === this.owner &&
-      this.genericController.getVectorLayer(businessId) === layer
+      this.genericController.getVectorLayer(layerName) === layer
 
     const { gis_search, highlight_entities, overall_confidence } = data
     EventBus.emit('gis_search', { ...gis_search, confidence: overall_confidence })
@@ -155,13 +169,13 @@ export class AddressRobotRenderer {
   public dispose(): void {
     if (this.disposed) return
     this.disposed = true
-    this.searches.forEach((state, businessId) => {
+    this.searches.forEach((state) => {
       state.generation += 1
       this.cancelTimers(state)
       if (state.layer.get('addressRobotRendererOwner') !== this.owner) return
       state.layer.getSource()?.clear()
       state.layer.setVisible(false)
-      if (this.genericController.getVectorLayer(businessId) === state.layer) {
+      if (this.genericController.getVectorLayer(state.layerName) === state.layer) {
         this.genericController.removeLayer(state.layer)
       }
     })

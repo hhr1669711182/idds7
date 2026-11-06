@@ -8,7 +8,14 @@
  */
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { DEFAULT_CHECKED_IDS, DEFAULT_TOOLBAR_LAYER_CONFIGS, type LayerConfig } from '@/config/layers'
+import {
+  DEFAULT_CHECKED_IDS,
+  DEFAULT_TOOLBAR_LAYER_CONFIGS,
+  LAYER_MODE_DEFAULT_CHECKED_IDS,
+  LAYER_MODE_HIDDEN_LAYER_IDS,
+  type LayerConfig,
+  type LayerViewMode,
+} from '@/config/layers'
 
 const normalizeLayerIds = (ids: string[], configs: LayerConfig[]) => {
   const layerIdSet = new Set(configs.map((config) => config.id))
@@ -75,6 +82,24 @@ export const useLayersStore = defineStore(
 
     const getConfig = (id: string): LayerConfig | undefined => layerConfigs.value.find((config) => config.id === id)
 
+    // ===== 图层工具栏展示模式（LayerViewMode）=====
+    // 业务真值在 useUserStore（shared.mode / MapMode），此处为工具栏投影：
+    // 只决定"当前按哪个隐藏表过滤工具栏磁贴 + 无选择时落哪套默认集"。
+    const activeMode = ref<LayerViewMode>('onDuty')
+
+    /**
+     * 切换展示模式：按该模式隐藏表过滤当前勾选（保留交集）；
+     * 交集为空 → 落该模式默认集。
+     * 不持久化 activeMode（挂载时由驱动方 immediate 对齐当前共享态，避免恢复错位）。
+     */
+    const setMode = (mode: LayerViewMode) => {
+      if (mode === activeMode.value) return
+      activeMode.value = mode
+      const hidden = new Set(LAYER_MODE_HIDDEN_LAYER_IDS[mode])
+      const kept = checkedIds.value.filter((id) => !hidden.has(id))
+      setCheckedIds(kept.length ? kept : LAYER_MODE_DEFAULT_CHECKED_IDS[mode])
+    }
+
     setCheckedIds(checkedIds.value)
 
     return {
@@ -82,6 +107,7 @@ export const useLayersStore = defineStore(
       visibleIds,
       layerConfigs,
       items,
+      activeMode,
       setCheckedIds,
       setLayerConfigs,
       setLayerVisible,
@@ -89,6 +115,7 @@ export const useLayersStore = defineStore(
       toggleAll,
       isChecked,
       getConfig,
+      setMode,
     }
   },
   {

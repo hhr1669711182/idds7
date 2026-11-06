@@ -1,0 +1,43 @@
+{
+  "runId": "bbcd3c69-d1bb-4a67-a0ca-17245f0787db",
+  "scenario": "popup",
+  "label": "弹窗态（来电→定位→画像→接听状态）",
+  "full": false,
+  "targets": {
+    "userId": "alarm-debug-user",
+    "sessionState": "alarm-debug-session"
+  },
+  "startedAt": "2026-11-06T09:57:54.945Z",
+  "finishedAt": "2026-11-06T09:57:54.946Z",
+  "summary": "4 项失败 / 0 项跳过（共 4 步）",
+  "steps": [
+    {
+      "id": "connect",
+      "name": "前端 WS 连接确认",
+      "status": "FAIL",
+      "detail": "目标身份 alarm-debug-user/alarm-debug-session 未连接（在线：无）",
+      "ms": 0
+    },
+    {
+      "id": "call-received",
+      "name": "来电接听状态推送",
+      "status": "FAIL",
+      "detail": "无客户端匹配（kind=received，topics=ALARM_CALL/ANSWER_STATUS_CHANGED）",
+      "ms": 1
+    },
+    {
+      "id": "position",
+      "name": "来电定位推送",
+      "status": "FAIL",
+      "detail": "无客户端匹配（kind=position，topics=seat/8001）",
+      "ms": 0
+    },
+    {
+      "id": "address",
+      "name": "地址画像变更推送",
+      "status": "FAIL",
+      "detail": "无客户端匹配（kind=address，topics=DISASTER_PROFILE/UPDATED）",
+      "ms": 0
+    }
+  ]
+}

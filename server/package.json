@@ -1,0 +1,32 @@
+{
+  "name": "ids-gis-ws-test",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node mock-ws.js",
+    "dev": "node --watch mock-ws.js",
+    "test": "node --test test.cjs",
+    "build": "npm pack",
+    "test:run": "node test-runner/cli.js",
+    "test:run:full": "node test-runner/cli.js dispatch --full"
+  },
+  "files": [
+    "mock-ws.js",
+    "routing.js",
+    "gis-proxy.js",
+    "index.html",
+    "index.js",
+    "protocols.js",
+    "car-location-subscribe-demo.html",
+    "test-harness.js",
+    "test-runner",
+    "test-ui",
+    "pnpm-lock.yaml"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

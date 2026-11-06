@@ -14,6 +14,8 @@ export type LayerChangeHandler = (action: 'add' | 'remove', id: LayerId) => void
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useLayersStore } from '@/store/useLayersStore'
+import { useVehicleTrackStore } from '@/store/useVehicleTrackStore'
+import { LAYER_MODE_HIDDEN_LAYER_IDS } from '@/config/layers'
 
 type ToolbarItem = LayerToolbarItem | {
   id: 'all'
@@ -43,7 +45,10 @@ const emit = defineEmits<{
 }>()
 
 const layersStore = useLayersStore()
-const { checkedIds, items } = storeToRefs(layersStore)
+const vehicleTrackStore = useVehicleTrackStore()
+const { checkedIds, items, activeMode } = storeToRefs(layersStore)
+const { buttonVisible: vehicleTrackButtonVisible, panelVisible: vehicleTrackPanelVisible } =
+  storeToRefs(vehicleTrackStore)
 
 const selectAllItem: ToolbarItem = {
   id: 'all',
@@ -51,10 +56,16 @@ const selectAllItem: ToolbarItem = {
   icon: 'mdi:checkbox-multiple-marked-outline',
 }
 
+/** 当前模式隐藏表过滤后的工具栏图层项 */
+const visibleItems = computed(() => {
+  const hidden = new Set(LAYER_MODE_HIDDEN_LAYER_IDS[activeMode.value])
+  return items.value.filter((item) => !hidden.has(item.id))
+})
+
 const toolbarItems = computed<ToolbarItem[]>(() =>
-  items.value.length ? [...items.value, selectAllItem] : [],
+  visibleItems.value.length ? [...visibleItems.value, selectAllItem] : [],
 )
-const allIds = computed(() => items.value.filter((item) => !item.disabled).map((item) => item.id))
+const allIds = computed(() => visibleItems.value.filter((item) => !item.disabled).map((item) => item.id))
 
 const isAllSelected = computed(() => {
   const ids = allIds.value
@@ -69,6 +80,9 @@ const notifyLayerChange = (action: 'add' | 'remove', id: LayerId) => {
 
 const toggleChecked = (item: ToolbarItem) => {
   if (item.disabled || item.id === 'all') return
+  // 工具栏磁贴均支持取消勾选（checked 只是展示态）；
+  // locked 图层的「enabled 恒 true」限制只作用于配置管理 cfg-check，不在这里拦截
+  // if ((item as LayerToolbarItem).locked) return
 
   const wasChecked = checkedIds.value.includes(item.id)
   const checked = !wasChecked
@@ -108,10 +122,19 @@ const onTileClick = (item: ToolbarItem) => {
   if (item.id === 'all') toggleAll()
   else toggleChecked(item)
 }
+
+/** 有轨迹时切换面板；暂无轨迹时按当前警情重新查询，成功后自动打开面板。 */
+const onVehicleTrackClick = () => {
+  if (vehicleTrackStore.points.length) {
+    vehicleTrackStore.togglePanel()
+    return
+  }
+  vehicleTrackStore.requestReload()
+}
 </script>
 
 <template>
-  <div v-if="toolbarItems.length" class="lt" role="toolbar" aria-label="图层工具栏">
+  <div v-if="toolbarItems.length || vehicleTrackButtonVisible" class="lt" role="toolbar" aria-label="图层工具栏">
     <button
       v-for="item in toolbarItems"
       :key="item.id"
@@ -128,6 +151,19 @@ const onTileClick = (item: ToolbarItem) => {
         <Icon :icon="item.icon || 'mdi:layers-outline'" :size="20" />
       </span>
       <span class="label">{{ item.name }}</span>
+    </button>
+    <!-- 车辆历史轨迹入口：终态警情查询到轨迹后才出现，再次点击即关闭回放面板 -->
+    <button
+      v-if="vehicleTrackButtonVisible"
+      class="tile"
+      :class="{ checked: vehicleTrackPanelVisible }"
+      type="button"
+      @click="onVehicleTrackClick"
+    >
+      <span class="icon">
+        <Icon icon="mdi:car-outline" :size="20" />
+      </span>
+      <span class="label">车辆GPS</span>
     </button>
   </div>
 </template>

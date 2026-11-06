@@ -34,6 +34,8 @@ export interface WmsLayerConfig {
   visible?: boolean;
   /** 该图层的 zIndex（调用方按 id 决定；主/调派对队站层 z-index 一致）。 */
   zIndex?: number;
+  /** true = 工具栏隐藏该图层时 dispose WMS source（add/remove）而非 setVisible（缓存常驻）。 */
+  disposeOnHide?: boolean;
 }
 
 export interface GisBaseMapOptions {
@@ -65,6 +67,10 @@ export interface GisBaseMapApi {
   addLayer: (id: string, visible?: boolean) => boolean;
   removeLayer: (id: string) => boolean;
   syncLayers: (ids: string[], visible?: boolean) => void;
+  /** 工具栏开：按 disposeOnHide 分流（默认 setVisible 秒显；标记图层 addLayer 重建）。幂等。 */
+  showLayer: (id: string) => boolean;
+  /** 工具栏关：按 disposeOnHide 分流（默认 setVisible 保留缓存；标记图层 removeLayer dispose）。 */
+  hideLayer: (id: string) => boolean;
   /** 幂等：找不到 WMS 图层返回 false 不抛错。 */
   visibleLayer: (id: string, visible: boolean) => boolean;
   /** 监听 zoom 变化，返回可解绑的 key。 */
@@ -151,6 +157,28 @@ export const useGisBaseMap = (options: GisBaseMapOptions): GisBaseMapApi => {
     return true;
   };
 
+  /**
+   * 工具栏 toggle 专用：按图层 `disposeOnHide` 分流。
+   * - 默认（disposeOnHide falsy）→ setVisible，source 常驻，再开秒显
+   * - disposeOnHide: true → add/remove，释放 WMS source，控内存
+   * TEMP 前端矢量层仍走 handleTempFrontendLayer（不涉及 WMS source）
+   */
+  const showLayer = (id: string): boolean => {
+    if (isTempFrontendLayerId(id)) return options.handleTempFrontendLayer(id, true);
+    if (wmsLayerMap.has(id)) {
+      wmsLayerMap.get(id)!.setVisible(true);
+      return true;
+    }
+    return addLayer(id, true);
+  };
+
+  const hideLayer = (id: string): boolean => {
+    if (isTempFrontendLayerId(id)) return options.handleTempFrontendLayer(id, false);
+    const config = options.getLayerConfig(id);
+    if (config?.disposeOnHide) return removeLayer(id);
+    return visibleLayer(id, false);
+  };
+
   const applyZoomLimits = (zoom: { minZoom: number; maxZoom: number }): void => {
     if (!map) return;
     const view = map.getView();
@@ -197,6 +225,8 @@ export const useGisBaseMap = (options: GisBaseMapOptions): GisBaseMapApi => {
     addLayer,
     removeLayer,
     syncLayers,
+    showLayer,
+    hideLayer,
     visibleLayer,
     watchZoom,
     dispose,

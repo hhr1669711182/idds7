@@ -1,3 +1,14 @@
+import type { MapPhase } from '@/controller/core/protocol/SharedStateProtocol'
+
+/**
+ * 图层工具栏展示模式。名字源只两处：
+ *  - MapPhase 6 阶段（协议层单一事实源，useUserStore().MapMode 投影）
+ *  - 'flood' 特灾模式（shared.mode 业务轴，'normal' 为非特灾基线）
+ * GisMapVariant（main/dispatch）是"阶段∈{dispatch,dispatchTrack}‖flood"的聚合布尔，
+ * 图层粒度需到阶段级，故此处直接用 MapPhase + flood，不与 variant 混轴。
+ */
+export type LayerViewMode = MapPhase | 'flood'
+
 export interface LayerConfig {
   id: string
   name: string
@@ -8,10 +19,14 @@ export interface LayerConfig {
   defaultVisible?: boolean
   icon?: string
   remark?: string
+  /** true = 该图层是某模式默认集必备组件，配置面板禁止关闭（enabled 恒 true） */
+  locked?: boolean
   useWebMock?: boolean
   srs?: string // 'EPSG:4326' | 'EPSG:3857'
   noEsSearch?: boolean
   minZoom?: number
+  /** true = 工具栏隐藏该图层时走 add/remove（释放 WMS source）而非 setVisible（缓存常驻）；用于"不常打开"的图层控内存 */
+  disposeOnHide?: boolean
 }
 
 export interface LayerSourceConfig extends LayerConfig {
@@ -97,6 +112,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     icon: 'mdi:fireplace',
     useWebMock: false,
     minZoom: 13.5,
+    locked: true,
   },
   {
     ...dispatchGroup,
@@ -111,6 +127,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     defaultVisible: false,
     icon: 'mdi:office-building',
     minZoom: 13.5,
+    disposeOnHide: true,
   },
   {
     ...dispatchGroup,
@@ -141,6 +158,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     noEsSearch: true,
     icon: 'mdi:subtitles-outline',
     minZoom: 13.5,
+    disposeOnHide: true,
   },
   // {
   //   ...dispatchGroup,
@@ -170,6 +188,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     noEsSearch: true,
     icon: 'mdi:surface-area',
     minZoom: 14.5,
+    disposeOnHide: true,
   },
   {
     ...dispatchGroup,
@@ -199,6 +218,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     noEsSearch: true,
     icon: 'mdi:home',
     minZoom: 14.5,
+    disposeOnHide: true,
   },
   // {
   //   ...dispatchGroup,
@@ -228,6 +248,7 @@ export const LAYER_SOURCE_CONFIGS: LayerSourceConfig[] = [
     noEsSearch: true,
     icon: 'mdi:road-variant',
     minZoom: 14.5,
+    disposeOnHide: true,
   },
   {
     ...dispatchGroup,
@@ -305,3 +326,37 @@ export const DEFAULT_CHECKED_IDS = LAYER_SOURCE_CONFIGS.filter((config) => confi
   .map((config) => config.id)
 
 export const LAYER_CONFIG_IDS = LAYER_CONFIGS.map((config) => config.id)
+
+/**
+ * 各展示模式（LayerViewMode）的默认勾选集。
+ * 全键 Record，TS 编译期强制 7 个模式（MapPhase 6 + flood）都有配置，漏配即报错。
+ * - loggedOut：无图层
+ * - onDuty/popup/inquiry：主图默认集
+ * - dispatch/dispatchTrack/flood：保留原 useDispatchMapStore「仅消防站」语义
+ *   （dispatchTrack、flood 今天与 dispatch 同值，未来独立改对应行即可）
+ */
+export const LAYER_MODE_DEFAULT_CHECKED_IDS: Record<LayerViewMode, string[]> = {
+  loggedOut: [],
+  onDuty: [...DEFAULT_CHECKED_IDS],
+  popup: [...DEFAULT_CHECKED_IDS],
+  inquiry: [...DEFAULT_CHECKED_IDS],
+  dispatch: ['gis:view_res_org_dept'],
+  dispatchTrack: ['gis:view_res_org_dept'],
+  flood: ['gis:view_res_org_dept'],
+}
+
+/**
+ * 各展示模式工具栏隐藏图层（白名单过滤源；缺省 = 全显示）。
+ * 全键 Record，与默认集表同粒度。字面量 id 避免与 baseComponent/OpenlayersMap/layers.ts
+ * 的 TEMP_FRONTEND_LAYER_IDS 形成循环 import（该文件反向依赖本文件的 getLayerConfig）。
+ * 'gis:disaster_info' = TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER（今日灾害点，调派态隐藏）。
+ */
+export const LAYER_MODE_HIDDEN_LAYER_IDS: Record<LayerViewMode, string[]> = {
+  loggedOut: [],
+  onDuty: [],
+  popup: [],
+  inquiry: [],
+  dispatch: ['gis:disaster_info'],
+  dispatchTrack: ['gis:disaster_info'],
+  flood: ['gis:disaster_info'],
+}

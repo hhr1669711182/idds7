@@ -121,7 +121,12 @@
           <div class="cfg-items">
             <div v-for="resource in currentCategory.resources" :key="resource.id" class="cfg-row cfg-item">
               <label class="cfg-check">
-                <el-checkbox v-model="resource.enabled" size="small" @change="setResourceEnabled(resource)" />
+                <el-checkbox
+                  v-model="resource.enabled"
+                  size="small"
+                  :disabled="!!resource.locked"
+                  @change="setResourceEnabled(resource)"
+                />
                 <span>{{ resource.name }}</span>
               </label>
               <el-switch
@@ -393,6 +398,9 @@ function setCategoryVisible(category: MapLayerCategory) {
 }
 
 function setResourceEnabled(resource: MapLayerResource) {
+  // locked 资源（如消防站）由 mapConfig.createResource 强制 enabled=true，
+  // checkbox 被 :disabled 后不会触发 @change；此 guard 作为防御兜底
+  if (resource.locked) return;
   if (!resource.enabled) resource.visible = false;
   syncDraftState();
 }

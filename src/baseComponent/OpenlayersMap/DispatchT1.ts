@@ -116,7 +116,6 @@ export type DispatchT1VehicleCommand = DispatchVehicleCommand
 
 export interface DispatchT1Options {
   amapKey?: string
-  isLayerVisible?: (layerId: string) => boolean
   onDispatch?: (command: DispatchT1VehicleCommand) => void | Promise<void>
   /** 辖区查询完成（主管/支撑队站及辖区已定稿）回调，可用于在查询阶段结束后触发现场视频等 UI 展示。 */
   onQueryComplete?: (incident: DispatchT1Incident) => void

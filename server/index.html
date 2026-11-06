@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IDS GIS · WS 消息测试</title>
+<style>
+  * {
+    box-sizing: border-box
+  }
+
+  body {
+    margin: 0;
+    background: #edf2f8;
+    color: #18283f;
+    font: 15px/1.6 system-ui, 'Microsoft YaHei', sans-serif
+  }
+
+  main {
+    max-width: 1150px;
+    margin: 32px auto;
+    padding: 0 20px
+  }
+
+  h1 {
+    margin-bottom: 6px
+  }
+
+  section {
+    background: white;
+    border: 1px solid #d8e1ed;
+    border-radius: 12px;
+    padding: 22px;
+    margin: 18px 0
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px
+  }
+
+  label {
+    display: block
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    padding: 9px;
+    border: 1px solid #b8c7da;
+    border-radius: 5px;
+    font: inherit
+  }
+
+  textarea {
+    font: 13px/1.5 monospace;
+    min-height: 310px
+  }
+
+  button {
+    padding: 9px 15px;
+    margin: 10px 8px 0 0;
+    background: #185bd4;
+    color: white;
+    border: 0;
+    border-radius: 5px;
+    cursor: pointer
+  }
+
+  button:disabled {
+    opacity: .5;
+    cursor: default
+  }
+
+  pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 260px;
+    overflow: auto;
+    background: #101e33;
+    color: #bbd9ff;
+    padding: 14px;
+    border-radius: 6px
+  }
+
+  small,
+  p {
+    color: #52657d
+  }
+
+  input[type=checkbox] {
+    width: auto
+  }
+
+  #url {
+    overflow-wrap: anywhere
+  }
+
+  #status {
+    font-weight: 600
+  }
+
+  fieldset {
+    border: 1px solid #d8e1ed;
+    border-radius: 8px;
+    padding: 14px;
+    margin: 14px 0
+  }
+
+  legend {
+    padding: 0 6px;
+    color: #185bd4;
+    font-weight: 600
+  }
+</style>
+<main>
+  <h1>WS 消息测试控制台</h1>
+  <p>配置目标会话，编辑协议报文，推送到已连接的 GIS 客户端。</p>
+  <section>
+    <div class="grid">
+      <label>userId<input id="userId" value="e838df1f-eb9f-410d-8a01-da16a835b50a"></label>
+      <label>sessionState<input id="sessionState" value="0ff1cf95-7ccb-41c2-92f3-0ee2a4fbdeee"></label>
+      <label>坐席 key<input id="seat" value="3003"></label>
+    </div>
+    <p><label>accessToken（v2 CONNECT 首帧鉴权用；粘贴测试 JWT，留空则自动生成 mock JWT）<input id="accessToken" type="password" autocomplete="off"></label></p>
+    <p>
+    <div class="grid">
+      <label>X-Trace-Id<input id="xTraceId" value="" autocomplete="off"></label>
+      <label>Tenantid <input id="tenantid" value="" autocomplete="off"></label>
+    </div>
+    </p>
+    <label>GIS 测试状态<select id="phase">
+        <option value="onDuty">登录后值守</option>
+        <option value="popup">来电</option>
+        <option value="inquiry">问询（无警情）</option>
+        <option value="filed">立案（主管及支撑队站辖区）</option>
+        <option value="dispatchTrack">调派（有警情）</option>
+      </select></label>
+    <button id="writeState">写入测试状态</button><button id="openGis">打开 GIS 地图</button>
+    <label>消息测试
+      <select id="phase_web">
+        <option value="">— 选择通信方式 —</option>
+        <option value="position">来电定位 POSITION_SYNC（BroadcastChannel）</option>
+        <option value="LDD">来电定位 callLocation（localStorage）</option>
+        <option value="relocate">警情二次定位（BroadcastChannel）</option>
+        <option value="dispatchTrack">调派车辆（localStorage）</option>
+        <option value="routeguihua">路径规划（localStorage）</option>
+        <option value="tezai">切换特灾模式（localStorage）</option>
+        <option value="dispatchTZTrack">特灾调派命令（localStorage）</option>
+        <option value="renderTZTrack">特灾渲染命令（localStorage）</option>
+        <option value="checkPT">特灾切回普通模式（localStorage）</option>
+        <option value="incidentLocation">警情定位（localStorage）</option>
+        <option value="slot">槽位变更·辖区 disaster_profile（BroadcastChannel）</option>
+        <option value="profile">画像变化 disaster_profile（BroadcastChannel）</option>
+      </select>
+    </label>
+    <p id="gisStatus" role="status">待测页面：http://localhost:18080/#/map</p>
+    <fieldset id="positionPanel" hidden>
+      <legend>§8.3.2 POSITION_SYNC 载荷（位置网中间件业务体，V1.9 增补）</legend>
+      <div class="grid">
+        <label>taskType<input id="ps_taskType" value="weizhiwang"></label>
+        <label>time<input id="ps_time" placeholder="yyyy-MM-dd HH:mm:ss（空=当前时间）"></label>
+        <label>eventid<input id="ps_eventid" value="TEST-CALL-001"></label>
+        <label>lng（经度）<input id="positionLng" type="number" step="any" value="113.97"></label>
+        <label>lat（纬度）<input id="positionLat" type="number" step="any" value="22.57"></label>
+        <label>tel（主叫号码）<input id="ps_tel" value="13800138000"></label>
+        <label>ostype（终端系统）<input id="ps_ostype" value="android"></label>
+        <label>latLngType（坐标系）<input id="ps_latLngType" value="WZWDW-GPS"></label>
+        <label>address（逆地理地址）<input id="ps_address" value="测试定位地址"></label>
+      </div>
+      <button id="writePosition">写入定位变化</button>
+    </fieldset>
+    <fieldset id="LDDPanel" hidden>
+      <label>来点定位 localStorage</label>
+      <textarea name="" id="LDD_message">
+        let data = {"v":1,"updatedAt":String(Date.now()),"callLocation":{"lng":116.351405761568,"lat":39.920747673835}};
+        localStorage.setItem('seat-shared-state-mock', JSON.stringify(data));
+      </textarea>
+      <button id="runLDD">一键执行（写入 localStorage）</button>
+    </fieldset>
+    <fieldset id="relocatePanel" hidden>
+      <legend>地图选点 · PICK_START（BroadcastChannel ids-map-screen-relay）</legend>
+      <small>V1.1 协议：与实时转发共用同名通道，必须创建独立选点实例（不复用 relayChannel）。外层 kind=map-point-selection，payload 为 PICK_START。旧 localStorage（isSecondJQLocation / gis-point-info）已废止，不双发。</small>
+      <div class="grid">
+        <label>incidentID<input id="relocate_incidentID" value="ddd8338e873f44eb93ee440af8bccfa6"></label>
+        <label>ownerId<input id="relocate_ownerId" value="seat-page-20261013-a"></label>
+        <label>requestId<input id="relocate_requestId" value="pick-20261013-001"></label>
+      </div>
+      <div class="grid">
+        <label>x（经度，可选）<input id="relocate_x" placeholder="留空=无初始坐标"></label>
+        <label>y（纬度，可选）<input id="relocate_y" placeholder="留空=无初始坐标"></label>
+        <label>address（可选）<input id="relocate_address" placeholder="留空=无初始地址"></label>
+      </div>
+      <button id="runRelocate">发送 PICK_START</button>
+      <button id="relocateCancel" disabled>发送 PICK_CANCEL</button>
+      <hr style="border:none;border-top:1px dashed #d8e1ed;margin:12px 0">
+      <label>GIS 回执预览
+        <textarea id="pickReceive" readonly placeholder="收到 GIS 的 PICK_READY / PICK_RESULT / PICK_CANCEL 会显示在这里"></textarea>
+      </label>
+      <div id="pickResultInfo" hidden style="margin:8px 0"></div>
+      <button id="pickApplied" hidden disabled>模拟保存成功 → PICK_APPLIED</button>
+      <button id="pickFailed" hidden disabled>模拟保存失败 → PICK_FAILED</button>
+    </fieldset>
+    <fieldset id="routeguihuaPanel" hidden>
+      <label>从 localStorage 中读取 路径规划
+        <textarea id="routeguihua_message"  spellcheck="false">
+          localStorage.setItem(
+            'seat-shared-state-mock',
+            JSON.stringify({
+              v: 1,
+              updatedAt: String(Date.now()),
+              routeguihua: {
+                  "zhuguanId": "5cedb88befcc49c0a77a017ef6a24e8c",
+                  "stationIds": [
+                      "284659d0813d4a029f5f72e9fac756f3",
+                      "72e35f15b6f54f4b94289f220d840dca",
+                      "183400b9765e4b02a16fa775def77aaf"
+                  ]
+              }
+            })
+          );
+        </textarea>
+      </label>
+      <button id="routrGH">一键执行（写入 localStorage）</button>
+    </fieldset>
+    <fieldset id="dispatchTrackPanel" hidden>
+      <label>从 localStorage 中读取 调派车辆（立案）
+        <textarea id="dt_message"  spellcheck="false">
+          localStorage.setItem(
+            'seat-shared-state-mock',
+            JSON.stringify({
+              v: 1,
+              updatedAt: String(Date.now()),
+              dispatchVehicles: [
+                {
+                  plateNo: "京X0006应急",
+                  stationId: "284659d0813d4a029f5f72e9fac756f3",
+                  stationName: "北京总队",
+                  vehicleId: "f9b4f41991fc44dda0f9c915eb1a201c",
+                  vehicleTypeName: "其他消防车辆"
+                }
+              ]
+            })
+          );
+        </textarea>
+      </label>
+      <button id="runDt">一键执行（写入 localStorage）</button>
+    </fieldset>
+    <fieldset id="tezaiPanel" hidden>
+      <label>从 localStorage 中切换特灾模式
+        <textarea id="tezai_message"  spellcheck="false">
+         let data = JSON.parse(localStorage.getItem('seat-shared-state')); 
+        data = {
+          "mode":"flood","v":1,"updatedAt":1790232718103,
+          "auth":{"accessToken":"123","sessionId":"0ff1cf95-7ccb-41c2-92f3-0ee2a4fbdeee"},
+          "user":{"userId":"e838df1f-eb9f-410d-8a01-da16a835b50a","username":"chenxiangqi","displayName":"陈湘琪","employeeNo":"98c9d15dab274cb5a7782927a8fe3b89","roles":["16730092-711f-44ed-93f2-ccf18a6ca080","0132c8d4-b909-47c5-9fa4-7285acc36bd8"]},
+          "seat":{"seatNumber":"3003","terminalId":"terminal-02"},
+          "phase":"popup","currentAlarm":null
+        };
+        localStorage.setItem('seat-shared-state', JSON.stringify(data));
+        </textarea>
+      </label>
+      <button id="runTezai">一键执行（写入 localStorage）</button>
+    </fieldset>
+      <fieldset id="renderTZTrackPanel" hidden>
+      <label>特灾模式下执行[渲染]命令</label>
+      <textarea name="" id="renderTZTrack_message">
+        let data = JSON.parse(localStorage.getItem('seat-shared-state-mock')); 
+        data.disasterSite =  "北京总队";
+        localStorage.setItem('seat-shared-state-mock', JSON.stringify(data));
+      </textarea>
+      <button id="runRenderTZ">一键执行（写入 localStorage）</button>
+    </fieldset>
+    <fieldset id="dispatchTZTrackPanel" hidden>
+      <label>特灾模式下执行调派命令</label>
+      <textarea name="" id="dispatchTZTrack_message">
+        let data = JSON.parse(localStorage.getItem('seat-shared-state-mock')); 
+        data.flood =  {
+            dispatchCommand: {
+              seq: 1,
+              issuedAt: Date.now(),
+              incidentId: "INC-TEST-001"
+            }
+          };
+        localStorage.setItem('seat-shared-state-mock', JSON.stringify(data));
+      </textarea>
+      <button id="runDispatchTZ">一键执行（写入 localStorage）</button>
+    </fieldset>
+    <fieldset id="checkPTPanel" hidden>
+      <label>从特灾模式切回普通模式</label>
+      <textarea name="" id="checkPT_message">
+         if(localStorage.getItem('seat-shared-state-mock')){
+          let data1 = JSON.parse(localStorage.getItem('seat-shared-state-mock')); 
+          data1 = {"v": 1, "updatedAt": String(Date.now())};
+          localStorage.setItem('seat-shared-state-mock', JSON.stringify(data1));
+        }
+        let data = JSON.parse(localStorage.getItem('seat-shared-state')); 
+        data.mode = "popup";
+        localStorage.setItem('seat-shared-state', JSON.stringify(data));
+      </textarea>
+      <button id="runCheckPT">一键执行（写入 localStorage）</button>
+    </fieldset>
+    <fieldset id="incidentLocationPanel" hidden>
+      <label>警情定位</label>
+      <textarea name="" id="incidentLocation_message">
+        if(localStorage.getItem('seat-shared-state-mock')){
+          let data1 = JSON.parse(localStorage.getItem('seat-shared-state-mock')); 
+          data1 = `{"v": 1, "updatedAt": String(Date.now())}`;
+          localStorage.setItem('seat-shared-state-mock', JSON.stringify(data1));
+        }
+        let data = JSON.parse(localStorage.getItem('seat-shared-state'));
+        data.currentAlarm.incidentId = '2a6f93a134bb42fd95deb3d5b5aad335';
+        localStorage.setItem('seat-shared-state', JSON.stringify(data));
+      </textarea>
+      <button id="runIncidentLocation">一键执行（写入 localStorage）</button>
+    </fieldset>
+    <fieldset id="slotPanel" hidden>
+      <label for="">槽位变更 - 辖区（map-relay-snapshot，与画像快照同格式，发送时取 events 中 eventName=disaster_profile 的 payload 整体发送）</label>
+      <textarea name="" id="slot_message">
+              {
+    "kind": "map-relay-snapshot",
+    "sentAt": 1790081408872,
+    "events": [
+        {
+            "eventName": "disaster_profile",
+            "payload":  {
+                "eventId": "23514c0e35da48f0aab18a1d6bd6137c",
+                "occurredAt": "2026-09-22T20:50:08.11484965",
+                "disasterProfileId": "fcc985383b77470bb4d043cf23682403",
+                "incidentId": "ddd8338e873f44eb93ee440af8bccfa6",
+                "updateType": "SLOT_VALUE_UPDATED",
+              "version": 3,
+              "slotChanges": [
+                  {
+                      "infoId": "128c3f7ed9f94666bde5bd13a97c0543",
+                      "slotId": "40728b59-5d32-4fdf-a33d-2c007f04",
+                      "slotCode": "m_org_id",
+                      "changeType": "UPDATED",
+                      "changedFields": [
+                          "filledValue",
+                          "filledAt"
+                      ],
+                      "beforeValue": "3bf33aa673bc4b099c9445eb7fd9d2d2",
+                      "afterValue": "f7742190d975473790fb816861846b2e"
+                  }
+              ]
+          },
+            "sentAt": 1790081408644
+        }
+    ]
+  }
+      </textarea>
+      <button id="writeSlot">写入槽位变化</button>
+    </fieldset>
+    <fieldset id="profilePanel" hidden>
+      <legend>§8.3.1 disaster_profile 载荷（扁平业务体，无 type/data 包裹）</legend>
+      <label>画像快照 JSON（map-relay-snapshot，发送时取 events 中 eventName=disaster_profile 的 payload 整体发送）
+        <textarea id="dp_message" rows="24" spellcheck="false">
+          {
+    "kind": "map-relay-snapshot",
+    "sentAt": 1790081408872,
+    "events": [
+        {
+            "eventName": "disaster_profile",
+            "payload": {
+                "eventId": "23514c0e35da48f0aab18a1d6bd6137c",
+                "occurredAt": "2026-09-22T20:50:08.11484965",
+                "disasterProfileId": "fcc985383b77470bb4d043cf23682403",
+                "incidentId": "ddd8338e873f44eb93ee440af8bccfa6",
+                "updateType": "SLOT_VALUE_UPDATED",
+                "slots": [
+                    {
+                        "infoId": "b26a1f290f7f47799c3fb95b07f4b7a5",
+                        "slotId": "5f1c453e-b12d-4aa1-9d4f-d34e23b0",
+                        "slotCode": "disaster_address",
+                        "slotName": "灾害地址",
+                        "slot_category": "基本要素",
+                        "inputType": "ADDRESS",
+                        "componentIdentifier": "警情录入",
+                        "filledValue": "广东省深圳市龙岗区云巴1号线",
+                        "aiInfo": []
+                    },
+                    {
+                        "infoId": "681ba82c0c6d45409b7a569cb2e057c1",
+                        "slotId": "cca35074-0add-49d6-872a-32775837",
+                        "slotCode": "latitude",
+                        "slotName": "纬度",
+                        "slot_category": "基本要素",
+                        "dataType": "NUMBER",
+                        "isRequired": true,
+                        "requiredCondition": "",
+                        "collectMode": "AUTO",
+                        "isKeyInquiry": false,
+                        "displayMode": "HIDDEN",
+                        "defaultValue": "",
+                        "enumValues": [],
+                        "enumDictName": "",
+                        "displayOrder": 3,
+                        "groupTemplateId": "a2238d09-d3bf-438f-b25f-016d83a0",
+                        "inputType": "NUMBER",
+                        "componentIdentifier": "警情录入",
+                        "filledValue": "22.708368275289235",
+                        "filledAt": "2026-09-22T20:50:07.691755453",
+                        "filledBy": "system",
+                        "aiInfo": []
+                    },
+                    {
+                        "infoId": "345badfb4bf9499b8e8f22c0f02e3337",
+                        "slotId": "a2ceb56c-0aae-4464-94f1-fddf34ca",
+                        "slotCode": "longitude",
+                        "slotName": "经度",
+                        "slot_category": "基本要素",
+                        "dataType": "NUMBER",
+                        "isRequired": true,
+                        "requiredCondition": "",
+                        "collectMode": "AUTO",
+                        "isKeyInquiry": false,
+                        "displayMode": "HIDDEN",
+                        "defaultValue": "",
+                        "enumValues": [],
+                        "enumDictName": "",
+                        "displayOrder": 3,
+                        "groupTemplateId": "a2238d09-d3bf-438f-b25f-016d83a0",
+                        "inputType": "NUMBER",
+                        "componentIdentifier": "警情录入",
+                        "filledValue": "114.32282669109662",
+                        "filledAt": "2026-09-22T20:50:07.691755453",
+                        "filledBy": "system",
+                        "aiInfo": []
+                    }
+                ],
+                "version": 2,
+                "slotChanges": [
+                    {
+                        "infoId": "b26a1f290f7f47799c3fb95b07f4b7a5",
+                        "slotId": "5f1c453e-b12d-4aa1-9d4f-d34e23b0",
+                        "slotCode": "disaster_address",
+                        "changeType": "UPDATED",
+                        "changedFields": [
+                            "filledValue",
+                            "filledBy",
+                            "filledAt"
+                        ],
+                        "beforeValue": "",
+                        "afterValue": "广东省深圳市龙岗区云巴1号线"
+                    },
+                    {
+                        "infoId": "681ba82c0c6d45409b7a569cb2e057c1",
+                        "slotId": "cca35074-0add-49d6-872a-32775837",
+                        "slotCode": "latitude",
+                        "changeType": "UPDATED",
+                        "changedFields": [
+                            "filledValue",
+                            "filledAt"
+                        ],
+                        "beforeValue": "",
+                        "afterValue": "39.92265903539635"
+                    },
+                    {
+                        "infoId": "345badfb4bf9499b8e8f22c0f02e3337",
+                        "slotId": "a2ceb56c-0aae-4464-94f1-fddf34ca",
+                        "slotCode": "longitude",
+                        "changeType": "UPDATED",
+                        "changedFields": [
+                            "filledValue",
+                            "filledAt"
+                        ],
+                        "beforeValue": "",
+                        "afterValue": "116.3489244437558"
+                    }
+                ]
+            },
+            "sentAt": 1790081408644
+        }
+    ]
+  }</textarea>
+      </label>
+      <button id="writeProfile">写入画像变化</button>
+    </fieldset>
+    <p>
+      <textarea id="positionSync" readonly placeholder="点击上方按钮后，此处显示通过 BroadcastChannel('ids-map-screen-relay') 发送的 RelayMessage JSON"></textarea>
+    </p>
+    <p id="url"></p><button id="connect">连接控制服务</button><button id="refresh">刷新 GIS 连接</button><button
+      id="disconnect">断开目标 GIS（测试重连）</button>
+    <p id="status" role="status">未连接</p>
+    <pre id="clients">尚未获取客户端</pre>
+    <small>点击“写入测试状态”将更新 当前测试服务来源的 seat-shared-state，已打开的 GIS 会接收状态变化，无需重开。首次测试可先写状态，再打开地图。userId、sessionState
+      同时用作消息推送目标。GIS 连接 v2 单入口 ws://{host}/message-client/ws，CONNECT 首帧携带 accessToken 鉴权（身份取自 token 的 sub / session_state），订阅使用层级 topic（如 seat/3003、DISASTER_PROFILE/UPDATED），支持 + / # 通配。</small>
+  </section>
+  <section>
+    <div class="grid"><label>消息预设<select id="preset">
+          <option value="position">来电定位（popup）</option>
+          <option value="received">来电未接听（inquiry）</option>
+          <option value="missed">未接来电结束（inquiry）</option>
+          <option value="answer">接听状态（inquiry）</option>
+          <option value="end">已接通话结束（inquiry）</option>
+          <option value="incident">警情状态变更（调派）</option>
+          <option value="address">地址相关变更（UPDATED）</option>
+          <option value="cloud">事件总线对照（仅预览）</option>
+          <option value="car">车辆定位</option>
+        </select></label>
+        <label>来电 ID<input id="call" value="TEST-CALL-001"></label>
+        <label>警情 ID<input id="incident" value="ddd8338e873f44eb93ee440af8bccfa6"></label>
+        <label>经度<input id="lng" type="number" step="any"
+          value="113.97"></label><label>纬度<input id="lat" type="number" step="any" value="22.57"></label><label>路径<select
+            id="routeIndex">
+          <option value="0">路径1（31点）</option>
+          <option value="1">路径2（116点）</option>
+          <option value="2">路径3（84点）</option>
+          <option value="3">路径4（192点）</option>
+        </select></label></div>
+    <p id="protocolNote"></p>
+    <pre id="subscriptionPreview"></pre>
+    <p id="subscriptionStatus">刷新 GIS 连接以核对真实订阅。</p>
+    <label>警情新状态<select id="incidentState"></select></label><label><input id="reconciliation" type="checkbox">
+      合并拆分对账通知</label>
+    <label>报文包装<select id="wrapper">
+        <option value="root">文档原始结构</option>
+        <option value="data">data 包装</option>
+        <option value="body">body 包装</option>
+        <option value="message">message 包装</option>
+        <option value="payload">payload 包装</option>
+        <option value="request">request 包装</option>
+        <option value="userMsgBodyList">userMsgBodyList 包装</option>
+      </select></label>
+    <button id="generate">生成预设 JSON</button>
+    <p><label><input id="subscriptions" type="checkbox" checked> 按订阅过滤（取消可强制向目标会话推送）</label></p><textarea id="message"
+      aria-label="消息 JSON" spellcheck="false"></textarea>
+    <button id="push">推送当前 JSON</button>
+    <label>循环间隔（毫秒，最小 500）
+      <input id="interval" type="number" min="500" value="2000">
+    </label>
+        <button id="start">开始循环推送</button>
+        <button id="stop">停止循环</button>
+    <p>循环会重复当前 JSON（包含相同 eventId），可测试幂等；点击生成预设会创建新 eventId。来电、接听、立案分别要求 GIS 处于 popup、inquiry 无警情、inquiry 有警情状态，消息至少等待
+      500ms 才处理。车辆需与地图中的车辆 ID 匹配才可能显示。</p>
+  </section>
+  <section><strong>操作日志</strong><button id="clear">清空</button>
+    <pre id="log" aria-live="polite"></pre>
+  </section>
+</main>
+<script src="./protocols.js"></script>
+<script src="./index.js"></script>
+
+</html>

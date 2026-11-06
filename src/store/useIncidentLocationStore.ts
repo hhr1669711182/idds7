@@ -425,11 +425,18 @@ export const useIncidentLocationStore = defineStore(
 
     const setContext = (next: IncidentLocationContext) => {
       const previous = context.value
+      // dispatch 与 dispatchTrack 属于同一业务阶段组，在两者间切换不应清空警情定位数据
+      const inDispatchFamily = (s: string | null | undefined) => s === 'dispatch' || s === 'dispatchTrack'
+      // 两边同属 dispatch family 时不算 stage 变化；否则按原值比较
+      const stageChanged =
+        !previous ||
+        (!(inDispatchFamily(previous.stage) && inDispatchFamily(next.stage)) &&
+          previous.stage !== next.stage)
       if (
         previous &&
         ((contextBound && previous.sessionEpoch !== next.sessionEpoch) ||
           previous.sessionKey !== next.sessionKey ||
-          previous.stage !== next.stage ||
+          stageChanged ||
           previous.incidentId !== next.incidentId)
       )
         clearAll()
