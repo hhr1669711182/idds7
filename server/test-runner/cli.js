@@ -37,6 +37,12 @@ async function main() {
     console.log(`  [${s.status.padEnd(4)}] ${s.name} — ${s.detail}（${s.ms}ms）`);
   }
   console.log(`\n结果：${report.summary}（runId=${report.runId}，报告已存 server/test-runner/reports/）`);
+  if (report.stateSequence) console.log(`展示模式轨迹：${report.stateSequence}`);
+  const gateWarns = report.steps.filter(s => s.gateWarn).map(s => `${s.id}: ${s.gateWarn}`);
+  if (gateWarns.length) {
+    console.log(`门禁自检告警（${gateWarns.length}）：`);
+    gateWarns.forEach(w => console.log('  ⚠ ' + w));
+  }
   control.close();
   process.exit(report.summary.startsWith('全部通过') || report.summary.includes('失败 0') ? 0 : 1);
 }

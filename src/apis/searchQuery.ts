@@ -8,6 +8,12 @@ import { amapApi, type PoiFeature, type PoiFeatureCollection } from '@/apis/amap
 import { geoserverApi } from '@/apis/geoserver'
 import { LAYER_SOURCE_CONFIGS } from '@/config/layers'
 import {
+  buildCircleIntersectsCql,
+  buildKeywordCql,
+  buildViewportCql,
+  combineCql,
+} from '@/utils/cql'
+import {
   SEARCH_MAX_FEATURES,
   type ResourceFilterSet,
   type SearchItemSource,
@@ -24,26 +30,8 @@ export const SEARCHABLE_LAYERS = LAYER_SOURCE_CONFIGS
 export const getSearchViewOptions = (): SearchViewOption[] =>
   SEARCHABLE_LAYERS.map((layer) => ({ name: layer.name, id: layer.id }))
 
-/** 转义 CQL 字符串字面量中的单引号，避免注入与语法错误 */
-const escapeCql = (value: string) => value.replace(/'/g, "''")
-
-/** 把关键词转成大小写不敏感的 CQL LIKE 条件（字段统一为 name，不做字段探查） */
-export const buildKeywordCql = (keyword: string) =>
-  `strToLowerCase(name) LIKE '%${escapeCql(keyword.trim().toLowerCase())}%'`
-
-/** 视口范围（BBOX）。GeoServer 的 BBOX 参数顺序为 minx,miny,maxx,maxy */
-export const buildViewportCql = (viewport: [number, number, number, number]) =>
-  `BBOX(geom, ${viewport[0]}, ${viewport[1]}, ${viewport[2]}, ${viewport[3]}, 'EPSG:4326')`
-
-/** 圈选范围（DWITHIN），与 CircleQueryTool.updateWMSLayer 保持一致 */
-export const buildCircleCql = (center: [number, number], radiusMeters: number) =>
-  `DWITHIN(geom, Point(${center[0]} ${center[1]}),${radiusMeters},meters)`
 
 /** 把多个条件用 AND 串成一个 CQL；空条件返回 1=1（不过滤） */
-const combineCql = (...parts: (string | undefined)[]) => {
-  const valid = parts.filter((part): part is string => !!part && part !== '1=1')
-  return valid.length ? valid.join(' AND ') : '1=1'
-}
 /**
  * 构造检索条件集合：同一份 CQL（列表）与WMS（上图）共用，
  * 保证「图上有、列表无」不会发生。
@@ -52,7 +40,7 @@ export const buildResourceFilter = (params: SearchQueryParams): ResourceFilterSe
   const { keyword, typeName, typeNames, viewport, circle } = params
   const keywordCql = keyword.trim() ? buildKeywordCql(keyword) : undefined
   const spatialCql = circle
-    ? buildCircleCql(circle.center, circle.radiusMeters)
+    ? buildCircleIntersectsCql('geom', circle.center, circle.radiusMeters)
     : viewport
       ? buildViewportCql(viewport)
       : undefined

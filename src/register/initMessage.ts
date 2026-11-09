@@ -108,12 +108,9 @@ export const initMessage = (): MessageSessionHandle => {
           return
         }
         releaseSession()
-        const configured = appEnv.wsUrl
-        const oldTemplate = configured.includes('{userId}') && configured.includes('{sessionState}')
+        // WS 门控：VITE_WS_URL 显式配置（如本地 mock-ws 测试服务）时直连；留空则按 VITE_MESSAGE_SERVICE_ORIGIN 动态拼接。
         const url =
-          configured && !oldTemplate
-            ? configured
-            : buildMessageWebSocketUrl(appEnv.messageServiceOrigin || window.location.origin)
+          appEnv.wsUrl || buildMessageWebSocketUrl(appEnv.messageServiceOrigin || window.location.origin)
         closeSession = bus.connectWebSocket({
           system: MESSAGE_SYSTEM.IDS_SEAT_WEB,
           url,

@@ -1,5 +1,6 @@
 'use strict';
 // 调派全流程：接警 → 定位 → 画像 → 派车（多车轨迹）→ 状态流转 → 结案
+// 门禁由引擎按 kind 自动推导；carSequence 走 dispatchTrack，incidentFlow 走 dispatch。
 const base = require('./_base');
 
 const extraFullFlow = base.incidentFlow('incident-flow-full', '警情完整 7 态流转', base.FULL_INCIDENT_STATES, 500);
@@ -12,10 +13,14 @@ const scenario = {
   label: '调派全流程（警情→定位→画像→派车→状态流转→结案）',
   steps: [
     base.connect,
-    base.pushCallReceived,
-    base.pushPosition,
-    base.pushAddress,
-    base.carSequence('car-track', '出动车辆轨迹推送（路径1）', { count: 16, routeIndex: 0, intervalMs: 400 }),
+    base.pushCallReceived,     // 来电 → inquiry
+    base.pushPosition,         // 定位 → popup
+    base.pushAddress,          // 画像 → dispatch
+    base.carSequence('car-track', '出动车辆轨迹推送（路径1）', {
+      count: 16,
+      routeIndex: 0,
+      intervalMs: 400,
+    }),
     base.incidentFlow('incident-flow', '警情状态流转（立案→调派→出动→到场→结案）', base.CORE_INCIDENT_STATES, 800),
     extraFullFlow,
     extraCar2,

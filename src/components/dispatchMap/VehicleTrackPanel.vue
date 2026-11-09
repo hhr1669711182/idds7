@@ -4,6 +4,7 @@ import dayjs from 'dayjs'
 import { storeToRefs } from 'pinia'
 import { useVehicleTrackStore } from '@/store/useVehicleTrackStore'
 import { useVehicleTrackPlayback } from '@/composables/useVehicleTrackPlayback'
+import { analyzeTrackStatistics, type TrackStatistics } from '@/utils/trackStatistics'
 
 const store = useVehicleTrackStore()
 const {
@@ -70,6 +71,28 @@ const onSeek = () => {
 const onChangeRoute = (key: string) => {
   store.setActiveRoute(key)
 }
+
+/** 轨迹统计：点数变化时重算，统计本身是纯计算不随游标变化。 */
+const statistics = computed<TrackStatistics | null>(() => {
+  if (!points.value.length) return null
+  return analyzeTrackStatistics(points.value)
+});
+
+/** 速度区间展示文案（米/秒 → km/h 区间）。 */
+const speedBucketLabel = (from: number, to: number): string => {
+  const toKmh = (value: number) => (Number.isFinite(value) ? Math.round(value * 3.6) : 0);
+  if (!Number.isFinite(to)) return `≥ ${toKmh(from)} km/h`;
+  return `${toKmh(from)}~${toKmh(to)} km/h`;
+};
+
+/** 速度分布总数，作为占比分母。 */
+const speedSampleTotal = computed(() =>
+  (statistics.value?.speedBuckets ?? []).reduce((total, bucket) => total + bucket.count, 0),
+);
+
+/** 某速度区间的采样占比（0~100）。 */
+const speedBucketPercent = (count: number): number =>
+  speedSampleTotal.value > 0 ? Math.round((count / speedSampleTotal.value) * 100) : 0;
 </script>
 
 <template>
@@ -139,6 +162,59 @@ const onChangeRoute = (key: string) => {
         <div class="vtp-marks">
           <span v-for="mark in marks" :key="mark.index" :style="{ left: `${mark.ratio}%` }">{{ mark.label }}</span>
         </div>
+      </div>
+    </div>
+
+    <!-- P04：轨迹统计（速度分布 / 停留点 / 异常 / 分段指标） -->
+    <div v-if="statistics" class="vtp-stats">
+      <div class="vtp-stats-grid">
+        <div class="vtp-stat">
+          <span class="vtp-stat-label">总里程</span>
+          <span class="vtp-stat-value">{{ (statistics.totalDistanceMeters / 1000).toFixed(2) }} km</span>
+        </div>
+        <div class="vtp-stat">
+          <span class="vtp-stat-label">均速</span>
+          <span class="vtp-stat-value">{{ (statistics.averageSpeedMps * 3.6).toFixed(1) }} km/h</span>
+        </div>
+        <div class="vtp-stat">
+          <span class="vtp-stat-label">最高速</span>
+          <span class="vtp-stat-value">{{ (statistics.maxSpeedMps * 3.6).toFixed(1) }} km/h</span>
+        </div>
+        <div class="vtp-stat">
+          <span class="vtp-stat-label">停留点</span>
+          <span class="vtp-stat-value">{{ statistics.stops.length }} 处</span>
+        </div>
+      </div>
+
+      <div v-if="statistics.limitedSample" class="vtp-stats-hint">
+        轨迹样本有限（{{ statistics.pointCount }} 个点），统计结论仅供参考
+      </div>
+
+      <div class="vtp-speed-bars">
+        <div v-for="bucket in statistics.speedBuckets" :key="`${bucket.from}-${bucket.to}`" class="vtp-speed-row">
+          <span class="vtp-speed-label">{{ speedBucketLabel(bucket.from, bucket.to) }}</span>
+          <el-progress
+            :percentage="speedBucketPercent(bucket.count)"
+            :stroke-width="6"
+            :show-text="false"
+            color="var(--accent-cyan)"
+          />
+          <span class="vtp-speed-value">{{ speedBucketPercent(bucket.count) }}%</span>
+        </div>
+      </div>
+
+      <div v-if="statistics.stops.length" class="vtp-stop-list">
+        <span class="vtp-stop-title">停留点</span>
+        <span v-for="(stop, idx) in statistics.stops" :key="idx" class="vtp-stop-item">
+          {{ stop.startedAt }} 停留 {{ Math.round(stop.durationSeconds / 60) }} 分钟
+        </span>
+      </div>
+
+      <div v-if="statistics.anomalies.length" class="vtp-anomaly-list">
+        <span class="vtp-stop-title">异常</span>
+        <span v-for="(anomaly, idx) in statistics.anomalies" :key="idx" class="vtp-anomaly-item">
+          {{ anomaly.at }} {{ anomaly.message }}
+        </span>
       </div>
     </div>
   </div>
@@ -309,5 +385,95 @@ const onChangeRoute = (key: string) => {
     opacity: 0.75;
     font-variant-numeric: tabular-nums;
   }
+}
+
+/* P04 轨迹统计区 */
+.vtp-stats {
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--toolbar-tile-border);
+}
+
+.vtp-stats-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.vtp-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+}
+
+.vtp-stat-label {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.vtp-stat-value {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.vtp-stats-hint {
+  margin-top: var(--space-xs);
+  font-size: 12px;
+  color: var(--tag-warning-text);
+}
+
+.vtp-speed-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+
+.vtp-speed-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.vtp-speed-label {
+  flex: 0 0 108px;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.vtp-speed-value {
+  flex: 0 0 40px;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vtp-stop-list,
+.vtp-anomaly-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+  font-size: 12px;
+}
+
+.vtp-stop-title {
+  opacity: 0.75;
+}
+
+.vtp-stop-item {
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--tag-info-bg);
+  color: var(--tag-info-text);
+}
+
+.vtp-anomaly-item {
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--tag-warning-bg);
+  color: var(--tag-warning-text);
 }
 </style>

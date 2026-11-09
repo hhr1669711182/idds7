@@ -53,7 +53,7 @@ export const queryWMSFeature = (
   pixel: [number, number],
 ) => {
   const params = buildFeatureInfoParams(config, viewExtent, size, pixel)
-  return geoserverApi.getWMSFeatureInfo(config.workspace, params)
+  return geoserverApi.getWMSFeatureInfo(params, config.workspace)
 }
 
 export const getWMSLayerUrl = (config: LayerConfig): string => getLayerWMSUrl(config)

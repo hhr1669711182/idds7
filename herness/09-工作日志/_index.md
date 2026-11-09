@@ -73,6 +73,7 @@ git diff --cached -- herness/09-工作日志/
 |------|------|---------|------|
 | 2026-11-03 | 3 | 路线 Y B-3c/B-6c 调派单实例收口；方法论入 herness（模块设计速查 / 测试接缝规范 / ADR 规范 / 术语 GLOSSARY）+ 本地安装 27 个 skill | [查看](2026-11/2026-11-03/agent-huanghuanrong.md) |
 | 2026-11-04 | 1 | 修复 48 项存量测试失败（store 分层重构后 mock 路径失效 / viewOptions 断言错位）+ 迁移路线 Y 遗留崩溃套件，测试回到 55 文件 579 项全绿 | [查看](2026-11/2026-11-04/agent-huanghuanrong.md) |
+| 2026-11-09 | 1 | herness 模式状态知识回写：补 `disposeOnHide` hide 分流决策、`VITE_WS_URL` 门控说明 + 5 条 server 测试命令、`server/` 测试基建目录树 | [查看](2026-11/2026-11-09/agent-huanghuanrong.md) |
 
 ### 2026-10
 

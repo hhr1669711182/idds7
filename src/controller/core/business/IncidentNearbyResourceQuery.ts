@@ -18,7 +18,8 @@
  * 面要素（辖区/建筑）用 @turf/centroid 算质心后参与距离排序与坐标回传。
  * @FilePath: src/controller/core/business/IncidentNearbyResourceQuery.ts
  */
-import { centroid, circle as turfCircle, distance } from '@turf/turf'
+import { centroid, distance } from '@turf/turf'
+import { buildCircleIntersectsCql as buildCircleIntersectsCqlBase } from '@/utils/cql'
 import { geoserverApi } from '@/apis/geoserver'
 import type { Coordinate } from './IncidentStationQuery'
 
@@ -133,32 +134,12 @@ const readFeatureCoordinate = (feature: WFSFeature): Coordinate | null => {
   return [longitude, latitude]
 }
 
-/** 测地圆多边形边数（越多越接近圆，CQL 越长；64 与图上 turf 圈一致） */
-const GEODESIC_CIRCLE_STEPS = 64
-
-/**
- * 生成测地圆多边形的 WKT（EPSG:4326，lon/lat 轴序，首尾闭合），
- * 供 CQL INTERSECTS 与 GeoServer 空间过滤使用。turf circle 半径按球面距离计算。
- */
-export const buildGeodesicCircleWkt = (
-  coordinate: Coordinate,
-  radiusMeters: number,
-  steps: number = GEODESIC_CIRCLE_STEPS,
-): string => {
-  const circlePoly = turfCircle(coordinate, radiusMeters / 1000, {
-    steps,
-    units: 'kilometers',
-  })
-  const ring = circlePoly.geometry.coordinates[0].map(([lng, lat]) => `${lng} ${lat}`).join(', ')
-  return `POLYGON((${ring}))`
-}
-
 /**
  * 拼接单个范围圈的 CQL INTERSECTS 条件（带 SRID=4326 前缀强制 lon/lat 轴序）。
- * 导出供地图侧 WMS 图层 CQL_FILTER 复用，保证 WFS/WMS 过滤口径一致。
+ * CQL 构造已下沉到 `@/utils/cql`，此处按业务层语义再导出，
+ * 供地图侧 WMS 图层 CQL_FILTER 复用，保证 WFS/WMS 过滤口径一致。
  */
-export const buildCircleIntersectsCql = (geomField: string, coordinate: Coordinate, radiusMeters: number): string =>
-  `INTERSECTS(${geomField},SRID=4326;${buildGeodesicCircleWkt(coordinate, radiusMeters)})`
+export const buildCircleIntersectsCql = buildCircleIntersectsCqlBase
 
 /**
  * 范围内 WFS 要素查询：以警情点为中心的测地圆与要素几何相交（相交或包含）。

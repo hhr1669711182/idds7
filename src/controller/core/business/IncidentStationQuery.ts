@@ -10,6 +10,8 @@
  */
 import { distance } from '@turf/turf'
 import { geoserverApi } from '@/apis/geoserver'
+import type { WfsFeature } from '@/apis/geoserverTypes'
+import { readPointCoordinates } from '@/utils/geojson'
 
 /** 消防站图层（gis:view_res_org_dept），几何字段 geom */
 export const STATION_LAYER_NAME = 'gis:view_res_org_dept'
@@ -83,10 +85,7 @@ export type QueryIncidentStationsOptions = {
   maxRadiusMeters?: number
 }
 
-type WFSFeature = {
-  geometry?: any
-  properties?: Record<string, any>
-}
+type WFSFeature = WfsFeature<Record<string, any>>
 
 /** CQL 字符串字面量转义（单引号双写） */
 export const cqlLiteral = (value: string): string => `'${String(value).replace(/'/g, "''")}'`
@@ -257,7 +256,7 @@ export const queryJurisdictionAtPoint = async (coordinate: Coordinate): Promise<
     result.push({
       stationId,
       zoneName: String(feature?.properties?.zone_name ?? ''),
-      geometry: feature.geometry as GeoJSON.Geometry,
+      geometry: feature.geometry,
     })
   }
 
@@ -339,9 +338,9 @@ export const queryStationCoordinatesByIds = async (stationIds: string[]): Promis
   for (const feature of data?.features ?? []) {
     const properties = feature?.properties ?? {}
     const id = String(properties.id ?? '')
-    const coordinates = feature?.geometry?.coordinates
-    const longitude = Number(properties.longitude ?? coordinates?.[0])
-    const latitude = Number(properties.latitude ?? coordinates?.[1])
+    const point = readPointCoordinates(feature?.geometry)
+    const longitude = Number(properties.longitude ?? point?.[0])
+    const latitude = Number(properties.latitude ?? point?.[1])
     if (id && Number.isFinite(longitude) && Number.isFinite(latitude)) {
       result.set(id, [longitude, latitude])
     }

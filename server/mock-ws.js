@@ -6,6 +6,7 @@ const { WebSocketServer, WebSocket } = require('ws');
 const { filterFrame } = require('./routing');
 const { proxyHttp, proxyUpgrade } = require('./gis-proxy');
 const { mountTestHarness } = require('./test-harness');
+const { carPoints } = require('./protocols');
 
 // §2.2 默认 5s 内未 connect 即断开；测试可通过环境变量缩短
 const CONNECT_TIMEOUT_MS = Number(process.env.CONNECT_TIMEOUT_MS) || 5000;
@@ -23,12 +24,151 @@ const validTopic = topic => {
   return segments.every((s, i) => s === '+' || (s === '#' ? i === segments.length - 1 : SEGMENT.test(s)));
 };
 
+// BFF mock：测试环境无后端时拦截 /bff-client 与 /car-track-api，返回 COLA 信封假数据
+const handleBffMock = (req, res, pathname) => {
+  const json = (data, status = 200) => {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ success: true, data, message: 'mock', code: 0, timestamp: Date.now() }));
+  };
+
+  // by-incident profile（useIncidentLocationProfileSync → toAddressUpdatedData）
+  const profileMatch = pathname.match(/^\/bff-client\/api\/v1\/inquiry\/profiles\/by-incident\/([^/]+)$/);
+  if (profileMatch) {
+    const incidentId = decodeURIComponent(profileMatch[1]);
+    json({
+      disasterProfileId: `profile-${incidentId}`,
+      inquiryId: `inquiry-${incidentId}`,
+      incidentId,
+      version: 1,
+      slots: [
+        { slotCode: 'disaster_address', filledValue: '示例路 1 号' },
+        { slotCode: 'longitude', filledValue: '116.4074' },
+        { slotCode: 'latitude', filledValue: '39.9042' },
+        { slotCode: 'm_org_id', filledValue: 'f7742190d975473790fb816861846b2e' },
+      ],
+    });
+    return true;
+  }
+
+  // incident detail（IncidentDetailDialog）
+  const detailMatch = pathname.match(/^\/bff-client\/api\/v1\/gis\/incidents\/([^/]+)\/detail$/);
+  if (detailMatch) {
+    const incidentId = decodeURIComponent(detailMatch[1]);
+    json({
+      alarmInfo: {
+        incidentNo: incidentId,
+        callInTime: new Date().toISOString(),
+        accessType: 'PHONE',
+        callerPhone: '13800138000',
+        callerName: '测试来电人',
+        installAddress: '示例路 1 号',
+      },
+      acceptInfo: {
+        seatNo: '3003',
+        acceptTime: new Date().toISOString(),
+        disasterLevel: 'III',
+        keyUnitName: null,
+        disasterAddress: '示例路 1 号',
+        burningMaterial: '木材',
+        isSupplement: false,
+        incidentMark: 'fire',
+        smokeSituation: null,
+        trappedCount: 0,
+        adminDivision: '北京-海淀',
+        disasterType: { type: 'fire', subtype: 'residential' },
+        contacterName: '测试联系人',
+        contacterPhone: '13900139000',
+        leadStation: 'f7742190d975473790fb816861846b2e',
+        longitude: 116.4074,
+        latitude: 39.9042,
+        acceptContent: '测试警情描述',
+      },
+      dispatchInfo: {
+        batches: [{
+          batchId: 'batch-1',
+          kind: 'first',
+          seq: 1,
+          dispatchedAt: new Date().toISOString(),
+          vehicleCount: 1,
+          stations: [{
+            stationId: 'f7742190d975473790fb816861846b2e',
+            stationName: '深圳市南山区大冲消防救援站',
+            vehicleCount: 1,
+            vehicles: [{
+              vehicleId: 'TEST-CAR-001',
+              vehicleName: '测试车001',
+              vehicleTypeCode: 'FIRE',
+              vehicleTypeName: '消防车',
+              plateNo: '粤B·12345',
+              onboardPersonnelCount: 5,
+              waterTons: 8,
+              foamTons: null,
+            }],
+          }],
+        }],
+      },
+    });
+    return true;
+  }
+
+  // turnout-vehicles（queryIncidentTurnoutVehicles）
+  const turnoutMatch = pathname.match(/^\/bff-client\/api\/v1\/gis\/incidents\/([^/]+)\/turnout-vehicles$/);
+  if (turnoutMatch) {
+    const incidentId = decodeURIComponent(turnoutMatch[1]);
+    json({
+      incident: {
+        incidentId,
+        incidentType: { type: 'fire', subtype: 'residential' },
+        alarmTime: new Date().toISOString(),
+        burningMaterial: '木材',
+        keyUnitName: null,
+        incidentState: 'DISPATCHED',
+        disasterAddress: '示例路 1 号',
+        leadStationId: 'f7742190d975473790fb816861846b2e',
+        leadStationName: '深圳市南山区大冲消防救援站',
+      },
+      vehicles: [{
+        vehicleId: 'TEST-CAR-001',
+        plateNumber: '粤B·12345',
+        stationId: 'f7742190d975473790fb816861846b2e',
+        stationName: '深圳市南山区大冲消防救援站',
+        stationAddress: '深圳南山区大冲路',
+        startTime: new Date().toISOString(),
+        endTime: null,
+        finalPlanId: 'plan-1',
+        dispatchSeq: 1,
+      }],
+      meta: { sourceGaps: [], sourceErrors: [] },
+    });
+    return true;
+  }
+
+  // car-track-api POST（历史轨迹，使用 protocols.carPoints 路径1）
+  if (pathname === '/car-track-api/api/car/track/query' && req.method === 'POST') {
+    const route = carPoints[0]; // 31 点
+    const now = Date.now();
+    const points = route.map((coord, i) => ({
+      carId: 'TEST-CAR-001',
+      plateNumber: '测试车001',
+      longitude: coord[0],
+      latitude: coord[1],
+      gpsTime: new Date(now + i * 5000).toISOString().slice(0, 19).replace('T', ' '),
+    }));
+    json(points);
+    return true;
+  }
+
+  // 其他 /bff-client 或 /car-track-api 路径 → 不拦截，走 proxy
+  return false;
+};
+
 const server = http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
   if(pathname === '/__test') {res.writeHead(302,{Location:'/__test/'});return res.end();}
   const files = new Map([['/__test/','index.html'],['/__test/index.html','index.html'],['/__test/index.js','index.js'],['/__test/protocols.js','protocols.js'],['/car-location-subscribe-demo.html','car-location-subscribe-demo.html'],['/__test/car-location-subscribe-demo.html','car-location-subscribe-demo.html']]);
   const file=files.get(pathname);
   if (!file) {
+    if (handleBffMock(req, res, pathname)) return; // BFF mock：优先于 test-harness 和 proxy
     if (mountTestHarness(req, res, { clients })) return; // 一键测试台 /test-ui/ 与测试 API /api/test/*
     if(pathname.startsWith('/__test/')){res.writeHead(404);return res.end('Not found');}
     return proxyHttp(req,res);

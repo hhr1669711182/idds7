@@ -90,3 +90,38 @@
 - `server/**` 目录的 D/M/?? 改动属其他 agent，未触碰。
 
 ### 未提交
+
+## dev:local 一键联调脚本 + 全生命周期测试场景（fullCycle）+ WS 门控统一
+
+### 背景
+- 用户要求：① `dev:local` 增一个脚本，起前端默认同时拉起本地测试服务（mock-ws :18080，含 /test-ui/ 一键测试台），无缝无感接入；WS 走本地 mock 还是 dev 远端加门控；② 测试页补全流程场景：值守→跟踪→回归值守，等待下一警；③ 真实阶段流按项目 MapPhase 走「值守-来电-接警问询-调派-跟踪」；④ 各环境 WS 统一为 `…/message-client/ws`（不再拼 `{userId}/{sessionState}`），initMessage.ts 清理优化；⑤ 复核 server 命名。
+
+### 变更清单
+| 对象 | 动作 |
+|---|---|
+| `scripts/dev-with-mock-ws.mjs` | **新增**：同起 `node server/mock-ws.js` 与 `pnpm exec vite --mode dev.local`，输出加 [mock-ws]/[vite] 前缀，任一进程退出联动终止另一个，SIGINT/SIGTERM 双杀。`ROOT_DIR` 用 `path.dirname(fileURLToPath(import.meta.url))`（无尾斜杠）上跳一层，修掉 `new URL('./',…)` 多剥一层的隐患 |
+| `package.json` | 新增 `dev:local:test`（起双服务）与 `test:scenario:cycle`（`cli.js fullCycle --full`）两个脚本 |
+| `.env.local`（不入库，已代改） | WS 门控改两态：A 本地 `ws://127.0.0.1:18080/message-client/ws`（配 dev:local:test）/ B dev 远端注释；保留切换说明 |
+| `.env.local.example`（入库模板） | 同两态注释块，模板默认 dev 远端 |
+| `.env.development` | 删旧 `ws://localhost:18080/…/alarm-debug-user/…` 与 `173.94/173.198` 旧模板行，保留标准 `ws://ids-dev.ks.telewave.tech/message-client/ws` |
+| `.env.test` | `VITE_WS_URL` 由旧 `…/ws/ids-seat-web/{userId}/{sessionState}` 占位符改为标准 `ws://ids-test.ks.telewave.tech/message-client/ws`，删「登录后占位符替换」旧注释 |
+| `src/register/initMessage.ts` | **删旧模板兼容分支**：`oldTemplate` 检测（`configured.includes(’{userId}’) && …’{sessionState}’`）删除，URL 决策简化为 `appEnv.wsUrl ‖ buildMessageWebSocketUrl(origin)`；补一行门控说明注释 |
+| `src/config/env.ts` | 修正过期注释（原「wsUrl 不再经 appEnv 获取」误导，改为说明 VITE_WS_URL 门控语义） |
+| `server/test-runner/modes/_base.js` | 新增 `pushCallEnded`（`kind:'end'` → CALL_TERMINATED）并导出 |
+| `server/test-runner/modes/fullCycle.js` | **新增** 全生命周期场景 14 步：值守→来电→定位→画像→立案(CREATED)→调派/出动(FORMAL_DISPATCHED→DISPATCHED)+路径1轨迹→到场(ARRIVED)+路径4轨迹→归队(RETURNING)；extra（full 才跑）：7 态完整结案→CALL_TERMINATED→等 1.5s 回归值守→第二通来电 |
+| `server/test-runner/index.js` | `DEFAULT_TARGETS` 命名 `alarm-debug-user/-session` 改为 `MOCK_TEST_USER=gis-test-user / MOCK_TEST_SESSION=gis-test-session`（mock 控制台演示身份，语义更准）；新增 `autoRebindTargets`：未显式指定目标且默认目标不在线时，改绑首个在线真实前端客户端，报告写 `rebound` 字段并打印日志 |
+| `server/test-ui/index.html` | 目标身份 placeholder 文案 `alarm-debug-*` → `gis-test-*` |
+
+### 设计要点
+- **门控零代码**：WS 走本地 mock 还是 dev 远端，就是 `VITE_WS_URL` 的值本身（initMessage 已支持「有值直连 / 留空按 origin 拼接」），只在 env 文件加两态注释块，切换=改一行，不引入新代码门控。
+- **阶段流对齐 MapPhase**（`SharedStateProtocol` 单一事实源）：onDuty→popup→inquiry→dispatch→dispatchTrack→onDuty，fullCycle 每段落到具体协议推送（来电/定位/画像/警情状态/车辆轨迹）。
+- **自动改绑**让「真实前端登录后即可无缝跑场景」：不手填 target 也能命中登录身份。
+
+### 验证
+- `node --check` 全部新改 server/scripts 文件通过；`registry.js` 自动发现 6 模式（含 fullCycle 14 步，core 10 + extra 4）。
+- `pnpm dev:local:test` 实测双起：`vite:8888` 与 `mockws:18080` 同时 OPEN，`GET /api/test/modes` 返回 6 模式；测完已清理双进程与端口。
+- `pnpm lint` **0 报错**；`pnpm build` 通过（9.41s）；`pnpm vitest run` **55 文件 583 项全通过**。
+
+### 备注
+- `.env.local` 是个人文件（在 .gitignore），本次代改本地联调门控；入库的是 `.env.local.example` 模板。
+- `git status` 里 `server/` 的 D/M/?? 为既有并行工作，本轮按路径精确提交，未 `git add .`。

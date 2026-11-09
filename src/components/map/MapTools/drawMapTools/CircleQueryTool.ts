@@ -16,6 +16,7 @@ import { EventsKey } from 'ol/events'
 import Overlay from 'ol/Overlay'
 import Collection from 'ol/Collection'
 import { geoserverApi } from '@/apis/geoserver'
+import { buildCircleIntersectsCql, buildMultiLayerCql } from '@/utils/cql'
 import { LAYER_NAMES } from '@/baseComponent/OpenlayersMap/layers'
 import { EventBus } from '@/utils/mitt'
 import { usePanelStore } from '@/store'
@@ -290,7 +291,7 @@ export class CircleQueryTool extends BaseTool {
     const center = geom.getCenter()
     const radius = geom.getRadius()
     const edgeCoordinate = [center[0] + radius, center[1]]
-    const centerLonLat = transform(center, 'EPSG:3857', 'EPSG:4326')
+    const centerLonLat = transform(center, 'EPSG:3857', 'EPSG:4326') as [number, number]
     const edgeLonLat = transform(edgeCoordinate, 'EPSG:3857', 'EPSG:4326')
     const distanceInMeters = getDistance(centerLonLat, edgeLonLat)
 
@@ -308,7 +309,7 @@ export class CircleQueryTool extends BaseTool {
     this.radiusTooltip.setPosition(edgeCoordinate)
 
     // 保存状态
-    this._centerLonLat = centerLonLat as [number, number]
+    this._centerLonLat = centerLonLat
     this._radiusMeters = distanceInMeters
     // 需求 10：记录当前圈的工具重启后可继续二次编辑
     CircleQueryTool.persistedCircle = { center: [...center], radius }
@@ -321,7 +322,7 @@ export class CircleQueryTool extends BaseTool {
     this.emitUpdate()
   }
 
-  updateWMSLayer(centerLonLat: number[], radiusInMeters: number) {
+  updateWMSLayer(centerLonLat: [number, number], radiusInMeters: number) {
     const selectedTypes = ALL_RESOURCE_TYPES.filter((t) => this._resourceTypes.includes(t.key))
 
     if (selectedTypes.length === 0) {
@@ -335,11 +336,11 @@ export class CircleQueryTool extends BaseTool {
     }
 
     const layers = selectedTypes.map((t) => t.layerName).join(',')
-    // 为每个图层生成单独的 filter，用分号分隔
-    const filters = selectedTypes.map(
-      () => `DWITHIN(geom,Point(${centerLonLat[0]} ${centerLonLat[1]}),${radiusInMeters},meters)`,
+    // 为每个图层生成单独的 filter，用分号分隔；口径与检索列表侧一致（INTERSECTS 测地圆）
+    const filters = selectedTypes.map((type) =>
+      buildCircleIntersectsCql(type.geomField, centerLonLat, radiusInMeters),
     )
-    const cqlFilter = filters.join(';')
+    const cqlFilter = buildMultiLayerCql(filters)
 
     if (!this.wmsLayer) {
       this.wmsLayer = markRaw(
@@ -378,7 +379,7 @@ export class CircleQueryTool extends BaseTool {
   /**
    * 更新统计数据（通过 WFS 查询每个图层的要素总数）
    */
-  private async updateStats(centerLonLat: number[], radiusInMeters: number) {
+  private async updateStats(centerLonLat: [number, number], radiusInMeters: number) {
     const selectedTypes = ALL_RESOURCE_TYPES.filter((t) => this._resourceTypes.includes(t.key))
 
     if (selectedTypes.length === 0) {
@@ -387,7 +388,7 @@ export class CircleQueryTool extends BaseTool {
       return
     }
 
-    const cqlFilter = `DWITHIN(geom,Point(${centerLonLat[0]} ${centerLonLat[1]}),${radiusInMeters},meters)`
+    const cqlFilter = buildCircleIntersectsCql('geom', centerLonLat, radiusInMeters)
     const perType: Record<string, number> = {}
     let total = 0
 

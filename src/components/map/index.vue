@@ -173,7 +173,7 @@ onUnmounted(() => {
     <tlp />
     <trp />
 
-    <routePlan v-if="type == PANEL_TYPES.ROUTE_PLAN" />
+    <routePlan v-if="type == PANEL_TYPES.ROUTE_PLAN && !dispatchVariant" />
     <topicLayerCard />
     <baseSource />
 
@@ -184,10 +184,10 @@ onUnmounted(() => {
     <paletteDrawer v-if="feature.showPalette" @filter-change="handleFilterChange" />
     <layers v-if="feature.showLayerToolbar" :onLayerChange="handleLayerChange" />
 
-    <ssrkPanel v-if="feature.showPopulation" v-show="ssrkPanelOpen" />
+    <ssrkPanel v-if="feature.showPopulation && !dispatchVariant" v-show="ssrkPanelOpen" />
 
-    <WeatherPanel v-if="feature.showWeather" />
-    <circleQueryPanel v-if="feature.showCircleQuery" />
+    <WeatherPanel v-if="feature.showWeather && !dispatchVariant" />
+    <circleQueryPanel v-if="feature.showCircleQuery && !dispatchVariant" />
 
     <!-- 路线 Y B-6c：调派变体专属面板（原 DispatchMapPage 迁入，isDispatchVariant 响应式） -->
     <div v-if="dispatchVariant" class="dispatch-variant-ui">

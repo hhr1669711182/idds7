@@ -57,6 +57,7 @@ import {
   detachDispatchBusiness,
 } from "./dispatchBusiness";
 import { useDispatchEntangled } from "./useDispatchEntangled";
+import { useGeoServerHealth } from "@/composables/useGeoServerHealth";
 import DispatchRoutePreview from "./DispatchRoutePreview.vue";
 
 import NavPanel from "./NavPanel.vue";
@@ -126,6 +127,8 @@ const {
   fetch: fetchUnclosedIncidents,
 } = useUnclosedIncidents();
 const { load: loadFireStations } = useFireStations();
+// GeoServer 探活与降级：GIS 图层服务不可用时提示一次，不阻断底座初始化
+const geoServerHealth = useGeoServerHealth();
 // 统一底座共用层（WMS 图层 + zoom）：main 用 useLayersStore 配置，独立 dispose
 const gisBaseMap = useGisBaseMap({
   getLayerConfig: (id) => {
@@ -401,6 +404,9 @@ const initMap = async () => {
   detachBusinessMap = getBusinessMessageRuntime().attachMap(attachment.port, { kind: 'map', dispose: attachment.dispose });
 
   emit("setMap", map);
+
+  // GeoServer 探活：失败只提示不阻断，底图与前端矢量功能不依赖 GIS 图层服务
+  void geoServerHealth.check();
 
   // 路线 Y B-3c：创建调派纠缠体 composable（共享 4 个前端图层 manager + B-1/B-2 设施）
   entangled = useDispatchEntangled({

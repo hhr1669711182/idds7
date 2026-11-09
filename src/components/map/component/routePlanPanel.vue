@@ -17,6 +17,9 @@ import { appEnv } from "@/config/env";
 import { SearchResultTool } from "../MapTools/drawMapTools/SearchResultTool";
 import type { RouteVehicleType } from "@/types/search";
 import type { RouteCongestionSegment } from "../MapTools/drawMapTools/SearchResultTool";
+import { buildRouteAnalysis } from "@/baseComponent/tools/routeAnalysis";
+import type { RouteAnalysisDTO, RouteTmcLevel } from "@/types/routeAnalysis";
+import { createRouteContinuityWorker } from "@/hooks/useRouteContinuityWorker";
 
 type EndpointKey = "start" | "end";
 
@@ -37,6 +40,8 @@ const { currentMap: MapInstance } = useCurrentMap();
 let resultTool: SearchResultTool | null = null;
 let pickKey: EventsKey | null = null;
 let pickTarget: EndpointKey | null = null;
+// 路段衔接 Worker：组件卸载时释放
+const continuityWorker = createRouteContinuityWorker();
 
 /** MapStore 的 map 初值是空对象，必须确认拿到真实 OL Map 后再建层 */
 const ensureTool = () => {
@@ -101,7 +106,32 @@ const formatElapsed = (milliseconds: number) => {
 //   return "#8A97A6";
 // };
 
-const routeSummary = ref<{ distance: number; duration: number; elapsed: number; segments: RouteCongestionSegment[]; trafficLights: number } | null>(null);
+const routeSummary = ref<{ distance: number; duration: number; elapsed: number; segments: RouteCongestionSegment[]; trafficLights: number; analysis: RouteAnalysisDTO | null } | null>(null);
+
+/** 路况等级 → 展示文案 */
+const tmcLevelLabel = (level: RouteTmcLevel): string => {
+  switch (level) {
+    case "smooth": return "畅通";
+    case "slow": return "缓行";
+    case "jam": return "拥堵";
+    case "serious_jam": return "严重拥堵";
+    default: return "未知";
+  }
+};
+
+/** 路况等级 → 语义色 token（跟随主题，不写裸色值） */
+const tmcLevelColor = (level: RouteTmcLevel): string => {
+  switch (level) {
+    case "smooth": return "var(--tag-success-text)";
+    case "slow": return "var(--tag-warning-text)";
+    case "jam": return "var(--tag-danger-text)";
+    case "serious_jam": return "var(--tag-danger-text)";
+    default: return "var(--tag-info-text)";
+  }
+};
+
+/** 百分比展示（0~1 → 百分比文本） */
+const formatRatio = (ratio: number): string => `${Math.round((Number.isFinite(ratio) ? ratio : 0) * 100)}%`;
 
 /** Input box display state: only synchronized to the store on selection / map pick / clear */
 const endpointInput = reactive<Record<EndpointKey, string>>({
@@ -381,9 +411,25 @@ const planRoute = async () => {
       routeSummary.value = null;
       return;
     }
-    tool.showRoute(coords, segments);
+    // P06：多段路况几何补齐，保证相邻段无缺口
+    const continuous = await continuityWorker.ensureContinuity(
+      segments.map((segment) => ({ status: segment.status, polyline: segment.coords })),
+    );
+    const continuousSegments: RouteCongestionSegment[] = continuous.map((segment) => ({
+      coords: segment.polyline,
+      status: segment.status,
+    }));
+    tool.showRoute(coords, continuousSegments);
     tool.fitPoints(coords);
-    routeSummary.value = { distance, duration, elapsed: performance.now() - startedAt, segments, trafficLights };
+    // P01/P02：统一分析结构（距离 / 时长 / 路况占比 / 覆盖度）
+    const analysis = buildRouteAnalysis({
+      path: coords,
+      tmcs: continuous.map((segment) => ({ status: segment.status, polyline: segment.polyline })),
+      distanceMeters: distance,
+      durationSeconds: duration,
+      candidateRank: 0,
+    });
+    routeSummary.value = { distance, duration, elapsed: performance.now() - startedAt, segments: continuousSegments, trafficLights, analysis };
   } catch (error) {
     console.warn("[routePlanPanel] planRoute failed:", error);
     ElMessage.error("路径规划失败，请稍后重试");
@@ -454,6 +500,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  continuityWorker.destroy();
   if (pickKey) unByKey(pickKey);
   pickKey = null;
   if (pickTarget && isOlMap(MapInstance.value)) setPickCursor(MapInstance.value, "");
@@ -623,13 +670,69 @@ onBeforeUnmount(() => {
               <span class="rp-result-value">{{ routeSummary.trafficLights }} 个</span>
             </div>
           </div>
-          <!-- <div v-if="routeSummary.segments.length" class="rp-congestion">
-            <span class="rp-congestion-label">路况</span>
-            <span v-for="(seg, idx) in routeSummary.segments" :key="idx" class="rp-congestion-item">
-              <i class="rp-congestion-dot" :style="{ background: congestionLegendColor(seg.status) }" />
-              {{ congestionLabel(seg.status) }}
-            </span>
-          </div> -->
+          <!-- P02：路况占比与覆盖度（unknown 单列，不并入畅通） -->
+          <div v-if="routeSummary.analysis" class="rp-analysis">
+            <div class="rp-analysis-head">
+              <span class="rp-analysis-title">路况分布</span>
+              <span class="rp-analysis-coverage">覆盖度 {{ formatRatio(routeSummary.analysis.tmc.coverage) }}</span>
+            </div>
+            <div class="rp-analysis-bars">
+              <div class="rp-analysis-bar">
+                <span class="rp-analysis-label">畅通</span>
+                <el-progress
+                  :percentage="Math.round(routeSummary.analysis.tmc.smoothRatio * 100)"
+                  :stroke-width="8"
+                  :show-text="false"
+                  color="var(--tag-success-text)"
+                />
+                <span class="rp-analysis-value">{{ formatRatio(routeSummary.analysis.tmc.smoothRatio) }}</span>
+              </div>
+              <div class="rp-analysis-bar">
+                <span class="rp-analysis-label">缓行</span>
+                <el-progress
+                  :percentage="Math.round(routeSummary.analysis.tmc.slowRatio * 100)"
+                  :stroke-width="8"
+                  :show-text="false"
+                  color="var(--tag-warning-text)"
+                />
+                <span class="rp-analysis-value">{{ formatRatio(routeSummary.analysis.tmc.slowRatio) }}</span>
+              </div>
+              <div class="rp-analysis-bar">
+                <span class="rp-analysis-label">拥堵</span>
+                <el-progress
+                  :percentage="Math.round(routeSummary.analysis.tmc.jamRatio * 100)"
+                  :stroke-width="8"
+                  :show-text="false"
+                  color="var(--tag-danger-text)"
+                />
+                <span class="rp-analysis-value">{{ formatRatio(routeSummary.analysis.tmc.jamRatio) }}</span>
+              </div>
+              <div class="rp-analysis-bar">
+                <span class="rp-analysis-label">未知</span>
+                <el-progress
+                  :percentage="Math.round(routeSummary.analysis.tmc.unknownRatio * 100)"
+                  :stroke-width="8"
+                  :show-text="false"
+                  color="var(--tag-info-text)"
+                />
+                <span class="rp-analysis-value">{{ formatRatio(routeSummary.analysis.tmc.unknownRatio) }}</span>
+              </div>
+            </div>
+            <div class="rp-analysis-foot">
+              <span>拥堵路段 {{ formatDistance(routeSummary.analysis.tmc.jamDistanceMeters) }}</span>
+              <span>拥堵耗时约 {{ formatDuration(routeSummary.analysis.tmc.jamDurationSeconds) }}</span>
+            </div>
+            <div v-if="routeSummary.analysis.segments.length" class="rp-analysis-segments">
+              <span
+                v-for="(segment, idx) in routeSummary.analysis.segments"
+                :key="idx"
+                class="rp-analysis-segment"
+                :style="{ color: tmcLevelColor(segment.level) }"
+              >
+                {{ tmcLevelLabel(segment.level) }}
+              </span>
+            </div>
+          </div>
         </div>
         <div v-else-if="!canPlan" class="rp-status">
           <span class="rp-status-text">请选择起点与终点后点击分析</span>
@@ -882,5 +985,76 @@ onBeforeUnmount(() => {
   height: 8px;
   border-radius: 50%;
   display: inline-block;
+}
+
+/* P02 路况分析区 */
+.rp-analysis {
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--primary-li-bottom-color);
+}
+
+.rp-analysis-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xs);
+}
+
+.rp-analysis-title {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.rp-analysis-coverage {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rp-analysis-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.rp-analysis-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.rp-analysis-label {
+  flex: 0 0 32px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.rp-analysis-value {
+  flex: 0 0 40px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.rp-analysis-foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-xs);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rp-analysis-segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.rp-analysis-segment {
+  font-size: 12px;
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--tag-info-bg);
 }
 </style>

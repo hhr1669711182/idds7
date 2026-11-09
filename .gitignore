@@ -56,3 +56,6 @@ demo
 
 # Playwright 本地缓存
 .playwright/
+
+
+#test server

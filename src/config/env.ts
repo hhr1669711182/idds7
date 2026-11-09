@@ -36,7 +36,7 @@ export const appEnv = {
   // geoserverBaseUrl: stripTrailingSlashes(readEnvString('') + 'geoserver'),
   geoserverBaseUrl: stripTrailingSlashes(readEnvString('VITE_GEOSERVER_URL')),
 
-  //wsUrl: readEnvString('VITE_WS_URL'),//当前WebSocket 地址现在由initMessage.ts直接处理，不再通过 appEnv.wsUrl 获取。
+  // wsUrl 已在上方 appEnv.wsUrl 提供（VITE_WS_URL 门控：本地 mock 测试服务直连 / 留空则按 VITE_MESSAGE_SERVICE_ORIGIN 动态拼接）。
 
   geoserverWmsUrl: stripTrailingSlashes(readEnvString('VITE_GEOSERVER_WMS_URL')),
   panel25DUrl: readEnvString('VITE_PANEL_25D_URL'),

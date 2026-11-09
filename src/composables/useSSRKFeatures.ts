@@ -8,6 +8,7 @@ import GeoJSON from 'ol/format/GeoJSON'
 import { usePanelStore } from '@/store/usePanelStore'
 import { TEMP_FRONTEND_LAYER_IDS } from '@/baseComponent/OpenlayersMap/layers'
 import { geoserverApi } from '@/apis/geoserver'
+import type { WfsFeatureCollection } from '@/apis/geoserverTypes'
 // import ssrkData from '@/assets/geo/ssrk.json'
 
 export type SSRKItem = {
@@ -23,17 +24,6 @@ export type SSRKItem = {
   datafrom_by?: string
 }
 
-type SSRKFeatureCollection = {
-  type: 'FeatureCollection'
-  features: Array<{
-    type: 'Feature'
-    geometry: {
-      type: 'MultiPolygon'
-      coordinates: number[][][][]
-    }
-    properties: SSRKItem
-  }>
-}
 
 const SSRK_LAYER_ZINDEX = 100
 
@@ -122,19 +112,22 @@ const createAreaStyle = (met_population: number, zone_name: string) => {
   ]
 }
 
-const populateSSRKSource = (source: VectorSource, data: SSRKFeatureCollection) => {
+const populateSSRKSource = (source: VectorSource, data: WfsFeatureCollection<SSRKItem>) => {
   source.clear()
   const format = new GeoJSON({
     dataProjection: 'EPSG:4326',
     featureProjection: 'EPSG:3857',
   })
 
-  data.features.forEach((featureData) => {
-    const { properties } = featureData
+  ;(data.features ?? []).forEach((featureData) => {
+    const properties = featureData.properties
+    if (!properties) return
     const { met_population, zone_name } = properties
+    const geometry = featureData.geometry
+    if (!geometry || geometry.type !== 'MultiPolygon') return
 
     const feature = new Feature({
-      geometry: format.readGeometry(featureData.geometry),
+      geometry: format.readGeometry(geometry),
     })
     feature.set('data', properties)
     feature.setStyle(createAreaStyle(met_population, zone_name))
@@ -153,7 +146,7 @@ export type SSRKFeaturesManager = {
   layer: VectorLayer<VectorSource>
   setVisible: (visible: boolean) => void
   isVisible: () => boolean
-  setData: (data: SSRKFeatureCollection) => void
+  setData: (data: WfsFeatureCollection<SSRKItem>) => void
   fetch: () => Promise<void>
   fitToExtent: () => void
   destroy: () => void
@@ -175,7 +168,7 @@ export const mountSSRKFeatures = (params: MountSSRKFeaturesParams): SSRKFeatures
   params.map.addLayer(layer)
   let destroyed = false
   let pending: Promise<void> | null = null
-  const setData = (data: SSRKFeatureCollection) => {
+  const setData = (data: WfsFeatureCollection<SSRKItem>) => {
     if (!destroyed) populateSSRKSource(source, data)
   }
 
@@ -183,7 +176,7 @@ export const mountSSRKFeatures = (params: MountSSRKFeaturesParams): SSRKFeatures
     if (destroyed) return Promise.resolve()
     if (pending) return pending
     pending = geoserverApi
-      .getWFSFeatures({ typeName: 'gis:view_realtime_population', maxFeatures: 1000 })
+      .getWFSFeatures<SSRKItem>({ typeName: 'gis:view_realtime_population', maxFeatures: 1000 })
       .then((data) => {
         setData(data)
       })

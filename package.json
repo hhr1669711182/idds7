@@ -51,7 +51,9 @@
     "e2e:report": "playwright show-report tests/__artifacts__/e2e/report",
     "mock:ws": "node server/mock-ws.js",
     "test:scenario": "node server/test-runner/cli.js",
-    "test:scenario:full": "node server/test-runner/cli.js dispatch --full"
+    "test:scenario:full": "node server/test-runner/cli.js dispatch --full",
+    "test:scenario:cycle": "node server/test-runner/cli.js fullCycle --full",
+    "dev:local:test": "node scripts/dev-with-mock-ws.mjs"
   },
   "dependencies": {
     "@alova/mock": "^2.0.20",

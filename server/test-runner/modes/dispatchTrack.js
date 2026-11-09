@@ -1,5 +1,5 @@
 'use strict';
-// 跟踪全流程：以车辆 GPS 轨迹为主（多路径循环）
+// 跟踪全流程：以车辆 GPS 轨迹为主（多路径循环）；门禁由引擎自动推导 car→dispatchTrack
 const base = require('./_base');
 
 const extraSeq = base.carSequence('car-track-4', '路径4轨迹推送（192 点路径）', { count: 20, routeIndex: 3, intervalMs: 300 });

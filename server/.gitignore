@@ -1,1 +1,2 @@
-server/test-runner/reports/
+# 场景执行报告（运行时产物，不入库）
+test-runner/reports/

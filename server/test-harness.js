@@ -61,6 +61,19 @@ function mountTestHarness(req, res, { clients }) {
     return true;
   }
 
+  if (method === 'GET' && pathname === '/api/test/clients') {
+    sendJson(res, 200, {
+      clients: [...clients.values()].map(c => ({
+        userId: c.userId,
+        sessionState: c.sessionState,
+        clientId: c.clientId,
+        connId: c.connId,
+        subscriptions: [...c.subscriptions],
+      })),
+    });
+    return true;
+  }
+
   if (method === 'GET' && pathname === '/api/test/runs') {
     sendJson(res, 200, { runs: listRuns() });
     return true;

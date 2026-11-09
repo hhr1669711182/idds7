@@ -31,11 +31,37 @@
     .summary.bad { color: var(--fail); }
     .hint { font-size: 11px; color: var(--dim); margin-top: 8px; line-height: 1.6; }
     code { background: #0b1220; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+    .chip { display: inline-block; background: #0b1220; border: 1px solid var(--border); border-radius: 99px; padding: 2px 10px; font-size: 11px; margin: 2px 4px 2px 0; }
+    .chip .state { color: var(--dim); }
+    .none { color: var(--dim); font-size: 12px; }
   </style>
 </head>
 <body>
   <h1>IDS-GIS 业务模拟测试台</h1>
-  <div class="sub">驱动 mock-ws（:18080）向已连接的前端推送业务报文，验证数据链路。前端需先启动 <code>pnpm dev</code> 并完成登录/WS 连接。</div>
+  <div class="sub">驱动 mock-ws（:18080）向已连接的前端推送业务报文，验证数据链路。GIS 连接与登录态注入均在本页同源完成，无需 __test/ 旧控制台。</div>
+
+  <div class="panel" id="connPanel">
+    <div class="row"><label>① GIS 连接 · 登录态注入（同源，替代 __test/ 控制台）</label></div>
+    <div class="row">
+      <button id="oneClick">⚡ 一键连接 GIS（写登录态 + 开地图页）</button>
+      <button id="writeLogin" class="secondary">仅写入登录态</button>
+      <button id="openGis" class="secondary">打开 GIS 地图</button>
+      <span id="connStatus" style="font-size:12px;color:var(--dim)"></span>
+    </div>
+    <div class="row">
+      <label>在线客户端（2.5s 轮询）</label>
+      <div id="clientList"><span class="none">加载中…</span></div>
+    </div>
+    <div class="row">
+      <label>展示模式同步（seat-shared-state）</label>
+      <span id="stateIndicator" style="font-size:12px;color:var(--dim)">执行场景后随 stateLog 实时写入 phase / mode</span>
+    </div>
+    <div class="hint">
+      登录态写本页 origin（:18080）的 <code>seat-shared-state</code>：mock JWT（sub / session_state = 目标身份，留空默认 <code>gis-test-user/gis-test-session</code>）+ <code>auth.sessionId</code> + <code>user.userId</code>。
+      GIS 地图页走同源 <code>/#/map</code>（mock-ws 代理到 vite :8888），挂载即读登录态并自动发起 WS 连接；已开着的 GIS 页经 storage 事件热重连。
+      目标身份与下方「场景目标」共用同一输入框；留空时场景 autoRebind 到首个在线客户端（报告带 <code>rebound</code> 字段）。
+    </div>
+  </div>
 
   <div class="panel">
     <div class="row">
@@ -45,8 +71,8 @@
     </div>
     <div class="row">
       <label>目标身份（userId / sessionState）</label>
-      <input type="text" id="userId" placeholder="留空 = 默认 alarm-debug-user" style="width:180px" />
-      <input type="text" id="sessionState" placeholder="留空 = 默认 alarm-debug-session" style="width:200px" />
+      <input type="text" id="userId" placeholder="留空 = 默认 gis-test-user" style="width:180px" />
+      <input type="text" id="sessionState" placeholder="留空 = 默认 gis-test-session" style="width:200px" />
     </div>
     <div class="row">
       <button id="run">▶ 执行</button>
@@ -54,8 +80,8 @@
       <span id="status" style="font-size:13px;color:var(--dim)"></span>
     </div>
     <div class="hint">
-      前端连接：登录态 WS 指向 <code>ws://localhost:18080/message-client/ws</code>（.env.local 设 <code>VITE_WS_URL</code> + <code>VITE_DISPATCH_MOCK=true</code>）。
-      留空目标身份时使用内置默认；执行前会先做「前端 WS 连接确认」步骤，未连接直接 FAIL 提示。
+      执行前会先做「前端 WS 连接确认」步骤：目标身份留空时 autoRebind 到首个在线客户端（报告带 <code>rebound</code> 字段），无在线客户端直接 FAIL 提示。
+      前端 WS 指向 <code>ws://127.0.0.1:18080/message-client/ws</code>（.env.local 设 <code>VITE_WS_URL</code> + <code>VITE_USE_WS=true</code>；<code>dev:local:test</code> 已配好）。
     </div>
   </div>
 

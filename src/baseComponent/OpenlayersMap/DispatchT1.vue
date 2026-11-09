@@ -287,7 +287,7 @@ const queryFeatureProperties = async (
   if (!url) return null;
 
   const urlObject = new URL(url, window.location.origin);
-  const data = await geoserverApi.getWMSFeatureInfo('gis', {
+  const data = await geoserverApi.getWMSFeatureInfo({
     layers: layerId,
     query_layers: layerId,
     bbox: urlObject.searchParams.get('BBOX') ?? '',

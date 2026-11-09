@@ -741,7 +741,7 @@ export class DispatchT1 {
           .stations.map((station) => `id=${cqlLiteral(station.id)}`)
           .join(' OR ')
         const urlObject = new URL(url, window.location.origin)
-        const data = await geoserverApi.getWMSFeatureInfo('gis', {
+        const data = await geoserverApi.getWMSFeatureInfo({
           layers: DISPATCH_T1_STATION_LAYER,
           query_layers: DISPATCH_T1_STATION_LAYER,
           bbox: urlObject.searchParams.get('BBOX') ?? '',

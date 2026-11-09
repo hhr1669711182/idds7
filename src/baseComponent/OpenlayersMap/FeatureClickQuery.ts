@@ -6,6 +6,7 @@ import TileLayer from 'ol/layer/Tile'
 import TileWMS from 'ol/source/TileWMS'
 import AlarmDetailPopup from './AlarmDetailPopup.vue'
 import { geoserverApi } from '@/apis/geoserver'
+import { buildMultiLayerCql } from '@/utils/cql'
 import { unByKey } from 'ol/Observable'
 import { EventsKey } from 'ol/events'
 import { transform } from 'ol/proj'
@@ -188,7 +189,7 @@ export class FeatureClickQuery {
     if (url) {
       try {
         const urlObj = new URL(url, window.location.origin)
-        const data = await geoserverApi.getWMSFeatureInfo('gis', {
+        const data = await geoserverApi.getWMSFeatureInfo({
           layers: queryLayers.join(','),
           query_layers: queryLayers.join(','),
           bbox: urlObj.searchParams.get('BBOX') || urlObj.searchParams.get('bbox') || '',
@@ -206,16 +207,17 @@ export class FeatureClickQuery {
               urlObj.searchParams.get('J') ||
               urlObj.searchParams.get('j'),
           ),
-          cql_filter: Array(queryLayers.length).fill('1=1').join(';'),
-          viewparams: Array(queryLayers.length).fill('1=1').join(','),
+          cql_filter: buildMultiLayerCql(queryLayers.map(() => '1=1')),
+          viewparams: queryLayers.map(() => '1=1').join(','),
           feature_count: Number(urlObj.searchParams.get('FEATURE_COUNT') || 20),
           transparent: true,
           format: 'image/png',
           srs: projection.getCode(),
         })
 
-        if (data?.features?.length > 0) {
-          this.showPopup(evt.coordinate, data.features[0], items.value)
+        const features = data?.features ?? []
+        if (features.length > 0) {
+          this.showPopup(evt.coordinate, features[0], items.value)
         } else {
           this.closePopup()
         }
@@ -250,7 +252,7 @@ export class FeatureClickQuery {
 
     try {
       const params = new URL(url, window.location.origin).searchParams
-      const data = await geoserverApi.getWMSFeatureInfo('gis', {
+      const data = await geoserverApi.getWMSFeatureInfo({
         layers: STATION_LAYER_NAME,
         query_layers: STATION_LAYER_NAME,
         bbox: params.get('BBOX') ?? params.get('bbox') ?? '',
