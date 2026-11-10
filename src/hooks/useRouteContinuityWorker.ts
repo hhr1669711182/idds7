@@ -25,7 +25,7 @@ export const createRouteContinuityWorker = () => {
 
   const ensureWorker = () => {
     if (worker || typeof Worker === 'undefined') return worker
-    worker = new Worker(new URL('@/baseComponent/tools/routeContinuity.worker.ts', import.meta.url), {
+    worker = new Worker(new URL('../worker/routeContinuity.worker.ts', import.meta.url), {
       type: 'module',
     })
 
@@ -45,9 +45,7 @@ export const createRouteContinuityWorker = () => {
     return worker
   }
 
-  const ensureContinuity = (
-    segments: TmcSegmentInput[],
-  ): Promise<(TmcSegmentInput & { polyline: LngLat[] })[]> => {
+  const ensureContinuity = (segments: TmcSegmentInput[]): Promise<(TmcSegmentInput & { polyline: LngLat[] })[]> => {
     const currentWorker = ensureWorker()
     if (!currentWorker) {
       return Promise.resolve(ensureSegmentContinuity(segments))

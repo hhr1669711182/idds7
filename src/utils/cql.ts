@@ -29,9 +29,12 @@ export const buildCircleIntersectsCql = (geomField: string, center: LngLat, radi
 /**
  * 圆心距离过滤的 CQL 条件。
  * 该 GeoServer 实测 DWITHIN(...meters) 距离计算不可靠，仅在明确需要该语义时使用。
+ * @param center 圆心经纬度 [经, 纬]
+ * @param radiusMeters 半径（米）
+ * @param geomField 空间字段名；默认 geom，辖区等图层可传 zone_geom
  */
-export const buildDwithinCql = (center: LngLat, radiusMeters: number): string =>
-  `DWITHIN(geom, Point(${center[0]} ${center[1]}),${radiusMeters},meters)`
+export const buildDwithinCql = (center: LngLat, radiusMeters: number, geomField = 'geom'): string =>
+  `DWITHIN(${geomField}, Point(${center[0]} ${center[1]}),${radiusMeters},meters)`
 
 /** 视口范围（BBOX）。GeoServer 的 BBOX 参数顺序为 minx,miny,maxx,maxy。 */
 export const buildViewportCql = (viewport: [number, number, number, number]): string =>
@@ -42,8 +45,7 @@ export const buildKeywordCql = (keyword: string): string =>
   `strToLowerCase(name) LIKE '%${buildLiteral(keyword.trim().toLowerCase())}%'`
 
 /** 多图层 WMS 的 CQL 占位：按图层数用 ';' 分隔，空条件退化为不过滤。 */
-export const buildMultiLayerCql = (filters: string[]): string =>
-  filters.length ? filters.join(';') : '1=1'
+export const buildMultiLayerCql = (filters: string[]): string => (filters.length ? filters.join(';') : '1=1')
 
 /** 把多个条件用 AND 串成一个 CQL；空条件返回 1=1（不过滤）。 */
 export const combineCql = (...parts: (string | undefined)[]): string => {

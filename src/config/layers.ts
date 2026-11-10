@@ -360,3 +360,65 @@ export const LAYER_MODE_HIDDEN_LAYER_IDS: Record<LayerViewMode, string[]> = {
   dispatchTrack: ['gis:disaster_info'],
   flood: ['gis:disaster_info'],
 }
+
+/**
+ * 各展示模式工具栏隐藏的功能开关（FeatureSettings key 白名单过滤源；缺省 = 全走用户配置）。
+ * 与 LAYER_MODE_HIDDEN_LAYER_IDS 同风格同文件。
+ *
+ * 用途：`useMapConfigStore.effectiveFeature` 按此表 mask 出派生配置——
+ * dispatch/dispatchTrack 态下这些工具入口强制隐藏（不受用户配置影响），
+ * 切出调派后 effectiveFeature 自动恢复为 feature 原值，零持久化副作用。
+ *
+ * - dispatch/dispatchTrack：隐藏主图工具入口（工具栏/清除/路径/专题/人口/圈选/调色盘/天气）
+ *   及调派态无关联的配置面板（showCaseClosedStyle / showUavTrack）
+ * - flood：暂留空（特灾态隐藏清单待定，不额外隐藏）
+ */
+export const LAYER_MODE_HIDDEN_TOOL_KEYS: Record<LayerViewMode, import('@/config/mapConfig.ts').FeatureBoolKey[]> = {
+  loggedOut: [],
+  onDuty: [],
+  popup: [],
+  inquiry: [],
+  dispatch: [
+    'showNav',
+    'showDraw',
+    'showOther',
+    'showClear',
+    'showRoutePlan',
+    'showPalette',
+    'showTopic',
+    'showPopulation',
+    'showWeather',
+    'showCircleQuery',
+    'showCaseClosedStyle',
+    'showUavTrack',
+    'showDrawToolbar',
+    'showCard',
+    'showBigPanel',
+    'showConfig',
+    'showTopicCard',
+    'showBaseSource',
+    'showThemeSwitch',
+  ],
+  dispatchTrack: [
+    'showNav',
+    'showDraw',
+    'showOther',
+    'showClear',
+    'showRoutePlan',
+    'showPalette',
+    'showTopic',
+    'showPopulation',
+    'showWeather',
+    'showCircleQuery',
+    'showCaseClosedStyle',
+    'showUavTrack',
+    'showDrawToolbar',
+    'showCard',
+    'showBigPanel',
+    'showConfig',
+    'showTopicCard',
+    'showBaseSource',
+    'showThemeSwitch',
+  ],
+  flood: [],
+}

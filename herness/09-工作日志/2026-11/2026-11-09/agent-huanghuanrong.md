@@ -82,7 +82,7 @@
 **背景**：用户反馈 3 个问题：
 1. `GET /bff-client/api/v1/inquiry/profiles/by-incident/{incidentId}` 无 mock，前端画像补水静默失败（`showError: false`），导致警情上图后无坐标/地址刷新。
 2. 调派模式下车辆不动——历史轨迹 API（`POST /car-track-api/api/car/track/query`）指向外网 `192.168.169.40:31319`，测试环境无该服务 → 轨迹查询无数据 → 地图无动画。
-3. 合并 `map.vue` 与 `dispatchMap.vue` 后，调派模式应隐藏的部分工具（`routePlan`、`ssrkPanel`、`WeatherPanel`、`circleQueryPanel`）丢失了隐藏逻辑。
+3. 合并 `map.vue` 与 `dispatchMap.vue` 后，调派模式应隐藏的主图工具入口（`trp` 工具栏、`clear`、`card`、`bigPanel`、`config`、`paletteDrawer`、`topicLayerCard`、`baseSource` 及 `routePlan`、`ssrkPanel`、`WeatherPanel`、`circleQueryPanel`）丢失了隐藏逻辑（这些组件只按 `mapConfigStore.feature` 门控、不感知 dispatch 模式，故调派跟踪态下仍显示）。
 
 **改动（2 文件）**：
 1. `server/mock-ws.js`：
@@ -96,7 +96,7 @@
    - 未匹配的 `/bff-client` / `/car-track-api` 路径仍走原 `proxyHttp` → Vite → 后端。
 
 2. `src/components/map/index.vue`：
-   - `routePlan` / `ssrkPanel` / `WeatherPanel` / `circleQueryPanel` 的 `v-if` 各追加 `&& !dispatchVariant`，恢复原 `dispatchMap.vue` 中调派模式隐藏这四个工具的行为。
+   - 调派跟踪态（`dispatchVariant`）下主图工具**入口统一藏掉**：`trp` / `clear` / `card` / `bigPanel` / `config` / `paletteDrawer` / `topicLayerCard` / `baseSource` / `routePlan` / `ssrkPanel` / `WeatherPanel` / `circleQueryPanel` 共 12 项加 `v-if="!dispatchVariant"`；保留 `tlp`（罗盘）/ `layers`（图层栏，双变体共用按 activeMode 过滤）/ `brp`（对齐原 `dispatchMap/index.vue` 的 6 项基准）。
 
 **验证**：
 - `node --check server/mock-ws.js` OK。
@@ -107,3 +107,80 @@
 - 前端在 `:8888` 开发时，Vite proxy 把 `/bff-client` 转到 `ids-dev.ks.telewave.tech`，**不受 mock-ws 影响**；需要 mock 时直接访问 `:18080` 路径，或将 Vite proxy target 指向 `127.0.0.1:18080`。
 - 跑 `dispatchTrack` 场景时，`test-ui` 轮询写 `seat-shared-state`（phase=dispatchTrack）→ 前端门禁放行 → WS 推送车辆 GPS → 前端调 `queryCarHistoryTrack` → mock-ws 返回 31 点 → `VehicleTrackRenderer` 渲染轨迹动画。
 
+## 追加：工具显隐中置开关 overlay + 右上角换位（`7b63f50f`）
+
+**背景**：上一轮入口隐藏在模板逐处堆 `!dispatchVariant`（12 处）。用户提出两点：① 右上角三入口换位（调色盘 ThemeSwitch 最右、WeatherPanel 挪左），先不聚合；② 用 `mapConfigStore` 中置开关替代模板 v-if——"切出调派直接恢复，做成关联配置"。
+
+**方案（派生 overlay，不改写 feature 本身）**：用户明确"dispatchVariant 模式下一样要隐藏用户配置，不会污染，切出调派直接恢复"。故用**派生层**而非直接改 feature：
+
+**改动（9 文件，+143/-29）**：
+1. `src/config/mapConfig.ts`：`FeatureSettings` 接口加 6 个工具键（`showDrawToolbar`/`showCard`/`showBigPanel`/`showConfig`/`showTopicCard`/`showBaseSource`，此前无 feature 键的 6 个组件），`DEFAULT_FEATURE_SETTINGS` 全 true（现状默认显）；新增 `FeatureBoolKey` 类型（mask 只作用于布尔键，数值键不参与）。
+2. `src/config/layers.ts`：`LAYER_MODE_HIDDEN_TOOL_KEYS: Record<LayerViewMode, FeatureBoolKey[]>`（与 `LAYER_MODE_HIDDEN_LAYER_IDS` 同风格同文件）。`dispatch`/`dispatchTrack` 隐藏 18 键（工具栏/清除/路径/专题/人口/圈选/调色盘/天气 + 6 新键）；`flood` 留空（特灾态隐藏清单待定）。
+3. `src/store/useMapConfigStore.ts`：加 `viewMode`（**复用 `gisMapConfig.resolveLayerViewMode`**，与图层工具栏轴同源，避免第三套派生逻辑漂移）、`effectiveFeature`（`feature` ∧ 模式 mask 派生，**只读不改写 feature** → 切出调派自动恢复用户原值，零持久化副作用）、`showTool(key)` 辅助。均暴露到 store。
+4. `src/components/map/index.vue`：解构 `{ feature }` → `{ effectiveFeature }`；12 工具入口 `v-if` 全改读 `effectiveFeature.showXxx`，**模板不再出现 `!dispatchVariant`**；`dispatchVariant` 仅在 watch 逻辑 + `dispatch-variant-ui` div 保留。
+5. `trp.vue` / `clear.vue`：内部工具条目显隐改读 `effectiveFeature`（调派态下连 trp 内部工具项一起收）。
+6. 换位：`paletteDrawer`（最右，`right: --top-actions-right`）↔ `config`（次右）↔ `WeatherPanel`（最左，`right` 对称互换坐标，保证不重叠）。
+
+**分层合规**：store 层新增 import `@/config/layers` + `@/baseComponent/OpenlayersMap/gisMapConfig`（resolveLayerViewMode）——store 引用 baseComponent 已有先例（`useBaseSourceStore`/`useMapStore`），非越层。
+
+**验证**：`pnpm lint`（vue-tsc）0 报错。
+
+**遗留**：`flood`（特灾）模式的工具隐藏清单未定，`LAYER_MODE_HIDDEN_TOOL_KEYS.flood` 暂空 = 特灾态不额外隐藏（等同 feature 用户配置），待确认哪些工具该在特灾藏。
+
+## 追加：ThemeSwitch 主题开关入口纳入调派态隐藏（ae5b3519）
+
+`src/baseComponent/ThemeSwitch.vue`（右上角主题切换，`--top-actions-*` 定位簇）此前在 `home.vue` 里**无条件**渲染（不走 map/index.vue 那层），所以上一轮工具隐藏表没盖住它。走同一套 `effectiveFeature` 派生 overlay 收口：
+- `mapConfig.ts` 加 `showThemeSwitch` 键（默认 true）；
+- `LAYER_MODE_HIDDEN_TOOL_KEYS` dispatch/dispatchTrack 隐藏表纳入；
+- `home.vue` 挂 `v-if="effectiveFeature.showThemeSwitch"`（经 `../store` barrel 引 `useMapConfigStore` + `storeToRefs`）。
+与工具入口同架构：调派/调派跟踪态自动隐藏，切出自动恢复，零持久化。pnpm lint 0 报错。
+---
+
+## 追加：GIS-W46 迭代落地（G 域 GeoServer 加固 + P 域路径规划数据分析，9 项）
+
+**背景**：按《GIS-W46-实现阶段代码落地清单.md》（实现版 v2）落地 G03～G05 + P01～P06 共 9 项，全部落 `src/**`。方案见 `herness/02-技术设计/前端/GIS-W46-路径分析与GeoServer加固-技术方案.md`（已确认 → 已落地，待人工验收）。
+
+**用户已确认的 5 项决策**：
+1. P01 收敛范围 = 只建 DTO + 单一分析入口，**不迁消费方**（实测「迁移 4 个消费方」对象已不存在：前 3 个已接入 `routeBase`，`useDispatchEntangled` 无路线上图逻辑）。
+2. G04 空间口径 = 统一到 `INTERSECTS` 测地圆（**圈选结果集会变，属产品行为变更，需人工验收**）。
+3. TMC 缺省兜底 = 归 `unknown` 单列，**不按畅通**（并入会高估畅通占比）。
+4. `getWMSFeatureInfo` 参数顺序 = 统一为 `(params, workspace?)`。
+5. **workspace = 逐图层/逐请求推导，不做全局单一配置入口**（用户原话：「geoserverWorkspace 的 workspace 在 geoserver 中配置工作空间都不一定一样的，单一配置入口不现实」）。
+
+**新增文件（9）**：
+- `src/apis/geoserverTypes.ts` — WFS/WMS 返回契约（几何用 `GeoJSON.Geometry`，与 `envArea` 同口径）。
+- `src/utils/cql.ts` — CQL 构造统一入口（字面量转义 / 测地圆 / 视口 / 关键词 / 多图层拼接 / AND 组合）。
+- `src/utils/geojson.ts` — `readPointCoordinates` 点几何坐标提取。
+- `src/utils/trackStatistics.ts` — 轨迹统计（速度分布 / 停留点 / 跳点与超速异常 / 分段指标 / `limitedSample`）。
+- `src/types/routeAnalysis.ts` — `RouteAnalysisDTO` 等分析契约。
+- `src/baseComponent/tools/routeAnalysis.ts` — `buildRouteAnalysis` / `compareCandidates` / `ensureSegmentContinuity`。
+- `src/baseComponent/tools/routeContinuity.worker.ts` + `src/hooks/useRouteContinuityWorker.ts` — 路段衔接 Worker（照 `routeMetrics.worker` 范式，含主线程兜底）。
+- `src/composables/useGeoServerHealth.ts` — 探活 + 离线一次性提示 + `retry`（`GEOSERVER_PING_TIMEOUT_MS = 3s`）。
+- `tests/unit/{cql,geoserverApi,routeAnalysis,trackStatistics}.spec.ts` — 4 个用例文件（35 项）。
+
+**修改文件（15）**：`src/apis/geoserver.ts`（泛型化 + workspace 推导 + `pingGeoServer` + `WFSFeatureParams` 去索引签名）、`src/service/alovaGeo.ts`（`timeout = 10s`）、`src/apis/searchQuery.ts` 与 `src/components/map/MapTools/drawMapTools/CircleQueryTool.ts`（圈选改 INTERSECTS）、`src/controller/core/business/IncidentNearbyResourceQuery.ts`（CQL 下沉 utils）、`src/controller/core/business/IncidentStationQuery.ts`、`src/baseComponent/OpenlayersMap/{FeatureClickQuery,DispatchT1.ts,DispatchT1.vue,map.vue}`、`src/apis/layers.ts`、`src/composables/useSSRKFeatures.ts`、`src/baseComponent/amap/routeCongestion.ts`（`normalizeTmcLevel` / `summarizeTmc`）、`src/components/map/component/routePlanPanel.vue`（路况分布分析区）、`src/components/dispatchMap/VehicleTrackPanel.vue`（轨迹统计区）。
+
+**关键设计取舍**：
+- **工作空间推导**（`resolveWorkspace(explicit?, typeName?)`）：显式入参 > `workspace:layer` 前缀 > 缺省兜底 `gis`。实测存在 `gis:env_area` 与 `mark:mark_features` 并存，故全局单一入口在语义上不成立。
+- **CQL 口径统一依据**：`IncidentNearbyResourceQuery.ts` 早已实测记录该 GeoServer 的 `DWITHIN(...meters)` 不可靠（500m 圈命中 1.3km 外辖区、点图层返回 0），`INTERSECTS` + `SRID=4326;` 轴序前缀是可靠口径。
+- **探活失败只提示不阻断**：GeoServer 只服务业务图层，底图与前端矢量功能不依赖它。
+
+**踩坑**：
+- ⚠️ **测试夹具的时间轴**：轨迹停留点用例最初写成「前 20 点静止 + 后 20 点移动」，两个错误叠加导致误判失败——① 静止 20 秒远低于 120 秒停留阈值；② 移动段用同一个 `buildPoints` 生成，`gpsTime` 从 0 重新开始，时间轴倒退。**造轨迹夹具必须保证 `gpsTime` 全程单调递增**，静止段要按阈值时长铺点。
+- ⚠️ **alova GET 默认缓存 5 分钟**：接口层用例若连续发同参数请求会读到上一次的响应。测试里要关掉（`alovaInstance.options.cacheFor = { GET: 0 }`），否则断言会被缓存污染。
+- ⚠️ `@alova/mock` 默认按 pathname 匹配，会把查询串一起算进路径导致匹配不上；用 `matchMode: 'methodurl'`，且 mock key 用 `{workspace}` 通配捕获工作空间段。
+
+**验证**：
+- `pnpm lint`（vue-tsc）**0 报错**；`pnpm lint:baseline` **当前 0 项 / 基线 0 项**（无新增）。
+- `pnpm harness:check` 全过（css-vars 140 个变量 / backdrop 26 处 / asset manifest / element-styles 29 组件）。
+- `pnpm test` **59 文件 614 项全通过**（较基线 55 文件 579 项新增 4 文件 35 项）。
+- `pnpm build` 通过（`three.sRGBEncoding` 告警为 BIM 模块存量，与本次无关）。
+- Prettier：本次新增/改动的文件全部格式化通过；`src/components/dispatchMap/VehicleTrackPanel.vue` 的格式漂移是**存量**（HEAD 已有 331 处 diff），本次新增的 143 行逐字符合 prettier 规范，未整文件重排以免产生无关 diff。
+
+**待人工验收**：
+- G04 圈选结果集变化（同一圈选范围下，列表条数 / 上图要素 / 周边资源命中数与改动前比对）。
+- 路径规划面板「路况分布」与车辆轨迹面板「轨迹统计」的显示与数值口径。
+
+**回滚**：G 域与 P 域改动分散在 20 个 `src/**` 文件 + 4 个用例文件，撤销成本低；G04 单独回滚 = 恢复 `src/apis/searchQuery.ts` 与 `CircleQueryTool.ts` 原 CQL 条件。
+
+**关联文档**: `herness/02-技术设计/前端/GIS-W46-路径分析与GeoServer加固-技术方案.md`

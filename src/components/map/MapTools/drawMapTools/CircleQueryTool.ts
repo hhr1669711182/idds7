@@ -337,9 +337,7 @@ export class CircleQueryTool extends BaseTool {
 
     const layers = selectedTypes.map((t) => t.layerName).join(',')
     // 为每个图层生成单独的 filter，用分号分隔；口径与检索列表侧一致（INTERSECTS 测地圆）
-    const filters = selectedTypes.map((type) =>
-      buildCircleIntersectsCql(type.geomField, centerLonLat, radiusInMeters),
-    )
+    const filters = selectedTypes.map((type) => buildCircleIntersectsCql(type.geomField, centerLonLat, radiusInMeters))
     const cqlFilter = buildMultiLayerCql(filters)
 
     if (!this.wmsLayer) {

@@ -7,7 +7,6 @@ import { unByKey } from "ol/Observable";
 import type { EventsKey } from "ol/events";
 import { toLonLat } from "ol/proj";
 import { isOlMap } from "@/utils/mapTool";
-import { amapGcj02ToWgs84 } from "@/baseComponent/amap/amapCoordinate";
 
 
 import { amapApi, type PoiFeature, type PoiFeatureCollection } from "@/apis/amap";
@@ -16,16 +15,12 @@ import { useCurrentMap } from "@/composables/useCurrentMap";
 import { appEnv } from "@/config/env";
 import { SearchResultTool } from "../MapTools/drawMapTools/SearchResultTool";
 import type { RouteVehicleType } from "@/types/search";
-import type { RouteCongestionSegment } from "../MapTools/drawMapTools/SearchResultTool";
-import { buildRouteAnalysis } from "@/baseComponent/tools/routeAnalysis";
-import type { RouteAnalysisDTO, RouteTmcLevel } from "@/types/routeAnalysis";
 import { createRouteContinuityWorker } from "@/hooks/useRouteContinuityWorker";
+import { buildRoutePlanOptions, ROUTE_OPTION_LABELS } from "@/baseComponent/tools/routePlanOptions";
+import { summarizeTmc } from "@/baseComponent/amap/routeCongestion";
+import type { RoutePlanOption, RouteStepInstruction } from "@/types/routeAnalysis";
 
 type EndpointKey = "start" | "end";
-
-/** 高德路径规划返回的路况分段（tmcs）；实际可能位于 feature.properties.tmcs、顶层 tmcs 或 cost.tmcs */
-type TmcsItem = { polyline?: string | Array<[number, number]>; status?: string | number }
-
 
 interface TipOption {
   label: string
@@ -66,11 +61,6 @@ const formatDuration = (seconds: number) => {
   return `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分钟`;
 };
 
-const formatElapsed = (milliseconds: number) => {
-  if (!Number.isFinite(milliseconds) || milliseconds < 0) return "-";
-  return milliseconds >= 1000 ? `${(milliseconds / 1000).toFixed(2)} 秒` : `${Math.round(milliseconds)} 毫秒`;
-};
-
 // 高德拥堵状态文案：畅通 / 缓行 / 拥堵 / 严重拥堵（路况图例暂未启用，保留待恢复）
 // const congestionLabel = (status: string | number) => {
 //   switch (String(status).trim()) {
@@ -106,28 +96,47 @@ const formatElapsed = (milliseconds: number) => {
 //   return "#8A97A6";
 // };
 
-const routeSummary = ref<{ distance: number; duration: number; elapsed: number; segments: RouteCongestionSegment[]; trafficLights: number; analysis: RouteAnalysisDTO | null } | null>(null);
+/** 顶部汇总行（距离 / 耗时）；逐方案指标在多方案卡片内展示。 */
+const routeSummary = ref<{ distance: number; duration: number } | null>(null);
 
-/** 路况等级 → 展示文案 */
-const tmcLevelLabel = (level: RouteTmcLevel): string => {
-  switch (level) {
-    case "smooth": return "畅通";
-    case "slow": return "缓行";
-    case "jam": return "拥堵";
-    case "serious_jam": return "严重拥堵";
-    default: return "未知";
-  }
-};
+/** 多方案结果：每个方案含距离 / 耗时 / 红绿灯 / 路况 / 转向指引。 */
+const routeOptions = ref<RoutePlanOption[]>([]);
+/** 选中的方案序号（默认首个，即代理推荐方案）。 */
+const selectedOptionIndex = ref(0);
+/** 方案卡片展开状态：默认收起该方案的次栏与指引区。 */
+const optionExpanded = ref<Record<string, boolean>>({});
+/** 路况分布默认收起，展开后显示各等级占比条。 */
+const tmcExpanded = ref<Record<string, boolean>>({});
 
-/** 路况等级 → 语义色 token（跟随主题，不写裸色值） */
-const tmcLevelColor = (level: RouteTmcLevel): string => {
-  switch (level) {
-    case "smooth": return "var(--tag-success-text)";
-    case "slow": return "var(--tag-warning-text)";
-    case "jam": return "var(--tag-danger-text)";
-    case "serious_jam": return "var(--tag-danger-text)";
-    default: return "var(--tag-info-text)";
-  }
+/** 方案是否处于选中态。 */
+const isOptionSelected = (option: RoutePlanOption) => option.index === selectedOptionIndex.value;
+
+/** 方案的次栏（距离 / 耗时 / 红绿灯）是否展开。 */
+const isOptionExpanded = (option: RoutePlanOption) => optionExpanded.value[option.id] ?? false;
+
+/** 方案的路况分布是否展开。 */
+const isTmcExpanded = (option: RoutePlanOption) => tmcExpanded.value[option.id] ?? false;
+
+/** 转向类型 → sprite 图标 id（sprite 中掉头图标名为 icon-turn-around）。 */
+const turnIconId = (turn: string): string =>
+  turn === "uturn" ? "icon-turn-around" : `icon-turn-${turn}`;
+
+/** 当前高亮的转向指引（按「方案 id + 指引下标」记录）。 */
+const activeStep = ref<{ optionId: string; stepIndex: number } | null>(null);
+
+/** 某条指引是否处于高亮态。 */
+const isStepActive = (option: RoutePlanOption, step: RouteStepInstruction): boolean =>
+  activeStep.value?.optionId === option.id && activeStep.value?.stepIndex === option.steps.indexOf(step);
+
+/**
+ * 点击转向指引：定位到该路段并高亮。
+ * 切换方案时清掉高亮，避免高亮落在别的方案的路线上。
+ */
+const onSelectStep = (option: RoutePlanOption, step: RouteStepInstruction) => {
+  const tool = ensureTool();
+  if (!tool || !step.coords.length) return;
+  activeStep.value = { optionId: option.id, stepIndex: option.steps.indexOf(step) };
+  tool.focusRouteSegment(step.coords);
 };
 
 /** 百分比展示（0~1 → 百分比文本） */
@@ -306,79 +315,18 @@ const onClear = (which: EndpointKey) => {
   resultTool?.clearRoute();
   resultTool?.showRouteEndpoints(routeForm.value.start.lngLat, routeForm.value.end.lngLat);
   routeSummary.value = null;
+  routeOptions.value = [];
+  activeStep.value = null;
 };
 
 const onSwitchVehicle = (vehicle: RouteVehicleType) => {
   searchStore.setRouteVehicle(vehicle);
   resultTool?.clearRoute();
   routeSummary.value = null;
+  routeOptions.value = [];
+  activeStep.value = null;
 };
 
-// ===== 路径规划 =====
-const parseRouteFeatures = (response: unknown) => {
-  const payload = response as {
-    totalDistance?: string | number
-    totalTime?: string | number
-    trafficLights?: string | number
-    features?: {
-      tmcs?: TmcsItem[]
-      geometry?: { coordinates?: unknown }
-      properties?: { tmcs?: TmcsItem[] }
-    }[]
-  }
-  const coords: [number, number][] = []
-  const segments: RouteCongestionSegment[] = []
-  const seenPolyline = new Set<string>()
-  // 代理信封解包后 data 可能是数组（多方案），优先取首个含 features 的元素，否则兼容单对象
-  const unwrapped = Array.isArray(response) ? response[0] : response
-  const root = (unwrapped ?? payload) as typeof payload
-  const features = Array.isArray(root?.features) ? root.features : []
-  features.forEach((feature) => {
-    const raw = feature?.geometry?.coordinates;
-    if (Array.isArray(raw)) {
-      raw.forEach((pair) => {
-        if (!Array.isArray(pair) || pair.length < 2) return;
-        const lng = Number(pair[0]);
-        const lat = Number(pair[1]);
-        if (Number.isFinite(lng) && Number.isFinite(lat)) {
-          // 接口返回坐标已是 WGS84，直接上图
-          coords.push([lng, lat]);
-        }
-      });
-    }
-
-    // tmcs：按拥堵等级切分的路段，用于分段着色
-    const topLevel = root as { tmcs?: TmcsItem[]; cost?: { tmcs?: TmcsItem[] } };
-    const tmcs = feature?.properties?.tmcs ?? topLevel.cost?.tmcs ?? topLevel.tmcs;
-    if (Array.isArray(tmcs)) {
-      tmcs.forEach((item) => {
-        if (!item?.polyline) return;
-        const segCoords: [number, number][] = [];
-        const rawPolyline = Array.isArray(item.polyline) ? item.polyline.join(";") : String(item.polyline);
-        rawPolyline.split(";").forEach((pair) => {
-          const [lngStr, latStr] = pair.split(",");
-          const lng = Number(lngStr);
-          const lat = Number(latStr);
-          if (Number.isFinite(lng) && Number.isFinite(lat)) {
-            // tmcs.polyline 是高德 GCJ-02，与 geometry 的 WGS84 相差约 638m，需反向转换后再上图
-            segCoords.push(amapGcj02ToWgs84([lng, lat]));
-          }
-        });
-        if (segCoords.length >= 2 && !seenPolyline.has(rawPolyline)) {
-          seenPolyline.add(rawPolyline);
-          segments.push({ coords: segCoords, status: item.status ?? "" });
-        }
-      });
-    }
-  });
-  return {
-    coords,
-    segments,
-    distance: Number(root?.totalDistance ?? payload?.totalDistance ?? 0),
-    duration: Number(root?.totalTime ?? payload?.totalTime ?? 0),
-    trafficLights: Number(root?.trafficLights ?? payload?.trafficLights ?? 0),
-  };
-};
 
 const planRoute = async () => {
   const { start, end, vehicle, truck } = routeForm.value;
@@ -387,12 +335,12 @@ const planRoute = async () => {
   if (!tool) return;
 
   searchStore.setRoutePlanning(true);
-  const startedAt = performance.now();
   try {
     // 接口入参统一 WGS84，无需转换
     const origin = `${start.lngLat[0].toFixed(6)},${start.lngLat[1].toFixed(6)}`;
     const destination = `${end.lngLat[0].toFixed(6)},${end.lngLat[1].toFixed(6)}`;
 
+    // 小汽车走 strategy=11 返回多方案；货车走 v2 接口，代理端当前恒返回单方案。
     const response =
       vehicle === "truck"
         ? await amapApi.drivingV2({
@@ -402,34 +350,43 @@ const planRoute = async () => {
             load: truck.load,
             height: truck.height,
             width: truck.width,
+            strategy: 11,
           })
-        : await amapApi.driving({ origin, destination });
+        : await amapApi.driving({ origin, destination, strategy: 11, extensions: "all" });
 
-    const { coords, segments, distance, duration, trafficLights } = parseRouteFeatures(response);
-    if (!coords.length) {
+    const options = buildRoutePlanOptions(response, (tmcs, totalDistanceMeters, durationSeconds) =>
+      summarizeTmc(tmcs, { totalDistanceMeters, durationSeconds }),
+    );
+    if (!options.length) {
       ElMessage.warning("未找到可用路径");
       routeSummary.value = null;
+      routeOptions.value = [];
+      activeStep.value = null;
       return;
     }
-    // P06：多段路况几何补齐，保证相邻段无缺口
-    const continuous = await continuityWorker.ensureContinuity(
-      segments.map((segment) => ({ status: segment.status, polyline: segment.coords })),
-    );
-    const continuousSegments: RouteCongestionSegment[] = continuous.map((segment) => ({
-      coords: segment.polyline,
-      status: segment.status,
-    }));
-    tool.showRoute(coords, continuousSegments);
-    tool.fitPoints(coords);
-    // P01/P02：统一分析结构（距离 / 时长 / 路况占比 / 覆盖度）
-    const analysis = buildRouteAnalysis({
-      path: coords,
-      tmcs: continuous.map((segment) => ({ status: segment.status, polyline: segment.polyline })),
-      distanceMeters: distance,
-      durationSeconds: duration,
-      candidateRank: 0,
-    });
-    routeSummary.value = { distance, duration, elapsed: performance.now() - startedAt, segments: continuousSegments, trafficLights, analysis };
+
+    // P06：各方案的路况几何补齐，保证相邻段无缺口
+    const prepared: RoutePlanOption[] = [];
+    for (const option of options) {
+      const continuous = await continuityWorker.ensureContinuity(option.tmcs);
+      prepared.push({
+        ...option,
+        tmcs: continuous.map((segment) => ({ status: segment.status, polyline: segment.polyline })),
+      });
+    }
+
+    routeOptions.value = prepared;
+    activeStep.value = null;
+    selectedOptionIndex.value = 0;
+    optionExpanded.value = {};
+    tmcExpanded.value = {};
+    const selected = prepared[0];
+    tool.showRouteOptions(prepared, 0);
+    tool.fitPoints(selected.coords);
+    routeSummary.value = {
+      distance: selected.distanceMeters,
+      duration: selected.durationSeconds,
+    };
   } catch (error) {
     console.warn("[routePlanPanel] planRoute failed:", error);
     ElMessage.error("路径规划失败，请稍后重试");
@@ -438,10 +395,34 @@ const planRoute = async () => {
   }
 };
 
+/** 选中方案：切换上图路线并重新 fit 到该方案范围。 */
+const onSelectOption = (option: RoutePlanOption) => {
+  const tool = ensureTool();
+  if (!tool) return;
+  selectedOptionIndex.value = option.index;
+  // 切换方案后原高亮路段已不在当前路线上，清掉高亮状态
+  activeStep.value = null;
+  tool.clearFocus();
+  tool.showRouteOptions(routeOptions.value, option.index);
+  tool.fitPoints(option.coords);
+};
+
+/** 折叠 / 展开某方案的次栏与指引区。 */
+const onToggleOption = (option: RoutePlanOption) => {
+  optionExpanded.value = { ...optionExpanded.value, [option.id]: !isOptionExpanded(option) };
+};
+
+/** 折叠 / 展开某方案的路况分布。 */
+const onToggleTmc = (option: RoutePlanOption) => {
+  tmcExpanded.value = { ...tmcExpanded.value, [option.id]: !isTmcExpanded(option) };
+};
+
 const onClose = () => {
   searchStore.closeRoutePanel();
   resultTool?.clearRoute();
   routeSummary.value = null;
+  routeOptions.value = [];
+  activeStep.value = null;
 };
 const onAnalyze = () => {
 /** 手动触发路径规划分析（小汽车 / 货车统一入口） */
@@ -473,6 +454,8 @@ watch(
       tool.fitPoints([start.lngLat, end.lngLat]);
     }
     routeSummary.value = null;
+    routeOptions.value = [];
+    activeStep.value = null;
   },
   { deep: true },
 );
@@ -647,90 +630,134 @@ onBeforeUnmount(() => {
           </el-button>
         </div>
 
-        <div v-if="routeSummary" class="rp-result">
-          <div class="rp-result-head">
-            <span class="rp-result-title">规划结果</span>
-            <span v-if="routePlanning" class="rp-result-elapsed">计算中…</span>
-          </div>
-          <div class="rp-result-grid">
-            <div class="rp-result-item">
-              <span class="rp-result-label">距离</span>
-              <span class="rp-result-value">{{ formatDistance(routeSummary.distance) }}</span>
-            </div>
-            <div class="rp-result-item">
-              <span class="rp-result-label">预计耗时</span>
-              <span class="rp-result-value">{{ formatDuration(routeSummary.duration) }}</span>
-            </div>
-            <div class="rp-result-item">
-              <span class="rp-result-label">计算耗时</span>
-              <span class="rp-result-value">{{ formatElapsed(routeSummary.elapsed) }}</span>
-            </div>
-            <div class="rp-result-item">
-              <span class="rp-result-label">红绿灯</span>
-              <span class="rp-result-value">{{ routeSummary.trafficLights }} 个</span>
-            </div>
-          </div>
-          <!-- P02：路况占比与覆盖度（unknown 单列，不并入畅通） -->
-          <div v-if="routeSummary.analysis" class="rp-analysis">
-            <div class="rp-analysis-head">
-              <span class="rp-analysis-title">路况分布</span>
-              <span class="rp-analysis-coverage">覆盖度 {{ formatRatio(routeSummary.analysis.tmc.coverage) }}</span>
-            </div>
-            <div class="rp-analysis-bars">
-              <div class="rp-analysis-bar">
-                <span class="rp-analysis-label">畅通</span>
-                <el-progress
-                  :percentage="Math.round(routeSummary.analysis.tmc.smoothRatio * 100)"
-                  :stroke-width="8"
-                  :show-text="false"
-                  color="var(--tag-success-text)"
-                />
-                <span class="rp-analysis-value">{{ formatRatio(routeSummary.analysis.tmc.smoothRatio) }}</span>
-              </div>
-              <div class="rp-analysis-bar">
-                <span class="rp-analysis-label">缓行</span>
-                <el-progress
-                  :percentage="Math.round(routeSummary.analysis.tmc.slowRatio * 100)"
-                  :stroke-width="8"
-                  :show-text="false"
-                  color="var(--tag-warning-text)"
-                />
-                <span class="rp-analysis-value">{{ formatRatio(routeSummary.analysis.tmc.slowRatio) }}</span>
-              </div>
-              <div class="rp-analysis-bar">
-                <span class="rp-analysis-label">拥堵</span>
-                <el-progress
-                  :percentage="Math.round(routeSummary.analysis.tmc.jamRatio * 100)"
-                  :stroke-width="8"
-                  :show-text="false"
-                  color="var(--tag-danger-text)"
-                />
-                <span class="rp-analysis-value">{{ formatRatio(routeSummary.analysis.tmc.jamRatio) }}</span>
-              </div>
-              <div class="rp-analysis-bar">
-                <span class="rp-analysis-label">未知</span>
-                <el-progress
-                  :percentage="Math.round(routeSummary.analysis.tmc.unknownRatio * 100)"
-                  :stroke-width="8"
-                  :show-text="false"
-                  color="var(--tag-info-text)"
-                />
-                <span class="rp-analysis-value">{{ formatRatio(routeSummary.analysis.tmc.unknownRatio) }}</span>
-              </div>
-            </div>
-            <div class="rp-analysis-foot">
-              <span>拥堵路段 {{ formatDistance(routeSummary.analysis.tmc.jamDistanceMeters) }}</span>
-              <span>拥堵耗时约 {{ formatDuration(routeSummary.analysis.tmc.jamDurationSeconds) }}</span>
-            </div>
-            <div v-if="routeSummary.analysis.segments.length" class="rp-analysis-segments">
-              <span
-                v-for="(segment, idx) in routeSummary.analysis.segments"
-                :key="idx"
-                class="rp-analysis-segment"
-                :style="{ color: tmcLevelColor(segment.level) }"
-              >
-                {{ tmcLevelLabel(segment.level) }}
+        <!-- 多方案结果：每套方案一张卡片，可点击切换上图 -->
+        <div v-if="routeOptions.length" class="rp-options">
+          <div
+            v-for="option in routeOptions"
+            :key="option.id"
+            :class="['rp-option', { selected: isOptionSelected(option) }]"
+          >
+            <!-- 顶栏：方案序号 + 档位标签 + 折叠箭头 -->
+            <div class="rp-option-head" @click="onSelectOption(option)">
+              <span class="rp-option-index">方案{{ option.index + 1 }}</span>
+              <span class="rp-option-tags">
+                <span
+                  v-for="tier in option.tiers"
+                  :key="tier"
+                  :class="['rp-option-tag', `tag-${tier}`]"
+                >{{ ROUTE_OPTION_LABELS[tier] }}</span>
+                <span v-if="!option.tiers.length" class="rp-option-tag tag-alternative">备选方案</span>
               </span>
+              <span
+                class="rp-option-fold"
+                role="img"
+                tabindex="-1"
+                :title="isOptionExpanded(option) ? '收起' : '展开'"
+                @click.stop="onToggleOption(option)"
+              >
+                <svg width="1em" height="1em" fill="currentColor" aria-hidden="true">
+                  <use :xlink:href="isOptionExpanded(option) ? '#icon-closes' : '#icon-unfold'"></use>
+                </svg>
+              </span>
+            </div>
+
+            <!-- 次栏：约 X 分钟 | X 公里 | 红绿灯 N 个 -->
+            <div class="rp-option-meta">
+              <span>约{{ Math.round(option.durationSeconds / 60) }}分钟</span>
+              <span class="rp-option-sep">|</span>
+              <span>{{ formatDistance(option.distanceMeters) }}</span>
+              <span class="rp-option-sep">|</span>
+              <span class="rp-option-lights">红绿灯{{ option.trafficLights }}个</span>
+            </div>
+
+            <!-- 展开区：指标 + 路况分布 + 转向指引 -->
+            <div v-if="isOptionExpanded(option)" class="rp-option-body">
+              <div class="rp-option-grid">
+                <div class="rp-option-item">
+                  <span class="rp-option-label">距离</span>
+                  <span class="rp-option-value">{{ formatDistance(option.distanceMeters) }}</span>
+                </div>
+                <div class="rp-option-item">
+                  <span class="rp-option-label">预计耗时</span>
+                  <span class="rp-option-value">{{ formatDuration(option.durationSeconds) }}</span>
+                </div>
+                <div class="rp-option-item">
+                  <span class="rp-option-label">红绿灯</span>
+                  <span class="rp-option-value">{{ option.trafficLights }} 个</span>
+                </div>
+              </div>
+
+              <!-- 路况分布：默认收起，标题行直接给出畅通率 -->
+              <div class="rp-tmc">
+                <div class="rp-tmc-head" @click="onToggleTmc(option)">
+                  <span class="rp-tmc-title">路况分布</span>
+                  <span class="rp-tmc-summary">
+                    畅通率 {{ option.coverage > 0 ? formatRatio(option.smoothRatio) : '暂无数据' }}
+                  </span>
+                  <span class="rp-tmc-fold" role="img" tabindex="-1">
+                    <svg width="1em" height="1em" fill="currentColor" aria-hidden="true">
+                      <use :xlink:href="isTmcExpanded(option) ? '#icon-closes' : '#icon-unfold'"></use>
+                    </svg>
+                  </span>
+                </div>
+                <div v-if="isTmcExpanded(option)" class="rp-tmc-bars">
+                  <div class="rp-tmc-bar">
+                    <span class="rp-tmc-label">畅通</span>
+                    <el-progress
+                      :percentage="Math.round(option.smoothRatio * 100)"
+                      :stroke-width="8"
+                      :show-text="false"
+                      color="var(--tag-success-text)"
+                    />
+                    <span class="rp-tmc-value">{{ formatRatio(option.smoothRatio) }}</span>
+                  </div>
+                  <div class="rp-tmc-bar">
+                    <span class="rp-tmc-label">缓行</span>
+                    <el-progress
+                      :percentage="Math.round(option.slowRatio * 100)"
+                      :stroke-width="8"
+                      :show-text="false"
+                      color="var(--tag-warning-text)"
+                    />
+                    <span class="rp-tmc-value">{{ formatRatio(option.slowRatio) }}</span>
+                  </div>
+                  <div class="rp-tmc-bar">
+                    <span class="rp-tmc-label">拥堵</span>
+                    <el-progress
+                      :percentage="Math.round(option.jamRatio * 100)"
+                      :stroke-width="8"
+                      :show-text="false"
+                      color="var(--tag-danger-text)"
+                    />
+                    <span class="rp-tmc-value">{{ formatRatio(option.jamRatio) }}</span>
+                  </div>
+                  <div class="rp-tmc-foot">
+                    覆盖度 {{ formatRatio(option.coverage) }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- 转向指引 -->
+              <div v-if="option.steps.length" class="rp-steps">
+                <div
+                  v-for="(step, stepIdx) in option.steps"
+                  :key="stepIdx"
+                  :class="['rp-step', { active: isStepActive(option, step) }]"
+                  role="button"
+                  tabindex="0"
+                  title="定位到该路段"
+                  @click="onSelectStep(option, step)"
+                  @keydown.enter="onSelectStep(option, step)"
+                  @keydown.space.prevent="onSelectStep(option, step)"
+                >
+                  <span class="rp-step-arrow" :class="`turn-${step.turn}`">
+                    <svg width="1em" height="1em" fill="currentColor" aria-hidden="true">
+                      <use :xlink:href="`#${turnIconId(step.turn)}`"></use>
+                    </svg>
+                  </span>
+                  <span class="rp-step-text">{{ step.partDesc }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1056,5 +1083,251 @@ onBeforeUnmount(() => {
   padding: 0 var(--space-xs);
   border-radius: var(--radius-sm);
   background: var(--tag-info-bg);
+}
+
+/* ---------- 多方案结果卡片（按截图：顶栏 tag + 次栏指标 + 转向指引） ---------- */
+.rp-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.rp-option {
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  background: var(--panel-bg-solid);
+  overflow: hidden;
+}
+
+/* 选中方案用强调色描边，与备选方案区分 */
+.rp-option.selected {
+  border-color: var(--accent-cyan);
+}
+
+.rp-option-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 6px 8px;
+  cursor: pointer;
+  background: var(--header-bg);
+}
+
+.rp-option-index {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.rp-option-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 档位 tag：按档位分色，主档位用强调色 */
+.rp-option-tag {
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  background: var(--tag-info-bg);
+  color: var(--tag-info-text);
+}
+
+.rp-option-tag.tag-fastest {
+  background: var(--tag-success-bg);
+  color: var(--tag-success-text);
+}
+
+.rp-option-tag.tag-shortest {
+  background: var(--tag-warning-bg);
+  color: var(--tag-warning-text);
+}
+
+.rp-option-tag.tag-avoidJam {
+  background: var(--tag-danger-bg);
+  color: var(--tag-danger-text);
+}
+
+.rp-option-tag.tag-balanced {
+  background: var(--tag-info-bg);
+  color: var(--accent-cyan);
+}
+
+.rp-option-tag.tag-alternative {
+  background: var(--tag-info-bg);
+  color: var(--text-muted);
+}
+
+.rp-option-fold {
+  flex: 0 0 auto;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+  display: inline-flex;
+}
+
+.rp-option-fold:hover { color: var(--text-primary); }
+
+/* 次栏：约 X 分钟 | X 公里 | 红绿灯 N 个 */
+.rp-option-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.rp-option-sep {
+  color: var(--text-muted);
+}
+
+.rp-option-lights {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.rp-option-body {
+  padding: 6px 8px 8px;
+}
+
+.rp-option-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xs);
+}
+
+.rp-option-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rp-option-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.rp-option-value {
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+/* 路况分布：默认收起，展开显示占比条 */
+.rp-tmc {
+  margin-top: var(--space-xs);
+  border-top: 1px dashed var(--panel-border);
+  padding-top: 4px;
+}
+
+.rp-tmc-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  cursor: pointer;
+}
+
+.rp-tmc-title {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.rp-tmc-summary {
+  flex: 1 1 auto;
+  font-size: 12px;
+  color: var(--accent-cyan);
+}
+
+.rp-tmc-fold {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: inline-flex;
+}
+
+.rp-tmc-bars {
+  margin-top: 4px;
+}
+
+.rp-tmc-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: 3px;
+}
+
+.rp-tmc-label {
+  flex: 0 0 30px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rp-tmc-value {
+  flex: 0 0 40px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.rp-tmc-foot {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* 转向指引列表 */
+.rp-steps {
+  margin-top: var(--space-xs);
+  border-top: 1px dashed var(--panel-border);
+  padding-top: 4px;
+}
+
+.rp-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  line-height: 1.6;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 1px 3px;
+  transition: background-color 0.15s ease;
+}
+
+.rp-step:hover {
+  background: var(--card-border);
+}
+
+/* 当前定位中的路段：底色 + 左侧强调条 */
+.rp-step.active {
+  background: var(--panel-bg-solid);
+  box-shadow: inset 2px 0 0 var(--accent-cyan);
+}
+
+.rp-step.active .rp-step-text {
+  color: var(--accent-cyan);
+}
+
+.rp-step-arrow {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: var(--accent-cyan);
+  display: inline-flex;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.rp-step-text {
+  flex: 1 1 auto;
+  font-size: 12px;
+  color: var(--text-primary);
+  word-break: break-all;
 }
 </style>

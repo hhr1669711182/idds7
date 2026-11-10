@@ -43,12 +43,31 @@ export interface FeatureSettings {
   showCircleQuery: boolean
   /** 调色盘 */
   showPalette: boolean
+  /** 右侧绘制工具栏（trp） */
+  showDrawToolbar: boolean
+  /** 绘制表单卡（card） */
+  showCard: boolean
+  /** 专题/动画/分析大面板（bigPanel） */
+  showBigPanel: boolean
+  /** 配置面板（config） */
+  showConfig: boolean
+  /** 专题图层卡（topicLayerCard） */
+  showTopicCard: boolean
+  /** 底图源选择（baseSource） */
+  showBaseSource: boolean
+  /** 主题切换开关（ThemeSwitch） */
+  showThemeSwitch: boolean
   mapMode: MapMode
   bufferKm: number
   queryCustomPoi: boolean
   showCaseClosedStyle: boolean
   showUavTrack: boolean
 }
+
+/** FeatureSettings 的布尔展示键（模式 overlay 只 mask 这些键；数值/非布尔键不参与） */
+export type FeatureBoolKey = {
+  [K in keyof FeatureSettings]: FeatureSettings[K] extends boolean ? K : never
+}[keyof FeatureSettings]
 
 /** 功能配置默认值（须与组件当前的「默认显」状态一致，避免保存一次后组件消失） */
 export const DEFAULT_FEATURE_SETTINGS: FeatureSettings = {
@@ -71,6 +90,13 @@ export const DEFAULT_FEATURE_SETTINGS: FeatureSettings = {
   showLayerToolbar: true,
   showCircleQuery: true,
   showPalette: true,
+  showDrawToolbar: true,
+  showCard: true,
+  showBigPanel: true,
+  showConfig: true,
+  showTopicCard: true,
+  showBaseSource: true,
+  showThemeSwitch: true,
   mapMode: 'dispatch',
   bufferKm: 0.2,
   queryCustomPoi: true,

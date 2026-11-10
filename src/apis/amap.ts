@@ -253,6 +253,9 @@ export const driving = (params: {
   origin: string
   destination: string
   strategy?: number
+  /** 响应详细字段（cost / navi / tmc）。实测代理恒返回道路名与转向文案。 */
+  extensions?: 'base' | 'all'
+  show_fields?: string
   // show_fields?: string
   // waypoints?: string
   // avoidpolygons?: string
@@ -269,6 +272,11 @@ export const drivingV2 = (params: {
   load?: string
   height?: string
   width?: string
+  /**
+   * 路径策略。实测代理的 driving-v2 恒返回单方案，该参数当前不生效，
+   * 保留是为了将来代理支持多方案时无需改调用方。
+   */
+  strategy?: number
 }) => alovaMapProxyInstance.Get<RouteResultResponse>('/api/amap/route/driving-v2', { params, cacheFor: 0 })
 
 /** Route 3. 多起点、单终点路径规划；origins / destination 为 WGS84 坐标串。 */

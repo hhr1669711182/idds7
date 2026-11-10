@@ -74,7 +74,9 @@ export const summarizeTmc = (
     .filter((segment) => segment.polyline.length >= 2)
 
   const sumBy = (levels: RouteTmcLevel[]) =>
-    analyzed.filter((segment) => levels.includes(segment.level)).reduce((total, segment) => total + segment.distanceMeters, 0)
+    analyzed
+      .filter((segment) => levels.includes(segment.level))
+      .reduce((total, segment) => total + segment.distanceMeters, 0)
 
   const smoothDistance = sumBy(['smooth'])
   const slowDistance = sumBy(['slow'])
@@ -94,7 +96,8 @@ export const summarizeTmc = (
     slowRatio: ratio(slowDistance),
     jamRatio: ratio(jamDistance),
     unknownRatio: ratio(unknownDistance),
-    coverage: totalDistanceMeters > 0 ? Math.min(1, coveredDistance / totalDistanceMeters) : coveredDistance > 0 ? 1 : 0,
+    coverage:
+      totalDistanceMeters > 0 ? Math.min(1, coveredDistance / totalDistanceMeters) : coveredDistance > 0 ? 1 : 0,
     jamDistanceMeters: jamDistance,
     jamDurationSeconds: averageSpeed > 0 ? jamDistance / averageSpeed : 0,
     totalDistanceMeters,

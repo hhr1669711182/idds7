@@ -16,6 +16,8 @@
 | [地图样式管理重构Phase1-技术方案.md](地图样式管理重构Phase1-技术方案.md) | `featureStyle.ts` 按职责拆分迁移到 `OpenlayersMap/style/`；修 vehicle 共享样式串扰缺陷与 controller 分层倒挂 | **Phase 1 已落地并验证**（2026-10-19；lint 149/191 无新增、51 文件 559 测试全绿、双构建通过）；Phase 2 纳管散落样式待启动 |
 | [store分层与首屏优化-技术方案.md](store分层与首屏优化-技术方案.md) | store Tier 分层（barrel 收敛为 8 个 Tier 1）+ 越层修复（useCardStore/useModelAssessStore/useSearchPanelStore/useIncidentLocationStore）+ useTabsStore 去 useRouter + 删 useModalMap | **已落地**（2026-10-28；`pnpm lint` 0 报错；铁律回写 `设计规范速查.md`「八·之一、Store 分层铁律」） |
 | [主题调色盘体系-技术方案.md](主题调色盘体系-技术方案.md) | 主题/调色盘双维度切换；`tokens.less` + `palettes.less` 分层；底图 `context.filter` 参数化；组件主题适配补齐（36 → 0）；**§10 第二轮修复**（毛玻璃 Lightning CSS 去重坑、OL 控件桥接、工具栏变量化、compass 夜间图、调色盘逻辑优化）；**§11 第三轮修复**（鹰眼回归修复 + OL 控件样式收敛到唯一真源 `ol-controls.less`）；**§12 第四轮修复**（config 入口按钮被天气面板压住 + 右上角操作簇收敛为常量推导） | **已落地**（2026-10-21；规范见 `herness/05-共享上下文/代码样式规范.md` §4.5/§4.6，token 查表见 `主题与调色盘速查.md`） |
+| [GIS-W46-路径分析与GeoServer加固-技术方案.md](GIS-W46-路径分析与GeoServer加固-技术方案.md) | G 域 GeoServer 加固（G03 类型收窄 + G04 CQL 口径统一 + G05 探活降级）+ P 域路径规划数据分析（P01 分析 DTO / P02 TMC 指标 / P03 候选对比 / P04 轨迹统计 / P05 面板消费 / P06 路段衔接）；§3-G03 记录「工作空间不做全局单一配置入口」的用户决策与依据 | **已落地，待人工验收**（2026-11-09；G04 圈选结果集变化属产品行为变更需人工比对；lint 0 / lint-baseline 0 / harness 全过 / build 通过 / Vitest 59 文件 614 项全绿） |
+| [路径规划多方案展示-技术方案.md](路径规划多方案展示-技术方案.md) | 小汽车路径规划改用 strategy=11 返回 1~3 套候选方案；面板按截图形态并列展示方案卡（顶栏档位 tag + 次栏指标 + 可折叠路况分布 + 转向指引）；档位（时间最短/距离最短/躲避拥堵/综合最优）由前端判定，因代理响应不含策略标识字段 | **已落地，待人工验收**（2026-11-10；lint 0 / lint-baseline 0 / harness 全过 / build 通过 / Vitest 60 文件 625 项全绿；⚠️ 货车分支 driving-v2 代理端恒返回单方案，多方案对货车暂不生效） |
 | [单元测试/_index.md](单元测试/_index.md) | 单元测试文档索引 | 索引 |
 | [研发效能基线建设-技术方案.md](_archive/研发效能基线建设-技术方案.md) | 已生效部分见测试规范与共享上下文；原方案保留历史参考 | **已归档** |
 | [团队协作与文档同步治理-技术方案.md](_archive/团队协作与文档同步治理-技术方案.md) | 已生效部分见共享上下文的协作与提交规范；原方案保留历史参考 | **已归档** |
@@ -30,6 +32,8 @@
 | 待填写 | 主题调色盘体系 | ✅ 已落地（四轮） | tokens/palettes 两层 + 调色盘抽屉（El Drawer）+ 底图滤镜参数化；未适配组件 36 → 0；样式规范入 herness。第二轮：OL 控件桥接官方 `--ol-*`、毛玻璃去 `-webkit-`、工具栏变量化、compass 夜间图、调色盘持久化与重置。第三轮：修复鹰眼回归（`overflow:hidden` 裁掉 0 尺寸定位盒内的缩略图）+ OL 控件样式从 4 文件 5 处副本收敛到 `ol-controls.less` 唯一真源。第四轮：修复 config 入口按钮被天气面板压住（「让位」让错了对象）+ 右上角「天气面板 + 三按钮」从 4 文件各写各的 `right` 魔法数字收敛为 `--top-actions-*` 常量推导、纵向对齐中心线、入口按钮 z-index 拉齐 |
 | 待填写 | 地图样式管理重构 | Phase 1 已落地，Phase 2 待启动 |
 | 待填写 | 打包与首屏性能优化 | ✅ 第 1 批已落地 | 首屏 CSS 476.5KB→141.8KB raw（−70%）；IIS 压缩 + chunkSizeWarningLimit(1024) 已配；第2批：advancedChunks 分包 + html2canvas 清理 + Cesium 样式；第3批：store 拆桶单独立项 + 资源迁 CDN |
+| 2026-11 | GIS-W46 路径分析与 GeoServer 加固 | ✅ 已落地，待人工验收 | G 域：接口层类型收窄 + 工作空间逐请求推导（否决全局单一入口）、CQL 统一 INTERSECTS 测地圆、探活降级（一次性提示不阻断）；P 域：路径分析 DTO / TMC 指标（unknown 单列不并入畅通）/ 候选对比 / 轨迹统计 / 面板消费 / 路段衔接 Worker。**G04 圈选结果集变化需人工比对验收** |
+| 2026-11 | 路径规划多方案展示 | ✅ 已落地，待人工验收 | 小汽车走 strategy=11 返回 1~3 套方案；面板按截图形态展示方案卡（档位 tag / 距离 / 耗时 / 红绿灯 / 可折叠路况分布 / 转向指引）；档位前端判定（代理响应无策略字段）；⚠️ 货车 driving-v2 代理端恒返回单方案且忽略货车约束，待后端修复 |
 | 2026-10 | store 分层与首屏优化 | ✅ 已落地 | barrel 收敛为 8 个 Tier 1 store，14 个 Tier 2 直接文件导入；越层修复 4 处（Card/ModelAssess/SearchPanel/IncidentLocation）；useTabsStore 去 useRouter、useDispatchStore 清死代码、useModalMap 删除；useMapStore 持实例属存量例外不动 |
 | — | 团队协作与文档同步治理 | ✅ 已落地并归档 | herness 已入库 42 文件；.gitignore 已修；husky 两项门禁已接入；CI/CODEOWNERS 暂不实施 |
 

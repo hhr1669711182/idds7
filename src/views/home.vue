@@ -9,11 +9,16 @@
 <script setup>
 import Map from "../components/map/index.vue";
 import ThemeSwitch from "../baseComponent/ThemeSwitch.vue";
+import { useMapConfigStore } from "../store";
+import { storeToRefs } from "pinia";
+
+// 主题切换入口随展示模式隐藏（调派态由 effectiveFeature 派生层强制关，切出自动恢复）
+const { effectiveFeature } = storeToRefs(useMapConfigStore());
 </script>
 
 <template>
   <div class="main">
-    <ThemeSwitch />
+    <ThemeSwitch v-if="effectiveFeature.showThemeSwitch" />
     <!-- 路线 Y 收口：恒渲染主 Map 包装层；调派业务态由 map.vue 内 isDispatchVariant watch 切纠缠体承载 -->
     <Map />
 

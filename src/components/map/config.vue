@@ -476,9 +476,9 @@ onMounted(async () => {
   .flex-center();
   position: fixed;
   top: calc(var(--top-actions-center) - var(--top-actions-size) / 2);
+  /* 右上角操作簇换位：调色盘居最右位，config 次之，天气面板最左 */
   right: calc(
-    var(--top-actions-right) + var(--weather-panel-width) + var(--top-actions-gap) +
-      var(--top-actions-size) + var(--top-actions-gap)
+    var(--top-actions-right) + var(--top-actions-size) + var(--top-actions-gap)
   );
   justify-content: center;
   width: var(--top-actions-size);

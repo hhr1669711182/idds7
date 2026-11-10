@@ -2,21 +2,29 @@ import { describe, expect, it } from 'vitest'
 import { analyzeTrackStatistics } from '@/utils/trackStatistics'
 import type { CarTrackPoint } from '@/apis/carTrack'
 
-/** 构造轨迹点：经纬度线性递增，时间每秒一点。 */
-const buildPoints = (count: number, stepSeconds = 1): CarTrackPoint[] =>
-  Array.from({ length: count }, (_, index) => {
-    const seconds = index * stepSeconds
+/** 构造轨迹点：经纬度线性递增，时间按起点偏移连续递增。 */
+const buildPoints = (
+  count: number,
+  stepSeconds = 1,
+  options: { startSeconds?: number; longitudeStep?: number; longitudeBase?: number } = {},
+): CarTrackPoint[] => {
+  const startSeconds = options.startSeconds ?? 0
+  const longitudeStep = options.longitudeStep ?? 0.0001
+  const longitudeBase = options.longitudeBase ?? 116.4
+  return Array.from({ length: count }, (_, index) => {
+    const seconds = startSeconds + index * stepSeconds
     const hour = String(Math.floor(seconds / 3600)).padStart(2, '0')
     const minute = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0')
     const second = String(seconds % 60).padStart(2, '0')
     return {
       carId: 'car-1',
       plateNumber: '粤B00001',
-      longitude: 116.4 + index * 0.0001,
+      longitude: longitudeBase + index * longitudeStep,
       latitude: 39.9,
       gpsTime: `2026-08-17 ${hour}:${minute}:${second}`,
     }
   })
+}
 
 /**
  * 轨迹统计契约：
@@ -62,15 +70,23 @@ describe('utils/trackStatistics 轨迹统计', () => {
   })
 
   it('停留点：连续静止超过阈值记一段，低于阈值不记', () => {
-    // Given 前 20 点静止（同一坐标、每秒一点），后 20 点移动
-    const stopped = buildPoints(20).map((point) => ({ ...point, longitude: 116.4, latitude: 39.9 }))
-    const moving = buildPoints(20).map((point) => ({ ...point, longitude: 116.4 + (point.longitude - 116.4) * 100 }))
+    // Given 前 121 点静止（同一坐标、每秒一点，累计 120 秒），之后 20 点移动
+    const stopped = buildPoints(121, 1, { longitudeStep: 0 })
+    const moving = buildPoints(20, 1, { startSeconds: 121, longitudeStep: 0.01 })
     const points = [...stopped, ...moving]
     // When 统计
     const stats = analyzeTrackStatistics(points)
     // Then 检出停留点，且时长不短于阈值
     expect(stats.stops.length).toBeGreaterThanOrEqual(1)
     expect(stats.stops[0].durationSeconds).toBeGreaterThanOrEqual(120)
+
+    // Given 静止时长不足阈值（仅 60 秒）后开始移动
+    const shortStopped = buildPoints(61, 1, { longitudeStep: 0 })
+    const shortMoving = buildPoints(20, 1, { startSeconds: 61, longitudeStep: 0.01 })
+    // When 统计
+    const shortStats = analyzeTrackStatistics([...shortStopped, ...shortMoving])
+    // Then 不记停留点
+    expect(shortStats.stops.length).toBe(0)
   })
 
   it('异常检测：相邻点位移超阈值记跳点', () => {

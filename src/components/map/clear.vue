@@ -55,7 +55,7 @@ const openBigPanel = () => {
 };
 </script>
 <template>
-  <ul v-if="mapConfigStore.feature.showClear" class="Clear_clear__Zy0p7">
+  <ul v-if="mapConfigStore.effectiveFeature.showClear" class="Clear_clear__Zy0p7">
     <li @click="openBigPanel">
       <el-tooltip class="box-item" effect="dark" content="地图操作" placement="left" :offset="20">
         <span role="img" class="anticon">

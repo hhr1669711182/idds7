@@ -7,12 +7,7 @@ import { appEnv } from '@/config/env'
 import { amapApi, type PoiFeature, type PoiFeatureCollection } from '@/apis/amap'
 import { geoserverApi } from '@/apis/geoserver'
 import { LAYER_SOURCE_CONFIGS } from '@/config/layers'
-import {
-  buildCircleIntersectsCql,
-  buildKeywordCql,
-  buildViewportCql,
-  combineCql,
-} from '@/utils/cql'
+import { buildCircleIntersectsCql, buildKeywordCql, buildViewportCql, combineCql } from '@/utils/cql'
 import {
   SEARCH_MAX_FEATURES,
   type ResourceFilterSet,
@@ -29,7 +24,6 @@ export const SEARCHABLE_LAYERS = LAYER_SOURCE_CONFIGS
 /** 视图下拉可选项：name 展示、id 查询 */
 export const getSearchViewOptions = (): SearchViewOption[] =>
   SEARCHABLE_LAYERS.map((layer) => ({ name: layer.name, id: layer.id }))
-
 
 /** 把多个条件用 AND 串成一个 CQL；空条件返回 1=1（不过滤） */
 /**

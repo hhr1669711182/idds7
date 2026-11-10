@@ -134,10 +134,7 @@ export const analyzeTrackStatistics = (points: CarTrackPoint[]): TrackStatistics
     const previousTime = parseGpsTime(previous.gpsTime)
     const currentTime = parseGpsTime(current.gpsTime)
     const deltaSeconds = Math.max(0, (currentTime - previousTime) / 1000)
-    const stepDistance = distanceMeters(
-      [previous.longitude, previous.latitude],
-      [current.longitude, current.latitude],
-    )
+    const stepDistance = distanceMeters([previous.longitude, previous.latitude], [current.longitude, current.latitude])
     const speed = deltaSeconds > 0 ? stepDistance / deltaSeconds : 0
 
     totalDistance += stepDistance

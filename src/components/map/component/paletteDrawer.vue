@@ -197,11 +197,9 @@ defineExpose({ open, close });
 <style scoped lang="less">
 .palette-toggle {
   position: fixed;
-  /* 右上角操作簇：从右往左第 1 位 */
+  /* 右上角操作簇：最右位（与天气面板互换后 ThemeSwitch 置顶） */
   top: calc(var(--top-actions-center) - var(--top-actions-size) / 2);
-  right: calc(
-    var(--top-actions-right) + var(--weather-panel-width) + var(--top-actions-gap)
-  );
+  right: var(--top-actions-right);
   z-index: 1000;
   display: flex;
   align-items: center;

@@ -4,7 +4,7 @@ import ImageWMS from 'ol/source/ImageWMS'
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
 import Feature from 'ol/Feature'
-import { Point } from 'ol/geom'
+import { LineString, Point } from 'ol/geom'
 import { Style, Circle as StyleCircle, Stroke, Fill, Icon } from 'ol/style'
 import { fromLonLat } from 'ol/proj'
 import type Map from 'ol/Map'
@@ -19,8 +19,12 @@ import {
   createRouteDirectionOverlay,
   createRouteLineFeature,
   createRouteOverlayLayer,
+  createRouteTmcFeatures,
+  dimRouteStyle,
   projectCoords,
 } from '@/baseComponent/tools/routeBase'
+import { buildRouteAnalysis } from '@/baseComponent/tools/routeAnalysis'
+import type { RouteAnalysisDTO, RoutePlanOption } from '@/types/routeAnalysis'
 import type { LngLat } from '@/utils/coordTransform'
 import type { ResourceFilterSet } from '@/types/search'
 import startImg from '@/assets/icons-svg/map/start.svg'
@@ -90,6 +94,8 @@ export class SearchResultTool {
   private endpointLayer!: VectorLayer<VectorSource>
   private focusPulseTimer: ReturnType<typeof setInterval> | null = null
   private focusPulseFeature: Feature | null = null
+  /** 最近一次上图路线的统一分析结果（P01）；无路况数据时 tmc 覆盖度为 0，忠实反映展示态 */
+  private routeAnalysis: RouteAnalysisDTO | null = null
 
   constructor(options: SearchResultToolOptions) {
     // MapStore 的 map 初值是空对象 / null，必须校验后再建层
@@ -107,6 +113,11 @@ export class SearchResultTool {
   /** 供调用方比对是否为同一个地图实例（路由切换会重建） */
   getMap(): Map {
     return this.map
+  }
+
+  /** 最近一次上图路线的统一分析结果（P01）；未上图时返回 null */
+  getRouteAnalysis(): RouteAnalysisDTO | null {
+    return this.routeAnalysis
   }
 
   private initLayers() {
@@ -305,6 +316,12 @@ export class SearchResultTool {
     source?.clear()
     if (!coords || coords.length < 2) return
 
+    // P01：统一产出 RouteAnalysisDTO（路径 + 路况分段），供上层只读分析，不改变下图绘制行为
+    this.routeAnalysis = buildRouteAnalysis({
+      path: coords as LngLat[],
+      tmcs: segments?.map((segment) => ({ status: segment.status, polyline: segment.coords as LngLat[] })),
+    })
+
     if (!segments || segments.length < 1) {
       const feature = createRouteLineFeature(coords as LngLat[])
       feature.setStyle(this.routeLineStyle())
@@ -338,6 +355,62 @@ export class SearchResultTool {
     // 统一走路线底座的缩放分级箭头 overlay（resolution 样式函数），与 dispatch1 共用；
     // 缩放时按 2^n 级别增减箭头，锚点不滑动，交互/动画中实时生效
     source.addFeature(createRouteDirectionOverlay([projectCoords(coords as LngLat[])]))
+  }
+
+  /**
+   * 多方案上图。
+   * 选中方案用原色 + 完整路况分段；备选方案半透明置底，避免与选中路线等权重叠。
+   * 每个方案的方向箭头独立生成，属性带 routePlanIndex 便于后续按方案裁剪。
+   */
+  showRouteOptions(options: RoutePlanOption[], selectedIndex: number) {
+    const source = this.routeLayer.getSource()
+    source?.clear()
+    if (!options.length) return
+
+    const selected = options[selectedIndex] ?? options[0]
+    this.routeAnalysis = buildRouteAnalysis({
+      path: selected.coords as LngLat[],
+      tmcs: selected.tmcs,
+      distanceMeters: selected.distanceMeters,
+      durationSeconds: selected.durationSeconds,
+      candidateRank: selected.index,
+    })
+
+    options.forEach((option) => {
+      const alternative = option.index !== selected.index
+      const tmcFeatures = createRouteTmcFeatures(
+        option.tmcs.map((tmc) => ({ status: String(tmc.status), polyline: tmc.polyline as LngLat[] })),
+      )
+      if (tmcFeatures.length) {
+        tmcFeatures.forEach((feature, index) => {
+          feature.setId(`search_route_option_${option.index}_${index}`)
+          feature.set('routePlanIndex', option.index)
+          feature.set('routeAlternative', alternative)
+          const style = new Style({
+            stroke: new Stroke({ color: congestionColor(option.tmcs[index]?.status ?? ''), width: 7 }),
+            zIndex: 1,
+          })
+          feature.setStyle(alternative ? dimRouteStyle(style) : style)
+        })
+        tmcFeatures.forEach((feature) => source?.addFeature(feature))
+      } else {
+        const feature = createRouteLineFeature(option.coords as LngLat[])
+        feature.setId(`search_route_option_${option.index}_0`)
+        feature.set('routePlanIndex', option.index)
+        feature.set('routeAlternative', alternative)
+        const style = new Style({
+          stroke: new Stroke({ color: themeAccent(ROUTE_LINE_COLOR), width: 7 }),
+          zIndex: 1,
+        })
+        feature.setStyle(alternative ? dimRouteStyle(style) : style)
+        source?.addFeature(feature)
+      }
+
+      const overlay = createRouteDirectionOverlay([projectCoords(option.coords as LngLat[])])
+      overlay.set('routePlanIndex', option.index)
+      overlay.set('routeAlternative', alternative)
+      source?.addFeature(overlay)
+    })
   }
   /** Path line style: consistent with the existing route planning tool (routePlan.vue) */
   private routeLineStyle() {
@@ -383,6 +456,37 @@ export class SearchResultTool {
     this.fitTo(lngLats)
   }
 
+  /**
+   * 定位到路线上的某一段（转向指引点击）。
+   * 视野 fit 到该路段范围，并在其上叠加一条高亮描边，让用户看清当前选中的是哪一段；
+   * 高亮画在 focusLayer，不影响路线图层自身的分色。
+   */
+  focusRouteSegment(coords: [number, number][]) {
+    const valid = coords.filter((c) => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+    if (!valid.length) return
+    if (valid.length === 1) {
+      this.focusPoint(valid[0])
+      return
+    }
+
+    const source = this.focusLayer.getSource()
+    source?.clear()
+    this.stopPulse()
+
+    const feature = new Feature({
+      geometry: new LineString(projectCoords(valid as LngLat[])),
+    })
+    feature.setStyle(
+      new Style({
+        stroke: new Stroke({ color: themeAccent(ROUTE_LINE_COLOR), width: 9 }),
+        zIndex: 4,
+      }),
+    )
+    source?.addFeature(feature)
+
+    this.fitTo(valid)
+  }
+
   private fitTo(lngLats: [number, number][]) {
     const valid = lngLats.filter((c) => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
     if (!valid.length) return
@@ -410,6 +514,7 @@ export class SearchResultTool {
   clearRoute() {
     this.routeLayer?.getSource()?.clear()
     this.endpointLayer?.getSource()?.clear()
+    this.routeAnalysis = null
   }
 
   clear() {

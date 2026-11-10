@@ -127,34 +127,62 @@ const handleBffMock = (req, res, pathname) => {
         leadStationId: 'f7742190d975473790fb816861846b2e',
         leadStationName: '深圳市南山区大冲消防救援站',
       },
-      vehicles: [{
-        vehicleId: 'TEST-CAR-001',
-        plateNumber: '粤B·12345',
-        stationId: 'f7742190d975473790fb816861846b2e',
-        stationName: '深圳市南山区大冲消防救援站',
-        stationAddress: '深圳南山区大冲路',
-        startTime: new Date().toISOString(),
-        endTime: null,
-        finalPlanId: 'plan-1',
-        dispatchSeq: 1,
-      }],
+      vehicles: [
+        {
+          vehicleId: 'TEST-CAR-001',
+          plateNumber: '粤B·12345',
+          stationId: 'f7742190d975473790fb816861846b2e',
+          stationName: '深圳市南山区大冲消防救援站',
+          stationAddress: '深圳南山区大冲路',
+          startTime: new Date().toISOString(),
+          endTime: null,
+          finalPlanId: 'plan-1',
+          dispatchSeq: 1,
+        },
+        {
+          vehicleId: 'TEST-CAR-002',
+          plateNumber: '粤B·67890',
+          stationId: '8aee87a783f84e21018432fe5e814311',
+          stationName: '深圳市南山区沙河消防救援站',
+          stationAddress: '深圳南山区沙河路',
+          startTime: new Date(Date.now() + 60000).toISOString(),
+          endTime: null,
+          finalPlanId: 'plan-2',
+          dispatchSeq: 2,
+        },
+      ],
       meta: { sourceGaps: [], sourceErrors: [] },
     });
     return true;
   }
 
-  // car-track-api POST（历史轨迹，使用 protocols.carPoints 路径1）
+  // car-track-api POST（历史轨迹，按 carId 返回不同路线）
   if (pathname === '/car-track-api/api/car/track/query' && req.method === 'POST') {
-    const route = carPoints[0]; // 31 点
-    const now = Date.now();
-    const points = route.map((coord, i) => ({
-      carId: 'TEST-CAR-001',
-      plateNumber: '测试车001',
-      longitude: coord[0],
-      latitude: coord[1],
-      gpsTime: new Date(now + i * 5000).toISOString().slice(0, 19).replace('T', ' '),
-    }));
-    json(points);
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      let carId = 'TEST-CAR-001';
+      let plateNumber = '测试车001';
+      try {
+        const parsed = JSON.parse(body);
+        carId = parsed.carId || carId;
+        plateNumber = parsed.plateNumber || plateNumber;
+      } catch { /* use defaults */ }
+      const carPointsMap = {
+        'TEST-CAR-001': carPoints[0],   // 31 点
+        'TEST-CAR-002': carPoints[1],   // 116 点
+      };
+      const route = carPointsMap[carId] ?? carPoints[0];
+      const now = Date.now();
+      const points = route.map((coord, i) => ({
+        carId,
+        plateNumber,
+        longitude: coord[0],
+        latitude: coord[1],
+        gpsTime: new Date(now + i * 5000).toISOString().slice(0, 19).replace('T', ' '),
+      }));
+      json(points);
+    });
     return true;
   }
 

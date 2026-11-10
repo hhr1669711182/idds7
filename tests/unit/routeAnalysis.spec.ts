@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildRouteAnalysis,
-  compareCandidates,
-  ensureSegmentContinuity,
-} from '@/baseComponent/tools/routeAnalysis'
+import { buildRouteAnalysis, compareCandidates, ensureSegmentContinuity } from '@/baseComponent/tools/routeAnalysis'
 import { normalizeTmcLevel, summarizeTmc } from '@/baseComponent/amap/routeCongestion'
 import { distanceMeters } from '@/baseComponent/amap/routeMetrics'
 
@@ -69,10 +65,7 @@ describe('baseComponent/tools/routeAnalysis 路径分析', () => {
     // Given 只有一段路况数据，总路长是路况覆盖长度的两倍
     const segment = {
       status: '1',
-      polyline: [
-        [0, 0] as [number, number],
-        [0, 0.01] as [number, number],
-      ],
+      polyline: [[0, 0] as [number, number], [0, 0.01] as [number, number]],
     }
     const coveredDistance = distanceMeters(segment.polyline[0], segment.polyline[1])
     // When 按两倍总长汇总
@@ -125,17 +118,11 @@ describe('baseComponent/tools/routeAnalysis 路径分析', () => {
     // Given 两段中间有缺口的路况
     const first = {
       status: '1',
-      polyline: [
-        [0, 0] as [number, number],
-        [0, 0.01] as [number, number],
-      ],
+      polyline: [[0, 0] as [number, number], [0, 0.01] as [number, number]],
     }
     const second = {
       status: '3',
-      polyline: [
-        [0, 0.02] as [number, number],
-        [0, 0.03] as [number, number],
-      ],
+      polyline: [[0, 0.02] as [number, number], [0, 0.03] as [number, number]],
     }
     // When 做连续性处理
     const result = ensureSegmentContinuity([first, second])
@@ -151,17 +138,11 @@ describe('baseComponent/tools/routeAnalysis 路径分析', () => {
     // Given 两段首尾重合的路况
     const first = {
       status: '1',
-      polyline: [
-        [0, 0] as [number, number],
-        [0, 0.01] as [number, number],
-      ],
+      polyline: [[0, 0] as [number, number], [0, 0.01] as [number, number]],
     }
     const second = {
       status: '3',
-      polyline: [
-        [0, 0.01] as [number, number],
-        [0, 0.02] as [number, number],
-      ],
+      polyline: [[0, 0.01] as [number, number], [0, 0.02] as [number, number]],
     }
     // When 做连续性处理
     const result = ensureSegmentContinuity([first, second])

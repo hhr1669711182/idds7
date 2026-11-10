@@ -129,7 +129,7 @@ const dedicatedToolSwitch: Record<string, keyof import('@/config/mapConfig.ts').
 };
 
 const isToolVisible = (type: string) => {
-  const feature = mapConfigStore.feature;
+  const feature = mapConfigStore.effectiveFeature;
   if (navigationToolTypes.has(type)) return feature.showNav;
   if (drawingToolTypes.has(type)) return feature.showDraw;
   const dedicated = dedicatedToolSwitch[type];
@@ -159,7 +159,7 @@ const mobileMenuGroups = computed(() => {
 });
 
 watch(
-  () => ({ ...mapConfigStore.feature }),
+  () => ({ ...mapConfigStore.effectiveFeature }),
   () => {
     if (active.value && !isToolVisible(active.value)) {
       clearDrawTool();

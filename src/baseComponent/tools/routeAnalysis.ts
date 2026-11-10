@@ -2,11 +2,7 @@
 // 见 herness/02-技术设计/前端/GIS-W46-路径分析与GeoServer加固-技术方案.md §5.4
 import { distanceMeters } from '@/baseComponent/amap/routeMetrics'
 import { normalizeTmcLevel, summarizeTmc, type TmcSegmentInput } from '@/baseComponent/amap/routeCongestion'
-import type {
-  RouteAnalysisDTO,
-  RouteCandidateComparison,
-  RouteTmcSegmentAnalysis,
-} from '@/types/routeAnalysis'
+import type { RouteAnalysisDTO, RouteCandidateComparison, RouteTmcSegmentAnalysis } from '@/types/routeAnalysis'
 import type { LngLat } from '@/utils/coordTransform'
 
 /** 构建分析结果的入参。 */
@@ -115,9 +111,7 @@ const CONTINUITY_TOLERANCE_METERS = 0.5
  * @param segments 路况分段（按路线顺序）
  * @returns 补齐后的新分段数组（不修改入参）
  */
-export const ensureSegmentContinuity = (
-  segments: TmcSegmentInput[],
-): (TmcSegmentInput & { polyline: LngLat[] })[] => {
+export const ensureSegmentContinuity = (segments: TmcSegmentInput[]): (TmcSegmentInput & { polyline: LngLat[] })[] => {
   const result: (TmcSegmentInput & { polyline: LngLat[] })[] = []
   segments.forEach((segment, index) => {
     const polyline = [...(segment.polyline ?? [])]

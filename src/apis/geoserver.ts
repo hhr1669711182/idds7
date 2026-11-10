@@ -2,11 +2,7 @@
 // 见 herness/02-技术设计/前端/GIS-W46-路径分析与GeoServer加固-技术方案.md §5.1
 import { alovaGeoInstance } from '@/service/alovaGeo'
 import { getGeoServerServiceUrl } from '@/config/env'
-import type {
-  DescribeFeatureTypeResponse,
-  WfsFeatureCollection,
-  WmsFeatureInfoResponse,
-} from '@/apis/geoserverTypes'
+import type { DescribeFeatureTypeResponse, WfsFeatureCollection, WmsFeatureInfoResponse } from '@/apis/geoserverTypes'
 
 export interface WFSFeatureParams {
   /** 图层名，标准形式为 `workspace:layer` */
@@ -104,18 +100,15 @@ export const geoserverApi = {
     workspace?: string,
   ): Promise<DescribeFeatureTypeResponse | string> => {
     const targetWorkspace = resolveWorkspace(workspace, params.typeName)
-    return alovaGeoInstance.Get<DescribeFeatureTypeResponse | string>(
-      getGeoServerServiceUrl(targetWorkspace, 'ows'),
-      {
-        params: {
-          service: 'WFS',
-          version: '1.1.0',
-          request: 'DescribeFeatureType',
-          outputFormat: 'application/json',
-          ...params,
-        },
+    return alovaGeoInstance.Get<DescribeFeatureTypeResponse | string>(getGeoServerServiceUrl(targetWorkspace, 'ows'), {
+      params: {
+        service: 'WFS',
+        version: '1.1.0',
+        request: 'DescribeFeatureType',
+        outputFormat: 'application/json',
+        ...params,
       },
-    )
+    })
   },
 
   /**
@@ -128,19 +121,16 @@ export const geoserverApi = {
     workspace?: string,
   ): Promise<WmsFeatureInfoResponse<TProperties>> => {
     const targetWorkspace = resolveWorkspace(workspace, params.layers)
-    return alovaGeoInstance.Get<WmsFeatureInfoResponse<TProperties>>(
-      getGeoServerServiceUrl(targetWorkspace, 'wms'),
-      {
-        params: {
-          service: 'WMS',
-          version: '1.1.0',
-          request: 'GetFeatureInfo',
-          info_format: 'application/json',
-          srs: 'EPSG:3857',
-          ...params,
-        },
+    return alovaGeoInstance.Get<WmsFeatureInfoResponse<TProperties>>(getGeoServerServiceUrl(targetWorkspace, 'wms'), {
+      params: {
+        service: 'WMS',
+        version: '1.1.0',
+        request: 'GetFeatureInfo',
+        info_format: 'application/json',
+        srs: 'EPSG:3857',
+        ...params,
       },
-    )
+    })
   },
 
   /**
@@ -162,8 +152,9 @@ export const geoserverApi = {
    * GeoServer 探活：请求 GetCapabilities 拿服务版本。
    * 只用于判定服务可达性，不解析完整能力文档。
    * @param workspace 工作空间名称；缺省时回落兜底值
+   * @param timeout 探活超时（毫秒）；传入后到时中止请求，避免半开连接长时间挂起
    */
-  pingGeoServer: (workspace?: string): Promise<unknown> => {
+  pingGeoServer: (workspace?: string, timeout?: number): Promise<unknown> => {
     const targetWorkspace = resolveWorkspace(workspace)
     return alovaGeoInstance.Get<unknown>(getGeoServerServiceUrl(targetWorkspace, 'ows'), {
       params: {
@@ -171,6 +162,7 @@ export const geoserverApi = {
         version: '1.0.0',
         request: 'GetCapabilities',
       },
+      ...(timeout != null ? { timeout } : {}),
     })
   },
 

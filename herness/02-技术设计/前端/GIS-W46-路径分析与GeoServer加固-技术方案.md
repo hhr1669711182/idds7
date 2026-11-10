@@ -2,7 +2,7 @@
 
 ## 0. 设计先行：方案确认状态
 
-- 当前状态：`已确认`
+- 当前状态：`已落地，待人工验收`（G04 圈选结果集变化属产品行为变更）
 - 确认时间：2026-11-09
 - 确认依据（用户原话）：「都按推荐来，然后 geoserverWorkspace 的 workspace 在 geoserver 中配置工作空间都不一定一样的，单一配置入口不现实」
 - 迭代来源：`GIS-W46-实现阶段代码落地清单.md`（实现版 v2）
@@ -162,11 +162,11 @@ getWMSFeatureInfo(params: WMSFeatureInfoParams, workspace?: string)
 
 ## 8. 验证方式
 
-- [ ] `pnpm lint` — 目标 **0 报错**（基线已归零，判定标准为零报错）
-- [ ] `pnpm lint:baseline` — 无新增
-- [ ] `pnpm harness:check` — 文档体量 / css-vars / backdrop-filter / asset manifest 全过
-- [ ] `pnpm test` — 现有 55 文件 579 项不回归 + 新增 4 个用例文件
-- [ ] `pnpm build` — 构建通过
+- [x] `pnpm lint` — **0 报错**（基线已归零，判定标准为零报错）
+- [x] `pnpm lint:baseline` — 当前 0 项 / 基线 0 项，无新增
+- [x] `pnpm harness:check` — 文档体量 / css-vars（140 个变量）/ backdrop-filter（26 处）/ asset manifest / element-styles 全过
+- [x] `pnpm test` — **59 文件 614 项全通过**（原 55 文件 579 项不回归 + 新增 4 个用例文件 35 项）
+- [x] `pnpm build` — 构建通过（`three.sRGBEncoding` 告警为 BIM 模块存量，与本次无关）
 - [ ] 手动验证路径：
   - 路径规划面板 → 出距离/时长/路况占比/候选对比表
   - 车辆轨迹面板 → 出速度分布/停留点/分段指标

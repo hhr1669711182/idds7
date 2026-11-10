@@ -2020,6 +2020,14 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
     syncStationLayerOverride()
     syncResourceLayersOverride()
 
+    // 进调派态即清来电粗定位圈（复刻路线Y 前 /dispatch 独立路由 unmount 时
+    // "来电圈随组件销毁"的旧语义）：来电圈属 popup 阶段产物，进 dispatch 即消失，
+    // 与画像 slotChanges 是否已出正式坐标无关（粗定位圈与警情点 marker 是不同要素，
+    // clearLocateCalls 只清来电圈，不误删已出坐标的警情点；幂等）。
+    // 兜底场景：slotChanges 在进调派前已出坐标时，markers watch（non-immediate）
+    // 首帧回调未触发过，来电圈会残留，此处显式清掉。
+    callLocationController?.clearLocateCalls()
+
     // 终态回放（closed 警情直接走历史轨迹）
     replayTerminalOnActivate()
 

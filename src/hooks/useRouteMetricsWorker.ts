@@ -21,7 +21,7 @@ export const createRouteMetricsWorker = () => {
 
   const ensureWorker = () => {
     if (worker || typeof Worker === 'undefined') return worker
-    worker = new Worker(new URL('@/baseComponent/amap/routeMetrics.worker.ts', import.meta.url), {
+    worker = new Worker(new URL('../worker/routeMetrics.worker.ts', import.meta.url), {
       type: 'module',
     })
 

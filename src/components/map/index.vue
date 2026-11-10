@@ -65,7 +65,8 @@ const { type, ssrkPanelOpen } = storeToRefs(PanelStore);
 const openLayersMapRef = shallowRef<OpenlayersMapExpose | null>(null);
 /** 路线 Y B-6c：本地 shallowRef 持裸 OL Map（避免 pinia 深度响应式 Proxy 破坏 OL 方法绑定），传给 DispatchT1Panel */
 const dispatchOlMap = shallowRef<OlMap | null>(null);
-const { feature } = storeToRefs(mapConfigStore);
+/** 派生工具显隐：用户配置(feature) ∧ 模式 overlay(effectiveFeature)。调派态下工具入口由模式层强制隐藏，切出自动恢复 */
+const { effectiveFeature } = storeToRefs(mapConfigStore);
 const dispatchVariant = computed(() => isDispatchVariant());
 /** 图层工具栏展示模式（MapPhase 6 阶段 + flood 特灾轴），驱动 useLayersStore 的隐藏过滤与默认集回落 */
 const layerMode = computed(resolveLayerViewMode);
@@ -171,23 +172,22 @@ onUnmounted(() => {
 <template>
   <OpenlayersMap ref="openLayersMapRef" @setMap="getMap">
     <tlp />
-    <trp />
+    <trp v-if="effectiveFeature.showDrawToolbar" />
 
-    <routePlan v-if="type == PANEL_TYPES.ROUTE_PLAN && !dispatchVariant" />
-    <topicLayerCard />
-    <baseSource />
+    <routePlan v-if="type == PANEL_TYPES.ROUTE_PLAN && effectiveFeature.showRoutePlan" />
+    <topicLayerCard v-if="effectiveFeature.showTopicCard" />
+    <baseSource v-if="effectiveFeature.showBaseSource" />
 
-    <clear />
-    <card />
-    <bigPanel />
-    <config @save="handleConfigSave" />
-    <paletteDrawer v-if="feature.showPalette" @filter-change="handleFilterChange" />
-    <layers v-if="feature.showLayerToolbar" :onLayerChange="handleLayerChange" />
+    <clear v-if="effectiveFeature.showClear" />
+    <card v-if="effectiveFeature.showCard" />
+    <bigPanel v-if="effectiveFeature.showBigPanel" />
+    <paletteDrawer v-if="effectiveFeature.showPalette" @filter-change="handleFilterChange" />
+    <layers v-if="effectiveFeature.showLayerToolbar" :onLayerChange="handleLayerChange" />
 
-    <ssrkPanel v-if="feature.showPopulation && !dispatchVariant" v-show="ssrkPanelOpen" />
-
-    <WeatherPanel v-if="feature.showWeather && !dispatchVariant" />
-    <circleQueryPanel v-if="feature.showCircleQuery && !dispatchVariant" />
+    <ssrkPanel v-if="effectiveFeature.showPopulation" v-show="ssrkPanelOpen" />
+    <config v-if="effectiveFeature.showConfig" @save="handleConfigSave" />
+    <WeatherPanel v-if="effectiveFeature.showWeather" />
+    <circleQueryPanel v-if="effectiveFeature.showCircleQuery" />
 
     <!-- 路线 Y B-6c：调派变体专属面板（原 DispatchMapPage 迁入，isDispatchVariant 响应式） -->
     <div v-if="dispatchVariant" class="dispatch-variant-ui">

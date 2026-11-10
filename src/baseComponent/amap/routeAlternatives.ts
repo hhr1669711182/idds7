@@ -6,7 +6,7 @@ export type RoutePreference = 'fastest' | 'shortest' | 'balanced'
 export const ROUTE_PREFERENCE_LABELS: Record<RoutePreference, string> = {
   fastest: '时间最短',
   shortest: '距离最短',
-  balanced: '综合推荐',
+  balanced: '综合最优',
 }
 export type RouteAlternative = {
   id: string

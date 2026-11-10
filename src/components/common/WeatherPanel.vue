@@ -260,7 +260,11 @@ onBeforeUnmount(() => {
 .weather_panel {
   position: absolute;
   top: 0.5em;
-  right: var(--top-actions-right);
+  /* 右上角操作簇换位：调色盘居最右位，config 次之，天气面板最左（在 config 左沿之外） */
+  right: calc(
+    var(--top-actions-right) + var(--top-actions-size) + var(--top-actions-gap) +
+      var(--top-actions-size) + var(--top-actions-gap)
+  );
   z-index: 60;
   /* 固定宽度：内容超长时按溢出滚动展示，保证右上角按钮簇位置不被面板挤动 */
   width: var(--weather-panel-width);

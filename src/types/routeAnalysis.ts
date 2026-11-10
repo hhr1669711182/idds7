@@ -72,3 +72,54 @@ export interface RouteCandidateComparison {
   /** 是否为最优标尺方案 */
   recommended: boolean
 }
+
+/** 转向指引的一步。 */
+export interface RouteStepInstruction {
+  /** 高德原文（如「沿沙河东路向南行驶456米左转调头」） */
+  partDesc: string
+  /** 道路名；高德未返回时为空 */
+  roadName: string
+  /** 该步长度（米） */
+  distanceMeters: number
+  /** 转向类型，供箭头图标选择 */
+  turn: 'straight' | 'left' | 'right' | 'slight_left' | 'slight_right' | 'uturn' | 'arrive'
+  /** 该路段几何（WGS84）；点击指引时定位到此处 */
+  coords: [number, number][]
+}
+
+/** 档位键：时间最短 / 距离最短 / 躲避拥堵 / 综合最优。 */
+export type RouteOptionTier = 'fastest' | 'shortest' | 'avoidJam' | 'balanced'
+
+/** 单个候选方案的视图模型。 */
+export interface RoutePlanOption {
+  /** 方案标识 */
+  id: string
+  /** 方案序号（0 起） */
+  index: number
+  /** 路线坐标（WGS84） */
+  coords: [number, number][]
+  /** 路况分段 */
+  tmcs: { status: string | number; polyline: [number, number][] }[]
+  /** 总距离（米） */
+  distanceMeters: number
+  /** 总时长（秒） */
+  durationSeconds: number
+  /** 红绿灯数量 */
+  trafficLights: number
+  /** 转向指引列表 */
+  steps: RouteStepInstruction[]
+  /** 畅通率（0~1，分母为有路况数据的路段长度） */
+  smoothRatio: number
+  /** 缓行占比（0~1） */
+  slowRatio: number
+  /** 拥堵占比（0~1） */
+  jamRatio: number
+  /** 路况覆盖度（0~1） */
+  coverage: number
+  /** 命中的全部档位；实测常见同一方案命中多档 */
+  tiers: RouteOptionTier[]
+  /** 主档位（按优先级取首个） */
+  primaryTier: RouteOptionTier
+  /** 主档位文案 */
+  primaryLabel: string
+}
