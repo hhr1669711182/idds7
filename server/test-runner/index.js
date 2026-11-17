@@ -295,6 +295,24 @@ async function runScenario(def, opts, control) {
           step.status = 'FAIL';
           step.detail = `${failed}/${count} 点投递失败`;
         }
+      } else if (def0.type === 'mockVehicles') {
+        // 模拟派车清单：不经 WS，而是记 stateLog.dispatchVehicles → test-ui 轮询写
+        // seat-shared-state-mock → useMockCallLocationBridge emit(MOCK_DISPATCH_VEHICLES)
+        // → receiveMockDispatchVehicles（多消防站候选路线上图 + 车辆沿路行驶动画）。
+        // 需当前调派态（stage dispatch）纠缠体已 activate。强制推一条新 stateLog（携带 dispatchVehicles，
+        // 不与去重条目合并，保证 test-ui 增量轮询能读到本次派车清单）。
+        const vehicles = def0.vehicles ?? [];
+        report.stateLog.push({
+          at: new Date().toISOString(),
+          phase: 'inquiry',
+          mode: def0.mode,
+          alarm: ids.incidentId,
+          _stage: 'dispatch',
+          dispatchVehicles: vehicles,
+        });
+        if (def0.afterMs) await sleep(def0.afterMs);
+        step.status = 'PASS';
+        step.detail = `注入 ${vehicles.length} 辆模拟派车（seat-shared-state-mock → 多方案上图 + 沿路动画）`;
       } else if (def0.type === 'wait') {
         await sleep(def0.ms ?? 1000);
         step.status = 'PASS';

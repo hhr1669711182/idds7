@@ -9,11 +9,11 @@ export interface WFSFeatureParams {
   typeName: string
   /** CQL 过滤条件，构造走 `@/utils/cql` */
   cql_filter?: string
-  /** 最大返回要素数 */
+  /** 最大返回要素数（WFS 1.0.0 扩展参数） */
   maxFeatures?: number
   /** 输出格式，默认 application/json */
   outputFormat?: string
-  /** 要素投影坐标系，如 EPSG:4326 */
+  /** 要素投影坐标系（WFS 1.0.0 / 1.1.0 参数），如 EPSG:4326 */
   srsName?: string
   /** 属性裁剪，逗号分隔的属性名 */
   propertyName?: string
@@ -21,6 +21,19 @@ export interface WFSFeatureParams {
   viewparams?: string
   /** OGC XML Filter（与 cql_filter 二选一）；XML 形态可显式指定 SRS，规避轴序歧义 */
   filter?: string
+  /**
+   * WFS 请求版本。
+   * - '1.0.0'：默认值，向后兼容，不支持分页
+   * - '1.1.0'：支持 startIndex / count 分页参数
+   * - '2.0.0'：支持 startIndex / count / crs 标准参数（推荐）
+   */
+  version?: '1.0.0' | '1.1.0' | '2.0.0'
+  /** 分页起始偏移（0 基），WFS 1.1.0+ 生效 */
+  startIndex?: number
+  /** 每页大小，WFS 1.1.0+ 生效；与 maxFeatures 二选一（maxFeatures 是 GeoServer 扩展，非标准） */
+  count?: number
+  /** 坐标参考系（WFS 2.0.0 标准参数，替代 1.0.0/1.1.0 的 srsName），如 'EPSG:4326' */
+  crs?: string
 }
 
 export interface WMSFeatureInfoParams {

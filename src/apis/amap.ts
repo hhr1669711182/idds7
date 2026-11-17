@@ -143,6 +143,10 @@ export interface RouteResult {
 }
 
 // ----- 天气 -----
+export interface AmapWeatherData {
+  lives: AmapWeatherLive[]
+}
+
 export interface AmapWeatherLive {
   province: string
   city: string
@@ -153,10 +157,6 @@ export interface AmapWeatherLive {
   windpower: string
   humidity: string
   reporttime: string
-}
-
-export interface AmapWeatherData {
-  lives: AmapWeatherLive[]
 }
 
 /** 后端业务错误码（与代理服务 ids-address-query-client 约定一致） */
@@ -288,9 +288,12 @@ export const multiWaypoint = (params: { origins: string[]; destinations: string[
   return alovaMapProxyInstance.Get<RouteResult[]>('/api/amap/route/multi-waypoint?' + query.toString(), { cacheFor: 0 })
 }
 
-/** Weather 1. 天气查询 */
+/** Weather 1. 天气查询（高德代理，返回 lives 数组） */
 export const weather = (params: { city: string }) =>
-  alovaMapProxyInstance.Get<AmapWeatherData>('/api/amap/weather', { params })
+  alovaMapProxyInstance.Get<AmapWeatherData>('/api/weather', {
+    params: { areaCode: params.city },
+    cacheFor: 10 * 60 * 1000,
+  })
 
 export const amapApi = {
   keywordSearch,

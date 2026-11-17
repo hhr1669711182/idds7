@@ -56,6 +56,22 @@ function mountTestHarness(req, res, { clients }) {
   const control = createInProcessControl({ clients });
   const method = req.method;
 
+  // 当前 mock 数据中心（由 process.env.MOCK_DATA_CENTER 决定，默认 shenzhen）
+  if (method === 'GET' && pathname === '/api/test/region') {
+    const { getActiveRegionKey, getActiveRegion } = require('./mock-data');
+    const region = getActiveRegion();
+    sendJson(res, 200, {
+      key: getActiveRegionKey(),
+      name: region.name,
+      adcode: region.adcode,
+      city: region.city,
+      center: region.center,
+      platePrefix: region.platePrefix,
+      adminDivision: region.adminDivision,
+    });
+    return true;
+  }
+
   if (method === 'GET' && pathname === '/api/test/modes') {
     sendJson(res, 200, { modes: loadModes() });
     return true;

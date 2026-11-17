@@ -3,6 +3,10 @@ import { isPlainObject, normalize, unwrapMessageFrames } from '../unwrap'
 import { matchesMessageRoute } from '../matcher'
 import { addressRobotDispatcher } from './dispatchers/addressRobot'
 
+/**
+ * 把地址机器人帧归一化为内部消息。
+ * @param nativeOnly true 时只认原生 addressbot 帧（不走 unwrap 拆包），false 时按通用帧解包
+ */
 export const normalizeAddressRobotFrames = (frame: unknown, nativeOnly = false): NormalizedMessage[] => {
   if (nativeOnly && (!isPlainObject(frame) || frame.notifyType !== 'addressbot' || !isPlainObject(frame.customContent)))
     return []
@@ -21,6 +25,7 @@ export const normalizeAddressRobotFrames = (frame: unknown, nativeOnly = false):
   return results
 }
 
+/** 地址机器人消息拦截器：订阅 RAW，命中后产出 address_robot.gis_search 并终止后续拦截 */
 export const addressRobotInterceptor: MessageInterceptor = {
   id: 'message:address-robot',
   priority: 100,

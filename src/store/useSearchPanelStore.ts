@@ -11,6 +11,7 @@ import {
   type ResourceFilterSet,
   type RoutePlanForm,
   type RouteVehicleType,
+  type SearchQueryParams,
   type SearchResultBucket,
   type SearchResultItem,
   type SearchSourceTab,
@@ -46,6 +47,14 @@ export const useSearchPanelStore = defineStore(
     const activeTab = ref<SearchSourceTab>('address')
     const addressResults = ref<SearchResultBucket>(emptyBucket())
     const resourceResults = ref<SearchResultBucket>(emptyBucket())
+    /** 资源检索（WFS 2.0.0）分页游标：下一次 loadMore 的 startIndex（0 基） */
+    const resourceStartIndex = ref(0)
+    /** 资源检索是否还有更多可加载（来自 bucket.truncated） */
+    const resourceHasMore = ref(false)
+    /** 资源检索翻页加载中（区别于首屏 loading，不隐藏已加载列表） */
+    const resourceLoadingMore = ref(false)
+    /** 最近一次资源检索的查询参数，供 loadMoreResource 复用同条件翻页 */
+    const resourceSearchParams = ref<SearchQueryParams | null>(null)
     /** 最近一次检索的 CQL 条件，交给 SearchResultTool 走 WMS 上图 */
     const activeFilter = ref<ResourceFilterSet>({ typeNames: [], filters: [] })
     const selectedItem = ref<SearchResultItem | null>(null)
@@ -94,6 +103,10 @@ export const useSearchPanelStore = defineStore(
       activeTab.value = 'address'
       addressResults.value = emptyBucket()
       resourceResults.value = emptyBucket()
+      resourceStartIndex.value = 0
+      resourceHasMore.value = false
+      resourceLoadingMore.value = false
+      resourceSearchParams.value = null
       activeFilter.value = { typeNames: [], filters: [] }
       searchError.value = null
       loading.value = false
@@ -207,6 +220,10 @@ export const useSearchPanelStore = defineStore(
       activeTab,
       addressResults,
       resourceResults,
+      resourceStartIndex,
+      resourceHasMore,
+      resourceLoadingMore,
+      resourceSearchParams,
       activeFilter,
       selectedItem,
       loading,

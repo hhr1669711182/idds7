@@ -46,18 +46,18 @@ export interface OsmPayload {
   [k: string]: any
 }
 
-/* ============ 字典（key→中文标签） ============ */
-export const DICT: Record<string, Record<string, string>> = {
-  level: { AOI_1: '主城区', AOI_2: '次城区', AOI_3: '地块', POI: 'POI' },
-  anchorType: { aoi: 'AOI', poi: 'POI', road: '道路', building: '建筑' },
-  anchorRole: { context: '上下文', final_anchor: '主锚定物' },
-  relation: { directional_offset: '方位偏移', target: '目标', absolute_direction: '绝对方向' },
-  direction: { east: '东', south: '南', west: '西', north: '北' },
-  status: { resolved: '已定位', ambiguous: '待澄清', partial: '部分结果' },
+/**
+ * 抽屉数据源契约。
+ * 默认实现指向 `./data` 的内置假数据；接真实接口时注入另一组实现即可，组件侧不用改。
+ */
+export interface AddressRobotDataSource {
+  /** 语义与数据增强载荷 */
+  loadGis(): GisPayload
+  /** 地图检索摘要载荷 */
+  loadOsm(): OsmPayload
 }
 
-export const label = (group: string, key?: string, fallback = "''") => (key ? (DICT[group]?.[key] ?? key) : fallback)
-
+/* ============ 字典（key→中文标签） ============ */
 export const displayLabels = {
   status: {
     ok: '可定位',
@@ -75,8 +75,8 @@ export const displayLabels = {
   },
   anchorType: {
     loi: '道路',
-    aoi: '区域',
-    poi: '点位',
+    aoi: 'AOI',
+    poi: 'POI',
     road: '道路',
     named_place: '地点',
     building: '建筑',
@@ -85,22 +85,24 @@ export const displayLabels = {
   },
   level: {
     LOI: '道路',
-    AOI_1: '行政区域',
-    AOI_2: '片区',
-    AOI_3: '最小围栏',
+    AOI_1: '主城区',
+    AOI_2: '次城区',
+    AOI_3: '地块',
     POI_1: '建筑实体',
     POI_2: '楼层',
     POI_3: '楼层内点位',
+    POI: 'POI',
   },
   role: {
-    context: '主锚定物',
-    final_anchor: '次锚定物',
+    context: '上下文',
+    final_anchor: '主锚定物',
     target: '目标',
     candidate: '候选',
   },
   relation: {
     directional_offset: '方位偏移',
     target: '目标',
+    absolute_direction: '绝对方向',
     nearby: '附近',
     around: '周边',
     contains: '包含',
@@ -139,4 +141,15 @@ export const displayLabels = {
     child: '子节点匹配',
     unique_child: '唯一子节点',
   },
+}
+
+/**
+ * 地址机器人要素字典契约。`displayLabels` 是本地基线/离线兜底；
+ * 动态数据源（见同目录 `dictSource.ts`）可整体替换，便于后续增项而无需改前端。
+ */
+export type AddressDictGroup = keyof typeof displayLabels
+export type AddressDict = Record<string, Record<string, string>>
+export interface AddressDictSource {
+  /** 拉取一组字典；失败/为空由消费方回落本地基线 */
+  load(): Promise<AddressDict>
 }

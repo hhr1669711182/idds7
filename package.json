@@ -19,10 +19,14 @@
   "scripts": {
     "dev": "vite --mode dev.local",
     "dev:local": "vite --mode dev.local",
+    "dev:local:test": "node scripts/dev-with-mock-ws.mjs",
+    "dev:test": "node scripts/dev-with-mock-ws.mjs test",
+    "dev:prod": "node scripts/dev-with-mock-ws.mjs production",
     "build": "vite build",
     "build:lib": "cross-env BUILD_LIB=true vite build",
     "build:prod": "vite build --mode production",
     "build:test": "vite build --mode test",
+    "build:uat": "vite build --mode uat",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "mock:server": "node server/index.js",
@@ -52,8 +56,7 @@
     "mock:ws": "node server/mock-ws.js",
     "test:scenario": "node server/test-runner/cli.js",
     "test:scenario:full": "node server/test-runner/cli.js dispatch --full",
-    "test:scenario:cycle": "node server/test-runner/cli.js fullCycle --full",
-    "dev:local:test": "node scripts/dev-with-mock-ws.mjs"
+    "test:scenario:cycle": "node server/test-runner/cli.js fullCycle --full"
   },
   "dependencies": {
     "@alova/mock": "^2.0.20",
@@ -118,7 +121,8 @@
     "vite-plugin-static-copy": "^3.1.4",
     "vite-plugin-svg-icons": "^2.0.1",
     "vitest": "^5.0.4",
-    "vue-tsc": "^3.2.6"
+    "vue-tsc": "^3.2.6",
+    "ws": "^8.23.0"
   },
   "overrides": {
     "@devframes/hub-ui": "1.2.2"

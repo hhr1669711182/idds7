@@ -38,6 +38,15 @@ export const MESSAGE_SYSTEM = {
 
 export type MessageSystem = (typeof MESSAGE_SYSTEM)[keyof typeof MESSAGE_SYSTEM]
 
+/** BC wire 消息的 kind 字段取值（V1.1 §2） */
+export const MESSAGE_KIND = {
+  RELAY_HELLO: 'map-relay-hello',
+  RELAY_SNAPSHOT: 'map-relay-snapshot',
+  RELAY_EVENT: 'map-relay-event',
+  RELAY_BYE: 'map-relay-bye',
+  POINT_SELECTION: 'map-point-selection',
+} as const
+
 /*&*
  * 消息订阅主题
  * @description: 消息订阅主题

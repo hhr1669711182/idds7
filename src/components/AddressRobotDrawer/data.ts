@@ -6,7 +6,7 @@
  * @Description: 文件描述
  * @FilePath: \ids-gis-web\src\components\AddressRobotDrawer\data.ts
  */
-import type { GisPayload, OsmPayload } from './types'
+import type { AddressRobotDataSource, GisPayload, OsmPayload } from './types'
 
 /**
  * 内部数据源 - 直接调内部实现获取数据
@@ -50,3 +50,6 @@ export function loadGis(): GisPayload {
 export function loadOsm(): OsmPayload {
   return { source: 'GIS 前端', status: 'ok', candidates: [] }
 }
+
+/** 默认数据源：指向本文件的内置假数据。接真实接口时由调用方注入另一组实现 */
+export const defaultDataSource: AddressRobotDataSource = { loadGis, loadOsm }

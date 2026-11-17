@@ -22,6 +22,7 @@ import {
   ADDRESS_UPDATED_SUBSCRIPTION,
 } from '@/interceptor/subscriptions'
 import { createLogger } from '@/utils/logger'
+import { handleRawRelayMessage } from '@/composables/relayProtocol'
 
 const logger = createLogger('message-session')
 
@@ -85,8 +86,9 @@ export const initMessage = (): MessageSessionHandle => {
     if (appEnv.useBroadcastChannel)
       appCleanups.push(
         bus.bindBroadcastChannel({
-          system: MESSAGE_SYSTEM.HOST,
-          name: appEnv.broadcastChannelName || MESSAGE_SYSTEM.HOST,
+          system: MESSAGE_SYSTEM.IDS_SEAT_WEB,
+          name: appEnv.relayChannelName,
+          onRaw: handleRawRelayMessage,
         }),
       )
     const stop = watch(

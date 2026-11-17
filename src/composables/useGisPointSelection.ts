@@ -1,17 +1,17 @@
 /*
  * @Description: GIS 地图选点 BroadcastChannel 模块（对接受理席 V1.1）。
- *               通道名 ids-map-screen-relay（与实时转发共用物理通道名，各自独立实例）。
- *               消息外壳 { kind: 'map-point-selection', payload: <PICK_* 消息> }。
- *               接收侧先按 kind 分流，relay 的 map-relay-* 消息被跳过。
+ *               通道名 ids-map-screen-relay（与实时转发共用物理通道名，由 initMessage 集中绑定）。
+ *               入向由 relayProtocol.handleRawRelayMessage 按 kind 分流到 pointHandler。
+ *               出向统一经 sendWire() 通过 bus BC 客户端直发 wire 对象。
  *               - 接收受理席 PICK_START → 投递 MOCK_INCIDENT_RELOCATE 事件（含 ownerId/requestId）
  *               - 回发 PICK_READY / PICK_RESULT / PICK_PONG / PICK_CANCEL
  *               - 接收 ACK（PICK_APPLIED / PICK_FAILED / PICK_CANCEL）→ 停止重试并清理
  *               - 维护当前会话 token（ownerId/requestId），保证消息关联正确
  * @FilePath: \ids-gis-web\src\composables\useGisPointSelection.ts
  */
-import { createBroadcastChannelBridge, type BroadcastChannelBridge } from '@/composables/useBroadcastChannelBridge'
 import { useMessageStore } from '@/store/useMessageStore'
-import { MESSAGE_CHANNEL, MESSAGE_EVENT_KEY, MESSAGE_SYSTEM } from '@/const/const.message.type'
+import { MESSAGE_CHANNEL, MESSAGE_EVENT_KEY, MESSAGE_SYSTEM, MESSAGE_KIND } from '@/const/const.message.type'
+import { sendWire, registerPointHandler, unregisterPointHandler } from '@/composables/relayProtocol'
 import type { MessageEnvelope } from '@/types/message'
 
 // ─── 协议类型（对齐 V1.1 §2） ───
@@ -104,15 +104,13 @@ export type GisPointWireMessage = {
 
 // ─── 模块实现 ───
 
-/** 与实时转发共用物理通道名（V1.1 §1.1），但各自创建独立实例（§1.2），按 kind 分流 */
-const CHANNEL_NAME = 'ids-map-screen-relay'
-const KIND = 'map-point-selection'
+/** 与实时转发共用物理通道名（V1.1 §1.1），由 initMessage 集中绑定，按 kind 分流 */
 
 /** 给 incidentRelocate 等消费者暴露的发送接口（回发 PICK_READY / PICK_RESULT / PICK_PONG） */
 export type GisPointChannel = {
   send: (msg: GisPickMessage) => void
   onAck: (callback: (msg: SeatPickMessage) => void) => void
-  /** 关闭通道并清理状态（pagehide / dispose 时调用） */
+  /** 清理状态（pagehide / dispose 时调用），不关闭物理通道 */
   close: () => void
 }
 
@@ -126,22 +124,15 @@ let cachedInstance: GisPointChannel | null = null
 /**
  * 创建 GIS 地图选点 BroadcastChannel 实例。
  * 返回清理函数，App 卸载时调用。
+ * 物理通道由 initMessage 集中绑定，此处仅注册/注销 pointHandler 与状态机。
  */
 export const createGisPointChannel = (): (() => void) => {
   const msg = useMessageStore()
 
-  let channel: BroadcastChannelBridge | null = null
   // 当前活跃选点会话（由 incidentRelocate 通过 setActiveSession 注册）
   let activeSession: { ownerId: string; requestId: string; incidentID: string } | null = null
   // ACK 回调（incidentRelocate 注册，收到 APPLIED/FAILED/CANCEL 时触发）
   let ackCallback: ((msg: SeatPickMessage) => void) | null = null
-
-  try {
-    channel = createBroadcastChannelBridge(CHANNEL_NAME)
-  } catch {
-    console.warn('[gis-point-channel] BroadcastChannel 不可用')
-    return () => {}
-  }
 
   /** 校验 payload 是否为有效的 SeatPickMessage */
   const isSeatMessage = (value: unknown): value is SeatPickMessage => {
@@ -171,10 +162,18 @@ export const createGisPointChannel = (): (() => void) => {
     )
   }
 
-  channel.listen((e: MessageEvent) => {
-    // V1.1 §1.2：先按 kind 分流，relay 的 map-relay-* 消息直接跳过
-    const wire = e.data as GisPointWireMessage | null
-    if (!wire || wire.kind !== KIND) return
+  /** 发送 GIS 侧消息（内部自动包 kind/payload 外壳，V1.1 §1.2） */
+  const sendGisMessage = (m: GisPickMessage) => {
+    try {
+      sendWire({ kind: MESSAGE_KIND.POINT_SELECTION, payload: m })
+    } catch (error) {
+      console.warn('[gis-point-channel] 发送失败', error)
+    }
+  }
+
+  /** 入向：由 relayProtocol.handleRawRelayMessage 按 kind 路由到此处 */
+  const onPointMessage = (wire: Record<string, unknown>) => {
+    // V1.1 §1.2：relayProtocol 已按 kind 分流，此处直接处理 payload
     const data = wire.payload
     if (!isSeatMessage(data)) return
 
@@ -233,16 +232,8 @@ export const createGisPointChannel = (): (() => void) => {
         break
       }
     }
-  })
-
-  /** 发送 GIS 侧消息（内部自动包 kind/payload 外壳，V1.1 §1.2） */
-  const sendGisMessage = (m: GisPickMessage) => {
-    try {
-      channel?.send({ kind: KIND, payload: m })
-    } catch (error) {
-      console.warn('[gis-point-channel] 发送失败', error)
-    }
   }
+  registerPointHandler(onPointMessage)
 
   const instance: GisPointChannel = {
     send: sendGisMessage,
@@ -250,8 +241,8 @@ export const createGisPointChannel = (): (() => void) => {
       ackCallback = callback
     },
     close: () => {
-      channel?.close()
-      channel = null
+      // 物理通道由 initMessage 管理，此处仅清理状态机
+      unregisterPointHandler()
       activeSession = null
       ackCallback = null
       if (cachedInstance === instance) cachedInstance = null
@@ -269,24 +260,16 @@ export const createGisPointChannel = (): (() => void) => {
 export const getGisPointChannel = (): GisPointChannel => {
   if (!cachedInstance) {
     // 惰性创建（不投递 MOCK_INCIDENT_RELOCATE，仅用于发送消息）
-    let channel: BroadcastChannelBridge | null = null
-    try {
-      channel = createBroadcastChannelBridge(CHANNEL_NAME)
-    } catch {
-      /* ignore */
-    }
     cachedInstance = {
       send: (m: GisPickMessage) => {
         try {
-          channel?.send({ kind: KIND, payload: m })
+          sendWire({ kind: MESSAGE_KIND.POINT_SELECTION, payload: m })
         } catch {
           /* ignore */
         }
       },
       onAck: () => {},
       close: () => {
-        channel?.close()
-        channel = null
         cachedInstance = null
       },
     }

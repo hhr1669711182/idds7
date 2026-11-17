@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { getBusinessMessageRuntime } from "@/controller/core/io/BusinessMessageRuntime";
 import type { AreaWeatherController } from "@/controller/core/business/AreaWeatherController";
 import { cssVar } from "@/utils/themeColor";
-import dataJson from "@/assets/map/config/data.json";
+import { appEnv } from "@/config/env";
 
 const props = withDefaults(
   defineProps<{
@@ -13,7 +13,7 @@ const props = withDefaults(
   { refreshIntervalMs: 10 * 60 * 1000 },
 );
 
-const defaultAdcode = dataJson[0].data.adcode;
+const defaultAdcode = appEnv.mapAdcode;
 
 /** 下拉浮层宽度：从设计 token 读取，与 styles/tokens.less 保持单一真源 */
 const dropdownWidth = Number.parseInt(cssVar("--weather-panel-dropdown-width", "390px"), 10) || 390;
@@ -25,16 +25,14 @@ const state = controller.getState();
 let timer: number | null = null;
 const activeTab = ref<"area" | "station">("area");
 
-const root = computed(() => state.value.root);
 const rootChildren = computed(() => state.value.rootChildren);
 const expandedChildren = computed(() => state.value.expandedChildren);
 const selected = computed(() => state.value.selected);
 const live = computed(() => state.value.live);
 const stations = computed(() => state.value.stations);
-const zones = computed(() => state.value.zones);
 
-/** 顶部条显示当前选中的区划名 */
-const currentLabel = computed(() => selected.value?.areaName ?? "");
+/** 顶部条显示当前选中的区划名（面板未打开时用 env 城市名兜底） */
+const currentLabel = computed(() => selected.value?.areaName ?? appEnv.mapCity);
 
 /** 天气来源标注：街道级回退到上级区划时与所选区划不同 */
 const liveSource = computed(() => state.value.liveSourceName);
@@ -42,15 +40,11 @@ const showLiveSource = computed(
   () => !!live.value && !!liveSource.value && liveSource.value !== selected.value?.areaName,
 );
 
+// 天气图标：按 weather 字段命中全局 svg（src/assets/icons-svg/weather-svg/），
+// 经 Icon 组件以 svg-icon: 前缀渲染本地 sprite；命中不到时不展示。
 const weatherIcon = computed(() => {
-  const w = live.value?.weather ?? "";
-  if (w.includes("晴")) return "☀️";
-  if (w.includes("云") || w.includes("阴")) return "⛅";
-  if (w.includes("雨")) return "🌧";
-  if (w.includes("雪")) return "❄️";
-  if (w.includes("雾") || w.includes("霾")) return "🌫";
-  if (w.includes("雷")) return "⛈";
-  return "🌤";
+  const w = live.value?.weather?.trim();
+  return w ? `svg-icon:weather-svg-${w}` : "";
 });
 
 /** 更新时间：高德 reporttime 为 "YYYY-MM-DD HH:mm:ss"，只取时分
@@ -75,13 +69,33 @@ const comfortText = computed(() => {
   return "寒冷";
 });
 
-/** 队站列表：附上该队站是否有辖区面 */
-const stationRows = computed(() =>
-  stations.value.map((station) => ({
-    ...station,
-    hasZone: zones.value.some((zone) => zone.zoneId === station.id),
-  })),
-);
+/** 队站检索：默认折叠为图标，点击展开输入框 */
+const stationSearch = ref("");
+const searchExpanded = ref(false);
+const searchInputRef = ref<HTMLInputElement | null>(null);
+
+const toggleSearch = () => {
+  searchExpanded.value = !searchExpanded.value;
+  if (searchExpanded.value) {
+    // 下一帧聚焦输入框
+    requestAnimationFrame(() => searchInputRef.value?.focus());
+  }
+};
+
+/** 按 areaName 分组 + 模糊检索 */
+const groupedStations = computed(() => {
+  const keyword = stationSearch.value.trim().toLowerCase();
+  const filtered = keyword
+    ? stations.value.filter((s) => s.name.toLowerCase().includes(keyword))
+    : stations.value;
+  const map = new Map<string, typeof stations.value>();
+  for (const station of filtered) {
+    const key = station.areaName || station.areaCode || "未知";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(station);
+  }
+  return Array.from(map, ([areaName, stationList]) => ({ areaName, stationList }));
+});
 
 const handleSelect = async (areaCode: string) => {
   if (!areaCode || areaCode === selected.value?.areaCode) return;
@@ -131,7 +145,7 @@ onBeforeUnmount(() => {
             :class="{ 'is-active': activeTab === 'area' }"
             @click="activeTab = 'area'"
           >
-            {{ root?.areaName ?? "" }}
+            {{ appEnv.mapCity }}
           </button>
           <button
             type="button"
@@ -176,18 +190,41 @@ onBeforeUnmount(() => {
         </template>
 
         <template v-else>
-          <div v-if="stationRows.length" class="weather_panel_station_list">
+          <!-- 队站检索区：默认折叠为 🔍 图标，点击展开输入框 -->
+          <div class="weather_panel_station_search">
             <button
-              v-for="station in stationRows"
-              :key="station.id"
               type="button"
-              class="weather_panel_station_item"
-              :class="{ 'is-muted': !station.hasZone }"
-              @click="handleSelectStation(station.id)"
+              class="weather_panel_search_toggle"
+              :class="{ 'is-active': searchExpanded }"
+              @click="toggleSearch"
             >
-              <span class="weather_panel_station_name">{{ station.name }}</span>
-              <span class="weather_panel_station_area">{{ station.areaName || station.areaCode }}</span>
+              🔍
             </button>
+            <input
+              v-show="searchExpanded"
+              ref="searchInputRef"
+              v-model="stationSearch"
+              class="weather_panel_search_input"
+              type="text"
+              placeholder="搜索队站…"
+              @blur="() => { if (!stationSearch.trim()) searchExpanded = false; }"
+              @keyup.enter="() => {}"
+            />
+          </div>
+
+          <div v-if="groupedStations.length" class="weather_panel_station_list">
+            <div v-for="group in groupedStations" :key="group.areaName" class="weather_panel_station_group">
+              <div class="weather_panel_station_area">{{ group.areaName }}</div>
+              <button
+                v-for="station in group.stationList"
+                :key="station.id"
+                type="button"
+                class="weather_panel_station_item"
+                @click="handleSelectStation(station.id)"
+              >
+                <span class="weather_panel_station_name">{{ station.name }}</span>
+              </button>
+            </div>
           </div>
           <div v-else class="weather_panel_panel_empty">暂无主管队站数据</div>
         </template>
@@ -199,7 +236,7 @@ onBeforeUnmount(() => {
       <template #reference>
         <div class="weather_panel_body">
           <div class="weather_panel_main">
-            <span class="weather_panel_icon">{{ weatherIcon }}</span>
+            <Icon v-if="weatherIcon" :icon="weatherIcon" :size="18" />
             <span class="weather_panel_temp"> {{ live?.temperature }}<span class="weather_panel_unit">℃</span> </span>
           </div>
           <div v-if="live" class="weather_panel_meta">
@@ -212,7 +249,7 @@ onBeforeUnmount(() => {
 
       <div v-if="live" class="weather_panel_detail">
         <div class="weather_panel_detail_head">
-          <span class="weather_panel_detail_icon">{{ weatherIcon }}</span>
+          <Icon v-if="weatherIcon" :icon="weatherIcon" :size="32" class="weather_panel_detail_icon" />
           <div class="weather_panel_detail_head_text">
             <span class="weather_panel_detail_weather">{{ live.weather }}</span>
             <span class="weather_panel_detail_temp">
@@ -242,6 +279,24 @@ onBeforeUnmount(() => {
             <span class="weather_panel_detail_label">数据来源</span>
             <span class="weather_panel_detail_value">{{ liveSource }}</span>
           </div>
+          <div v-if="live.maxTemperature || live.minTemperature" class="weather_panel_detail_row">
+            <span class="weather_panel_detail_label">温度范围</span>
+            <span class="weather_panel_detail_value">
+              {{ live.minTemperature }}℃ ~ {{ live.maxTemperature }}℃
+            </span>
+          </div>
+          <div v-if="live.precipitation" class="weather_panel_detail_row">
+            <span class="weather_panel_detail_label">降水量</span>
+            <span class="weather_panel_detail_value">{{ live.precipitation }}mm</span>
+          </div>
+          <div v-if="live.alertLevel" class="weather_panel_detail_row">
+            <span class="weather_panel_detail_label">预警</span>
+            <span class="weather_panel_detail_value weather_panel_detail_alert">{{ live.alertLevel }}</span>
+          </div>
+          <div v-if="live.alertDetail" class="weather_panel_detail_row weather_panel_detail_row_wrap">
+            <span class="weather_panel_detail_label">预警详情</span>
+            <span class="weather_panel_detail_value">{{ live.alertDetail }}</span>
+          </div>
           <div class="weather_panel_detail_row">
             <span class="weather_panel_detail_label">更新时间</span>
             <span class="weather_panel_detail_value">{{ live.reporttime }}</span>
@@ -252,7 +307,6 @@ onBeforeUnmount(() => {
     </el-popover>
 
     <div v-if="state.errorMsg" class="weather_panel_error">{{ state.errorMsg }}</div>
-    <div v-else-if="state.fenceMissing" class="weather_panel_hint">该区划暂无围栏数据</div>
   </div>
 </template>
 
@@ -330,10 +384,6 @@ onBeforeUnmount(() => {
   gap: 8px;
   flex-shrink: 0;
 }
-.weather_panel_icon {
-  font-size: 18px;
-  line-height: 1;
-}
 .weather_panel_temp {
   font-size: 16px;
   font-weight: 700;
@@ -370,8 +420,7 @@ onBeforeUnmount(() => {
   color: var(--text-muted);
   flex-shrink: 0;
 }
-.weather_panel_error,
-.weather_panel_hint {
+.weather_panel_error {
   font-size: 11px;
   color: var(--text-muted);
   flex-shrink: 0;
@@ -452,12 +501,60 @@ onBeforeUnmount(() => {
   color: var(--accent-gold);
   font-weight: 700;
 }
+.weather_panel_station_search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 2px 0;
+}
+.weather_panel_search_toggle {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.weather_panel_search_toggle:hover,
+.weather_panel_search_toggle.is-active {
+  opacity: 1;
+}
+.weather_panel_search_input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg-solid);
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.weather_panel_search_input:focus {
+  border-color: var(--accent-cyan);
+}
 .weather_panel_station_list {
   display: flex;
   flex-direction: column;
   gap: 2px;
   max-height: 320px;
   overflow-y: auto;
+}
+.weather_panel_station_group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.weather_panel_station_area {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  padding: 4px 0 2px;
+  letter-spacing: 0.02em;
 }
 .weather_panel_station_item {
   display: flex;
@@ -467,7 +564,7 @@ onBeforeUnmount(() => {
   border: none;
   background: transparent;
   text-align: left;
-  padding: 3px 0;
+  padding: 3px 0 3px 8px;
   cursor: pointer;
   font-size: 12px;
   color: var(--text-secondary);
@@ -481,14 +578,6 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.weather_panel_station_area {
-  flex: 0 0 auto;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-.weather_panel_station_item.is-muted .weather_panel_station_name {
-  color: var(--text-muted);
 }
 .weather_panel_panel_empty {
   font-size: 12px;
@@ -552,6 +641,20 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.weather_panel_detail_alert {
+  color: var(--tag-danger-text);
+  font-weight: 700;
+}
+.weather_panel_detail_row_wrap {
+  align-items: flex-start;
+}
+.weather_panel_detail_row_wrap .weather_panel_detail_value {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.4;
+  max-height: 100px;
+  overflow-y: auto;
 }
 </style>
 

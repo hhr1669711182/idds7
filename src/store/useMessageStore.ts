@@ -74,6 +74,8 @@ export type BindBroadcastChannelOptions = {
   /** 通道名，同源同名的标签页之间互通 */
   name: string
   channelOptions?: BroadcastChannelOptions
+  /** 原始消息透传（如 BC 多 kind 共用一条通道时的底层分发钩子） */
+  onRaw?: (data: unknown, event: MessageEvent) => void
 }
 
 export type PublishOptions = {
@@ -300,6 +302,10 @@ export const useMessageStore = defineStore(
         ...options.channelOptions,
         onMessage: (d, e) => {
           if (d === undefined || d === null) return
+          if (typeof options.onRaw === 'function') {
+            options.onRaw(d, e)
+            return
+          }
           ingest(d, MESSAGE_CHANNEL.BROADCAST_CHANNEL, system, { channelName: options.name })
           options.channelOptions?.onMessage?.(d, e)
         },

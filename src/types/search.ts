@@ -37,10 +37,12 @@ export interface SearchResultItem {
 /** 单个 tab 的结果集合 */
 export interface SearchResultBucket {
   items: SearchResultItem[]
-  /** 是否已截断（命中 1 万条上限） */
+  /** 是否还有更多数据可加载（分页场景：true 表示当前页未拉完，可继续翻页） */
   truncated: boolean
   /** 失败图层数（GIS 资源 tab 用） */
   failedLayers?: number
+  /** API 返回的命中总数（WFS numberMatched / totalFeatures）；undefined 表示未知（如高德地址源） */
+  totalCount?: number
 }
 
 /** 面板打开时需要展示的检索载荷 */

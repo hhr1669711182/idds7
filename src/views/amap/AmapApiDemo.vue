@@ -136,7 +136,7 @@ const form = reactive<FormState>({
   weather: { city: "110101" },
 })
 
-const baseUrl = computed(() => appEnv.amapApiBaseUrl)
+const baseUrl = computed(() => appEnv.mapApiBaseUrl)
 const tokenMasked = computed(() => {
   const t = useUserStore().accessToken || ""
   if (!t) return "(无)"

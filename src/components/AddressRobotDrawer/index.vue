@@ -7,9 +7,16 @@
 -->
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { loadOsm } from "./data";
-import { displayLabels } from "./types";
+import { defaultDataSource } from "./data";
+import { type AddressRobotDataSource } from "./types";
+import { useAddressDict, hydrateAddressDict } from "./dictSource";
 import { EventBus } from "@/utils/index.ts";
+
+const { resolve } = useAddressDict();
+
+const props = withDefaults(defineProps<{ dataSource?: AddressRobotDataSource }>(), {
+  dataSource: () => defaultDataSource,
+});
 
 const open = ref(false);
 const minimized = ref(false);
@@ -17,7 +24,7 @@ const close = () => (open.value = false);
 const toggleMinimize = () => (minimized.value = !minimized.value);
 
 const gis = ref<any>({});
-const osm: any = loadOsm();
+const osm: any = props.dataSource.loadOsm();
 
 const onGisSearch = (data: any) => {
   gis.value = data;
@@ -26,13 +33,11 @@ const onGisSearch = (data: any) => {
 };
 onMounted(() => {
   EventBus.on("gis_search", onGisSearch);
-  EventBus.emit("close_address_drawer", close);  // TODO: 闭屉关闭事件时机未接入(待产品确认)
+  hydrateAddressDict();
+  // TODO(huanghuanrong, 2026-12-10, GIS-W46): 抽屉关闭时机待产品确认 —— 暂保留 emit 不接行为 —— 到期未确认则删除 emit
+  EventBus.emit("close_address_drawer", close);
 });
 onBeforeUnmount(() => EventBus.off("gis_search", onGisSearch));
-
-/** 字典匹配 - 优先 displayLabels（types.ts 新增），fallback = 键原值 */
-const label = (group: keyof typeof displayLabels, key?: string, fallback = "—") =>
-  key ? (displayLabels[group] as Record<string, string>)?.[key] ?? fallback : fallback;
 
 const anchors = computed(() => gis.value.highlight_entities ?? []);
 const relations = computed(() => gis.value.spatial_relations ?? []);
@@ -46,13 +51,13 @@ const primary = computed(() =>
 const offset = computed<any>(() => relations.value.find((r: any) => r.direction || r.distance) ?? {});
 // @ts-expect-error TS6133: 引用处已注释，保留备用
 const displayTarget = computed(() => target.value ?? primary.value ?? null);
-const directionText = computed(() => label("direction", offset.value.direction));
+const directionText = computed(() => resolve("direction", offset.value.direction));
 const distanceText = computed(() => (offset.value.distance ? `${offset.value.distance} 米` : "—"));
 // @ts-expect-error TS6133: 引用处已注释，保留备用
-const relationText = computed(() => relations.value.map((r: any) => label("relation", r.relation_type)).join("、 ") || "—");
+const relationText = computed(() => relations.value.map((r: any) => resolve("relation", r.relation_type)).join("、 ") || "—");
 // @ts-expect-error TS6133: 引用处已注释，保留备用
 const sourceText = computed(() => osm?.source || "待查询");
-const mapStatus = computed(() => (osm ? label("status", osm.status, "部分结果") : "待查询"));
+const mapStatus = computed(() => (osm ? resolve("status", osm.status, "部分结果") : "待查询"));
 const candidateCount = computed(() => osm?.candidates?.length ?? 0);
 </script>
 
@@ -105,13 +110,13 @@ const candidateCount = computed(() => osm?.candidates?.length ?? 0);
           <div v-for="item in anchors" :key="item.anchor_id" class="entity">
             <div class="entity_top">
               <div class="entity_name">{{ item.name }}</div>
-              <span class="tag tag_blue">{{ label('level', item.anchor_level || item.anchor_type, '未分级') }}</span>
+              <span class="tag tag_blue">{{ resolve('level', item.anchor_level || item.anchor_type, '未分级') }}</span>
             </div>
             <div class="tags">
-              <span class="tag">{{ label('anchorType', item.anchor_type, '锚点') }}</span>
+              <span class="tag">{{ resolve('anchorType', item.anchor_type, '锚点') }}</span>
               <span
                 :class="['tag', { tag_green: item.highlight_role === 'final_anchor' }]"
-                >{{ label('role', item.highlight_role, '辅助锚点') }}</span
+                >{{ resolve('role', item.highlight_role, '辅助锚点') }}</span
               >
               <span v-if="item.anchor_id === gis.target_anchor_id" class="tag tag_amber">地图目标</span>
             </div>
@@ -127,12 +132,12 @@ const candidateCount = computed(() => osm?.candidates?.length ?? 0);
           <div v-if="!relations.length" class="notice">暂无空间关系。</div>
           <div v-else class="kv-list">
             <div v-for="(item, i) in relations" :key="i" class="kv">
-              <div class="kv-k">{{ label('relation', item.relation_type, '其他关系') }}</div>
+              <div class="kv-k">{{ resolve('relation', item.relation_type, '其他关系') }}</div>
               <div class="kv-v">
                 {{ (item.anchor_ids ?? []).map((id: any) => nameById.get(id) || id).join(' 至 ') }}
                 <template v-if="item.direction || item.distance">
                   <template v-if="item.direction"
-                    >，方向 <span class="rel_dir">{{ label('direction', item.direction, '其他方向') }}</span></template
+                    >，方向 <span class="rel_dir">{{ resolve('direction', item.direction, '其他方向') }}</span></template
                   >
                   <template v-if="item.direction && item.distance">，</template>
                   <template v-if="item.distance"
@@ -188,7 +193,7 @@ const candidateCount = computed(() => osm?.candidates?.length ?? 0);
   border-left: 1px solid var(--panel-border);
   box-shadow: var(--panel-shadow);
   color: var(--text-primary);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(var(--glass-blur));
   overflow: hidden;
   transition: width 0.25s ease;
 }
@@ -196,21 +201,20 @@ const candidateCount = computed(() => osm?.candidates?.length ?? 0);
 
 @media (max-width: 1280px) { .drawer:not(.min) { width: 320px; } }
 @media (max-width: 1024px) { .drawer:not(.min) { width: 290px; } }
-html[data-theme='NIGHT'] { .drawer { backdrop-filter: blur(8px); } }
 
 /* ============ 窄条 ============ */
 .rail {
   width: 36px; height: 100%;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 6px;
-  background: var(--header-bg); color: var(--header-text);
+  background: var(--header-bg); color: var(--addr-robot-header-fg);
   cursor: pointer; user-select: none;
   transition: background 0.15s;
   &:hover { background: var(--accent-cyan); }
 }
 .rail_dot {
-  width: 8px; height: 8px; border-radius: 50%; background: #fff;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.85);
+  width: 8px; height: 8px; border-radius: 50%; background: var(--addr-robot-dot);
+  box-shadow: 0 0 8px var(--addr-robot-dot-glow);
   animation: pulse 1.6s infinite ease-in-out;
 }
 .rail_text { writing-mode: vertical-rl; font-size: 12px; font-weight: 600; letter-spacing: 4px; margin: 4px 0; }
@@ -221,8 +225,8 @@ html[data-theme='NIGHT'] { .drawer { backdrop-filter: blur(8px); } }
 /* ============ 头部 ============ */
 .head {
   padding: 12px 14px;
-  background: var(--header-bg, #3385ff);
-  color: var(--header-text, #fff);
+  background: var(--header-bg);
+  color: var(--addr-robot-header-fg);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -231,8 +235,8 @@ html[data-theme='NIGHT'] { .drawer { backdrop-filter: blur(8px); } }
 .head_top { display: flex; justify-content: space-between; align-items: center; }
 .head_title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; letter-spacing: 1px; }
 .dot {
-  width: 8px; height: 8px; border-radius: 50%; background: #fff;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.85);
+  width: 8px; height: 8px; border-radius: 50%; background: var(--addr-robot-dot);
+  box-shadow: 0 0 8px var(--addr-robot-dot-glow);
   animation: pulse 1.6s infinite ease-in-out;
 }
 .head_tools { display: flex; gap: 2px; }
@@ -240,26 +244,27 @@ html[data-theme='NIGHT'] { .drawer { backdrop-filter: blur(8px); } }
   width: 24px; height: 24px;
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none;
-  border-radius: 4px; color: #fff; cursor: pointer;
+  border-radius: 4px; color: var(--addr-robot-header-fg); cursor: pointer;
   transition: background 0.15s;
-  &:hover { background: rgba(255, 255, 255, 0.18); }
+  &:hover { background: var(--addr-robot-header-surface-hover); }
 }
 .head_text {
   margin-top: 8px; font-size: 12px; line-height: 1.6;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--addr-robot-header-surface);
   border-radius: 6px; padding: 8px 10px;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--addr-robot-header-fg-muted);
 }
-.quote { color: rgba(255, 255, 255, 0.7); }
+.quote { color: var(--addr-robot-header-fg-subtle); }
 .head_conf { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; }
-.conf_lbl { color: rgba(255, 255, 255, 0.8); }
+.conf_lbl { color: var(--addr-robot-header-fg-muted); }
 .conf_val {
-  background: rgba(34, 197, 94, 0.85); color: #fff;
+  background: var(--tag-success-bg); color: var(--tag-success-text);
+  border: 1px solid var(--tag-success-border);
   padding: 1px 8px; border-radius: 8px;
   font-weight: 700; font-family: Consolas, monospace;
 }
-.conf_bar { flex: 1; height: 4px; background: rgba(255, 255, 255, 0.2); border-radius: 2px; overflow: hidden; }
-.conf_fill { height: 100%; border-radius: 2px; background: #22c55e; transition: width 0.4s; }
+.conf_bar { flex: 1; height: 4px; background: var(--addr-robot-header-track); border-radius: 2px; overflow: hidden; }
+.conf_fill { height: 100%; border-radius: 2px; background: var(--tag-success-text); transition: width 0.4s; }
 
 /* ============ 块 ============ */
 .block { padding: 12px 14px; border-bottom: 1px solid var(--primary-li-bottom-color); overflow-y: auto; flex-shrink: 0; }
@@ -290,9 +295,9 @@ html[data-theme='NIGHT'] { .drawer { backdrop-filter: blur(8px); } }
   color: var(--text-secondary);
   border: 1px solid var(--card-border);
 }
-.tag_blue  { background: rgba(51, 133, 255, 0.14); color: #3385ff; border-color: rgba(51, 133, 255, 0.3); }
-.tag_green { background: rgba(34, 197, 94, 0.14); color: #22c55e; border-color: rgba(34, 197, 94, 0.3); }
-.tag_amber { background: rgba(255, 155, 0, 0.16); color: #ff9b00; border-color: rgba(255, 155, 0, 0.3); }
+.tag_blue  { background: var(--tag-primary-bg); color: var(--tag-primary-text); border-color: var(--tag-primary-border); }
+.tag_green { background: var(--tag-success-bg); color: var(--tag-success-text); border-color: var(--tag-success-border); }
+.tag_amber { background: var(--tag-warning-bg); color: var(--tag-warning-text); border-color: var(--tag-warning-border); }
 
 /* ============ 空间关系 ============ */
 .kv-list { display: flex; flex-direction: column; gap: 6px; }
@@ -305,7 +310,7 @@ html[data-theme='NIGHT'] { .drawer { backdrop-filter: blur(8px); } }
 }
 .kv-k { font-size: 10px; color: var(--text-muted); letter-spacing: 0.5px; }
 .kv-v { font-size: 13px; line-height: 1.7; color: var(--text-primary); }
-.rel_dir { display: inline-block; background: var(--accent-cyan); color: #fff; padding: 0 6px; border-radius: 3px; font-weight: 700; }
+.rel_dir { display: inline-block; background: var(--accent-cyan); color: var(--addr-robot-header-fg); padding: 0 6px; border-radius: 3px; font-weight: 700; }
 .rel_dist { font-weight: 700; font-family: Consolas, monospace; color: var(--accent-cyan); }
 
 /* ============ 地图摘要 ============ */

@@ -100,29 +100,9 @@ const toAreaNode = (feature: WfsFeature): AreaNode | null => {
 }
 
 /**
- * 按 parent_code 拉取下一级行政区划（已按 seq 升序）。
- * @param parentCode 父级 area_code；根节点传 '1'（中国）
+ * 按 area_code 精确获取单个行政区划（CQL 定向查询，1 条 WFS）。
+ * @param areaCode 行政区划编码
  */
-export const fetchAreaChildren = async (parentCode: string): Promise<AreaNode[]> => {
-  if (!parentCode) return []
-  const data = (await geoserverApi.getWFSFeatures(
-    {
-      typeName: AREA_LAYER,
-      cql_filter: `parent_code='${parentCode}'`,
-      propertyName: 'area_code,area_name,parent_code,addrlevel_id,seq',
-      outputFormat: 'application/json',
-      maxFeatures: 500,
-    },
-    'gis',
-  )) as WfsFeatureCollection
-
-  return (data?.features ?? [])
-    .map(toAreaNode)
-    .filter((node): node is AreaNode => node !== null)
-    .sort((a, b) => a.seq - b.seq)
-}
-
-/** 按 area_code 精确拉取单个行政区划 */
 export const fetchAreaByCode = async (areaCode: string): Promise<AreaNode | null> => {
   if (!areaCode) return null
   const data = (await geoserverApi.getWFSFeatures(
@@ -136,8 +116,32 @@ export const fetchAreaByCode = async (areaCode: string): Promise<AreaNode | null
     'gis',
   )) as WfsFeatureCollection
 
-  const node = (data?.features ?? []).map(toAreaNode).find((item) => item !== null)
-  return node ?? null
+  const feature = (data?.features ?? [])[0]
+  if (!feature) return null
+  return toAreaNode(feature)
+}
+
+/**
+ * 按 parent_code 获取下一级行政区划（CQL 定向查询，1 条 WFS）。
+ * @param parentCode 父级 area_code
+ */
+export const fetchAreaChildren = async (parentCode: string): Promise<AreaNode[]> => {
+  if (!parentCode) return []
+  const data = (await geoserverApi.getWFSFeatures(
+    {
+      typeName: AREA_LAYER,
+      cql_filter: `parent_code='${parentCode}'`,
+      propertyName: 'area_code,area_name,parent_code,addrlevel_id,seq',
+      outputFormat: 'application/json',
+      maxFeatures: 100,
+    },
+    'gis',
+  )) as WfsFeatureCollection
+
+  return (data?.features ?? [])
+    .map(toAreaNode)
+    .filter((node): node is AreaNode => node !== null)
+    .sort((a, b) => a.seq - b.seq)
 }
 
 /**
@@ -203,56 +207,21 @@ export const fetchAreaBoundary = async (areaCode: string): Promise<AreaFence | n
 }
 
 /**
- * 收集某区划及其全部下级的 area_code 集合。
- *
- * 区划码**不是前缀关系**（北京 110000 → 110101 / 110105…，不是 1100001x），
- * 所以不能用 LIKE '110000%' 匹配下级，必须先查 env_area 拿子级编码再拼 IN 列表。
- * 收集到街道级，保证队站能按任一层级区划检索到。
- */
-export const collectAreaCodeTree = async (areaCode: string): Promise<string[]> => {
-  if (!areaCode) return []
-  const codes = new Set<string>([areaCode])
-  let frontier = [areaCode]
-
-  // 最多下钻 4 级（区划体系最深到街道乡镇），避免异常数据造成死循环
-  for (let depth = 0; depth < AREA_LEVEL.STREET && frontier.length > 0; depth += 1) {
-    const children = await Promise.all(
-      frontier.map(async (parent) => {
-        try {
-          return await fetchAreaChildren(parent)
-        } catch {
-          return [] as AreaNode[]
-        }
-      }),
-    )
-    const next: string[] = []
-    for (const child of children.flat()) {
-      if (codes.has(child.areaCode)) continue
-      codes.add(child.areaCode)
-      next.push(child.areaCode)
-    }
-    frontier = next
-  }
-
-  return [...codes]
-}
-
-/**
- * 拉取某区划（含下级）下的主管队站。
- * 队站表按 area_id 关联行政区划；区划码非前缀关系，故按收集到的编码列表做 IN 匹配。
+ * 拉取指定区划编码列表下的主管队站。
+ * 队站表按 area_id 关联行政区划；调用方传入 root + 直接下级的 area_code 列表做 IN 匹配。
+ * @param codeList 区划编码列表（通常 1~10 条）
+ * @param areaNames 区划编码 → 区划名映射，用于补全展示
  */
 export const fetchJurisdictionStations = async (
-  areaCode: string,
+  codeList: string[],
   areaNames?: Map<string, string>,
 ): Promise<JurisdictionStation[]> => {
-  if (!areaCode) return []
-  const codes = await collectAreaCodeTree(areaCode)
-  if (!codes.length) return []
+  if (!codeList.length) return []
 
   const data = (await geoserverApi.getWFSFeatures(
     {
       typeName: ORG_DEPT_LAYER,
-      cql_filter: `area_id IN (${codes.map((code) => `'${code}'`).join(',')})`,
+      cql_filter: `area_id IN (${codeList.map((code) => `'${code}'`).join(',')})`,
       propertyName: 'id,org_name,area_id,longitude,latitude',
       outputFormat: 'application/json',
       maxFeatures: 500,
@@ -280,21 +249,19 @@ export const fetchJurisdictionStations = async (
 }
 
 /**
- * 拉取某区划（含下级）下的队站辖区（队站的主管辖区面）。
+ * 拉取指定区划编码列表下的队站辖区（队站的主管辖区面）。
  * view_juris_zone.zone_id 等于 view_res_org_dept.id，area_id 与队站一致。
  */
 export const fetchJurisdictionZones = async (
-  areaCode: string,
+  codeList: string[],
   areaNames?: Map<string, string>,
 ): Promise<JurisdictionZone[]> => {
-  if (!areaCode) return []
-  const codes = await collectAreaCodeTree(areaCode)
-  if (!codes.length) return []
+  if (!codeList.length) return []
 
   const data = (await geoserverApi.getWFSFeatures(
     {
       typeName: JURIS_ZONE_LAYER,
-      cql_filter: `area_id IN (${codes.map((code) => `'${code}'`).join(',')})`,
+      cql_filter: `area_id IN (${codeList.map((code) => `'${code}'`).join(',')})`,
       propertyName: 'zone_id,zone_name,area_id',
       outputFormat: 'application/json',
       maxFeatures: 500,
@@ -318,4 +285,38 @@ export const fetchJurisdictionZones = async (
       }
     })
     .filter((item): item is JurisdictionZone => item !== null)
+}
+
+/**
+ * 按队站 id 查询单条辖区几何（点击队站时按需加载，避免 init 预加载全量几何）。
+ * view_juris_zone.zone_id 等于 view_res_org_dept.id。
+ */
+export const fetchJurisdictionZoneByStationId = async (
+  stationId: string,
+): Promise<JurisdictionZone | null> => {
+  if (!stationId) return null
+  const data = (await geoserverApi.getWFSFeatures(
+    {
+      typeName: JURIS_ZONE_LAYER,
+      cql_filter: `zone_id='${stationId}'`,
+      propertyName: 'zone_id,zone_name,area_id',
+      outputFormat: 'application/json',
+      maxFeatures: 1,
+    },
+    'gis',
+  )) as WfsFeatureCollection
+
+  const feature = (data?.features ?? [])[0]
+  if (!feature) return null
+  const properties = feature.properties ?? {}
+  const zoneId = readString(properties.zone_id)
+  const geometry = feature.geometry
+  if (!zoneId || !geometry) return null
+  return {
+    zoneId,
+    zoneName: readString(properties.zone_name),
+    areaCode: readString(properties.area_id),
+    areaName: '',
+    geometry,
+  }
 }

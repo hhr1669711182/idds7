@@ -122,3 +122,18 @@
 @tag-info-bg: rgba(148, 163, 184, 0.12);
 @tag-info-text: #a8bdd0;
 @tag-info-border: rgba(148, 163, 184, 0.28);
+
+/* ---------- 地址机器人抽屉（语义与数据增强侧栏） ----------
+ * 抽屉头部用 --header-bg 底色，其上的前景色必须随主题走：
+ * 夜间 --header-text 是深蓝灰，硬编码白色会与深色底撞出低对比度。
+ * 以下一组是「压在 header 底色之上」的专用前景色，
+ * 夜间给亮色、白天给深色，保证始终与底色形成足够对比。
+ */
+@addr-robot-header-fg: #ffffff;
+@addr-robot-header-fg-muted: rgba(255, 255, 255, 0.8);
+@addr-robot-header-fg-subtle: rgba(255, 255, 255, 0.7);
+@addr-robot-header-surface: rgba(255, 255, 255, 0.12);
+@addr-robot-header-surface-hover: rgba(255, 255, 255, 0.18);
+@addr-robot-header-track: rgba(255, 255, 255, 0.2);
+@addr-robot-dot: #ffffff;
+@addr-robot-dot-glow: rgba(255, 255, 255, 0.85);

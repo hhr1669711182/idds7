@@ -1,7 +1,8 @@
 (function (root) {
   const incidentStates = { CREATED: '立案', PRE_DISPATCHED: '立案', FORMAL_DISPATCHED: '调派', DISPATCHED: '出动', ARRIVED: '到场', OPERATION_COMPLETED: '展开', RETURNING: '归队', RETURNED: '归队', CLOSED: '结案', POST_ACTION_REVIEWED: '结案' };
   // 从路径规划.txt 提取的坐标点（4 条路径，相邻 Feature 首尾去重）
-  const carPoints = [
+  // let：Node 侧按 MOCK_DATA_CENTER 由 mock-data 覆盖；浏览器侧保留硬编码（向后兼容）
+  let carPoints = [
     [ // 路径1（31 个点）
       [116.3964439852847, 39.94770128856533], [116.39569893554406, 39.94769929653233],
       [116.39427192669915, 39.947688379840606], [116.39391293484118, 39.947742412519396],
@@ -349,6 +350,13 @@ const OFFSET = 0.00669342162296594323;
     const userTopic = userId ? [`user/${userId}`] : [];
     const received = kind === 'received', ended = kind === 'end' || kind === 'missed';
     return { ...base, topics: [...topics, ...userTopic], sender: 'ids-alarm-access-client', notifyType: 'alarm_call', notifySubType: 'answer_status_changed', title: '来电报警接听状态更新', content: '来电报警接听状态更新', customContent: { eventId: id, eventName: 'AlarmCallAnswerStatusChanged', source: 'ids-alarm-access-client', data: { callId, previousState: received ? null : kind === 'end' ? 'ANSWERED' : 'DISPLAY_RENDERED', newState: received ? 'RECEIVED' : ended ? 'CALL_TERMINATED' : 'ANSWERED', answered: !received && kind !== 'missed', ended, changedAt: time, channel: 'CTI' } } };
+  }
+  // Node 侧：按 MOCK_DATA_CENTER 覆盖 carPoints（getCarPoints 生成 31/116/84/192 点）；
+  // 浏览器侧保留上方硬编码路径（向后兼容）。build/describe 闭包读 let carPoints，覆盖后即时生效。
+  if (typeof module !== 'undefined' && typeof require !== 'undefined') {
+    try {
+      carPoints = require('./mock-data').getCarPoints();
+    } catch { /* mock-data 不可用时保留硬编码 */ }
   }
   const api = { describe, build, incidentStates, carPoints };
   if (typeof module !== 'undefined') module.exports = api;

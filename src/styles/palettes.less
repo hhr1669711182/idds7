@@ -45,6 +45,17 @@
   --active-bg: color-mix(in srgb, var(--accent-cyan, #22d3ee) 18%, transparent);
   --active-border: var(--accent-cyan, #22d3ee);
   --active-text: var(--accent-cyan, #22d3ee);
+
+  /* 地址机器人抽屉：压在 header 底色之上的前景色。
+     与 tokens.less 同值（双写铁律，check-css-vars.mjs 逐字比对阻断）。 */
+  --addr-robot-header-fg: #ffffff;
+  --addr-robot-header-fg-muted: rgba(255, 255, 255, 0.8);
+  --addr-robot-header-fg-subtle: rgba(255, 255, 255, 0.7);
+  --addr-robot-header-surface: rgba(255, 255, 255, 0.12);
+  --addr-robot-header-surface-hover: rgba(255, 255, 255, 0.18);
+  --addr-robot-header-track: rgba(255, 255, 255, 0.2);
+  --addr-robot-dot: #ffffff;
+  --addr-robot-dot-glow: rgba(255, 255, 255, 0.85);
 }
 
 /* 移动端：窄屏放不下「天气面板 + 三按钮」的完整横排，
@@ -151,6 +162,16 @@
   --tag-info-bg: @tag-info-bg;
   --tag-info-text: @tag-info-text;
   --tag-info-border: @tag-info-border;
+
+  /* 地址机器人抽屉头部前景色：夜间 header 底色深，前景保持亮白。 */
+  --addr-robot-header-fg: #ffffff;
+  --addr-robot-header-fg-muted: rgba(255, 255, 255, 0.8);
+  --addr-robot-header-fg-subtle: rgba(255, 255, 255, 0.7);
+  --addr-robot-header-surface: rgba(255, 255, 255, 0.12);
+  --addr-robot-header-surface-hover: rgba(255, 255, 255, 0.18);
+  --addr-robot-header-track: rgba(255, 255, 255, 0.2);
+  --addr-robot-dot: #ffffff;
+  --addr-robot-dot-glow: rgba(255, 255, 255, 0.85);
 
   /* 模型研判模块配色 */
   --ma-bg: #0a0e1a;
@@ -266,6 +287,16 @@
   --tag-info-bg: rgba(100, 116, 139, 0.1);
   --tag-info-text: #64748b;
   --tag-info-border: rgba(100, 116, 139, 0.22);
+
+  /* 地址机器人抽屉头部前景色：白天 header 底色浅，前景改深色才够对比。 */
+  --addr-robot-header-fg: #1e293b;
+  --addr-robot-header-fg-muted: rgba(30, 41, 59, 0.78);
+  --addr-robot-header-fg-subtle: rgba(30, 41, 59, 0.68);
+  --addr-robot-header-surface: rgba(30, 41, 59, 0.08);
+  --addr-robot-header-surface-hover: rgba(30, 41, 59, 0.14);
+  --addr-robot-header-track: rgba(30, 41, 59, 0.18);
+  --addr-robot-dot: #1e293b;
+  --addr-robot-dot-glow: rgba(30, 41, 59, 0.35);
 
   /* 模型研判模块配色（白天盘：浅底深字） */
   --ma-bg: #eef2f8;

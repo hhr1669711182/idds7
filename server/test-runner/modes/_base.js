@@ -14,6 +14,12 @@
 //   - afterMs：步骤 PASS 后「地图交互观察窗」（ms），引擎 sleep，让地图逐帧可见。
 //   - seq（car）：intervalMs 为点间真实等待（引擎逐点 sleep）。
 //   - flow（incident）：holdMs 为态间真实等待；states 为警情状态序列。
+// 坐标按 mock 数据中心（MOCK_DATA_CENTER）适配：默认深圳，测试环境北京，生产环境贵州
+const { getActiveRegion } = require('../../mock-data');
+const region = getActiveRegion();
+const centerLng = region.center[0];
+const centerLat = region.center[1];
+
 const step = (id, name, type, payload = {}) => ({ id, name, type, tag: payload.tag ?? 'core', ...payload });
 
 /** 前端连接确认（无目标身份时广播匹配） */
@@ -29,14 +35,14 @@ const pushCallReceived = step('call-received', '来电接听状态推送', 'push
 /** 来电定位（position）→ 前端 stage popup（phase='popup'）；seat 与 test-ui 默认坐席对齐 */
 const pushPosition = step('position', '来电定位推送', 'push', {
   kind: 'position',
-  options: { lng: 116.4074, lat: 39.9042, tel: '13800138000', seat: '3003' },
+  options: { lng: centerLng, lat: centerLat, tel: '13800138000', seat: '3003' },
   afterMs: 1200,
 });
 
 /** 地址画像变更（address）→ 前端 stage dispatch（phase='inquiry' + currentAlarm.incidentId） */
 const pushAddress = step('address', '地址画像变更推送', 'push', {
   kind: 'address',
-  options: { lng: 116.4074, lat: 39.9042 },
+  options: { lng: centerLng, lat: centerLat },
   afterMs: 1200,
 });
 
@@ -58,6 +64,15 @@ const incidentFlow = (id, name, states, holdMs = 800, mode = null, afterMs = 800
 /** 给已有步骤叠加特灾业务轴（flood）：仅追加 mode，phase/currentAlarm 仍由引擎按 kind 推导 */
 const withMode = (s, modeStr) => ({ ...s, mode: modeStr });
 
+/**
+ * 模拟派车清单（mockVehicles）→ 引擎记 stateLog.dispatchVehicles → test-ui 轮询写 seat-shared-state-mock
+ * → useMockCallLocationBridge emit(MOCK_DISPATCH_VEHICLES) → receiveMockDispatchVehicles：
+ * 多消防站候选路线上图（DispatchRoutePreview 面板可切候选）+ 车辆沿选中路线行驶动画。
+ * 需当前处于调派态（stage dispatch）纠缠体已 activate 才生效。
+ */
+const mockVehicles = (id, name, vehicles, { afterMs = 1500 } = {}) =>
+  step(id, name, 'mockVehicles', { vehicles, afterMs, options: {} });
+
 const FULL_INCIDENT_STATES = ['CREATED', 'FORMAL_DISPATCHED', 'DISPATCHED', 'ARRIVED', 'OPERATION_COMPLETED', 'RETURNING', 'RETURNED'];
 const CORE_INCIDENT_STATES = ['CREATED', 'FORMAL_DISPATCHED', 'DISPATCHED', 'ARRIVED', 'RETURNED'];
 
@@ -71,6 +86,7 @@ module.exports = {
   pushAddress,
   carSequence,
   incidentFlow,
+  mockVehicles,
   FULL_INCIDENT_STATES,
   CORE_INCIDENT_STATES,
 };

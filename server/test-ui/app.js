@@ -65,6 +65,16 @@ function applyReportState(report) {
       }
       cur.updatedAt = Date.now();
       localStorage.setItem('seat-shared-state', JSON.stringify(cur));
+      // B+c：stateLog 携带 dispatchVehicles 时写入 seat-shared-state-mock。
+      // 同一 key 注入前先清除旧数据（callLocation / disasterSite / flood 等残留字段），
+      // 防止上一次 run 或手动测试的残留数据被前端 bridge 误读触发意外事件。
+      if (Array.isArray(entry.dispatchVehicles) && entry.dispatchVehicles.length) {
+        localStorage.setItem('seat-shared-state-mock', JSON.stringify({
+          v: 1,
+          updatedAt: Date.now(),
+          dispatchVehicles: entry.dispatchVehicles,
+        }));
+      }
     } catch { /* 格式非法不阻塞流程 */ }
   }
   appliedStateCount = log.length;
@@ -80,6 +90,17 @@ function applyReportState(report) {
 function oneClickConnect() {
   writeLoginState();
   openGis();
+}
+
+async function loadRegion() {
+  try {
+    const res = await fetch('/api/test/region');
+    const r = await res.json();
+    const badge = $('regionBadge');
+    const detail = $('regionDetail');
+    if (badge) badge.innerHTML = `<span>${r.name}</span><span class="state">${r.key}</span>`;
+    if (detail) detail.textContent = `adcode=${r.adcode} · ${r.city} · center=[${r.center}] · ${r.platePrefix} · ${r.adminDivision}`;
+  } catch { /* mock-ws 未就绪时静默 */ }
 }
 
 async function loadClients() {
@@ -168,6 +189,9 @@ async function runScenario() {
   const { runId } = await res.json();
   currentRunId = runId;
   appliedStateCount = 0; // 新 run 重置增量指针
+  // 新 run 开始前清除上一次 run 或手动测试残留的 mock 数据，
+  // 防止前端 bridge 读到旧 dispatchVehicles 误触发 MOCK_DISPATCH_VEHICLES
+  localStorage.removeItem('seat-shared-state-mock');
 
   // 轮询进度
   const poll = async () => {
@@ -211,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('oneClick').addEventListener('click', oneClickConnect);
   $('writeLogin').addEventListener('click', writeLoginState);
   $('openGis').addEventListener('click', openGis);
+  loadRegion();
   loadModes();
   loadHistory();
   loadClients();

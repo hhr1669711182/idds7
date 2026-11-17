@@ -12,7 +12,7 @@ import TileLayer from "ol/layer/Tile";
 import { ScaleLine, OverviewMap } from "ol/control";
 import { readScaleLineUnit } from "@/config/scaleLine.ts";
 // import { KeyboardPan } from "ol/interaction";
-import { FeatureClickQuery } from "./FeatureClickQuery.ts";
+import { FeatureClickQuery, getOrCreateSharedFeatureClickQuery, releaseSharedFeatureClickQuery } from "./FeatureClickQuery.ts";
 // 限制视图范围 要保留 lint检查不清除
 // import { useExtent } from "@/components/map/MapTools/commonTools/useExtent.ts";
 import { GOOGLE_LAYER, TEMP_FRONTEND_LAYER_IDS, VECTOR_LAYER } from "./layers.ts";
@@ -29,7 +29,7 @@ import {
 import { mountCarFeatures } from "@/composables/useCarFeatures";
 import { mountSSRKFeatures } from "@/composables/useSSRKFeatures";
 import { mountIncomingCallFeatures } from "@/composables/useIncomingCallFeatures";
-import amapData from "@/assets/map/config/data.json";
+import { appEnv } from "@/config/env";
 import carImg from "@/assets/map/icon/car.png";
 import fireImg from "@/assets/map/icon/xfz.png";
 import { useFireStations } from "@/composables/useFireStations";
@@ -108,12 +108,12 @@ let detachBusinessMap: (() => void) | null = null;
 let genericCtrl: GenericController | null = null;
 let trafficTool: TrafficTools | null = null;
 /** 路线 Y B-3c：调派纠缠体 composable（variant→dispatch 时 activate，常驻 map） */
-let entangled: ReturnType<typeof useDispatchEntangled> | null = null;
+const entangled = shallowRef<ReturnType<typeof useDispatchEntangled> | null>(null);
 /** 路线 Y B-6c：调派路线预览暴露（template 绑定，entangled 未激活时全空） */
 const dispatchRoutePreview = computed(() => ({
-  visible: entangled?.routePreviewVisible.value ?? false,
-  stations: entangled?.routePreviewStations.value ?? [],
-  loading: entangled?.routePreviewLoading.value ?? false,
+  visible: entangled.value?.routePreviewVisible.value ?? false,
+  stations: entangled.value?.routePreviewStations.value ?? [],
+  loading: entangled.value?.routePreviewLoading.value ?? false,
 }));
 const overviewControl = shallowRef<OverviewMap | null>(null);
 const scaleLineControl = shallowRef<ScaleLine | null>(null);
@@ -241,10 +241,6 @@ const updateMapZoomLevel = () => {
   if (typeof zoom === "number") mapZoomLevel.value = zoom;
 };
 
-const configList = Array.isArray(amapData)
-  ? (amapData as any[])
-  : [amapData as any];
-const regionCfg = (configList[0] || {}).data || configList[0];
 
 const initMap = async () => {
   if (disposed) return;
@@ -280,7 +276,8 @@ const initMap = async () => {
 
   updateMapZoomLevel();
   zoomLevelChangeKey = gisBaseMap.watchZoom(updateMapZoomLevel);
-  featureClickQuery = new FeatureClickQuery(map);
+  // 唯一共享 FeatureClickQuery 实例（全图仅一个 singleclick 取数入口）
+  featureClickQuery = getOrCreateSharedFeatureClickQuery(map);
   featureClickQuery.activate();
 
   const feature = mapConfigStore.feature;
@@ -296,11 +293,11 @@ const initMap = async () => {
 
   nav.value = new AmapRealtimeNav(map, {
     amapKey: "7405ae6dde247ee87be4e7d8021056f4",
-    xzKeywords: (regionCfg?.adcode as string) || "",
+    xzKeywords: appEnv.mapAdcode || "",
     vehicleIconSrc: carImg,
   });
   (window as any).nav = nav.value;
-  // nav.value.loadMask((regionCfg?.boundaries as any) || []).catch(() => {});
+
 
   if (popups.firePopupRef.value) {
     fireManager = mountFireStations({
@@ -409,7 +406,7 @@ const initMap = async () => {
   void geoServerHealth.check();
 
   // 路线 Y B-3c：创建调派纠缠体 composable（共享 4 个前端图层 manager + B-1/B-2 设施）
-  entangled = useDispatchEntangled({
+  entangled.value = useDispatchEntangled({
     map,
     nav: nav.value!,
     gisBaseMap,
@@ -417,18 +414,19 @@ const initMap = async () => {
     carManager,
     alarmOverlayManager,
     jrAlarmManager,
+    featureClickQuery: getOrCreateSharedFeatureClickQuery(map),
   });
 
   // 路线 Y B-1/B-2/B-3c：初始化完成后，若当前处于调派 variant 则 attach 调派业务 + 纠缠体
   if (isDispatchVariant()) {
     attachDispatchBusiness({ map, nav: nav.value! });
-    entangled.activate();
+    entangled.value?.activate();
   }
 };
 
 /** 路线 Y B-6c：调派路线预览选择（桥接纠缠体 selectStationRoute） */
 const handleRoutePreviewSelect = (stationId: string, routeId: string) => {
-  entangled?.selectStationRoute(stationId, routeId);
+  entangled.value?.selectStationRoute(stationId, routeId);
 };
 
 // 路线 Y B-1/B-2/B-3c：variant 切换时 attach/detach 调派业务设施 + 纠缠体（main 下不触发，功能零影响）
@@ -438,9 +436,9 @@ watch(
     if (!map || !nav.value) return; // initMap 未完成，不 attach
     if (isDispatch) {
       attachDispatchBusiness({ map, nav: nav.value });
-      entangled?.activate();
+      entangled.value?.activate();
     } else {
-      entangled?.deactivate();
+      entangled.value?.deactivate();
       detachDispatchBusiness();
       // attachMap 已改多槽位（按 kind 分别持有）：主图 kind:'map' 端口全程存活，
       // 切回主图态无需重新 attach；业务动作自动回落主图槽位。
@@ -455,8 +453,8 @@ const cleanup = () => {
   detachBusinessMap?.();
   detachBusinessMap = null;
   detachDispatchBusiness(); // 路线 Y：调派业务设施随卸载一并 detach
-  entangled?.dispose(); // 路线 Y B-3c：纠缠体自有资源随卸载一并清理
-  entangled = null;
+  entangled.value?.dispose(); // 路线 Y B-3c：纠缠体自有资源随卸载一并清理
+  entangled.value = null;
   cancelStartup?.();
   if (zoomLevelChangeKey) {
     unByKey(zoomLevelChangeKey);
@@ -465,6 +463,7 @@ const cleanup = () => {
   gisBaseMap.dispose();
   if (featureClickQuery) {
     featureClickQuery.destroy();
+    if (map) releaseSharedFeatureClickQuery(map);
     featureClickQuery = null;
   }
   alarmOverlayManager?.destroy();

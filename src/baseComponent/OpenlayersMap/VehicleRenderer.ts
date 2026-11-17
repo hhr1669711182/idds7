@@ -4,6 +4,7 @@
  * @FilePath: src\baseComponent\OpenlayersMap\dispatch1\vehicleManager.ts
  */
 import Feature from 'ol/Feature'
+import OlMap from 'ol/Map'
 import LineString from 'ol/geom/LineString'
 import Point from 'ol/geom/Point'
 import VectorSource from 'ol/source/Vector'
@@ -12,7 +13,8 @@ import { getDistance } from 'ol/sphere'
 import { getStyle, MAP_ICON_SRC } from '@/baseComponent/OpenlayersMap/style'
 import type { CarLocationBatch, CarLocationPoint } from '@/controller/core/protocol/LegacyMessageProtocol'
 import type { DispatchFlowState, DispatchVehicleCommand } from '@/controller/core/business/DispatchController1'
-import { Style, Stroke } from 'ol/style'
+import { Icon, Style, Stroke } from 'ol/style'
+import { catmullRomSubdivide, EmaFilter, isStaticMovement } from '@/hooks/useVehicleSmoothing'
 
 /** 模拟跟踪的时间压缩车速（米/秒），仅用于无真实 GPS 时沿规划路线演示行进 */
 const SIMULATION_TRACK_SPEED_MPS = 120
@@ -50,6 +52,10 @@ type TrackedDispatchVehicle = {
   trailFeature?: Feature<LineString>
   /** 轨迹确认锚点（地图投影坐标），动画期间末端实时延伸到当前渲染位置。 */
   trailCoordinates: number[][]
+  /** GPS 坐标 EMA 低通滤波器，消除 3-10m 随机噪声导致的左右抖动。 */
+  emaFilter: EmaFilter
+  /** 上一帧原始 WGS84 [lng, lat]，供静止门控判定。 */
+  lastRawLngLat?: [number, number]
 }
 
 /** 实时 GPS 帧间线性插值动画状态，消除 2~30 秒推送间隔造成的车辆跳变。 */
@@ -68,6 +74,8 @@ export interface VehicleManagerOptions {
   vehicleSource: VectorSource
   /** 获取当前调派状态（供 simulateVehicleTracking 读取 stations） */
   getState: () => Readonly<DispatchFlowState>
+  /** 地图实例，供边界跟随时读取/更新视图 */
+  map?: OlMap
 }
 
 export interface VehicleManager {
@@ -83,6 +91,11 @@ export interface VehicleManager {
   registerDispatchedVehicles: (command: DispatchVehicleCommand) => void
   /** 清空所有跟踪车辆、动画句柄与上图 feature。 */
   clearTrackedVehicles: () => void
+  /**
+   * 视口边界跟随开关。开启时车辆渲染位置若已出视口（40px margin 内）则自动
+   * `setCenter`，车辆始终可见；关闭后完全交由用户控制。默认开启。
+   */
+  setFollow: (enabled: boolean) => void
 }
 
 /**
@@ -91,7 +104,7 @@ export interface VehicleManager {
  * 全部封装在闭包内，对外只暴露方法集合。
  */
 export function createVehicleManager(options: VehicleManagerOptions): VehicleManager {
-  const { routeSource, vehicleSource, getState } = options
+  const { routeSource, vehicleSource, getState, map } = options
   const trackedVehiclesByPlate = new globalThis.Map<string, TrackedDispatchVehicle>()
   const trackedVehiclesByCarId = new globalThis.Map<string, TrackedDispatchVehicle>()
   const latestLocationsByPlate = new globalThis.Map<string, CarLocationPoint>()
@@ -100,6 +113,29 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
   const vehicleAnimations = new globalThis.Map<string, number>()
   /** 实时 GPS 帧间插值动画状态，key 为 `${stationId}:${vehicleId}` */
   const realtimeAnimations = new globalThis.Map<string, RealtimeInterpolation>()
+
+  // 持续中心跟随：每 FOLLOW_THROTTLE_MS 将视图中心对准车辆，isInteracting 守卫避免打断手动操作
+  const FOLLOW_THROTTLE_MS = 100
+  let followEnabled = true
+  let lastFollowAt = 0
+
+  /**
+   * 持续中心跟随：每 100ms 将视图中心对准车辆坐标，车辆始终在视口内。
+   * 用户拖动/缩放时 map.isInteracting() 为 true，跳过跟随，不打断手动操作。
+   */
+  const followIfNeeded = (projectedCoordinate: number[]): void => {
+    if (!followEnabled || !map) return
+    if (map.getView().getInteracting()) return
+    const now = performance.now()
+    if (now - lastFollowAt < FOLLOW_THROTTLE_MS) return
+    lastFollowAt = now
+    map.getView().setCenter(projectedCoordinate)
+  }
+
+  /**
+   * 边界触发本身已兼容用户拖动：用户拖地图后车辆坐标不变、视图中心改变，
+   * 车辆大概率不再靠近边缘，自然不触发 setCenter。
+   */
 
   /**
    * 更新车辆定位：根据消息服务推送的 WGS84 实时坐标更新已调派车辆。
@@ -241,6 +277,7 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
         plateNumber,
         rotation: 0,
         trailCoordinates: [],
+        emaFilter: new EmaFilter(),
       }
       trackedVehiclesByPlate.set(plateKey, tracked)
 
@@ -289,6 +326,7 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
       rotation: 0,
       realtimeOnly: true,
       trailCoordinates: [],
+      emaFilter: new EmaFilter(),
     }
     if (plateKey) trackedVehiclesByPlate.set(plateKey, tracked)
     if (carIdKey) trackedVehiclesByCarId.set(carIdKey, tracked)
@@ -421,13 +459,16 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
   }
 
   /** 沿规划路线以压缩时间匀速动画移动车辆，到达报警点后自动结束。 */
-  const startVehicleAnimation = (tracked: TrackedDispatchVehicle, coordinates: number[][]): boolean => {
+  const startVehicleAnimation = (tracked: TrackedDispatchVehicle, rawCoordinates: number[][]): boolean => {
     type RouteSegment = {
       from: number[]
       to: number[]
       length: number
       cumulative: number
     }
+    // Catmull-Rom 样条加密：把高德稀疏关键点（~200-500m）加密为每 ~20m 一个中间点，
+    // 车辆沿平滑曲线行驶，弯道不再走弦线导致左右抖动。
+    const coordinates = catmullRomSubdivide(rawCoordinates, 20)
     const segments: RouteSegment[] = []
     let totalLength = 0
     for (let index = 0; index < coordinates.length - 1; index += 1) {
@@ -452,19 +493,34 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
     appendTrailAnchor(tracked, geometry.getCoordinates())
 
     const pointAt = (traveled: number): number[] => {
-      let current = segments[segments.length - 1]
-      for (const segment of segments) {
-        if (traveled <= segment.cumulative + segment.length) {
-          current = segment
-          break
-        }
+      // 二分查找：cumulative 有序，~9 次比较替代 500+ 次线性扫描
+      let lo = 0
+      let hi = segments.length - 1
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1
+        if (traveled > segments[mid].cumulative + segments[mid].length) lo = mid + 1
+        else hi = mid
       }
-      const ratio = Math.min(1, Math.max(0, (traveled - current.cumulative) / current.length))
+      const seg = segments[lo]
+      const ratio = Math.min(1, Math.max(0, (traveled - seg.cumulative) / seg.length))
       return [
-        current.from[0] + (current.to[0] - current.from[0]) * ratio,
-        current.from[1] + (current.to[1] - current.from[1]) * ratio,
+        seg.from[0] + (seg.to[0] - seg.from[0]) * ratio,
+        seg.from[1] + (seg.to[1] - seg.from[1]) * ratio,
       ]
     }
+
+    // ② Style 实例复用：动画启动时创建一次，后续帧只改 rotation
+    const vehicleStyle = getStyle('vehicle', {
+      src: MAP_ICON_SRC.car,
+      rotation: tracked.rotation,
+      scale: 0.65,
+      styleId: key,
+      zIndex: 100,
+    }) as Style
+    tracked.feature.setStyle(vehicleStyle)
+
+    // ① Trail 节流：100ms 更新一次，避免每帧全量 setCoordinates 触发 routeSource 重绘
+    let trailLastUpdate = 0
 
     const renderFrame = (now: number) => {
       const progress = Math.min(1, (now - startTime) / durationMs)
@@ -479,15 +535,18 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
       }
       geometry.setCoordinates(projectedCoordinate)
       tracked.lastProjectedCoordinate = projectedCoordinate
-      updateTrailGeometry(tracked, projectedCoordinate)
-      const vehicleStyle = getStyle('vehicle', {
-        src: MAP_ICON_SRC.car,
-        rotation: tracked.rotation,
-        scale: 0.65,
-        styleId: key,
-        zIndex: 100,
-      }) as Style
-      tracked.feature.setStyle(vehicleStyle)
+
+      // ① trail 节流
+      if (now - trailLastUpdate >= 100) {
+        updateTrailGeometry(tracked, projectedCoordinate)
+        trailLastUpdate = now
+      }
+
+      // ② 原地更新 rotation，不新建 Style 对象
+      ;(vehicleStyle.getImage() as Icon).setRotation(tracked.rotation)
+
+      // ③ 边界跟随
+      followIfNeeded(projectedCoordinate)
 
       if (progress < 1) {
         vehicleAnimations.set(key, requestAnimationFrame(renderFrame))
@@ -522,6 +581,20 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
     const geometry = tracked.feature.getGeometry() as Point
     const styleId = key
     const startedAt = performance.now()
+
+    // ② Style 实例复用：插值启动时创建一次，后续帧只改 rotation
+    const vehicleStyle = getStyle('vehicle', {
+      src: MAP_ICON_SRC.car,
+      rotation: tracked.rotation,
+      scale: 0.65,
+      styleId,
+      zIndex: 100,
+    }) as Style
+    tracked.feature.setStyle(vehicleStyle)
+
+    // ① Trail 节流：100ms 更新一次
+    let trailLastUpdate = 0
+
     const renderFrame = (now: number) => {
       const progress = Math.min(1, Math.max(0, (now - startedAt) / durationMs))
       const projectedCoordinate = [
@@ -530,15 +603,18 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
       ]
       geometry.setCoordinates(projectedCoordinate)
       tracked.lastProjectedCoordinate = projectedCoordinate
-      updateTrailGeometry(tracked, projectedCoordinate)
-      const vehicleStyle = getStyle('vehicle', {
-        src: MAP_ICON_SRC.car,
-        rotation: tracked.rotation,
-        scale: 0.65,
-        styleId,
-        zIndex: 100,
-      }) as Style
-      tracked.feature.setStyle(vehicleStyle)
+
+      // ① trail 节流
+      if (now - trailLastUpdate >= 100) {
+        updateTrailGeometry(tracked, projectedCoordinate)
+        trailLastUpdate = now
+      }
+
+      // ② 原地更新 rotation
+      ;(vehicleStyle.getImage() as Icon).setRotation(tracked.rotation)
+
+      // ③ 边界跟随
+      followIfNeeded(projectedCoordinate)
 
       const current = realtimeAnimations.get(key)
       if (progress < 1 && current) {
@@ -570,7 +646,13 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
     )
       return false
 
-    const projectedCoordinate = fromLonLat([point.longitude, point.latitude])
+    // GPS 噪声抑制：静止门控 + EMA 低通滤波
+    const rawLngLat: [number, number] = [point.longitude, point.latitude]
+    const static_ = isStaticMovement(tracked.lastRawLngLat ?? null, rawLngLat)
+    const [smoothLng, smoothLat] = static_ ? rawLngLat : tracked.emaFilter.update(rawLngLat)
+    tracked.lastRawLngLat = rawLngLat
+
+    const projectedCoordinate = fromLonLat([smoothLng, smoothLat])
     const previous = tracked.lastProjectedCoordinate
     const intervalMs =
       gpsTimestamp !== undefined && tracked.lastGpsTimestamp !== undefined
@@ -610,6 +692,7 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
     ;(tracked.feature.getGeometry() as Point).setCoordinates(projectedCoordinate)
     tracked.lastProjectedCoordinate = projectedCoordinate
     updateTrailGeometry(tracked, projectedCoordinate)
+    followIfNeeded(projectedCoordinate)
 
     const styleId = `${tracked.stationId}:${tracked.vehicleId}`
     const vehicleStyle = getStyle('vehicle', {
@@ -697,10 +780,16 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
     return normalized
   }
 
+  const setFollow = (enabled: boolean): void => {
+    followEnabled = enabled
+    lastFollowAt = 0
+  }
+
   return {
     updateVehicleLocations,
     simulateVehicleTracking,
     registerDispatchedVehicles,
     clearTrackedVehicles,
+    setFollow,
   }
 }

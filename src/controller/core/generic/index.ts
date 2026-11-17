@@ -40,18 +40,18 @@ export class GenericController {
     this.kinematic = new KinematicController(this.map)
   }
 
-  // 临时使用 给机器人 新增图层  TODO: 临时使用，后续需要移除并融合到tempVectorLayer图层中动态管理
+  // TODO(huanghuanrong, 2026-12-11, GIS-W46): 给机器人临时开放的图层增删查不在通用控制层职责内 —— 应收进 AddressRobotRenderer 自己的图层管理 —— 到期未迁则从 GenericController 移除
   public addLayer(layer: VectorLayer<VectorSource>) {
     this.map.addLayer(layer)
   }
 
-  // 临时使用 给机器人 获取临时图层
+  /** TODO(huanghuanrong, 2026-12-11, GIS-W46): 同 addLayer —— 机器人专用图层查询应收进 AddressRobotRenderer —— 到期未迁则移除 */
   public getVectorLayer(name: string) {
     const layers = this.map.getLayers().getArray()
     return layers.find((layer) => layer.get('name') === name) as VectorLayer<VectorSource>
   }
 
-  // 临时使用 给机器人 移除图层
+  /** TODO(huanghuanrong, 2026-12-11, GIS-W46): 同 addLayer —— 机器人专用图层移除应收进 AddressRobotRenderer —— 到期未迁则移除 */
   public removeLayer(layer: VectorLayer<VectorSource>) {
     this.map.removeLayer(layer)
   }

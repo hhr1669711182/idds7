@@ -39,6 +39,11 @@
 <body>
   <h1>IDS-GIS 业务模拟测试台</h1>
   <div class="sub">驱动 mock-ws（:18080）向已连接的前端推送业务报文，验证数据链路。GIS 连接与登录态注入均在本页同源完成，无需 __test/ 旧控制台。</div>
+  <div class="panel" id="regionPanel" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:12px;color:var(--dim)">模拟数据中心</span>
+    <span id="regionBadge" class="chip" style="border-color:var(--accent);color:var(--accent)"><span class="state">加载中…</span></span>
+    <span id="regionDetail" style="font-size:12px;color:var(--dim)"></span>
+  </div>
 
   <div class="panel" id="connPanel">
     <div class="row"><label>① GIS 连接 · 登录态注入（同源，替代 __test/ 控制台）</label></div>

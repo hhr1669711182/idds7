@@ -61,9 +61,20 @@ vi.mock('@/composables/useFireStations', async () => {
   return { useFireStations: () => ({ stations: ref([]), load: vi.fn(async () => undefined) }) }
 })
 vi.mock('@/apis/geoserver', () => ({ geoserverApi: { getWMSServiceUrl: () => '/geoserver/wms' } }))
-vi.mock('@/baseComponent/OpenlayersMap/FeatureClickQuery', () => ({
-  DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS: 'dispatch_t1_primary_station',
-}))
+vi.mock('@/baseComponent/OpenlayersMap/FeatureClickQuery', () => {
+  const sharedInstance = {
+    addBusinessHandler: () => () => undefined,
+    setRouteInfoProvider: () => undefined,
+    activate: () => undefined,
+    close: () => undefined,
+    showStation: () => undefined,
+    getOpenStationId: () => null,
+  }
+  return {
+    DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS: 'dispatch_t1_primary_station',
+    getOrCreateSharedFeatureClickQuery: () => sharedInstance,
+  }
+})
 vi.mock('@/baseComponent/OpenlayersMap/style', () => ({
   getStyle: () => new Style(),
   createRouteLineStyle: () => new Style(),

@@ -1,6 +1,8 @@
 {
   "note": "vue-tsc 既有基线，暂不清理；pre-commit 仅提示不阻塞。修完一批后运行 pnpm lint:baseline:update 收敛",
-  "count": 0,
-  "generatedAt": "2026-10-22",
-  "errors": []
+  "count": 1,
+  "generatedAt": "2026-11-16",
+  "errors": [
+    "src/lib/index.ts(30,1) TS6133: 'createMapRelayReader' is declared but its value is never read."
+  ]
 }

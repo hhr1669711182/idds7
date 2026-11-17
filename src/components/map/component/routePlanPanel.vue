@@ -130,12 +130,19 @@ const isStepActive = (option: RoutePlanOption, step: RouteStepInstruction): bool
 
 /**
  * 点击转向指引：定位到该路段并高亮。
- * 切换方案时清掉高亮，避免高亮落在别的方案的路线上。
+ * 二次点击同一步骤取消高亮；切换方案时清掉高亮，避免高亮落在别的方案的路线上。
  */
 const onSelectStep = (option: RoutePlanOption, step: RouteStepInstruction) => {
   const tool = ensureTool();
   if (!tool || !step.coords.length) return;
-  activeStep.value = { optionId: option.id, stepIndex: option.steps.indexOf(step) };
+  const stepIndex = option.steps.indexOf(step);
+  // 二次点击同一步骤 → 取消高亮
+  if (activeStep.value?.optionId === option.id && activeStep.value?.stepIndex === stepIndex) {
+    tool.clearFocus();
+    activeStep.value = null;
+    return;
+  }
+  activeStep.value = { optionId: option.id, stepIndex };
   tool.focusRouteSegment(step.coords);
 };
 
@@ -158,7 +165,7 @@ const queryTips = async (keyword: string, callback: (items: AutocompleteData) =>
   const cached = tipsCache.value[text];
   if (cached) return callback(cached as unknown as AutocompleteData);
   try {
-    const response = (await amapApi.inputTips({ keywords: text, city: appEnv.amapAdcode, cityLimit: true })) as PoiFeatureCollection | undefined;
+    const response = (await amapApi.inputTips({ keywords: text, city: appEnv.mapAdcode, cityLimit: true })) as PoiFeatureCollection | undefined;
     const features = Array.isArray(response?.features) ? response.features : [];
     const items: TipOption[] = features
       .map((feature: PoiFeature) => {
@@ -388,7 +395,7 @@ const planRoute = async () => {
       duration: selected.durationSeconds,
     };
   } catch (error) {
-    console.warn("[routePlanPanel] planRoute failed:", error);
+    console.warn("[routePlanPanel] planRoute failed:", error);``
     ElMessage.error("路径规划失败，请稍后重试");
   } finally {
     searchStore.setRoutePlanning(false);
@@ -420,6 +427,7 @@ const onToggleTmc = (option: RoutePlanOption) => {
 const onClose = () => {
   searchStore.closeRoutePanel();
   resultTool?.clearRoute();
+  resultTool?.clearFocus();
   routeSummary.value = null;
   routeOptions.value = [];
   activeStep.value = null;

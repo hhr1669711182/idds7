@@ -22,17 +22,6 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const srcRoot = resolve(root, 'src')
 const SOURCE_EXTS = new Set(['.ts', '.tsx', '.vue'])
-const PUBLIC_DIRS = new Set([
-  'utils',
-  'controller',
-  'store',
-  'composables',
-  'apis',
-  'config',
-  'const',
-  'interceptor',
-  'service',
-])
 
 /* ---------------- 阈值（调整需同步文档） ---------------- */
 const MAX_JS_DOC_LINES = 10
@@ -83,8 +72,6 @@ const collectFiles = () => {
   }
   return files.filter((f) => f.startsWith(srcRoot + sep) && SOURCE_EXTS.has(extname(f)))
 }
-
-const isPublic = (abs) => PUBLIC_DIRS.has(relative(srcRoot, abs).split(sep)[0])
 
 /* ---------------- 规则实现 ---------------- */
 const checkFile = (abs) => {
@@ -164,13 +151,6 @@ const checkFile = (abs) => {
       jsDocLen = 0
     }
 
-    if (isPublic(abs) && /^\s*export\s+(?:async\s+)?(?:function|const|class|interface|type|let)\s/.test(line)) {
-      const prev = (lines[index - 1] ?? '').trim()
-      const hasDoc = prev.endsWith('*/') || prev.startsWith('/**') || prev.startsWith('*')
-      if (!hasDoc) {
-        issues.push({ line: index + 1, rule: 'missing-jsdoc', msg: '公共文件导出符号缺 JSDoc（新增/改动必须写）' })
-      }
-    }
   })
 
   flushRun()

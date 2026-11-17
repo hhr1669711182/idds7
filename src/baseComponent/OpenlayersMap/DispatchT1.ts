@@ -8,14 +8,11 @@
  */
 import Feature from 'ol/Feature'
 import OlMap from 'ol/Map'
-import type { EventsKey } from 'ol/events'
 import { boundingExtent } from 'ol/extent'
 import LineString from 'ol/geom/LineString'
 import Point from 'ol/geom/Point'
 import VectorLayer from 'ol/layer/Vector'
-import { unByKey } from 'ol/Observable'
 import { fromLonLat, transform } from 'ol/proj'
-import TileWMS from 'ol/source/TileWMS'
 import VectorSource from 'ol/source/Vector'
 // import { Fill, Stroke, Style } from 'ol/style'  // TS6133: Fill / Stroke / Style 未使用，保留备用
 import { MAP_LAYER_Z_INDEX } from './layerOrder'
@@ -28,7 +25,7 @@ import {
   dimRouteStyle,
   projectCoords,
 } from '@/baseComponent/tools/routeBase'
-import { DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS } from '@/baseComponent/OpenlayersMap/FeatureClickQuery'
+import { DISPATCH_T1_PRIMARY_STATION_LAYER_CLASS, getOrCreateSharedFeatureClickQuery, type FeatureClickResult } from '@/baseComponent/OpenlayersMap/FeatureClickQuery'
 // import { mountPolygonLayer } from '@/baseComponent/OpenlayersMap/mountPolygonLayer'  // TS6133: 未使用，保留备用
 import type { PolygonLayerManager } from '@/baseComponent/OpenlayersMap/mountPolygonLayer'
 import type { CarLocationBatch } from '@/controller/core/protocol/LegacyMessageProtocol'
@@ -46,7 +43,6 @@ import {
   type DispatchVehicleState,
   type DispatchWorkflowStatus,
 } from '@/controller/core/business/DispatchController1'
-import { geoserverApi } from '@/apis/geoserver'
 import { useVehicleTrackStore } from '@/store/useVehicleTrackStore'
 import { isTerminalIncidentState } from '@/utils/incidentState'
 import {
@@ -61,8 +57,6 @@ import {
 import {
   STATION_LAYER_NAME as DISPATCH_T1_STATION_LAYER,
   JURISDICTION_LAYER_NAME as DISPATCH_T1_JURISDICTION_LAYER,
-  cqlLiteral,
-  queryStationFeatures,
   queryIncidentStations,
   type StationCandidate,
   type Coordinate,
@@ -139,23 +133,21 @@ export const createDispatchT1InitialState = createDispatchInitialState
 export class DispatchT1 {
   private readonly stateController = new DispatchController1()
   private readonly routeVersions = new globalThis.Map<string, number>()
-  private readonly knownStationNames = new Set<string>()
-  private stationFeaturesPromise: Promise<any[]> | null = null
-  private genericPopupObserver: MutationObserver | null = null
-  private genericFeaturePopupSuppressed = false
   private requestVersion = 0
   private dispatchPending = false
   /** 本次业务操作的幂等键；同一警情同一次调派的重试复用，成功/换新警情后重置 */
   private commandId: string | null = null
-  private clickKey: EventsKey | null = null
   /** 车辆实时定位与模拟跟踪逻辑（车牌/车辆ID索引表、最新定位缓存、动画句柄）均封装在该闭包内 */
   private readonly vehicleManager!: VehicleManager
-
+  /** 特化队站点击 handler 在共享 FeatureClickQuery 上的注销函数（destroy 时移除，回落通用面板） */
+  private featureClickHandlerUnsub: (() => void) | null = null
   /**
-   * 仅用于构造 WMS GetFeatureInfo URL，不加入地图。
-   * 队站显示统一复用地图侧唯一的 gis:view_res_org_dept WMS 图层（由 store 驱动过滤）。
+   * 队站车辆详情 overlay 是否已启用（视图侧控制）。
+   * 未启用时（当前阶段 ensureStationOverlay 注释停用），点击立案队站若被本 handler
+   * 接管将无可视反馈；故 handleFeatureClick 据此返回 false，回落通用队站面板
+   * （仍渲染名称/地址，调派态经 routeInfoProvider 附带预计时间/距离）。
    */
-  private readonly stationQuerySource: TileWMS
+  private stationOverlayEnabled = false
   // @ts-expect-error TS6133: 未读取但已赋值，保留备用
   private showAllJurisdictions = false
   // @ts-expect-error TS6133: 未读取但已赋值，保留备用
@@ -175,18 +167,6 @@ export class DispatchT1 {
     private readonly map: OlMap,
     private readonly options: DispatchT1Options = {},
   ) {
-    this.stationQuerySource = new TileWMS({
-      url: geoserverApi.getWMSServiceUrl('gis'),
-      params: {
-        LAYERS: DISPATCH_T1_STATION_LAYER,
-        VERSION: '1.1.0',
-        FORMAT: 'image/png',
-        TRANSPARENT: true,
-      },
-      serverType: 'geoserver',
-      crossOrigin: 'anonymous',
-    })
-
     /* 辖区图层已禁用（主管/支撑辖区渲染逻辑注释）
     this.jurisdictionManager = mountPolygonLayer<JurisdictionItem>({
       map: this.map,
@@ -223,21 +203,22 @@ export class DispatchT1 {
     })
     this.map.addLayer(this.primaryStationLayer)
 
-    this.bindStationClick()
-    this.observeGenericStationPopups()
-    this.hideGenericFeaturePopups()
+    // 队站点击特化：注册到共享 FeatureClickQuery 的特化 handler 优先级链。
+    // 命中「本次立案的主管/支撑队站」时接管（activateStation 展开队站详情），
+    // 未接管时回落通用队站面板（公共业务），非特化要素仍走通用展示。
+    // 必须用箭头函数包裹保住 this：handleFeatureClick 是普通方法，裸引用
+    // this.handleFeatureClick 传入后会被 route() 以普通函数方式调用（this 丢失，
+    // 严格模式下为 undefined），其首行 this.getState() 会抛
+    // "Cannot read properties of undefined (reading 'getState')"。
+    this.featureClickHandlerUnsub = getOrCreateSharedFeatureClickQuery(this.map).addBusinessHandler(
+      (result) => this.handleFeatureClick(result),
+    )
     this.vehicleManager = createVehicleManager({
       routeSource: this.routeSource,
       vehicleSource: this.vehicleSource,
       getState: () => this.getState(),
+      map: this.map,
     })
-    void this.getStationFeatures()
-      .then(() => {
-        this.hideGenericFeaturePopups()
-      })
-      .catch((error) => {
-        console.warn('[DispatchT1] 预加载消防站数据失败', error)
-      })
   }
 
   public subscribe(listener: DispatchT1StateListener): () => void {
@@ -260,12 +241,6 @@ export class DispatchT1 {
    */
   public simulateVehicleTracking(): number {
     return this.vehicleManager.simulateVehicleTracking()
-  }
-
-  /** 专用要素弹窗显示期间，隐藏通用要素弹窗，避免同一点出现两个弹窗。 */
-  public setGenericFeaturePopupSuppressed(suppressed: boolean): void {
-    this.genericFeaturePopupSuppressed = suppressed
-    if (suppressed) this.hideGenericFeaturePopups()
   }
 
   public async handleWebSocketMessage(message: DispatchT1WebSocketData): Promise<Readonly<DispatchT1State>> {
@@ -431,7 +406,6 @@ export class DispatchT1 {
       })
       // 辖区查询完成后触发现场视频等查询阶段后的 UI 展示（若调用方配置了回调）。
       this.options.onQueryComplete?.(data.incident)
-      this.hideGenericFeaturePopups()
       // 主管队站车辆随查询结果预取；支撑队站车辆延后到弹窗展开时加载。
       await this.loadStationVehicles(result.primary?.id || '')
       return this.getState()
@@ -448,6 +422,15 @@ export class DispatchT1 {
     if (!station) return this.getState()
     void this.loadStationVehicles(stationId)
     return this.getState()
+  }
+
+  /**
+   * 视图侧启用/停用队站车辆详情 overlay 后同步调用。
+   * 停用（默认）时点击立案队站不被本 handler 接管，回落通用队站面板（有名称/地址反馈）；
+   * 启用时点击立案队站由 activateStation 展开队站车辆详情。
+   */
+  public setStationOverlayEnabled(enabled: boolean) {
+    this.stationOverlayEnabled = enabled
   }
 
   public async loadStationVehicles(stationId: string): Promise<void> {
@@ -611,12 +594,9 @@ export class DispatchT1 {
   }
 
   public destroy(): void {
-    this.genericPopupObserver?.disconnect()
-    this.genericPopupObserver = null
-    if (this.clickKey) {
-      unByKey(this.clickKey)
-      this.clickKey = null
-    }
+    // 移除注册在共享 FeatureClickQuery 上的特化队站 handler（回落通用兜底）
+    this.featureClickHandlerUnsub?.()
+    this.featureClickHandlerUnsub = null
     this.reset()
     this.stateController.destroy()
     /* 辖区图层已禁用，无需 destroy
@@ -708,123 +688,26 @@ export class DispatchT1 {
     }
   }
 
-  private bindStationClick(): void {
-    this.clickKey = this.map.on('singleclick', async (event) => {
-      // 未进入调派时由通用队站弹窗处理点击，不查询辖区边界。
-      if (!this.getState().incident) return
-      // 立案查询中：队站图层由 store 强制过滤显示主管+支撑，无候选时不响应点击
-      if (!this.getState().stations.length) return
-      // 主管以独立 zhu.png 矢量图标上图（WMS 像素反查可能落空）：
-      // 先按像素命中主管要素，命中则直接展开主管详情，与点支撑队站行为一致
-      const primaryHit = this.map.forEachFeatureAtPixel(
-        event.pixel,
-        (feature, layer) => (layer === this.primaryStationLayer ? feature : undefined),
-        { hitTolerance: 6 },
-      ) as Feature | undefined
-      if (primaryHit) {
-        const stationId = String(primaryHit.get('stationId') ?? '').trim()
-        if (stationId) this.activateStation(stationId)
-        return
-      }
-      try {
-        const view = this.map.getView()
-        // stationQuerySource 不挂载到地图，仅用于拼装 GetFeatureInfo 请求参数
-        const url = this.stationQuerySource.getFeatureInfoUrl(
-          event.coordinate,
-          view.getResolution() ?? 0,
-          view.getProjection(),
-          { INFO_FORMAT: 'application/json', FEATURE_COUNT: 1 },
-        )
-        if (!url) return
-        // 立案查询中只允许点中本次的主管/支撑队站，过滤条件与地图 WMS 图层一致
-        const dispatchCqlFilter = this.getState()
-          .stations.map((station) => `id=${cqlLiteral(station.id)}`)
-          .join(' OR ')
-        const urlObject = new URL(url, window.location.origin)
-        const data = await geoserverApi.getWMSFeatureInfo({
-          layers: DISPATCH_T1_STATION_LAYER,
-          query_layers: DISPATCH_T1_STATION_LAYER,
-          bbox: urlObject.searchParams.get('BBOX') ?? '',
-          width: Number(urlObject.searchParams.get('WIDTH')),
-          height: Number(urlObject.searchParams.get('HEIGHT')),
-          x: Number(urlObject.searchParams.get('X') ?? urlObject.searchParams.get('I')),
-          y: Number(urlObject.searchParams.get('Y') ?? urlObject.searchParams.get('J')),
-          cql_filter: dispatchCqlFilter || '1=1',
-          feature_count: 1,
-          srs: view.getProjection().getCode(),
-        })
-        const stationId = String(data?.features?.[0]?.properties?.id ?? '')
-        if (stationId) this.activateStation(stationId)
-      } catch (error) {
-        console.error('[DispatchT1] 点击消防站失败', error)
-      }
-    })
-  }
-
   /**
-   * 报警点传入前，通用弹窗只保留消防队站；报警点传入后，
-   * 队站点击由 DispatchT1 接管，通用要素弹窗全部隐藏。
+   * 特化队站点击 handler（注册在共享 FeatureClickQuery 的特化优先级链上）：
+   * 仅当命中「本次立案的主管/支撑队站集」时接管并展开队站详情（activateStation）；
+   * 未接管（非本立案集队站、或非特化要素）返回 false，回落通用详情面板（公共业务）。
+   * 取代原 bindStationClick 的私有 singleclick + stationQuerySource WMS 反查，
+   * 取数管道收敛到共享 FeatureClickQuery，本处只做调派私有业务动作。
+   * 抢占范围：仅「点击」路径。程序化打开队站面板（FeatureClickQuery.showStation，
+   * 如路径规划预览选中队站）不经过 handler 链，不受本 handler 抢占。
    */
-  private observeGenericStationPopups(): void {
-    const target = this.map.getTargetElement()
-    if (!target || typeof MutationObserver === 'undefined') return
-    this.genericPopupObserver = new MutationObserver(() => {
-      this.hideGenericFeaturePopups()
-    })
-    this.genericPopupObserver.observe(target, {
-      childList: true,
-      characterData: true,
-      subtree: true,
-    })
-  }
-
-  private hideGenericFeaturePopups(): void {
-    const dispatchStarted = Boolean(this.getState().incident)
-    const stationNamesReady = this.knownStationNames.size > 0
-
-    this.map
-      .getOverlays()
-      .getArray()
-      .forEach((overlay) => {
-        const element = overlay.getElement()
-        if (!element || element.querySelector('.dispatch-station-popup') || element.dataset.stationPopup === 'true')
-          return
-        const popup = element.querySelector('.overlay_popup')
-        if (!popup) return
-
-        if (dispatchStarted || this.genericFeaturePopupSuppressed) {
-          overlay.setPosition(undefined)
-          return
-        }
-
-        // 队站目录尚在加载时先保留，加载完成后会再次执行过滤。
-        if (!stationNamesReady) return
-        const popupText = this.normalizeName(popup.textContent)
-        const isStationPopup = [...this.knownStationNames].some((name) => popupText.includes(name))
-        if (!isStationPopup) overlay.setPosition(undefined)
-      })
-  }
-
-  private getStationFeatures(): Promise<any[]> {
-    if (!this.stationFeaturesPromise) {
-      this.stationFeaturesPromise = queryStationFeatures()
-        .then((features) => {
-          for (const feature of features) {
-            const properties = feature?.properties ?? {}
-            const names = [properties.org_name, properties.simple_org_name, properties.name]
-            for (const name of names) {
-              const normalized = this.normalizeName(name)
-              if (normalized) this.knownStationNames.add(normalized)
-            }
-          }
-          return features
-        })
-        .catch((error) => {
-          this.stationFeaturesPromise = null
-          throw error
-        })
+  private handleFeatureClick(result: FeatureClickResult): boolean {
+    const state = this.getState()
+    if (!state.incident || !state.stations.length) return false
+    const stationIds = new Set(state.stations.map((station) => station.id))
+    if (result.kind === 'station' && stationIds.has(result.stationId)) {
+      // 队站车辆详情 overlay 未启用时不接管，回落通用队站面板（仍有名称/地址反馈，避免点击无响应）
+      if (!this.stationOverlayEnabled) return false
+      this.activateStation(result.stationId)
+      return true
     }
-    return this.stationFeaturesPromise
+    return false
   }
 
   private toStation(
@@ -981,12 +864,6 @@ export class DispatchT1 {
 
   private assertCurrent(version: number): void {
     if (version !== this.requestVersion) throw new Error('查询已被新的火情替换')
-  }
-
-  private normalizeName(value: unknown): string {
-    return String(value ?? '')
-      .replace(/\s+/g, '')
-      .toLowerCase()
   }
 
   private errorMessage(error: unknown, fallback: string): string {

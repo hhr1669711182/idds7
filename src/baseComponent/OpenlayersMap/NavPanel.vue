@@ -3,7 +3,7 @@ import { ref, computed } from "vue";
 import * as olProj from "ol/proj";
 import { ElMessage } from "element-plus";
 import { fetchInputTips } from "../amap/useAmapTools.ts";
-import amapData from "@/assets/map/config/data.json";
+import { appEnv } from "@/config/env";
 import { useFireStations } from "@/composables/useFireStations";
 
 const props = defineProps<{
@@ -13,9 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits(["update:alarmData", "clear"]);
 
-const configList = Array.isArray(amapData) ? (amapData as any[]) : [amapData as any];
-const firstCfg = (configList[0] || {}) as any;
-const regionCfg = firstCfg.data || firstCfg;
+
 
 const amapKey = ref<string>("7405ae6dde247ee87be4e7d8021056f4");
 
@@ -53,7 +51,7 @@ const formatTipText = (t: TipItem) => {
 const loadBeijingMaskIfReady = async () => {
   if (!props.nav || !amapKey.value) return;
   try {
-    await props.nav.loadMask((regionCfg?.boundaries as any) || []);
+    await props.nav.loadMask([]);
   } catch {
     return;
   }
@@ -81,7 +79,7 @@ const fetchDisasterSuggestions = async (queryString: string, cb: any): Promise<a
     const tips = (await fetchInputTips({
       key,
       keywords: q,
-      city: (regionCfg?.city as string) || "",
+      city: appEnv.mapCity,
       citylimit: true,
     })) as TipItem[];
 

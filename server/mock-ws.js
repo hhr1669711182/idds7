@@ -6,7 +6,10 @@ const { WebSocketServer, WebSocket } = require('ws');
 const { filterFrame } = require('./routing');
 const { proxyHttp, proxyUpgrade } = require('./gis-proxy');
 const { mountTestHarness } = require('./test-harness');
-const { carPoints } = require('./protocols');
+// 按前端 env 适配模拟数据中心（MOCK_DATA_CENTER，默认 shenzhen）；坐标/站名/车牌/区划/车辆轨迹随 region 切换
+const { getActiveRegion, getActiveRegionKey, getCarPoints } = require('./mock-data');
+const region = getActiveRegion();
+const carPoints = getCarPoints();
 
 // §2.2 默认 5s 内未 connect 即断开；测试可通过环境变量缩短
 const CONNECT_TIMEOUT_MS = Number(process.env.CONNECT_TIMEOUT_MS) || 5000;
@@ -41,10 +44,10 @@ const handleBffMock = (req, res, pathname) => {
       incidentId,
       version: 1,
       slots: [
-        { slotCode: 'disaster_address', filledValue: '示例路 1 号' },
-        { slotCode: 'longitude', filledValue: '116.4074' },
-        { slotCode: 'latitude', filledValue: '39.9042' },
-        { slotCode: 'm_org_id', filledValue: 'f7742190d975473790fb816861846b2e' },
+        { slotCode: 'disaster_address', filledValue: region.sampleAddress },
+        { slotCode: 'longitude', filledValue: String(region.center[0]) },
+        { slotCode: 'latitude', filledValue: String(region.center[1]) },
+        { slotCode: 'm_org_id', filledValue: region.stations[0].id },
       ],
     });
     return true;
@@ -61,26 +64,26 @@ const handleBffMock = (req, res, pathname) => {
         accessType: 'PHONE',
         callerPhone: '13800138000',
         callerName: '测试来电人',
-        installAddress: '示例路 1 号',
+        installAddress: region.sampleAddress,
       },
       acceptInfo: {
         seatNo: '3003',
         acceptTime: new Date().toISOString(),
         disasterLevel: 'III',
         keyUnitName: null,
-        disasterAddress: '示例路 1 号',
+        disasterAddress: region.sampleAddress,
         burningMaterial: '木材',
         isSupplement: false,
         incidentMark: 'fire',
         smokeSituation: null,
         trappedCount: 0,
-        adminDivision: '北京-海淀',
+        adminDivision: region.adminDivision,
         disasterType: { type: 'fire', subtype: 'residential' },
         contacterName: '测试联系人',
         contacterPhone: '13900139000',
-        leadStation: 'f7742190d975473790fb816861846b2e',
-        longitude: 116.4074,
-        latitude: 39.9042,
+        leadStation: region.stations[0].id,
+        longitude: region.center[0],
+        latitude: region.center[1],
         acceptContent: '测试警情描述',
       },
       dispatchInfo: {
@@ -91,15 +94,15 @@ const handleBffMock = (req, res, pathname) => {
           dispatchedAt: new Date().toISOString(),
           vehicleCount: 1,
           stations: [{
-            stationId: 'f7742190d975473790fb816861846b2e',
-            stationName: '深圳市南山区大冲消防救援站',
+            stationId: region.stations[0].id,
+            stationName: region.vehicles[0].stationName,
             vehicleCount: 1,
             vehicles: [{
-              vehicleId: 'TEST-CAR-001',
+              vehicleId: region.vehicles[0].vehicleId,
               vehicleName: '测试车001',
               vehicleTypeCode: 'FIRE',
-              vehicleTypeName: '消防车',
-              plateNo: '粤B·12345',
+              vehicleTypeName: region.vehicles[0].vehicleTypeName,
+              plateNo: region.vehicles[0].plateNo,
               onboardPersonnelCount: 5,
               waterTons: 8,
               foamTons: null,
@@ -123,34 +126,21 @@ const handleBffMock = (req, res, pathname) => {
         burningMaterial: '木材',
         keyUnitName: null,
         incidentState: 'DISPATCHED',
-        disasterAddress: '示例路 1 号',
-        leadStationId: 'f7742190d975473790fb816861846b2e',
-        leadStationName: '深圳市南山区大冲消防救援站',
+        disasterAddress: region.sampleAddress,
+        leadStationId: region.stations[0].id,
+        leadStationName: region.vehicles[0].stationName,
       },
-      vehicles: [
-        {
-          vehicleId: 'TEST-CAR-001',
-          plateNumber: '粤B·12345',
-          stationId: 'f7742190d975473790fb816861846b2e',
-          stationName: '深圳市南山区大冲消防救援站',
-          stationAddress: '深圳南山区大冲路',
-          startTime: new Date().toISOString(),
-          endTime: null,
-          finalPlanId: 'plan-1',
-          dispatchSeq: 1,
-        },
-        {
-          vehicleId: 'TEST-CAR-002',
-          plateNumber: '粤B·67890',
-          stationId: '8aee87a783f84e21018432fe5e814311',
-          stationName: '深圳市南山区沙河消防救援站',
-          stationAddress: '深圳南山区沙河路',
-          startTime: new Date(Date.now() + 60000).toISOString(),
-          endTime: null,
-          finalPlanId: 'plan-2',
-          dispatchSeq: 2,
-        },
-      ],
+      vehicles: region.vehicles.map((v, i) => ({
+        vehicleId: v.vehicleId,
+        plateNumber: v.plateNo,
+        stationId: v.stationId,
+        stationName: v.stationName,
+        stationAddress: region.stations[i] ? region.stations[i].address : region.stations[0].address,
+        startTime: new Date(i === 0 ? Date.now() : Date.now() + 60000).toISOString(),
+        endTime: null,
+        finalPlanId: `plan-${i + 1}`,
+        dispatchSeq: i + 1,
+      })),
       meta: { sourceGaps: [], sourceErrors: [] },
     });
     return true;
@@ -161,18 +151,18 @@ const handleBffMock = (req, res, pathname) => {
     let body = '';
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', () => {
-      let carId = 'TEST-CAR-001';
+      const [v0, v1] = region.vehicles;
+      let carId = v0.vehicleId;
       let plateNumber = '测试车001';
       try {
         const parsed = JSON.parse(body);
         carId = parsed.carId || carId;
         plateNumber = parsed.plateNumber || plateNumber;
       } catch { /* use defaults */ }
-      const carPointsMap = {
-        'TEST-CAR-001': carPoints[0],   // 31 点
-        'TEST-CAR-002': carPoints[1],   // 116 点
-      };
-      const route = carPointsMap[carId] ?? carPoints[0];
+      // 车车 0/1 分别映射 carPoints[0]/[1]（31/116 点）；未知 carId 回退第一路
+      const carPointsMap = {};
+      region.vehicles.forEach((v, i) => { carPointsMap[v.vehicleId] = carPoints[i] || carPoints[0]; });
+      const route = carPointsMap[carId] || carPoints[0];
       const now = Date.now();
       const points = route.map((coord, i) => ({
         carId,
@@ -279,4 +269,7 @@ wss.on('connection', (ws, kind) => {
   });
 });
 server.on('error', error => { console.error(error.message); process.exit(1); });
-server.listen(Number(process.env.PORT || 18080), process.env.HOST || '127.0.0.1', () => console.log(`WS 测试控制台：http://localhost:${server.address().port}/__test/`));
+server.listen(Number(process.env.PORT || 18080), process.env.HOST || '127.0.0.1', () => {
+  console.log(`mock 数据中心：${getActiveRegionKey()}（${region.name}，adcode=${region.adcode}，center=${region.center}，plate=${region.platePrefix}）`);
+  console.log(`WS 测试控制台：http://localhost:${server.address().port}/__test/`);
+});

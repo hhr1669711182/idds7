@@ -1,8 +1,3 @@
-import amapRawConfig from '@/assets/map/config/data.json'
-
-type AmapConfigItem = { data?: { city?: string; adcode?: string; keywords?: string; boundaries?: unknown[] } }
-const amapConfigData = amapRawConfig as AmapConfigItem[]
-
 const readEnvString = (key: string) => {
   const value = import.meta.env[key] // 拓展读取接口
   return typeof value === 'string' ? value.trim() : ''
@@ -26,9 +21,10 @@ export const appEnv = {
   wsUrl: readEnvString('VITE_WS_URL'),
   messageServiceOrigin: readEnvString('VITE_MESSAGE_SERVICE_ORIGIN'),
   messageClient: readEnvString('VITE_MESSAGE_CLIENT'),
-  // 同源多标签页互通开关与通道名，由 register/initMessage.ts 统一绑定到 useMessageStore
-  useBroadcastChannel: readEnvString('VITE_USE_BROADCAST_CHANNEL') === 'true',
-  broadcastChannelName: readEnvString('VITE_BROADCAST_CHANNEL_NAME'),
+  // 同源多标签页互通开关，默认启用；由 register/initMessage.ts 统一绑定到 useMessageStore
+  useBroadcastChannel: readEnvString('VITE_USE_BROADCAST_CHANNEL') !== 'false',
+  // BC 物理通道名（V1.1 §1.1），未配置时兜底 ids-map-screen-relay
+  relayChannelName: readEnvString('VITE_RELAY_CHANNEL_NAME') || 'ids-map-screen-relay',
   // 地图初始中心点（WGS84 [经度, 纬度]），VITE_MAP_CENTER 固定格式 "[经度, 纬度]"，未配置时兜底深圳
   mapCenter: (JSON.parse(readEnvString('VITE_MAP_CENTER') || 'null') as [number, number] | null) ?? [
     113.9354071, 22.54831,
@@ -41,10 +37,18 @@ export const appEnv = {
   geoserverWmsUrl: stripTrailingSlashes(readEnvString('VITE_GEOSERVER_WMS_URL')),
   panel25DUrl: readEnvString('VITE_PANEL_25D_URL'),
   panel3DUrl: readEnvString('VITE_PANEL_3D_URL'),
-  amapApiBaseUrl: isDev ? '/a' : stripTrailingSlashes(readEnvString('VITE_AMAP_PROXY_API')),
-  // 高德城市限制：keyword-search 用城市名，input-tips 用 adcode
-  amapCity: amapConfigData[0]?.data?.city ?? '深圳市',
-  amapAdcode: amapConfigData[0]?.data?.adcode ?? '440300',
+  mapApiBaseUrl: isDev ? '/api' : stripTrailingSlashes(readEnvString('VITE_API_BASE_URL')),
+  // mapApiBaseUrl: isDev ? '/a' : stripTrailingSlashes(readEnvString('VITE_MAP_PROXY_API')),
+  // 地图平台城市限制：keyword-search 用城市名，input-tips 用 adcode
+  mapCity: readEnvString('VITE_MAP_CITY') || '深圳市',
+  mapAdcode: readEnvString('VITE_MAP_ADMCODE') || '440300',
+  // 地图搜索关键词（原 data.json keywords 字段，已无业务引用，保留供后续扩展）
+  mapKeywords: readEnvString('VITE_MAP_KEYWORDS') || '',
+
+  // 路径规划路段衔接门控：默认关闭，仅兜底使用后端已有计算
+  routeContinuityEnabled: readEnvString('VITE_ROUTE_CONTINUITY_ENABLED') === 'true',
+  // 天气数据源：'new'（主实例 /api/weather 拼音字段，含湿度/预警/温度范围等扩展）| 'amap'（旧高德代理）
+  weatherSource: readEnvString('VITE_WEATHER_SOURCE') || 'new',
 }
 
 export const joinUrl = (baseUrl: string, path: string) => {

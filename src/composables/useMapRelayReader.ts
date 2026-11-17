@@ -12,12 +12,13 @@ import {
   MESSAGE_EVENT_KEY,
   MESSAGE_PROTOCOL_VERSION,
   MESSAGE_SYSTEM,
+  MESSAGE_KIND,
   type MessageEventKey,
 } from '@/const/const.message.type'
+import { sendWire, registerRelayHandler, unregisterRelayHandler } from '@/composables/relayProtocol'
 import type { IncidentLocationSharedState } from '@/controller/core/protocol/IncidentLocationProtocol'
 import type { MessageEnvelope } from '@/types/message'
 
-export const RELAY_CHANNEL_NAME = 'ids-map-screen-relay'
 export const HELLO_INTERVAL_MS = 30_000
 
 const record = (value: unknown): Record<string, unknown> | null =>
@@ -26,14 +27,8 @@ const record = (value: unknown): Record<string, unknown> | null =>
 export const createMapRelayReader = (): (() => void) => {
   const bus = useMessageStore()
   const user: IncidentLocationSharedState = useUserStore()
-  let channel: BroadcastChannel
   let disposed = false
   let sequence = 0
-  try {
-    channel = new BroadcastChannel(RELAY_CHANNEL_NAME)
-  } catch {
-    return () => {}
-  }
 
   const ingest = <Payload>(eventKey: MessageEventKey, data: Payload, extra: Record<string, unknown> = {}) => {
     const context = readIncidentLocationContext(user, getSharedMapStage(user.rawState, user.MapMode))
@@ -75,36 +70,33 @@ export const createMapRelayReader = (): (() => void) => {
     }
   }
 
-  channel.onmessage = (event: MessageEvent<unknown>) => {
+  /** 入向：由 relayProtocol.handleRawRelayMessage 按 kind 路由到此处 */
+  const onRelayMessage = (msg: Record<string, unknown>) => {
     if (disposed) return
-    const message = record(event.data)
-    if (!message) return
-    if (message.kind === 'map-relay-snapshot' && Array.isArray(message.events)) {
-      for (const value of message.events) {
+    if (msg.kind === MESSAGE_KIND.RELAY_SNAPSHOT && Array.isArray(msg.events)) {
+      for (const value of msg.events) {
         const entry = record(value)
-        if (entry) dispatch(entry.eventName, entry.payload, { sentAt: entry.sentAt ?? message.sentAt })
+        if (entry) dispatch(entry.eventName, entry.payload, { sentAt: entry.sentAt ?? msg.sentAt })
       }
-    } else if (message.kind === 'map-relay-event') {
-      dispatch(message.eventName, message.payload, { sentAt: message.sentAt, relaySequence: message.seq })
-    } else if (message.kind === 'map-relay-bye') {
-      return
+    } else if (msg.kind === MESSAGE_KIND.RELAY_EVENT) {
+      dispatch(msg.eventName, msg.payload, { sentAt: msg.sentAt, relaySequence: msg.seq })
     }
   }
+  registerRelayHandler(onRelayMessage)
 
+  /** 出向：hello 即取 + 30s 刷新，经 bus BC 客户端直发 wire */
   const hello = () => {
     if (disposed) return
-    try {
-      channel.postMessage({ kind: 'map-relay-hello' })
-    } catch {}
+    sendWire({ kind: MESSAGE_KIND.RELAY_HELLO })
   }
   hello()
   const timer = window.setInterval(hello, HELLO_INTERVAL_MS)
+
   return () => {
     if (disposed) return
     disposed = true
     window.clearInterval(timer)
-    channel.onmessage = null
-    channel.close()
+    unregisterRelayHandler()
   }
 }
 

@@ -1,6 +1,6 @@
 ﻿/**
  * SEAT 通道 -> 地址机器人 GIS 搜索
- * 命中：notifyType === 'addressbot' 且 customContent.event_type === 'AddressLocationUpdated'
+ * 命中：notifyType === 'ADDRESSBOT' 且 customContent.event_type === 'AddressLocationUpdated'
  * 业务数据：customContent 整体
  */
 

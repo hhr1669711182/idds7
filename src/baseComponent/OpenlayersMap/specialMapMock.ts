@@ -66,11 +66,34 @@ const SPECIAL_MAP_MOCK_DATA = {
   end: { id: 'end-1', name: '终点', lng: 116.33258, lat: 39.89606 },
 }
 
+export interface SpecialMapMockStation {
+  id: string
+  name: string
+  lng: number
+  lat: number
+  plateNo?: string
+  vehicleTypeName?: string
+}
+export interface SpecialMapMockEnd {
+  id: string
+  name: string
+  lng: number
+  lat: number
+}
+/** 外部注入的起点/终点数据（调派业务场景下由 useDispatchEntangled 驱动，替代内置北京假数据） */
+export interface SpecialMapMockData {
+  starts: SpecialMapMockStation[]
+  end: SpecialMapMockEnd
+  /** 可选辖区面（内置北京假数据有，调派业务注入时可不带） */
+  jurisdiction?: GeoJSON.Polygon
+}
 export interface SpecialMapMock {
   /** 渲染假数据（辖区 + 起点 + 终点）并执行路径规划，返回候选路线供面板复用；进行中重复调用复用同一 promise */
   render: () => Promise<StationRouteAlternatives[]>
   /** 执行车辆模拟运行（沿选中路径从起点到终点）；未渲染/渲染中时先等渲染完成 */
   simulate: () => Promise<void>
+  /** 运行时注入起点/终点数据（调派业务模式下由 useDiispatchEntangled 驱动），下次 render/simulate 立即生效 */
+  setStations: (starts: SpecialMapMockStation[], end: SpecialMapMockEnd) => void
   /** 清空特殊地图自身图层与 nav 路线/车辆 */
   clear: () => void
   destroy: () => void
@@ -103,29 +126,39 @@ export const createSpecialMapMock = (map: OlMap, nav: AmapRealtimeNav): SpecialM
   let destroyed = false
   const isCurrent = (taskGeneration: number) => !destroyed && taskGeneration === generation
 
+  /** 运行时可注入的起点/终点数据；调派业务模式由 useDispatchEntangled 驱动，flood 演练保留内置北京假数据 */
+  let activeData: SpecialMapMockData = {
+    starts: SPECIAL_MAP_MOCK_DATA.starts,
+    end: SPECIAL_MAP_MOCK_DATA.end,
+    jurisdiction: SPECIAL_MAP_MOCK_DATA.jurisdiction,
+  }
+
   const doRender = async (taskGeneration: number): Promise<StationRouteAlternatives[]> => {
     if (!isCurrent(taskGeneration)) return []
+    const data = activeData
 
-    // 1. 辖区多边形
-    jurisdictionLayer = mountPolygonLayer<{ key: string }>({
-      map,
-      items: [{ key: 'beijing' }],
-      visible: true,
-      className: 'special_map_jurisdiction',
-      zIndex: 40,
-      keyGetter: (item) => item.key,
-      geometryGetter: () => SPECIAL_MAP_MOCK_DATA.jurisdiction,
-      styleGetter: () =>
-        new Style({
-          fill: new Fill({ color: 'rgba(37, 99, 235, 0.12)' }),
-          stroke: new Stroke({ color: '#2563eb', width: 2 }),
-        }),
-    })
+    // 1. 辖区多边形（仅当数据带 jurisdiction 时渲染）
+    if (data.jurisdiction) {
+      jurisdictionLayer = mountPolygonLayer<{ key: string }>({
+        map,
+        items: [{ key: 'jurisdiction' }],
+        visible: true,
+        className: 'special_map_jurisdiction',
+        zIndex: 40,
+        keyGetter: (item) => item.key,
+        geometryGetter: () => data.jurisdiction as GeoJSON.Polygon,
+        styleGetter: () =>
+          new Style({
+            fill: new Fill({ color: 'rgba(37, 99, 235, 0.12)' }),
+            stroke: new Stroke({ color: '#2563eb', width: 2 }),
+          }),
+      })
+    }
 
     // 2. 起点（poi.png）
     startLayer = mountPointLayer({
       map,
-      items: SPECIAL_MAP_MOCK_DATA.starts,
+      items: data.starts,
       visible: true,
       className: 'special_map_starts',
       zIndex: 60,
@@ -137,7 +170,7 @@ export const createSpecialMapMock = (map: OlMap, nav: AmapRealtimeNav): SpecialM
     // 3. 终点（alarm.png）
     endLayer = mountPointLayer({
       map,
-      items: [SPECIAL_MAP_MOCK_DATA.end],
+      items: [data.end],
       visible: true,
       className: 'special_map_end',
       zIndex: 61,
@@ -148,19 +181,15 @@ export const createSpecialMapMock = (map: OlMap, nav: AmapRealtimeNav): SpecialM
 
     // 4. 定位到终点
     map.getView().animate({
-      center: transform(
-        [SPECIAL_MAP_MOCK_DATA.end.lng, SPECIAL_MAP_MOCK_DATA.end.lat],
-        'EPSG:4326',
-        map.getView().getProjection(),
-      ),
+      center: transform([data.end.lng, data.end.lat], 'EPSG:4326', map.getView().getProjection()),
       zoom: 12,
       duration: 400,
     })
 
     // 5. 逐起点请求候选路线（复用 nav.fetchRouteAlternatives）
-    const destination: LngLat = [SPECIAL_MAP_MOCK_DATA.end.lng, SPECIAL_MAP_MOCK_DATA.end.lat]
+    const destination: LngLat = [data.end.lng, data.end.lat]
     const stations = await Promise.all(
-      SPECIAL_MAP_MOCK_DATA.starts.map(async (start): Promise<StationRouteAlternatives> => {
+      data.starts.map(async (start): Promise<StationRouteAlternatives> => {
         const station: StationRouteAlternatives = {
           stationId: start.id,
           stationName: start.name,
@@ -230,7 +259,7 @@ export const createSpecialMapMock = (map: OlMap, nav: AmapRealtimeNav): SpecialM
     // 车辆组与选中路线严格一一对应：只为规划成功的起点创建车辆
     nav.setRouteVehicleGroups(
       validStations.map((station) => {
-        const start = SPECIAL_MAP_MOCK_DATA.starts.find((s) => s.id === station.stationId)
+        const start = activeData.starts.find((s) => s.id === station.stationId)
         return [
           {
             vehicleId: `vehicle-${station.stationId}`,
@@ -262,5 +291,10 @@ export const createSpecialMapMock = (map: OlMap, nav: AmapRealtimeNav): SpecialM
     clear()
   }
 
-  return { render, simulate, clear, destroy, dispose: destroy, getGeneration: () => generation, isCurrent }
+  const setStations = (starts: SpecialMapMockStation[], end: SpecialMapMockEnd): void => {
+    activeData = { starts, end, jurisdiction: undefined }
+    clear()
+  }
+
+  return { render, simulate, clear, destroy, dispose: destroy, getGeneration: () => generation, isCurrent, setStations }
 }

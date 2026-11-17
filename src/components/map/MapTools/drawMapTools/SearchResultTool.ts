@@ -14,7 +14,7 @@ import { LAYER_NAMES } from '@/baseComponent/OpenlayersMap/layers'
 import { getSVGForSrcById } from '@/utils'
 
 import { isOlMap } from '@/utils/mapTool'
-import { cssVar, themeAccent, withAlpha } from '@/utils/themeColor'
+import { cssVar, shiftHue, themeAccent, withAlpha } from '@/utils/themeColor'
 import {
   createRouteDirectionOverlay,
   createRouteLineFeature,
@@ -265,6 +265,11 @@ export class SearchResultTool {
     })
   }
 
+  /** 路线高亮色：与未知路段（cyan）区分，偏移 +60° 色相 */
+  private focusHighlightColor(): string {
+    return shiftHue(themeAccent(ROUTE_LINE_COLOR), 60)
+  }
+
   /**
    * 聚焦特效：脉冲动画只播放 1 秒，随后固定为一个淡半透明聚焦圈。
    *
@@ -478,7 +483,7 @@ export class SearchResultTool {
     })
     feature.setStyle(
       new Style({
-        stroke: new Stroke({ color: themeAccent(ROUTE_LINE_COLOR), width: 9 }),
+        stroke: new Stroke({ color: this.focusHighlightColor(), width: 9 }),
         zIndex: 4,
       }),
     )

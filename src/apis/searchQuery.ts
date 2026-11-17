@@ -150,7 +150,7 @@ export const searchAmapAddress = async (
     // 高德单页上限远小于 1 万，这里按接口 offset 语义取合理页大小
     const response = await amapApi.keywordSearch({
       keywords: text,
-      city: appEnv.amapCity,
+      city: appEnv.mapCity,
       cityLimit: true,
       offset: 20,
       page: 1,
@@ -168,31 +168,44 @@ export const searchAmapAddress = async (
   return bucket
 }
 
-/** 消防资源 tab：WFS 并发查询多个图层，仅用于列表回显 */
+/** 消防资源 tab：WFS 并发查询多个图层，仅用于列表回显。
+ * WFS 2.0.0 分页：用 startIndex + count 替代 1.0.0 的 maxFeatures。
+ * @param params 检索请求参数
+ * @param layerNames 图层中文名映射（可选，默认取 LAYER_SOURCE_CONFIGS）
+ * @param pageSize 每图层每页大小（默认 100；不再全量 10000）
+ * @param startIndex 分页偏移（0 基），用于滚动加载下一页；首次调用传 0 或不传
+ */
 export const searchGisResources = async (
   params: SearchQueryParams,
   layerNames: Map<string, string> = getLayerNameMap(),
-  maxFeatures = SEARCH_MAX_FEATURES,
+  pageSize = 100,
+  startIndex = 0,
 ): Promise<SearchResultBucket> => {
   const bucket = emptyBucket()
   const { typeNames, filters } = buildResourceFilter(params)
   if (!typeNames.length) return bucket
 
-  const perLayerLimit = Math.max(1, Math.floor(maxFeatures / typeNames.length))
   const settled = await Promise.allSettled(
-    typeNames.map((typeName, index) =>
-      geoserverApi
+    typeNames.map((typeName, index) => {
+      const cql = filters[index]
+      // '1=1' 表示不过滤；显式省略 cql_filter 参数，避免 WFS 2.0.0 下 GeoServer 解析空条件异常
+      const cqlFilter = cql && cql !== '1=1' ? cql : undefined
+      return geoserverApi
         .getWFSFeatures({
           typeName,
-          cql_filter: filters[index],
-          maxFeatures: perLayerLimit,
+          cql_filter: cqlFilter,
           outputFormat: 'application/json',
+          version: '2.0.0',
+          crs: 'EPSG:4326',
+          startIndex,
+          count: pageSize,
         })
-        .then((response) => ({ typeName, response })),
-    ),
+        .then((response) => ({ typeName, response }))
+    }),
   )
 
   const collected: SearchResultItem[] = []
+  let totalMatched = 0
   settled.forEach((outcome) => {
     if (outcome.status === 'rejected') {
       bucket.failedLayers = (bucket.failedLayers ?? 0) + 1
@@ -203,23 +216,32 @@ export const searchGisResources = async (
       features?: Record<string, unknown>[]
       totalFeatures?: number | string
       numberMatched?: number | string
+      numberReturned?: number | string
     }
     const features = Array.isArray(payload?.features) ? payload.features : []
-    const matched = Number(payload?.totalFeatures ?? payload?.numberMatched ?? features.length)
-    if (Number.isFinite(matched) && matched > features.length) bucket.truncated = true
+    const matched = Number(payload?.numberMatched ?? payload?.totalFeatures ?? features.length)
+    totalMatched += matched
+    if (Number.isFinite(matched) && matched > features.length + startIndex) bucket.truncated = true
     const layerName = layerNames.get(typeName) ?? typeName
     features.forEach((feature) => {
-      const item = mapWfsFeature(feature, layerName, typeName, perLayerLimit)
+      const item = mapWfsFeature(feature, layerName, typeName, pageSize)
       if (item) collected.push(item)
     })
   })
 
-  if (collected.length > maxFeatures) bucket.truncated = true
-  bucket.items = collected.slice(0, maxFeatures)
+  // 所有图层都翻完才 truncated=false；否则表示还有数据可继续加载
+  bucket.truncated = collected.length > 0 && totalMatched > startIndex + collected.length
+  bucket.items = collected
+  // 命中总数取各图层 numberMatched 之和（WFS 2.0.0 标准字段）；
+  // 首页调用时 = 全量总数；翻页调用时 = 全量总数（与 startIndex 无关，GeoServer 始终返回全量命中数）
+  bucket.totalCount = Number.isFinite(totalMatched) ? totalMatched : undefined
   return bucket
 }
 
-/** 同时检索两个数据源，互不阻塞（任一失败不影响另一方） */
+/** 同时检索两个数据源，互不阻塞（任一失败不影响另一方）。
+ * GIS 资源 tab 走 WFS 2.0.0 分页，首次加载每图层 100 条；
+ * 滚动加载更多时由调用方递增 startIndex 再次调用 searchGisResources。
+ */
 export const runSearch = async (
   params: SearchQueryParams,
 ): Promise<{ address: SearchResultBucket; resource: SearchResultBucket; filter: ResourceFilterSet }> => {
@@ -228,7 +250,7 @@ export const runSearch = async (
     params.typeName || params.typeNames?.length
       ? Promise.resolve(emptyBucket())
       : searchAmapAddress(params.keyword, maxFeatures),
-    searchGisResources(params, getLayerNameMap(), maxFeatures),
+    searchGisResources(params, getLayerNameMap(), 100, 0),
   ])
   return { address, resource, filter: buildResourceFilter(params) }
 }

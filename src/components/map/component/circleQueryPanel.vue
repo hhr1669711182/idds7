@@ -37,10 +37,27 @@ const {
   selectedItem,
   searchPanelCollapsed,
   searchPanelClosed,
+  resourceHasMore,
+  resourceLoadingMore,
 } = storeToRefs(searchStore);
 
 // 检索 API 调用（从 composable 拿，store 只管状态）
-const { viewOptions, runKeywordSearch, runViewSearch, runCircleSearch } = useSearchActions();
+const { viewOptions, runKeywordSearch, runViewSearch, runCircleSearch, loadMoreResource } = useSearchActions();
+
+// 列表滚动容器引用（挂 @scroll 触发资源分页加载）
+const cqListRef = ref<HTMLDivElement | null>(null);
+
+/** 滚到列表底部且资源 tab 还有更多时触发下一页 */
+const onCqListScroll = () => {
+  if (activeTab.value !== "resource") return;
+  if (!resourceHasMore.value || loading.value) return;
+  const el = cqListRef.value;
+  if (!el) return;
+  const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+  if (distance < 60) {
+    void loadMoreResource();
+  }
+};
 
 // ===== 圈选工具状态（原有逻辑保持不变） =====
 const visible = ref(false);
@@ -435,13 +452,13 @@ onBeforeUnmount(() => {
           <!-- 双数据源 tab -->
           <el-tabs v-model="activeTab" class="cq-tabs" @tab-change="onTabChange">
             <el-tab-pane :label="`地址信息 (${searchStore.addressResults.items.length})`" name="address" />
-            <el-tab-pane :label="`消防资源 (${searchStore.resourceResults.items.length})`" name="resource" />
+            <el-tab-pane :label="`消防资源 (${searchStore.resourceResults.totalCount ?? searchStore.resourceResults.items.length})`" name="resource" />
           </el-tabs>
 
-          <div v-if="activeBucket?.truncated" class="cq-truncated">结果已截断，仅显示前 10000 条</div>
+          <div v-if="activeBucket?.truncated" class="cq-truncated">还有更多资源，下拉加载更多…</div>
           <div v-if="searchError" class="cq-error">{{ searchError }}</div>
 
-          <div class="cq-list">
+          <div ref="cqListRef" class="cq-list" @scroll="onCqListScroll">
             <div v-if="loading" class="cq-empty">查询中…</div>
             <div v-else-if="!activeCount" class="cq-empty">未找到匹配结果</div>
             <div
@@ -455,6 +472,7 @@ onBeforeUnmount(() => {
               <div class="cq-item-title">{{ item.title }}</div>
               <div class="cq-item-sub">{{ item.subtitle }}</div>
             </div>
+            <div v-if="resourceLoadingMore && activeTab === 'resource'" class="cq-empty">加载更多中…</div>
           </div>
 
           <!-- 圈选配置（保留原有统计） -->

@@ -126,7 +126,7 @@ export default defineConfig(({ mode, command }) => {
           rewrite: (path) => path.replace(/^\/api/, ''),
         },
         '/a': {
-          target: env.VITE_AMAP_PROXY_API,
+          target: env.VITE_MAP_PROXY_API,
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/a/, ''),

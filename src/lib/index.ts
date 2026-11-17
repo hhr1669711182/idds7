@@ -27,7 +27,7 @@ import { getBusinessMessageRuntime, disposeBusinessMessageRuntime } from '@/cont
 import { initMessage } from '@/register/initMessage'
 import { initPageConditionListener, requestSpecialMapNavigation } from '@/register/pageCondition'
 import { createMockCallLocationBridge } from '@/composables/useMockCallLocationBridge'
-import { createMapRelayReader } from '@/composables/useMapRelayReader'
+// import { createMapRelayReader } from '@/composables/useMapRelayReader'  // 保留注释备用
 import { createIncidentLocationProfileSync } from '@/composables/useIncidentLocationProfileSync'
 import { createGisPointChannel } from '@/composables/useGisPointSelection'
 import { bindBusinessMapLifecycle } from '@/register/businessMapLifecycle'
@@ -97,10 +97,11 @@ export function mountApp(options: MountOptions): AppInstance {
       },
     })
     cleanups.push(mock.dispose)
-    cleanups.push(createGisPointChannel())
-    cleanups.push(createMapRelayReader())
-    cleanups.push(createIncidentLocationProfileSync())
+    // BC 物理通道必须先于 reader / 选点注册，sendWire / pointHandler 才可用
     cleanups.push(initMessage())
+    cleanups.push(createGisPointChannel())
+    cleanups.push(createIncidentLocationProfileSync())
+    // cleanups.push(createMapRelayReader())
 
     app.directive('drag', drag)
     if (emitter) app.provide('hostEmitter', emitter)

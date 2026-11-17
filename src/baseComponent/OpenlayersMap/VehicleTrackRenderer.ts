@@ -3,7 +3,7 @@ import LineString from 'ol/geom/LineString'
 import Point from 'ol/geom/Point'
 import VectorSource from 'ol/source/Vector'
 import OlMap from 'ol/Map'
-import { Style, Stroke } from 'ol/style'
+import { Icon, Style, Stroke } from 'ol/style'
 import { createRouteLineStyle, getStyle, MAP_ICON_SRC } from './style'
 import { MAP_LAYER_Z_INDEX } from './layerOrder'
 import { createRouteDirectionOverlay, createRouteOverlayLayer, projectCoords } from '@/baseComponent/tools/routeBase'
@@ -49,6 +49,14 @@ type RenderGroup = {
   projected: number[][]
   rotation: number
   lastRenderedCoordinate: number[] | null
+  /** 已行驶段几何的整数游标（段索引）：仅段切换时重建基础段 */
+  lastTraveledLower: number
+  /** 车辆 marker Style 实例（复用，仅原地改 rotation，避免每帧新建 5 个对象） */
+  carStyle: Style
+  /** 已行驶灰线的基础段坐标（不含末端），末端原地更新 */
+  traveledCoords: number[][]
+  /** 上次 setCoordinates 时间戳（段内节流 ~100ms） */
+  lastTraveledUpdateAt: number
 }
 
 export interface VehicleTrackRenderer {
@@ -70,6 +78,11 @@ export interface VehicleTrackRenderer {
    * 内部等价于 setCursorAll，单车场景下效果一致。
    */
   setCursor(cursor: number): void
+  /**
+   * 视口边界跟随开关。开启时 setCursorAll 更新后若车辆已出视口边缘（40px margin）
+   * 则自动 setCenter；用户拖动地图后自动关闭。默认开启。
+   */
+  setFollow(enabled: boolean): void
 }
 
 /**
@@ -91,6 +104,39 @@ export const createVehicleTrackRenderer = (map: OlMap): VehicleTrackRenderer => 
   /** trackId → RenderGroup，管理多辆车的渲染状态 */
   const groups = new Map<string, RenderGroup>()
 
+  // 持续中心跟随：每 FOLLOW_THROTTLE_MS 将视图中心对准车辆质心，getInteracting 守卫避免打断手动操作
+  const FOLLOW_THROTTLE_MS = 100
+  let followEnabled = true
+  let lastFollowAt = 0
+
+  /**
+   * 边界跟随：取所有组中最后一个渲染坐标，若已出视口边缘则 setCenter。
+   * 天然兼容用户拖动地图（车辆出界才触发，不会强制拉回已拖离的位置）。
+   */
+  const followIfNeeded = (): void => {
+    if (!followEnabled) return
+    // 用户正在拖动/缩放时不强制拉回
+    if (map.getView().getInteracting()) return
+    const now = performance.now()
+    if (now - lastFollowAt < FOLLOW_THROTTLE_MS) return
+    lastFollowAt = now
+    // 取所有 group 的最新坐标（多车取质心）
+    const coords: number[][] = []
+    for (const group of groups.values()) {
+      if (group.lastRenderedCoordinate) coords.push(group.lastRenderedCoordinate)
+    }
+    if (!coords.length) return
+    let cx = 0
+    let cy = 0
+    for (const c of coords) {
+      cx += c[0]
+      cy += c[1]
+    }
+    const center = [cx / coords.length, cy / coords.length]
+    // 持续中心跟随：直接 setCenter，让视口始终对准车辆
+    map.getView().setCenter(center)
+  }
+
   /** 懒创建单辆车的一组渲染 features */
   const createGroup = (entry: VehicleTrackEntry): RenderGroup => {
     const fullFeature = new Feature({ geometry: new LineString([]) })
@@ -103,15 +149,15 @@ export const createVehicleTrackRenderer = (map: OlMap): VehicleTrackRenderer => 
 
     const carFeature = new Feature({ geometry: new Point([0, 0]) })
     carFeature.set('trackRank', TRACK_RANK_VEHICLE)
-    carFeature.setStyle(
-      getStyle('vehicle', {
-        src: MAP_ICON_SRC.car,
-        rotation: 0,
-        scale: 0.65,
-        styleId: `history-${entry.routeKey}-${entry.vehicleId}`,
-        zIndex: 100,
-      }) as Style,
-    )
+
+    const carStyle = getStyle('vehicle', {
+      src: MAP_ICON_SRC.car,
+      rotation: 0,
+      scale: 0.65,
+      styleId: `history-${entry.routeKey}-${entry.vehicleId}`,
+      zIndex: 100,
+    }) as Style
+    carFeature.setStyle(carStyle)
 
     source.addFeatures([fullFeature, traveledFeature, carFeature])
 
@@ -127,6 +173,10 @@ export const createVehicleTrackRenderer = (map: OlMap): VehicleTrackRenderer => 
       projected: [],
       rotation: 0,
       lastRenderedCoordinate: null,
+      lastTraveledLower: -1,
+      carStyle,
+      traveledCoords: [],
+      lastTraveledUpdateAt: 0,
     }
   }
 
@@ -172,16 +222,36 @@ export const createVehicleTrackRenderer = (map: OlMap): VehicleTrackRenderer => 
     return [dx, dy]
   }
 
-  /** 更新单组：已行驶灰线 + 车辆 marker 位置 + 车头朝向 */
+  /** 更新单组：已行驶灰线（节流 100ms）+ 车辆 marker 位置 + 车头朝向 */
+  const TRAVELED_UPDATE_INTERVAL_MS = 100
   const updateGroupCursor = (group: RenderGroup, cursor: number) => {
     if (!group.projected.length) return
     const clamped = Math.min(Math.max(cursor, 0), group.projected.length - 1)
     const lower = Math.floor(clamped)
     const coordinate = pointAt(group, clamped)
 
-    const traveled = clamped <= 0 ? [] : [...group.projected.slice(0, lower + 1), coordinate]
-    ;(group.traveledFeature.getGeometry() as LineString).setCoordinates(traveled)
+    // 已行驶灰线：段切换时重建基础段（含末端），段内仅原地改末端
+    if (lower !== group.lastTraveledLower) {
+      group.lastTraveledLower = lower
+      if (clamped <= 0) {
+        group.traveledCoords = []
+      } else {
+        group.traveledCoords = group.projected.slice(0, lower + 1)
+        group.traveledCoords.push(coordinate)
+      }
+    } else if (group.traveledCoords.length > 0) {
+      group.traveledCoords[group.traveledCoords.length - 1] = coordinate
+    }
 
+    // 节流 100ms：避免每帧 setCoordinates 触发全层重绘
+    const now = performance.now()
+    if (now - group.lastTraveledUpdateAt >= TRAVELED_UPDATE_INTERVAL_MS) {
+      const traveledGeom = group.traveledFeature.getGeometry() as LineString
+      traveledGeom.setCoordinates(group.traveledCoords.length > 1 ? group.traveledCoords : [])
+      group.lastTraveledUpdateAt = now
+    }
+
+    // 车头朝向
     const tangent = segmentVectorAt(group, lower)
     let direction: [number, number] | null = null
     const previous = group.lastRenderedCoordinate
@@ -195,16 +265,9 @@ export const createVehicleTrackRenderer = (map: OlMap): VehicleTrackRenderer => 
     if (direction) group.rotation = normalizeRotation(-Math.atan2(direction[1], direction[0]) + Math.PI / 2, group.rotation)
     group.lastRenderedCoordinate = coordinate
 
+    // 车辆 marker：每帧仅改坐标（轻量）+ 原地改 rotation（复用 Style 实例）
     ;(group.carFeature.getGeometry() as Point).setCoordinates(coordinate)
-    group.carFeature.setStyle(
-      getStyle('vehicle', {
-        src: MAP_ICON_SRC.car,
-        rotation: group.rotation,
-        scale: 0.65,
-        styleId: `history-${group.routeKey}-${group.vehicleId}`,
-        zIndex: 100,
-      }) as Style,
-    )
+    ;(group.carStyle.getImage() as Icon).setRotation(group.rotation)
   }
 
   const renderMulti = (entries: VehicleTrackEntry[], options?: { fit?: boolean }) => {
@@ -236,6 +299,9 @@ export const createVehicleTrackRenderer = (map: OlMap): VehicleTrackRenderer => 
       )
       group.rotation = 0
       group.lastRenderedCoordinate = null
+      group.lastTraveledLower = -1
+      group.traveledCoords = []
+      group.lastTraveledUpdateAt = 0
       ;(group.fullFeature.getGeometry() as LineString).setCoordinates(group.projected)
       // 清空已行驶段与车辆位置（将在 setCursorAll 0 时重建）
       ;(group.traveledFeature.getGeometry() as LineString).setCoordinates([])
@@ -265,6 +331,7 @@ export const createVehicleTrackRenderer = (map: OlMap): VehicleTrackRenderer => 
 
   const setCursorAll = (cursor: number) => {
     for (const group of groups.values()) updateGroupCursor(group, cursor)
+    followIfNeeded()
   }
 
   const clear = () => {
@@ -303,5 +370,10 @@ export const createVehicleTrackRenderer = (map: OlMap): VehicleTrackRenderer => 
 
   const setCursor = (cursor: number) => setCursorAll(cursor)
 
-  return { renderMulti, setCursorAll, clear, dispose, render, setCursor }
+  const setFollow = (enabled: boolean): void => {
+    followEnabled = enabled
+    lastFollowAt = 0
+  }
+
+  return { renderMulti, setCursorAll, clear, dispose, render, setCursor, setFollow }
 }

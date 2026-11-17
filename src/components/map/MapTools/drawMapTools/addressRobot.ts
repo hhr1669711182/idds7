@@ -5,6 +5,17 @@ import VectorSource from 'ol/source/Vector'
 import { Style, Circle, Stroke, Fill } from 'ol/style'
 import GeoJSON from 'ol/format/GeoJSON'
 import { geoserverApi, type WFSFeatureParams } from '@/apis/geoserver'
+import { createLogger } from '@/utils/logger'
+
+const logger = createLogger('AddressRobotManager')
+
+/** 上游消息的最小可用形态：至少要能从 id / robotId / code 三者之一取到唯一标识 */
+export interface AddressRobotUpstreamMessage {
+  id?: string
+  robotId?: string
+  code?: string
+  [key: string]: unknown
+}
 
 export interface AddressRobotData {
   id: string
@@ -58,11 +69,16 @@ export class AddressRobotManager {
    * @param typeName geoserver 的图层名称 (如: workspace:layerName)
    * @param filterField 用于在 geoserver 中过滤的字段名，默认为 'id'
    */
-  public async handleUpstreamMessage(message: any, workspace: string, typeName: string, filterField: string = 'id') {
+  public async handleUpstreamMessage(
+    message: AddressRobotUpstreamMessage,
+    workspace: string,
+    typeName: string,
+    filterField: string = 'id',
+  ) {
     // 提取唯一标识
     const id = message.id || message.robotId || message.code
     if (!id) {
-      console.warn('AddressRobotManager: 接收到的消息缺少唯一标识 id/robotId/code', message)
+      logger.warn('接收到的消息缺少唯一标识 id/robotId/code', message)
       return
     }
 
@@ -90,7 +106,7 @@ export class AddressRobotManager {
       if (feature) {
         feature.setProperties(mergedData)
       } else {
-        console.warn(`AddressRobotManager: geoserver 中未查询到 id=${id} 的空间要素信息`)
+        logger.warn(`geoserver 中未查询到 id=${id} 的空间要素信息`)
       }
 
       // 如果数据已存在，则更新，否则新增
@@ -100,7 +116,7 @@ export class AddressRobotManager {
         this.addData(id, mergedData, feature)
       }
     } catch (error) {
-      console.error('AddressRobotManager: 查询 geoserver 接口失败', error)
+      logger.error('查询 geoserver 接口失败', error)
     }
   }
 
@@ -134,7 +150,7 @@ export class AddressRobotManager {
    */
   public updateData(id: string, data: Partial<AddressRobotData>, newFeature?: Feature) {
     if (!this.dataStore[id]) {
-      console.warn(`AddressRobotManager: 尝试更新不存在的数据 id=${id}`)
+      logger.warn(`尝试更新不存在的数据 id=${id}`)
       return
     }
 

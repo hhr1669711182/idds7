@@ -18,7 +18,7 @@ import { AMAP_ERROR_CODES } from '@/apis/amap'
  * 凭证统一由主实例 alova.ts 经 service/authHeaders 注入，两者互不共享头部逻辑。
  */
 export const alovaMapProxyInstance = createAlova({
-  baseURL: appEnv.amapApiBaseUrl,
+  baseURL: appEnv.mapApiBaseUrl + '/address-query-client',
   statesHook: VueHook,
   requestAdapter: adapterFetch(),
   cacheLogger: false,

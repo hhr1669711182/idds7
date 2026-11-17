@@ -160,8 +160,9 @@ export type {
  *   既有可靠性缺陷保持冻结；F11/F13 不属冻结项。PICK_* / relay kind 不新增内部事件键。
  * - composables/useBroadcastChannelBridge 仅 send/listen/close/dispose；
  *   hooks/useBroadcastChannel 的 BroadcastChannelClient 为总线提供通用 BC 传输。
- * - VehicleRenderer、AddressRobotRenderer、AddressRobotUtils、SwipeControl 位于
- *   baseComponent/OpenlayersMap；旧业务 vehicleManager 仅兼容导出。
+  * - VehicleRenderer、AddressRobotRenderer、AddressRobotUtils、SwipeControl 位于
+  *   baseComponent/OpenlayersMap；AddressRobotUtils 仅底座保留（controller 侧副本
+  *   已于 2026-11-11 下线）；旧业务 vehicleManager 仅兼容导出。
  * - Control/**、useMessageStore916.ts 和 messageStageGate.ts 保留对照；
  *   完整人工验收后，须由用户另行确认清理，不能宣称旧 normalizer 全部无引用。
  */

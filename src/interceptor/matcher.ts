@@ -90,7 +90,7 @@ export const matchesMessageRoute = (frame: NormalizeResult, sub: SubscribeRule):
     const allowed = [String(sub.customType ?? '').toUpperCase()]
     if (sub.customType === 'GPS_MSG') allowed.push('CAR_LOCATION_SYNC')
     if (!allowed.includes(frame.notifyType)) return false
-    if (frame.notifySubType && sub.key && frame.notifySubType !== String(sub.key).toUpperCase()) return false
+    if (sub.customType !== 'GPS_MSG' && frame.notifySubType && sub.key && frame.notifySubType !== String(sub.key).toUpperCase()) return false
   }
   const payload = getRoutePayload(frame, sub)
   const eventName = payload.eventName ?? frame.raw.eventName

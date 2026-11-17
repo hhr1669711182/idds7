@@ -83,9 +83,12 @@ export type RouteDispatchVehicleInfo = {
 const ROUTE_VIDEO_CHECKPOINT_COUNT = 10
 const ROUTE_VIDEO_FIRST_CHECKPOINT_SECONDS = 15
 const ROUTE_VIDEO_LEAD_SECONDS = 10
-const ROUTE_NETWORK_SAMPLE_METERS = 30
+const ROUTE_NETWORK_SAMPLE_METERS = 150
 const ROUTE_NETWORK_MERGE_TOLERANCE_METERS = 22
 const ROUTE_NETWORK_DIRECTION_TOLERANCE_RAD = Math.PI / 4
+// 路段合并查找的空间网格单元（≥ 2×合并容差）：同单元内点间距 < 容差，
+// 候选只需在 3×3 邻域（±1 单元）内查找，把 O(n²) 全表扫描降为摊还 O(1)。
+const ROUTE_NETWORK_GRID_CELL_METERS = ROUTE_NETWORK_MERGE_TOLERANCE_METERS * 2
 const ROUTE_VIDEO_CHECKPOINT_COLORS: Record<RouteVideoCheckpointStatus, string> = {
   pending: '#22c55e',
   playing: '#facc15',
@@ -1482,6 +1485,10 @@ export class AmapRealtimeNav {
     const networkChunks: RouteNetworkChunk[] = []
     const firstChunks: RouteNetworkChunk[] = []
     const firstDistances = new globalThis.Map<number, number>()
+    // 路段合并空间网格：把全表 find（O(n²)）降为 3×3 邻域查找（摊还 O(1)），
+    // 避免多队站×多路线×长折线时采样合并打满主线程导致地图卡死。
+    const networkGrid = new globalThis.Map<string, RouteNetworkChunk[]>()
+    const gridKeyOf = (gx: number, gy: number) => `${gx}:${gy}`
 
     results.forEach((result, routeIndex) => {
       const coords = result.fullPath.map((point) => olProj.fromLonLat(point))
@@ -1520,21 +1527,41 @@ export class AmapRealtimeNav {
         if (!point) continue
 
         // 允许不同路线的折点采样位置略有错位；距离和方向都接近即视为同一公共道路段。
-        const mergedChunk = networkChunks.find(
-          (chunk) =>
-            !chunk.arrivals.has(routeIndex) &&
-            Math.hypot(chunk.point[0] - point[0], chunk.point[1] - point[1]) <= ROUTE_NETWORK_MERGE_TOLERANCE_METERS &&
-            directionDifference(chunk.bearing, bearing) <= ROUTE_NETWORK_DIRECTION_TOLERANCE_RAD,
-        )
+        // 用 3×3 邻域网格查找候选，避免全表 O(n²) 扫描（point 为投影坐标，单位米）。
+        const gx = Math.floor(point[0] / ROUTE_NETWORK_GRID_CELL_METERS)
+        const gy = Math.floor(point[1] / ROUTE_NETWORK_GRID_CELL_METERS)
+        let mergedChunk: RouteNetworkChunk | undefined
+        for (let dx = -1; dx <= 1 && !mergedChunk; dx += 1) {
+          for (let dy = -1; dy <= 1 && !mergedChunk; dy += 1) {
+            const bucket = networkGrid.get(gridKeyOf(gx + dx, gy + dy))
+            if (!bucket) continue
+            for (const chunk of bucket) {
+              if (
+                !chunk.arrivals.has(routeIndex) &&
+                Math.hypot(chunk.point[0] - point[0], chunk.point[1] - point[1]) <=
+                  ROUTE_NETWORK_MERGE_TOLERANCE_METERS &&
+                directionDifference(chunk.bearing, bearing) <= ROUTE_NETWORK_DIRECTION_TOLERANCE_RAD
+              ) {
+                mergedChunk = chunk
+                break
+              }
+            }
+          }
+        }
         if (mergedChunk) {
           mergedChunk.arrivals.set(routeIndex, midpointDistance)
         } else {
-          networkChunks.push({
+          const chunk: RouteNetworkChunk = {
             point,
             bearing,
             length: endDistance - startDistance,
             arrivals: new globalThis.Map([[routeIndex, midpointDistance]]),
-          })
+          }
+          networkChunks.push(chunk)
+          const bucketKey = gridKeyOf(gx, gy)
+          const bucket = networkGrid.get(bucketKey)
+          if (bucket) bucket.push(chunk)
+          else networkGrid.set(bucketKey, [chunk])
         }
       }
     })

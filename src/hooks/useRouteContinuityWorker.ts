@@ -1,5 +1,6 @@
-// 用途：路段衔接 Worker 句柄（不可用时回退主线程同步计算）。
+// 用途：路段衔接 Worker 句柄（门控关闭时直接透传，不做补点计算）。
 // 见 herness/02-技术设计/前端/GIS-W46-路径分析与GeoServer加固-技术方案.md §5.4
+import { appEnv } from '@/config/env'
 import { ensureSegmentContinuity } from '@/baseComponent/tools/routeAnalysis'
 import type { TmcSegmentInput } from '@/baseComponent/amap/routeCongestion'
 import type { LngLat } from '@/utils/coordTransform'
@@ -16,9 +17,19 @@ type ContinuityResponse = {
 
 /**
  * 创建路段衔接 Worker 句柄。
- * Worker 不可用（SSR / 老浏览器）时直接在主线程同步计算，行为一致。
+ * Worker 不可用（SSR / 老浏览器）时回退主线程同步计算。
+ * 门控关闭时直接透传原始数据，不做补点计算（由后端兜底）。
+ * 门控由 VITE_ROUTE_CONTINUITY_ENABLED 控制，默认 false。
  */
 export const createRouteContinuityWorker = () => {
+  // 门控关闭：不做补充计算，直接透传原始数据（由后端兜底）
+  if (!appEnv.routeContinuityEnabled) {
+    return {
+      ensureContinuity: (segments: TmcSegmentInput[]) => Promise.resolve(segments),
+      destroy: () => undefined,
+    }
+  }
+
   let worker: Worker | null = null
   let requestId = 0
   const pending = new Map<number, PendingTask>()

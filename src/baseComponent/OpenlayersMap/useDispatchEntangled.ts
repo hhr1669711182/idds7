@@ -101,7 +101,7 @@ import {
   type RouteAlternative,
   type StationRouteAlternatives,
 } from '@/baseComponent/amap/routeAlternatives'
-import amapData from '@/assets/map/config/data.json'
+import { appEnv } from '@/config/env'
 import { fetchIncidentDetail } from '@/apis/incidentProfile'
 
 // ---------------------------------------------------------------------------
@@ -136,6 +136,8 @@ export interface DispatchEntangledDeps {
   } | null
   /** 共享今日灾情图层管理器（mountJRAlarmLayer 返回） */
   jrAlarmManager: { setData?: (alarms: JRAlarmData[]) => void } | null
+  /** 共享唯一 FeatureClickQuery 实例（所有元素点击取数的公共入口），本 composable 只消费不创建 */
+  featureClickQuery: import('./FeatureClickQuery.ts').FeatureClickQuery
 }
 
 export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
@@ -184,8 +186,8 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
   const INCIDENT_LOCATION_LAYER_CLASS = 'INCIDENT_LOCATION_ALARM_LAYER'
   const INCIDENT_LOCATION_FOCUS_ZOOM = 15
 
-  /** 调派专属 FeatureClickQuery 实例（带 getStationRouteInfo，activate 建 + activate()） */
-  let featureClickQuery: FeatureClickQuery | null = null
+  /** 共享唯一 FeatureClickQuery 实例（所有元素点击取数的公共入口，由 map.vue 创建）；本 composable 只消费不创建 */
+  const featureClickQuery: FeatureClickQuery = deps.featureClickQuery
   /** 三类点位统一弹窗的 singleclick 监听 key（若挂载统一点击则记录；本 B-3c 弹窗 DOM 属 B-6c，暂不挂） */
   let unifiedPopupClickKey: EventsKey | null = null
 
@@ -624,9 +626,7 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
   // 路径规划 + 模拟调派（原 L1054-1600）
   // =========================================================================
   // 解析动态配置（支持数组与对象），优先 data 字段
-  const configList = Array.isArray(amapData) ? (amapData as any[]) : [amapData as any]
-  const firstCfg = (configList[0] || {}) as any
-  const regionCfg = firstCfg.data || firstCfg
+
 
   const amapKey = ref<string>('7405ae6dde247ee87be4e7d8021056f4')
 
@@ -894,7 +894,7 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
               const tips = await fetchInputTips({
                 key,
                 keywords: vehicle.stationName!.trim(),
-                city: String(regionCfg?.adcode ?? '深圳市'),
+                city: appEnv.mapCity,
                 citylimit: true,
               })
               const stationName = vehicle.stationName!.trim()
@@ -1079,15 +1079,41 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
       matchedCount: uniqueStationIds.length - missing.length,
     })
 
-    let selectedRoutes: RouteAlternative[]
-    try {
-      selectedRoutes = await Promise.all(
-        uniqueStationIds.map(
-          async (sid, index) =>
-            matchStationRoute(routePreviewStations.value, sid, destination) ??
-            (await planner.fetchRouteAlternatives(origins[index], destination))[0],
-        ),
+    // B+c：保留每站全部候选（多方案推荐），构建 StationRouteAlternatives 供 DispatchRoutePreview 面板切换；
+    // 命中已规划整站候选则复用，避免重复请求高德。
+    const destLng = destination[0]
+    const destLat = destination[1]
+    const stationNameMap = new Map<string, string>()
+    for (const vehicle of vehicles) {
+      const sid = String(vehicle.stationId ?? '').trim()
+      const name = vehicle.stationName?.trim()
+      if (sid && name && !stationNameMap.has(sid)) stationNameMap.set(sid, name)
+    }
+    const findGroup = (sid: string) =>
+      routePreviewStations.value.find(
+        (g) => g.stationId === sid && g.destination[0] === destLng && g.destination[1] === destLat,
       )
+
+    const groups: StationRouteAlternatives[] = []
+    try {
+      for (let index = 0; index < uniqueStationIds.length; index++) {
+        const sid = uniqueStationIds[index]
+        const cached = findGroup(sid)
+        if (cached && cached.alternatives.length) {
+          groups.push(cached)
+          continue
+        }
+        const alternatives = await planner.fetchRouteAlternatives(origins[index], destination)
+        if (!isCurrent(playbackGeneration)) return
+        groups.push({
+          stationId: sid,
+          stationName: stationNameMap.get(sid) ?? `队站 ${index + 1}`,
+          origin: origins[index],
+          destination,
+          alternatives,
+          selectedId: alternatives[0]?.id ?? '',
+        })
+      }
     } catch (error) {
       if (!isCurrent(playbackGeneration)) return
       console.warn('[dispatchMap] 调派路线获取失败', error)
@@ -1100,11 +1126,39 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
       return
     }
     if (!isCurrent(playbackGeneration)) return
+
+    // 上图全部候选（面板可点切），并开放 DispatchRoutePreview 面板
+    routePreviewStations.value = groups
+    routePreviewLoading.value = false
+    routePreviewVisible.value = groups.length > 0
+    planner.renderRouteAlternatives(groups, true)
+
+    // B+c：把本批规划出的真实队站坐标同步给 specialMapMock（flood 演练 / 模拟调派复用同一数据源，不再回退北京假数据）
+    if (specialMapMock && groups.length) {
+      const vehicleByStation = new Map(
+        vehicles.map((v) => [String(v.stationId ?? '').trim(), v] as const),
+      )
+      specialMapMock.setStations(
+        groups.map((g) => ({
+          id: g.stationId,
+          name: g.stationName,
+          lng: g.origin[0],
+          lat: g.origin[1],
+          plateNo: vehicleByStation.get(g.stationId)?.plateNo,
+          vehicleTypeName: vehicleByStation.get(g.stationId)?.vehicleTypeName,
+        })),
+        { id: 'mock-end', name: '警情点', lng: destination[0], lat: destination[1] },
+      )
+    }
+
+    // 各站取选中路线做车辆沿路行驶动画（候选仅高亮切换，动画仍走选中主线）
+    const selectedRoutes = groups
+      .map((group) => getSelectedRoute(group))
+      .filter((route): route is RouteAlternative => !!route)
     const results = selectedRoutes.map((route) => route.result)
     const metrics = selectedRoutes.map((route) => route.metrics)
     const etaSeconds = selectedRoutes.map((route) => route.etaSeconds)
 
-    planner.renderRoutesOnly(results)
     planner.setRouteVideoCheckpoints(results, metrics, (event) => {
       if (isCurrent(playbackGeneration)) playRouteVideoCheckpoint(event, playbackGeneration)
     })
@@ -1231,7 +1285,7 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
   const loadBeijingMaskIfReady = async () => {
     if (!nav || !amapKey.value) return
     try {
-      await nav.loadMask((regionCfg?.boundaries as any) || [])
+      await nav.loadMask([])
     } catch {
       return
     }
@@ -1254,7 +1308,7 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
     const tips = (await fetchInputTips({
       key,
       keywords,
-      city: (regionCfg?.city as string) || '',
+      city: appEnv.mapCity,
       citylimit: true,
     })) as TipItem[]
 
@@ -1308,7 +1362,7 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
       const tips = (await fetchInputTips({
         key,
         keywords: q,
-        city: (regionCfg?.city as string) || '',
+        city: appEnv.mapCity,
         citylimit: true,
       })) as TipItem[]
 
@@ -2003,8 +2057,8 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
 
     mountPointLayerManagers()
 
-    // 调派专属 FeatureClickQuery（带 getStationRouteInfo），activate 挂 singleclick
-    featureClickQuery = new FeatureClickQuery(map, getStationRouteInfo)
+    // 共享唯一 FeatureClickQuery：注入调派态路线信息提供器（预计时间/导航距离），activate 幂等（实例由 map.vue 持有）
+    featureClickQuery.setRouteInfoProvider(getStationRouteInfo)
     featureClickQuery.activate()
 
     // 消费地图挂载前积压的路径规划 / 定位请求
@@ -2170,10 +2224,10 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
     primaryStationManager = null
     renderedPrimaryStations.clear()
 
-    if (featureClickQuery) {
-      featureClickQuery.destroy()
-      featureClickQuery = null
-    }
+    // 共享 FeatureClickQuery 实例由 map.vue 持有整体生命周期（单一 singleclick 常驻）；
+    // deactivate 仅还原调派态专属的路线信息提供器并关闭面板，不误杀主图取数入口。
+    featureClickQuery.setRouteInfoProvider(null)
+    featureClickQuery.close()
     if (unifiedPopupClickKey) {
       unByKey(unifiedPopupClickKey)
       unifiedPopupClickKey = null

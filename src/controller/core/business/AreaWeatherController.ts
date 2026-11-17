@@ -1,5 +1,6 @@
 // 用途：行政区划天气联动编排（层级下钻 / 天气查询 / 围栏定位高亮）。
 import { ref, type Ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import {
   AREA_LEVEL,
   fetchAreaByCode,
@@ -7,12 +8,14 @@ import {
   fetchAreaChildren,
   fetchAreaFence,
   fetchJurisdictionStations,
-  fetchJurisdictionZones,
+  fetchJurisdictionZoneByStationId,
   type AreaNode,
-  type JurisdictionZone,
   type JurisdictionStation,
+  type JurisdictionZone,
 } from '@/apis/envArea'
-import { weather as weatherApi, type AmapWeatherLive } from '@/apis/amap'
+import { weather as amapWeather } from '@/apis/amap'
+import { loadWeather, type WeatherLive } from '@/apis/weather'
+import { appEnv } from '@/config/env'
 import type { BusinessMapPort } from '../protocol/BusinessMapPort'
 
 /**
@@ -24,7 +27,9 @@ export const AREA_PANEL_LEVEL_COUNT = 3
 
 /** 选区状态：供视图层消费 */
 export interface AreaPanelState {
-  /** 顶层区划（默认配置的那个） */
+  /** init 时传入的原始 areaCode（区划树未加载时用于天气兜底查询） */
+  rootCode: string
+  /** 顶层区划（默认配置的那个，面板打开后填充） */
   root: AreaNode | null
   /** 第二层清单：顶层区划的下一级（白字网格） */
   rootChildren: AreaNode[]
@@ -36,32 +41,27 @@ export interface AreaPanelState {
   selected: AreaNode | null
   /** 主管队站（顶层辖区内的队站） */
   stations: JurisdictionStation[]
-  /** 队站辖区（顶层辖区内的队站管辖面） */
-  zones: JurisdictionZone[]
-  /** 区划编码 → 区划名，供队站列表展示所属区划 */
+  /** 区划编码 → 区划名（从已加载的 root + rootChildren 构建，供队站列表展示所属区划） */
   areaNames: Map<string, string>
   /** 天气实况 */
-  live: AmapWeatherLive | null
+  live: WeatherLive | null
   /** 天气实际来源区划名（街道级回退到区县时与所选区划不同） */
   liveSourceName: string
-  /** 围栏缺失提示 */
-  fenceMissing: boolean
   /** 错误提示 */
   errorMsg: string
 }
 
 const createInitialState = (): AreaPanelState => ({
+  rootCode: '',
   root: null,
   rootChildren: [],
   expandedCode: null,
   expandedChildren: [],
   selected: null,
   stations: [],
-  zones: [],
   areaNames: new Map(),
   live: null,
   liveSourceName: '',
-  fenceMissing: false,
   errorMsg: '',
 })
 
@@ -103,44 +103,54 @@ export class AreaWeatherController {
   }
 
   /**
-   * 初始化：按默认区划编码加载顶层、下一层与主管队站。
+   * 初始化：预请求区划树（root → 第一级子 → 第二级子取第一个）+ 队站 + 天气。
+   * 面板打开即有数据，无需二次请求。
+   * 初始化阶段 WFS 总数 ≈ 4~5 条（root + children + grandchildren + stations）。
    * @param areaCode 默认行政区划编码（项目配置中的 adcode）
    */
   public async init(areaCode: string): Promise<void> {
     if (this.disposed || !areaCode) return
+    const seq = ++this.requestSeq
+    this.state.value.rootCode = areaCode
+    this.state.value.errorMsg = ''
+
+    // 1. 加载 root 节点（1 WFS）
     const root = await this.loadNode(areaCode)
+    if (this.disposed || seq !== this.requestSeq) return
     if (!root) {
       this.state.value.errorMsg = '未能加载默认行政区划'
       return
     }
-    const seq = ++this.requestSeq
     this.state.value.root = root
     this.state.value.selected = root
-    this.state.value.errorMsg = ''
 
+    // 2. 加载 rootChildren（第二层，1 WFS）
     const rootChildren = await this.loadChildren(root.areaCode)
     if (this.disposed || seq !== this.requestSeq) return
     this.state.value.rootChildren = rootChildren
 
-    // 默认展开顶层的第一条，让第三层清单有内容可看
+    // 3. 默认展开第一条，加载 grandchildren（第三层，1 WFS）
     const first = rootChildren[0]
     if (first) {
       this.state.value.expandedCode = first.areaCode
       this.state.value.expandedChildren = await this.loadChildren(first.areaCode)
     }
 
-    const areaNames = await this.collectAreaNames(root, rootChildren)
-    if (this.disposed || seq !== this.requestSeq) return
-    this.state.value.areaNames = areaNames
+    // 4. 从已加载的 root + rootChildren 构建小 nameMap（~10 条），补全队站所属区划名
+    const nameMap = new Map<string, string>()
+    nameMap.set(root.areaCode, root.areaName)
+    for (const child of rootChildren) nameMap.set(child.areaCode, child.areaName)
+    this.state.value.areaNames = nameMap
 
-    await Promise.all([
-      this.loadStations(root.areaCode, areaNames, seq),
-      this.loadZones(root.areaCode, areaNames, seq),
-      this.loadWeather(root, seq),
-    ])
+    // 5. 预加载队站（root + rootChildren codes 做 IN 查询，1 WFS）
+    const codeList = [root.areaCode, ...rootChildren.map((c) => c.areaCode)]
+    await this.loadStations(codeList, nameMap, seq)
+
+    // 6. 加载天气（Amap，通常城市级 1 次就命中）
+    await this.loadWeather(root, seq)
   }
 
-  /** 选中某个区划：刷新天气与围栏 */
+  /** 选中某个区划：二级请求下级+围栏，末级只请求围栏 */
   public async selectArea(areaCode: string): Promise<void> {
     if (this.disposed || !areaCode) return
     const state = this.state.value
@@ -157,17 +167,29 @@ export class AreaWeatherController {
     const seq = ++this.requestSeq
     state.selected = node
     state.errorMsg = ''
-    state.fenceMissing = false
 
-    // 选中第二层时刷新第三层清单
-    if (state.rootChildren.some((item) => item.areaCode === node.areaCode)) {
+    // 选中第二层（rootChildren 中的项）时刷新第三层清单；末级（expandedChildren 中的项）不再请求下级
+    const isSecondLevel = state.rootChildren.some((item) => item.areaCode === node.areaCode)
+    if (isSecondLevel) {
       state.expandedCode = node.areaCode
       const children = await this.loadChildren(node.areaCode)
       if (this.disposed || seq !== this.requestSeq) return
       state.expandedChildren = children
     }
 
-    await Promise.all([this.loadWeather(node, seq), this.loadFence(node)])
+    // 街道级（末级）不再查询天气，直接定位围栏；区县级及以上才查天气 + 围栏。
+    if (this.isStreetLevel(node)) {
+      await this.loadFence(node)
+    } else {
+      await Promise.all([this.loadWeather(node, seq), this.loadFence(node)])
+    }
+  }
+
+  /** 是否为街道/末级区划（出现在第三层清单 expandedChildren 中、且不在第二层 rootChildren 中）。末级不查天气，只定位围栏。 */
+  private isStreetLevel(node: AreaNode): boolean {
+    const state = this.state.value
+    if (state.rootChildren.some((item) => item.areaCode === node.areaCode)) return false
+    return state.expandedChildren.some((item) => item.areaCode === node.areaCode)
   }
 
   /** 清除地图上的围栏描边 */
@@ -181,22 +203,32 @@ export class AreaWeatherController {
     if (this.disposed) return
     const node = this.state.value.selected
     if (!node) return
+    // 街道级（末级）不查天气，跳过定时轮询
+    if (this.isStreetLevel(node)) return
     const seq = ++this.requestSeq
     await this.loadWeather(node, seq)
   }
 
   /**
-   * 选中某个队站：定位到该队站的主管辖区面并高亮。
+   * 选中某个队站：按需查询该队站的主管辖区面并定位高亮。
    * 辖区缺失时清掉现有围栏，避免残留上一层的描边。
    */
-  public async selectStation(zoneId: string): Promise<void> {
-    if (this.disposed || !zoneId) return
-    const zone = this.state.value.zones.find((item) => item.zoneId === zoneId)
+  public async selectStation(stationId: string): Promise<void> {
+    if (this.disposed || !stationId) return
+    let zone: JurisdictionZone | null
+    try {
+      zone = await fetchJurisdictionZoneByStationId(stationId)
+    } catch (error) {
+      console.error('[AreaWeatherController] 查询队站辖区失败', error)
+      zone = null
+    }
+    if (this.disposed) return
     if (!zone) {
-      this.state.value.fenceMissing = true
+      const stationName = this.state.value.stations.find((s) => s.id === stationId)?.name
+      ElMessage.warning(`队站「${stationName ?? stationId}」暂无辖区数据`)
+      this.port.areaFenceClear?.()
       return
     }
-    this.state.value.fenceMissing = false
     this.port.areaFenceHighlight?.({
       areaCode: zone.areaCode,
       areaName: zone.zoneName,
@@ -226,10 +258,10 @@ export class AreaWeatherController {
     }
   }
 
-  /** 加载顶层辖区内的主管队站 */
-  private async loadStations(areaCode: string, areaNames: Map<string, string>, seq: number): Promise<void> {
+  /** 加载指定区划编码列表下的主管队站 */
+  private async loadStations(codeList: string[], areaNames: Map<string, string>, seq: number): Promise<void> {
     try {
-      const stations = await fetchJurisdictionStations(areaCode, areaNames)
+      const stations = await fetchJurisdictionStations(codeList, areaNames)
       if (this.disposed || seq !== this.requestSeq) return
       this.state.value.stations = stations
     } catch (error) {
@@ -237,29 +269,6 @@ export class AreaWeatherController {
       if (this.disposed || seq !== this.requestSeq) return
       this.state.value.stations = []
     }
-  }
-
-  /** 加载顶层辖区内的队站辖区（主管辖区面） */
-  private async loadZones(areaCode: string, areaNames: Map<string, string>, seq: number): Promise<void> {
-    try {
-      const zones = await fetchJurisdictionZones(areaCode, areaNames)
-      if (this.disposed || seq !== this.requestSeq) return
-      this.state.value.zones = zones
-    } catch (error) {
-      console.error('[AreaWeatherController] 加载队站辖区失败', error)
-      if (this.disposed || seq !== this.requestSeq) return
-      this.state.value.zones = []
-    }
-  }
-
-  /** 收集区划编码 → 区划名，供队站列表展示所属区划 */
-  private async collectAreaNames(root: AreaNode, rootChildren: AreaNode[]): Promise<Map<string, string>> {
-    const names = new Map<string, string>()
-    names.set(root.areaCode, root.areaName)
-    for (const child of rootChildren) names.set(child.areaCode, child.areaName)
-    const streetChildren = await this.loadChildren(rootChildren[0]?.areaCode ?? '')
-    for (const child of streetChildren) names.set(child.areaCode, child.areaName)
-    return names
   }
 
   /**
@@ -278,26 +287,42 @@ export class AreaWeatherController {
     this.state.value.liveSourceName = fallback.sourceName
   }
 
-  /**
-   * 逐级向上试探天气 adcode：街道/乡镇级高德无数据，回退到所属区县。
-   */
+  /** 逐级向上试探天气 adcode：街道/乡镇级无数据时回退到所属区县。 */
   private async resolveWeather(
     node: AreaNode,
-  ): Promise<{ adcode: string; live: AmapWeatherLive | null; sourceName: string }> {
+  ): Promise<{ adcode: string; live: WeatherLive | null; sourceName: string }> {
     const chain = await buildAncestorChain(node)
 
     for (const candidate of chain) {
       try {
-        const data = await weatherApi({ city: candidate.areaCode })
-        const item = data?.lives?.[0]
-        if (item && item.temperature !== null && item.temperature !== undefined) {
-          return { adcode: candidate.areaCode, live: item, sourceName: candidate.areaName }
-        }
+        const live = await this.fetchLive(candidate)
+        if (live) return { adcode: candidate.areaCode, live, sourceName: candidate.areaName }
       } catch (error) {
         console.error('[AreaWeatherController] 天气获取失败', error)
       }
     }
     return { adcode: '', live: null, sourceName: '' }
+  }
+
+  /** 按 env.weatherSource 分流取天气：new=主实例拼音接口，amap=旧高德代理 */
+  private async fetchLive(candidate: AreaNode): Promise<WeatherLive | null> {
+    if (appEnv.weatherSource === 'amap') {
+      const data = await amapWeather({ city: candidate.areaCode })
+      const item = data?.lives?.[0]
+      if (!item) return null
+      return {
+        adcode: candidate.areaCode,
+        weather: item.weather,
+        temperature: item.temperature,
+        winddirection: item.winddirection,
+        windpower: item.windpower,
+        humidity: item.humidity,
+        reporttime: item.reporttime,
+        province: item.province,
+        city: item.city,
+      }
+    }
+    return loadWeather(candidate.areaCode, { city: candidate.areaName })
   }
 
   /**
@@ -312,7 +337,6 @@ export class AreaWeatherController {
       const fence = await this.fetchFenceGeometry(candidate)
       if (!fence) continue
       if (this.disposed) return
-      this.state.value.fenceMissing = false
       this.port.areaFenceHighlight?.({
         areaCode: fence.areaCode,
         areaName: fence.areaName,
@@ -322,7 +346,8 @@ export class AreaWeatherController {
       return
     }
     if (this.disposed) return
-    this.state.value.fenceMissing = true
+    ElMessage.warning(`区划「${node.areaName}」暂无围栏数据`)
+    this.port.areaFenceClear?.()
   }
 
   /** 单个区划的围栏几何：先查 GeoServer 围栏表，再查 DataV 边界 */

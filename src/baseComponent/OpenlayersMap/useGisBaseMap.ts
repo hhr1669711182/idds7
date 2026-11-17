@@ -97,9 +97,16 @@ export const useGisBaseMap = (options: GisBaseMapOptions): GisBaseMapApi => {
     if (isTempFrontendLayerId(id)) return options.handleTempFrontendLayer(id, true);
     const config = options.getLayerConfig(id);
     if (!config || wmsLayerMap.has(id)) return false;
-    // 路线 Y B-6c：单实例常驻永不 unmount，恢复 preload=4 找回缩放流畅度（原路线 X 止血补丁 preload=0 撤销）
+    // ⚠️ WMS 层一律 preload=0（勿回 4）：11-03 路线 Y 曾恢复 preload=4（误判 WMS 层常驻），
+    // 但 WMS 层会被 removeLayer / syncLayers / 工具栏 disposeOnHide 的 hideLayer 随时
+    // layer.dispose()+source.dispose()，而 OL CanvasTileLayerRenderer 在 preload>0 时
+    // renderFrame 排裸 setTimeout(enqueueTiles,0)，游离定时器在图层 dispose 后触发时
+    // getLayer() 已 undefined → 抛 "Cannot read properties of undefined (reading 'getRenderSource')"
+    // 并打断渲染循环导致地图卡死（11-02 根治提交 8ef37c6b 的同款竞态，11-06 a4ba3b25 重触发）。
+    // 只有底图（useBaseMapLayer 常驻层）可保持 preload=4 换缩放流畅；WMS 业务层牺牲
+    // 1~2 级缩放预载流畅度以根除竞态。
     const layer = markRaw(new TileLayer({
-      preload: 4,
+      preload: 0,
       source: markRaw(new TileWMS({
         url: config.url,
         params: config.params,

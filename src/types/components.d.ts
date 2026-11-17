@@ -8,6 +8,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AddressRobotDrawer: typeof import('./../components/AddressRobotDrawer/index.vue')['default']
+    AddressRobotPanel: typeof import('./../components/AddressRobotPanel/index.vue')['default']
     AnalyseMap: typeof import('./../components/map/component/Panels/analyseMap.vue')['default']
     AnimationMap: typeof import('./../components/map/component/Panels/animationMap.vue')['default']
     BaseSource: typeof import('./../components/map/component/baseSource.vue')['default']
@@ -22,6 +23,11 @@ declare module 'vue' {
     Clear: typeof import('./../components/map/clear.vue')['default']
     Compass: typeof import('./../components/map/compass.vue')['default']
     Config: typeof import('./../components/map/config.vue')['default']
+    D25Panel: typeof import('./../components/map/component/d25Panel.vue')['default']
+    D3Panel: typeof import('./../components/map/component/d3Panel.vue')['default']
+    Dispatch1Layers: typeof import('./../components/dispatchMap1/Dispatch1Layers.vue')['default']
+    DispatchMap: typeof import('./../components/dispatchMap/index.vue')['default']
+    DispatchMap1: typeof import('./../components/dispatchMap1/index.vue')['default']
     DragPanel: typeof import('./../components/map/dragPanel/index.vue')['default']
     ElAutocomplete: typeof import('element-plus/es')['ElAutocomplete']
     ElButton: typeof import('element-plus/es')['ElButton']

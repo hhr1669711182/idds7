@@ -36,8 +36,6 @@ import type OlMap from 'ol/Map';
 import Overlay from 'ol/Overlay';
 import { transform } from 'ol/proj';
 import TileWMS from 'ol/source/TileWMS';
-import { unByKey } from 'ol/Observable';
-import type { EventsKey } from 'ol/events';
 import { useDispatchT1Store, isStandbyVehicleStatus } from '@/store/useDispatchT1Store';//T1调派状态
 import { useLayersStore } from '@/store/useLayersStore';//T1调派状态
 import { getBusinessMessageRuntime } from '@/controller/core/io/BusinessMessageRuntime';
@@ -46,6 +44,11 @@ import type {
   CarLocationBatch,
 } from '@/controller/core/protocol/LegacyMessageProtocol';
 import { geoserverApi } from '@/apis/geoserver';
+import {
+  getOrCreateSharedFeatureClickQuery,
+  getSharedFeatureClickQuery,
+  type FeatureClickResult,
+} from '@/baseComponent/OpenlayersMap/FeatureClickQuery';
 import { useFireStations } from '@/composables/useFireStations';
 import {
   DispatchT1,
@@ -90,8 +93,8 @@ const hydrantInfo = ref<{
   title: string;
   rows: Array<{ label: string; value: unknown }>;
 } | null>(null);
-let hydrantClickKey: EventsKey | null = null;
-let hydrantRequestVersion = 0;
+/** 特化消防栓点击 handler 在共享 FeatureClickQuery 上的注销函数（destroy 时移除，回落通用面板） */
+let hydrantHandlerUnsub: (() => void) | null = null;
 let pendingWebSocketData: DispatchT1WebSocketData | null = null;
 let vehicleLocationUnsubscribe: (() => void) | null = null;
 let alarmProfileUnsubscribe: (() => void) | null = null;
@@ -197,11 +200,8 @@ const destroyService = () => {
   alarmProfileUnsubscribe = null;
   vehicleLocationUnsubscribe?.();
   vehicleLocationUnsubscribe = null;
-  hydrantRequestVersion += 1;
-  if (hydrantClickKey) {
-    unByKey(hydrantClickKey);
-    hydrantClickKey = null;
-  }
+  hydrantHandlerUnsub?.();
+  hydrantHandlerUnsub = null;
   if (hydrantOverlayMap.value && hydrantOverlay.value) {
     hydrantOverlayMap.value.removeOverlay(hydrantOverlay.value);
   }
@@ -220,7 +220,9 @@ const destroyService = () => {
 const closeHydrantPopup = () => {
   hydrantInfo.value = null;
   hydrantOverlay.value?.setPosition(undefined);
-  service.value?.setGenericFeaturePopupSuppressed(false);
+  // 通用要素面板与本私有面板共用同一次点击；点空白时两者应一并关闭
+  const map = props.map;
+  if (map) getSharedFeatureClickQuery(map)?.close();
 };
 
 // 终态警情由车辆历史轨迹接管：清掉调派模块已渲染的队站、路线与车辆
@@ -234,6 +236,11 @@ watch(
   { flush: 'sync' },
 );
 
+/**
+ * 确保消防栓私有 overlay 已创建，并把特化消防栓点击 handler 注册到共享 FeatureClickQuery。
+ * 取代原 map.on('singleclick') 第四处监听：点击取数统一经共享入口，
+ * 本处仅做「消防栓图层命中 → 私有消防栓面板」的特化业务，未命中回落通用面板。
+ */
 const ensureHydrantQuery = () => {
   const map = props.map;
   const element = hydrantPopupRef.value;
@@ -252,11 +259,49 @@ const ensureHydrantQuery = () => {
     hydrantOverlayMap.value = map;
   }
 
-  if (!hydrantClickKey) {
-    hydrantClickKey = map.on('singleclick', (event) => {
-      void queryHydrant(event.coordinate);
-    });
+  if (!hydrantHandlerUnsub) {
+    hydrantHandlerUnsub = getOrCreateSharedFeatureClickQuery(map).addBusinessHandler(handleHydrantFeature);
   }
+};
+
+/**
+ * 特化消防栓点击 handler（共享 FeatureClickQuery 优先级链）：
+ * 仅当消防栓图层已勾选且该坐标点命中消防栓要素时接管并展开私有消防栓面板（返回 true 抑制通用面板）；
+ * 否则返回 false 回落通用要素面板。消防栓的定向 WMS 取数逻辑保持私有于本组件。
+ */
+const handleHydrantFeature = async (result: FeatureClickResult): Promise<boolean> => {
+  if (result.kind !== 'feature') return false;
+  const map = props.map;
+  if (!map || !hydrantOverlay.value) return false;
+  if (!layersStore.checkedIds.includes(HYDRANT_LAYER)) return false;
+
+  const hydrantProperties = await queryFeatureProperties(HYDRANT_LAYER, result.coordinate);
+  if (!hydrantProperties) return false;
+
+  const hydrantName = String(
+    hydrantProperties.water_name
+      ?? hydrantProperties.symc
+      ?? hydrantProperties.name
+      ?? '-',
+  );
+  const hydrantAddress = String(
+    hydrantProperties.address
+      ?? hydrantProperties.sydz
+      ?? '-',
+  );
+  showFeaturePopup(
+    result.coordinate,
+    hydrantName === '-' ? '消防栓' : hydrantName,
+    {
+      address: hydrantAddress,
+      name: hydrantName,
+    },
+    {
+      address: '地址',
+      name: '名称',
+    },
+  );
+  return true;
 };
 
 const queryFeatureProperties = async (
@@ -317,58 +362,6 @@ const showFeaturePopup = (
   hydrantOverlay.value?.setPosition(coordinate);
 };
 
-const queryHydrant = async (coordinate: number[]) => {
-  const version = ++hydrantRequestVersion;
-  const map = props.map;
-  if (!map) {
-    closeHydrantPopup();
-    return;
-  }
-
-  try {
-    if (!layersStore.checkedIds.includes(HYDRANT_LAYER)) {
-      closeHydrantPopup();
-      return;
-    }
-
-    const hydrantProperties = await queryFeatureProperties(HYDRANT_LAYER, coordinate);
-    if (version !== hydrantRequestVersion) return;
-    if (!hydrantProperties) {
-      closeHydrantPopup();
-      return;
-    }
-    const hydrantName = String(
-      hydrantProperties.water_name
-      ?? hydrantProperties.symc
-      ?? hydrantProperties.name
-      ?? '-'
-    );
-    const hydrantAddress = String(
-      hydrantProperties.address
-      ?? hydrantProperties.sydz
-      ?? '-'
-    );
-    showFeaturePopup(
-      coordinate,
-      hydrantName === '-' ? '消防栓' : hydrantName,
-      {
-        address: hydrantAddress,
-        name: hydrantName,
-      },
-      {
-        address: '地址',
-        name: '名称',
-      },
-    );
-    service.value?.setGenericFeaturePopupSuppressed(true);
-  } catch (error) {
-    if (version !== hydrantRequestVersion) return;
-    closeHydrantPopup();
-    emit('error', error);
-    console.error('[DispatchT1] 查询队站或消防栓信息失败', error);
-  }
-};
-
 // const ensureStationOverlay = () => {
 //   const map = props.map;
 //   const element = stationPopupRef.value;
@@ -383,6 +376,8 @@ const queryHydrant = async (coordinate: number[]) => {
 //   map.addOverlay(overlay);
 //   stationOverlay.value = overlay;
 //   stationOverlayMap.value = map;
+//   // 队站车辆详情 overlay 启用后，通知 DispatchT1：点击立案队站时接管展开车辆详情（而非回落通用面板）
+//   service.value?.setStationOverlayEnabled(true);
 //   updateStationOverlay();
 // };
 
