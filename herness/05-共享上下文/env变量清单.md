@@ -29,8 +29,10 @@
 | VITE_PANEL_25D_URL | ✅ | ✅ | ✅ | ✅ | appEnv.panel25DUrl |
 | VITE_PANEL_3D_URL | ✅ | ✅ | ✅ | ✅ | appEnv.panel3DUrl |
 | VITE_MAP_CENTER | ✅ | ✅ | ✅ | ✅ | appEnv.mapCenter |
-| VITE_MAP_ADMCODE | ✅ | ✅ | ✅ | ❌（待补） | appEnv.mapAdcode |
-| VITE_MAP_CITY | ✅ | ✅ | ✅ | ❌（待补） | appEnv.mapCity |
+| VITE_MAP_ADMCODE | ✅ | ✅ | ✅ | ✅ | appEnv.mapAdcode |
+| VITE_MAP_CITY | ✅ | ✅ | ✅ | ✅（注释格式） | appEnv.mapCity |
+| VITE_MAP_KEYWORDS | ❌ | ❌ | ❌ | ✅（注释格式，预留扩展） | appEnv.mapKeywords |
+| VITE_WEATHER_SOURCE | ❌ | ❌ | ❌ | ✅ | appEnv.weatherSource |
 | VITE_LOG_LEVEL | ❌ | ❌ | ❌ | ✅（模板独有） | — |
 | VITE_ROUTE_CONTINUITY_ENABLED | ✅ | ✅ | ✅ | ✅ | appEnv.routeContinuityEnabled |
 | VITE_MAP_KEYWORDS | ❌ | ❌ | ❌ | ❌ | appEnv.mapKeywords |
@@ -48,3 +50,4 @@
 2. 重命名变量时（如 `VITE_AMAP_*` → `VITE_MAP_*`），同步更新本表所有引用
 3. `.env.local.example` 中的条目统一用注释格式：`# VITE_FOO=  # 用途说明`
 4. 如有变量废弃，在行内标注「已废弃」并保留旧名作为历史记录
+5. 新增 `VITE_*` 后运行 `node scripts/check-env-sync.mjs --fix` 自动补齐模板缺失键（已内置于 `pnpm harness:check`）

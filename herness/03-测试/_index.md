@@ -12,7 +12,7 @@
 | [测试用例/编写规范.md](测试用例/编写规范.md) | 用例编写规范与模板 | 规范 |
 | [测试报告/编写规范.md](测试报告/编写规范.md) | 报告编写规范与模板 | 规范 |
 | [测试报告/Control走线迁移-P1自动化回归报告.md](测试报告/Control走线迁移-P1自动化回归报告.md) | P1实现、916固定输入回放、全量回归及验证边界 | 自动化通过，人工待验收 |
-| 测试策略.md | 项目级测试策略 | 待补充 |
+| [测试策略.md](测试策略.md) | 项目级测试策略：环境 / 分层金字塔 / 黑盒维度矩阵 / 业务域用例 / 全流程场景 / GIS 契约 / 缺口清单 / 执行手册 | 已落地（测试组面向的操作手册另见 `docs/测试组测试手册.md`） |
 
 ## 测试资产
 
@@ -20,12 +20,12 @@
 |------|------|------|
 | `tests/harness/README.md` | **测试契约真相源**：四要素 + GIS 专用契约 + 覆盖率策略 | 规范 |
 | `tests/harness/setup.ts` | 全局 setup（ResizeObserver / matchMedia / mock 清理） | 代码 |
-| `tests/unit/**/*.spec.ts` | 单元 + 集成测试（当前 55 文件 / 579 项全通过） | 代码 |
+| `tests/unit/**/*.spec.ts` | 单元 + 集成测试（2026-11-18 实测 60 文件；用例通过性以最近一次 `pnpm test` 为准） | 代码 |
 | `tests/components/**/*.spec.ts` | 组件测试（jsdom + @vue/test-utils） | 代码 |
 | `tests/e2e/**/*.spec.ts` | E2E 冒烟（Playwright） | 代码 |
 | `tests/fixtures/**` | 可复用测试数据 | 代码 |
 | `tests/__artifacts__/**` | 覆盖率 / trace / 报告产物 | 已 gitignore |
-| `tests/*.test.ts` | 历史遗留脚本（9 个，已转写为 `tests/unit/*.spec.ts`） | ⚠️ 待删除 |
+| `tests/*.test.ts` | 历史遗留脚本（已转写为 `tests/unit/*.spec.ts`） | 已清理（2026-11-18 核实：tests/ 根目录无 `*.test.ts`） |
 
 ## 自动化命令
 

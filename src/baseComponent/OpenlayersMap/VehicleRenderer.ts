@@ -92,8 +92,8 @@ export interface VehicleManager {
   /** 清空所有跟踪车辆、动画句柄与上图 feature。 */
   clearTrackedVehicles: () => void
   /**
-   * 视口边界跟随开关。开启时车辆渲染位置若已出视口（40px margin 内）则自动
-   * `setCenter`，车辆始终可见；关闭后完全交由用户控制。默认开启。
+   * 视口边界跟随开关。开启时车辆渲染位置若已出视口（100px margin 内）则 animate
+   * 平滑居中，车辆始终可见；关闭后完全交由用户控制。默认开启。
    */
   setFollow: (enabled: boolean) => void
 }
@@ -114,28 +114,34 @@ export function createVehicleManager(options: VehicleManagerOptions): VehicleMan
   /** 实时 GPS 帧间插值动画状态，key 为 `${stationId}:${vehicleId}` */
   const realtimeAnimations = new globalThis.Map<string, RealtimeInterpolation>()
 
-  // 持续中心跟随：每 FOLLOW_THROTTLE_MS 将视图中心对准车辆，isInteracting 守卫避免打断手动操作
-  const FOLLOW_THROTTLE_MS = 100
+  // 视口边界跟随：车辆距视口边缘 < FOLLOW_MARGIN_PX 时，animate 平滑居中。
+  // 不挂交互守卫（getInteracting 可能在动画结束后卡住）。用户想自由查看时调 setFollow(false)。
+  const FOLLOW_MARGIN_PX = 100
+  const FOLLOW_THROTTLE_MS = 500
   let followEnabled = true
   let lastFollowAt = 0
 
   /**
-   * 持续中心跟随：每 100ms 将视图中心对准车辆坐标，车辆始终在视口内。
-   * 用户拖动/缩放时 map.isInteracting() 为 true，跳过跟随，不打断手动操作。
+   * 视口边界跟随：车辆坐标在视口像素中距边缘 < 100px 时，
+   * 用 animate 平滑将视口中心对准车辆；车辆始终在视口中央区域时不做操作。
    */
   const followIfNeeded = (projectedCoordinate: number[]): void => {
     if (!followEnabled || !map) return
-    if (map.getView().getInteracting()) return
+    // 像素级边界检测
+    const pixel = map.getPixelFromCoordinate(projectedCoordinate)
+    if (!pixel) return
+    const size = map.getSize()
+    if (!size) return
+    const [px, py] = pixel
+    const [w, h] = size
+    // 车辆在视口内（距各边 >= margin）→ 无需跟随
+    if (px >= FOLLOW_MARGIN_PX && px <= w - FOLLOW_MARGIN_PX && py >= FOLLOW_MARGIN_PX && py <= h - FOLLOW_MARGIN_PX) return
+    // 距边缘 < margin → animate 平滑居中
     const now = performance.now()
     if (now - lastFollowAt < FOLLOW_THROTTLE_MS) return
     lastFollowAt = now
-    map.getView().setCenter(projectedCoordinate)
+    map.getView().animate({ center: projectedCoordinate, duration: 500 })
   }
-
-  /**
-   * 边界触发本身已兼容用户拖动：用户拖地图后车辆坐标不变、视图中心改变，
-   * 车辆大概率不再靠近边缘，自然不触发 setCenter。
-   */
 
   /**
    * 更新车辆定位：根据消息服务推送的 WGS84 实时坐标更新已调派车辆。

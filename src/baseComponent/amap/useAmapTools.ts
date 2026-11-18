@@ -778,6 +778,8 @@ export type AmapRealtimeNavOptions = {
   vehicleHeadingOffsetRad?: number
   loop?: boolean
   vehicleIconSrc: string
+  /** 车辆沿路行驶动画时，视口是否持续跟随车辆（默认 true） */
+  followVehicle?: boolean
 }
 
 export class AmapRealtimeNav {
@@ -820,6 +822,9 @@ export class AmapRealtimeNav {
   private currentDistance = 0
   private lastVehicleRotation: number | null = null
   private navFinishedEmitted = false
+  /** 视口边界跟随节流：上次 animate 时间戳 */
+  private lastFollowAt = 0
+  private followVehicleViewMarginPx = 100
   private routeLayer: VectorLayer<VectorSource> | null = null
   private routeProgressLayer: VectorLayer<VectorSource> | null = null
   private routeArrowLayer: VectorLayer<VectorSource> | null = null
@@ -2049,6 +2054,36 @@ export class AmapRealtimeNav {
     return loop || targetDist < total
   }
 
+  /**
+   * 车辆沿路行驶动画视口边界跟随：车辆距视口边缘 < 100px 时，
+   * 用 animate 平滑将视口中心对准主车辆位置。
+   * 主车辆：multi 模式取 vehicleFeatures[0]，single 模式取 vehicleFeature。
+   * followVehicle=false 时静默跳过；不做交互守卫（守卫可能在动画结束后卡住）。
+   */
+  private followVehicleView(): void {
+    if (this.options.followVehicle === false) return
+    // 取主车辆坐标：优先 vehicleFeatures[0]（multi 模式），回退 vehicleFeature（single 模式）
+    const feature = this.vehicleFeatures[0] ?? this.vehicleFeature
+    if (!feature) return
+    const coord = (feature.getGeometry() as Point | undefined)?.getCoordinates()
+    if (!coord) return
+    // 像素级边界检测
+    const pixel = this.map.getPixelFromCoordinate(coord)
+    if (!pixel) return
+    const size = this.map.getSize()
+    if (!size) return
+    const [px, py] = pixel
+    const [w, h] = size
+    const m = this.followVehicleViewMarginPx
+    // 车辆在视口内（距各边 >= margin）→ 无需跟随
+    if (px >= m && px <= w - m && py >= m && py <= h - m) return
+    // 距边缘 < margin → animate 平滑居中，节流 500ms
+    const now = performance.now()
+    if (now - this.lastFollowAt < 500) return
+    this.lastFollowAt = now
+    this.map.getView().animate({ center: coord, duration: 500 })
+  }
+
   private startVehicleAnimationMulti(preserveDistance: boolean) {
     if (this.vehicleFeatures.length === 0 && this.extraVehicles.length === 0) return
     if (this.rafId) {
@@ -2206,6 +2241,9 @@ export class AmapRealtimeNav {
           allFinished = false
         }
       })
+
+      // 视口跟随：每 100ms 将视口中心对准主车辆
+      this.followVehicleView()
 
       if (reachedLastMile && !this.navFinishedEmitted) {
         this.navFinishedEmitted = true
@@ -2383,6 +2421,9 @@ export class AmapRealtimeNav {
         // tabs切换地图模式
         // useTabsStore().setActiveTab(2);
       }
+      // 视口跟随：每 100ms 将视口中心对准主车辆
+      this.followVehicleView()
+
       if (!loop && targetDist >= total) {
         this.rafId = null
         return

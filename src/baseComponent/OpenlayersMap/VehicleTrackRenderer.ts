@@ -79,8 +79,8 @@ export interface VehicleTrackRenderer {
    */
   setCursor(cursor: number): void
   /**
-   * 视口边界跟随开关。开启时 setCursorAll 更新后若车辆已出视口边缘（40px margin）
-   * 则自动 setCenter；用户拖动地图后自动关闭。默认开启。
+   * 视口边界跟随开关。开启时车辆质心距视口边缘 < 100px 时 animate 平滑居中；
+   * 车辆始终在视口中央区域时不做操作。用户想自由查看时调 setFollow(false)。默认开启。
    */
   setFollow(enabled: boolean): void
 }
@@ -104,37 +104,51 @@ export const createVehicleTrackRenderer = (map: OlMap): VehicleTrackRenderer => 
   /** trackId → RenderGroup，管理多辆车的渲染状态 */
   const groups = new Map<string, RenderGroup>()
 
-  // 持续中心跟随：每 FOLLOW_THROTTLE_MS 将视图中心对准车辆质心，getInteracting 守卫避免打断手动操作
-  const FOLLOW_THROTTLE_MS = 100
+  // 视口边界跟随：车辆质心距视口边缘 < FOLLOW_MARGIN_PX 时，animate 平滑居中。
+  // 不挂交互守卫（getInteracting 可能在动画结束后卡住）。用户想自由查看时调 setFollow(false)。
+  const FOLLOW_MARGIN_PX = 100
+  const FOLLOW_THROTTLE_MS = 500
   let followEnabled = true
   let lastFollowAt = 0
 
-  /**
-   * 边界跟随：取所有组中最后一个渲染坐标，若已出视口边缘则 setCenter。
-   * 天然兼容用户拖动地图（车辆出界才触发，不会强制拉回已拖离的位置）。
-   */
-  const followIfNeeded = (): void => {
-    if (!followEnabled) return
-    // 用户正在拖动/缩放时不强制拉回
-    if (map.getView().getInteracting()) return
-    const now = performance.now()
-    if (now - lastFollowAt < FOLLOW_THROTTLE_MS) return
-    lastFollowAt = now
-    // 取所有 group 的最新坐标（多车取质心）
+  /** 取所有组最新渲染坐标的质心；无组时返回 null */
+  const groupCentroid = (): number[] | null => {
     const coords: number[][] = []
     for (const group of groups.values()) {
       if (group.lastRenderedCoordinate) coords.push(group.lastRenderedCoordinate)
     }
-    if (!coords.length) return
+    if (!coords.length) return null
     let cx = 0
     let cy = 0
     for (const c of coords) {
       cx += c[0]
       cy += c[1]
     }
-    const center = [cx / coords.length, cy / coords.length]
-    // 持续中心跟随：直接 setCenter，让视口始终对准车辆
-    map.getView().setCenter(center)
+    return [cx / coords.length, cy / coords.length]
+  }
+
+  /**
+   * 视口边界跟随：车辆质心在视口像素坐标中距边缘 < 100px 时，
+   * 用 animate 平滑将视口中心对准质心；车辆始终在视口中央区域时不做操作。
+   */
+  const followIfNeeded = (): void => {
+    if (!followEnabled) return
+    const centroid = groupCentroid()
+    if (!centroid) return
+    // 像素级边界检测
+    const pixel = map.getPixelFromCoordinate(centroid)
+    if (!pixel) return
+    const size = map.getSize()
+    if (!size) return
+    const [px, py] = pixel
+    const [w, h] = size
+    // 质心在视口内（距各边 >= margin）→ 无需跟随
+    if (px >= FOLLOW_MARGIN_PX && px <= w - FOLLOW_MARGIN_PX && py >= FOLLOW_MARGIN_PX && py <= h - FOLLOW_MARGIN_PX) return
+    // 距边缘 < margin → animate 平滑居中
+    const now = performance.now()
+    if (now - lastFollowAt < FOLLOW_THROTTLE_MS) return
+    lastFollowAt = now
+    map.getView().animate({ center: centroid, duration: 500 })
   }
 
   /** 懒创建单辆车的一组渲染 features */
