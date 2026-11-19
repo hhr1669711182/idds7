@@ -16,6 +16,7 @@ import { storeToRefs } from 'pinia'
 import { useLayersStore } from '@/store/useLayersStore'
 import { useVehicleTrackStore } from '@/store/useVehicleTrackStore'
 import { LAYER_MODE_HIDDEN_LAYER_IDS } from '@/config/layers'
+import { TEMP_FRONTEND_LAYER_IDS } from '@/baseComponent/OpenlayersMap/layers'
 
 type ToolbarItem = LayerToolbarItem | {
   id: 'all'
@@ -46,7 +47,7 @@ const emit = defineEmits<{
 
 const layersStore = useLayersStore()
 const vehicleTrackStore = useVehicleTrackStore()
-const { checkedIds, items, activeMode } = storeToRefs(layersStore)
+const { checkedIds, items, activeMode, weatherRingEnabled } = storeToRefs(layersStore)
 const { buttonVisible: vehicleTrackButtonVisible, panelVisible: vehicleTrackPanelVisible } =
   storeToRefs(vehicleTrackStore)
 
@@ -62,9 +63,17 @@ const visibleItems = computed(() => {
   return items.value.filter((item) => !hidden.has(item.id))
 })
 
-const toolbarItems = computed<ToolbarItem[]>(() =>
-  visibleItems.value.length ? [...visibleItems.value, selectAllItem] : [],
+/** 未结案警情图层被勾选且当前模式可见 → 天气按钮显隐联动 */
+const weatherButtonVisible = computed(
+  () =>
+    visibleItems.value.some((item) => item.id === TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER) &&
+    checkedIds.value.includes(TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER),
 )
+
+const toolbarItems = computed<ToolbarItem[]>(() => {
+  if (!visibleItems.value.length) return []
+  return [...visibleItems.value, selectAllItem]
+})
 const allIds = computed(() => visibleItems.value.filter((item) => !item.disabled).map((item) => item.id))
 
 const isAllSelected = computed(() => {
@@ -72,7 +81,10 @@ const isAllSelected = computed(() => {
   return ids.length > 0 && ids.every((id) => checkedIds.value.includes(id))
 })
 
-const isChecked = (id: LayerId) => (id === 'all' ? isAllSelected.value : checkedIds.value.includes(id))
+const isChecked = (id: LayerId) => {
+  if (id === 'all') return isAllSelected.value
+  return checkedIds.value.includes(id)
+}
 
 const notifyLayerChange = (action: 'add' | 'remove', id: LayerId) => {
   props.onLayerChange?.(action, id)
@@ -123,6 +135,11 @@ const onTileClick = (item: ToolbarItem) => {
   else toggleChecked(item)
 }
 
+/** 天气开关点击 */
+const onWeatherToggle = () => {
+  layersStore.toggleWeatherRing()
+}
+
 /** 有轨迹时切换面板；暂无轨迹时按当前警情重新查询，成功后自动打开面板。 */
 const onVehicleTrackClick = () => {
   if (vehicleTrackStore.points.length) {
@@ -134,24 +151,40 @@ const onVehicleTrackClick = () => {
 </script>
 
 <template>
-  <div v-if="toolbarItems.length || vehicleTrackButtonVisible" class="lt" role="toolbar" aria-label="图层工具栏">
-    <button
-      v-for="item in toolbarItems"
-      :key="item.id"
-      class="tile"
-      :class="{ checked: isChecked(item.id), disabled: !!item.disabled }"
-      type="button"
-      :disabled="!!item.disabled"
-      @click="onTileClick(item)"
-    >
-      <span v-if="isChecked(item.id)" class="badge" role="img" aria-label="已选">
-        <Icon icon="mdi:check" :size="12" />
-      </span>
-      <span class="icon">
-        <Icon :icon="item.icon || 'mdi:layers-outline'" :size="20" />
-      </span>
-      <span class="label">{{ item.name }}</span>
-    </button>
+  <div v-if="toolbarItems.length || vehicleTrackButtonVisible || weatherButtonVisible" class="lt" role="toolbar" aria-label="图层工具栏">
+    <template v-for="(item, idx) in toolbarItems" :key="item.id">
+      <button
+        class="tile"
+        :class="{ checked: isChecked(item.id), disabled: !!item.disabled }"
+        type="button"
+        :disabled="!!item.disabled"
+        @click="onTileClick(item)"
+      >
+        <span v-if="isChecked(item.id)" class="badge" role="img" aria-label="已选">
+          <Icon icon="mdi:check" :size="12" />
+        </span>
+        <span class="icon">
+          <Icon :icon="item.icon || 'mdi:layers-outline'" :size="20" />
+        </span>
+        <span class="label">{{ item.name }}</span>
+      </button>
+      <!-- 天气按钮：未结案警情可见时，插入在全选右边 -->
+      <button
+        v-if="idx === toolbarItems.length - 1 && weatherButtonVisible"
+        class="tile"
+        :class="{ checked: weatherRingEnabled }"
+        type="button"
+        @click="onWeatherToggle"
+      >
+        <span v-if="weatherRingEnabled" class="badge" role="img" aria-label="已选">
+          <Icon icon="mdi:check" :size="12" />
+        </span>
+        <span class="icon">
+          <Icon icon="mdi:weather-partly-cloudy" :size="20" />
+        </span>
+        <span class="label">天气</span>
+      </button>
+    </template>
     <!-- 车辆历史轨迹入口：终态警情查询到轨迹后才出现，再次点击即关闭回放面板 -->
     <button
       v-if="vehicleTrackButtonVisible"

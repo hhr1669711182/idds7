@@ -31,3 +31,27 @@
 - 用户明确：**当前业务仅单消防站派车**。
 - `docs/测试组测试手册.md`：全流程第 4 步「模拟派车（多消防站候选）」改为「单消防站，1 辆出动车」；专项场景表删除「多消防站派车」行。
 - `herness/03-测试/测试策略.md`（开发侧文档保留事实但加限定）：§5.4 调派黑盒关注点改「单消防站候选路线上图（当前业务仅单消防站派车）」；§5.4 缺口、§6.1 `multiStation` 场景表、§九 P1 压测项均标注「多站为开发侧 mock 压测场景 / 多站能力上线后再纳入，测试组不测」。
+
+## 18:20 视口跟随改为边界触发+animate 平滑居中 (450a6763)
+
+- 用户反馈：持续 100ms setCenter 太频繁，希望车辆走到视口附近再刷新，且改用 animate 平滑。
+- 三个渲染器统一改造：
+  1. VehicleTrackRenderer.ts：followIfNeeded 改为像素级边界检测（getPixelFromCoordinate + 100px margin），距边缘 <100px 才 animate({center, duration:500})；质心在视口中央区域时不做操作。
+  2. VehicleRenderer.ts：同上，车辆坐标距视口边缘 <100px 才 animate 居中。
+  3. useAmapTools.ts：followVehicleView 同逻辑，新增 followVehicleViewMarginPx=100 字段。
+- 节流间隔从 100ms 提升到 500ms，避免动画期间频繁触发。
+- JSDoc 同步更新。
+
+## 19:15 WFS 2.0.0 分页改造（searchGisResources 由全量 10000 条改为每页 100 条）
+
+- 目标：降低 DOM 数据量、提升性能；路径规划/资源检索场景从「一次性拉全量」改为「首屏 100 条 + 滚动加载更多」。
+- 变更文件（7 个）：
+  1. `src/apis/geoserver.ts`：`WFSFeatureParams` 加 `version` / `startIndex` / `count` / `crs` 四个可选字段（WFS 1.0.0 默认，2.0.0 支持分页）。
+  2. `src/apis/searchQuery.ts`：`searchGisResources` 改用 WFS 2.0.0（`version:'2.0.0'`, `crs:'EPSG:4326'`, `count=100`），`'1=1'` 时省略 `cql_filter`；写回 `bucket.totalCount`（`numberMatched`）。`runSearch` 首屏调 `searchGisResources(params, getLayerNameMap(), 100, 0)`。
+  3. `src/composables/useWfsPagination.ts`（**新建**）：通用分页 composable，`loadInitial()` / `loadMore()` / `resetWithFilter()`，`shallowRef` + generation 计数器防竞态，`onUnmounted` 自动清理。
+  4. `src/composables/useSearchActions.ts`：`runViewSearch` 第二次改直调 `searchAmapAddress`（原来调 `runSearch` 会触发全量图层 WFS 请求）；新增 `loadMoreResource()` 翻页加载；三个搜索流程均初始化分页游标（`resourceStartIndex=0` / `resourceHasMore` / `resourceSearchParams`）。
+  5. `src/store/useSearchPanelStore.ts`：新增 4 个共享分页字段：`resourceStartIndex` / `resourceHasMore` / `resourceLoadingMore` / `resourceSearchParams`。
+  6. `src/types/search.ts`：`SearchResultBucket` 加 `totalCount?: number`（WFS `numberMatched` 全量命中数）。
+  7. `src/components/map/component/circleQueryPanel.vue`：`.cq-list` 加 scroll 监听（距底部 60px 触发 `loadMoreResource`）；tab 标题从 `items.length` 改为 `totalCount ?? items.length`；截断提示改为「还有更多资源，下拉加载更多…」。
+- 顺手修复 `VehicleRenderer.ts` 的存量 `Icon` 未使用 import（TS6133），`pnpm lint` 归零。
+- 验证：`pnpm lint` 0 报错。

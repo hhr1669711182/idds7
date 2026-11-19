@@ -322,7 +322,7 @@ export class FeatureClickQuery {
     const panelStore = usePanelStore()
 
     const queryLayers = [
-      // 'gis:mapresource', //ES
+      'gis:mapresource', //ES
       ...layerIds,
       ...(panelStore.circleOpen ? ALL_RESOURCE_TYPES.map(({ layerName }) => layerName) : []),
     ]

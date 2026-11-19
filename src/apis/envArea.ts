@@ -287,6 +287,52 @@ export const fetchJurisdictionZones = async (
     .filter((item): item is JurisdictionZone => item !== null)
 }
 
+/** 天气专用行政区划查询视图 */
+const AREA_WEATHER_LAYER = 'gis:env_area_weather'
+
+/** 经纬度反查行政区划结果（gis:env_area_weather 视图） */
+export interface AreaWeatherMatch {
+  /** 命中区划编码 */
+  areaId: string
+  /** 地址级别：1省 2市 3区县 4街道乡镇（>4 表示更细粒度） */
+  addrlevelId: number
+  /** 父级区划编码 */
+  parentCode: string
+  /** 区划名称 */
+  areaName: string
+}
+
+/**
+ * 按经纬度反查所在行政区划（gis:env_area_weather 专用视图），返回 area_id / addrlevel_id / parent_code。
+ * 视图为点查专用，INTERSECTS 匹配多边形面片。
+ * @param lng 经度（EPSG:4326）
+ * @param lat 纬度（EPSG:4326）
+ * @returns 命中区划信息；未命中或参数无效返回 null
+ */
+export const fetchAreaWeatherByPoint = async (lng: number, lat: number): Promise<AreaWeatherMatch | null> => {
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null
+  const data = (await geoserverApi.getWFSFeatures(
+    {
+      typeName: AREA_WEATHER_LAYER,
+      cql_filter: `INTERSECTS(geom, SRID=4326;POINT(${lng} ${lat}))`,
+      // propertyName: 'area_id,addrlevel_id,parent_code,area_name',
+      outputFormat: 'application/json',
+      maxFeatures: 1,
+    },
+    'gis',
+  )) as WfsFeatureCollection
+
+  const feature = (data?.features ?? []).find((item) => item?.properties?.area_id)
+  if (!feature?.properties?.area_id) return null
+  const properties = feature.properties
+  return {
+    areaId: readString(properties.area_id),
+    addrlevelId: readNumber(properties.addrlevel_id),
+    parentCode: readString(properties.parent_code),
+    areaName: readString(properties.area_name),
+  }
+}
+
 /**
  * 按队站 id 查询单条辖区几何（点击队站时按需加载，避免 init 预加载全量几何）。
  * view_juris_zone.zone_id 等于 view_res_org_dept.id。

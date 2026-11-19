@@ -78,6 +78,12 @@ export const useLayersStore = defineStore(
       setCheckedIds(checked ? layerConfigs.value.map((config) => config.id) : [])
     }
 
+    /** 天气圈开关（默认开），与「未结案警情」图层联动；持久化到 sessionStorage */
+    const weatherRingEnabled = ref(true)
+    const toggleWeatherRing = () => {
+      weatherRingEnabled.value = !weatherRingEnabled.value
+    }
+
     const isChecked = (id: string) => visibleIds.value.has(id)
 
     const getConfig = (id: string): LayerConfig | undefined => layerConfigs.value.find((config) => config.id === id)
@@ -108,11 +114,13 @@ export const useLayersStore = defineStore(
       layerConfigs,
       items,
       activeMode,
+      weatherRingEnabled,
       setCheckedIds,
       setLayerConfigs,
       setLayerVisible,
       toggle,
       toggleAll,
+      toggleWeatherRing,
       isChecked,
       getConfig,
       setMode,
@@ -121,7 +129,7 @@ export const useLayersStore = defineStore(
   {
     persist: {
       storage: sessionStorage,
-      pick: ['checkedIds'],
+      pick: ['checkedIds', 'weatherRingEnabled'],
     },
   },
 )

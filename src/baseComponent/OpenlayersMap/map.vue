@@ -34,6 +34,7 @@ import carImg from "@/assets/map/icon/car.png";
 import fireImg from "@/assets/map/icon/xfz.png";
 import { useFireStations } from "@/composables/useFireStations";
 import { useUnclosedIncidents } from "@/composables/useUnclosedIncidents";
+import { UnclosedWeatherRingController } from "@/controller/core/business/UnclosedWeatherRingController";
 // @ts-expect-error TS6133: NavPanel 已被 v-if="false" 隐藏，引用处保留备用
 import { EventBus } from "@/utils/mitt.ts";
 import AlarmDetailPopup from "./AlarmDetailPopup.vue";
@@ -103,6 +104,7 @@ let incomingCallManager: any = null;
 let fireManager: any = null;
 let alarmOverlayManager: any = null;
 let jrAlarmManager: any = null;
+let weatherRingController: UnclosedWeatherRingController | null = null;
 let featureClickQuery: FeatureClickQuery | null = null;
 let detachBusinessMap: (() => void) | null = null;
 let genericCtrl: GenericController | null = null;
@@ -176,6 +178,28 @@ watch(
   (v) => trafficTool?.setVisible(v),
 );
 watch(unclosedIncidents, (next) => jrAlarmManager?.setData?.(next));
+
+// 天气圈联动：未结案警情图层 ON + 天气开关 ON 时展示圈+overlay；任一 OFF 时全部隐藏
+watch(
+  [
+    () => layersStore.checkedIds.includes(TEMP_FRONTEND_LAYER_IDS.TODAY_DISASTER),
+    () => layersStore.weatherRingEnabled,
+    unclosedIncidents,
+  ],
+  ([disasterVisible, weatherEnabled, alarms]) => {
+    if (!weatherRingController) return
+    if (disasterVisible && weatherEnabled && alarms.length) {
+      const ringAlarms = alarms.map((a) => ({
+        incidentId: a.incidentId,
+        lng: a.lng,
+        lat: a.lat,
+      }))
+      void weatherRingController.show(ringAlarms)
+    } else {
+      weatherRingController.hide()
+    }
+  },
+)
 
 // 鹰眼 / 比例尺 随功能配置显隐（底座读 store，控制实例已在 initMap 时挂到 overviewControl/scaleLineControl）
 const syncConfiguredControls = () => {
@@ -393,6 +417,9 @@ const initMap = async () => {
     });
   }
 
+  // 未结案警情天气圈：独立控制器，挂载到 OLMap
+  weatherRingController = new UnclosedWeatherRingController(map);
+
   // syncLayers(layersStore.checkedIds);
   trafficTool = new TrafficTools(map);
   trafficTool.setVisible(baseSourceStore.trafficVisible);
@@ -468,6 +495,8 @@ const cleanup = () => {
   }
   alarmOverlayManager?.destroy();
   jrAlarmManager?.destroy();
+  weatherRingController?.destroy();
+  weatherRingController = null;
   carManager?.destroy();
   ssrkManager?.destroy();
   ssrkManager = null;
