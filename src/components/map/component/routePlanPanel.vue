@@ -39,6 +39,21 @@ let pickTarget: EndpointKey | null = null;
 const continuityWorker = createRouteContinuityWorker();
 
 /** MapStore 的 map 初值是空对象，必须确认拿到真实 OL Map 后再建层 */
+
+/** 起/终点图标拖拽释放：更新 store + endpointInput + 上图 + 反查地址；
+ * 若已有路径规划数据（routeSummary 或 routeOptions 非空），自动重新分析 */
+const onEndpointDragEnd = (role: EndpointKey, lngLat: [number, number]) => {
+  const text = `${lngLat[0].toFixed(6)},${lngLat[1].toFixed(6)}`;
+  endpointInput[role] = text;
+  searchStore.setRouteEndpoint(role, text, lngLat);
+  syncEndpointMarkers();
+  void fetchReverseName(role, lngLat);
+  // 已有路径规划数据时，拖拽释放后自动重新分析（等效点击分析按钮）
+  if (routeSummary.value || routeOptions.value.length > 0) {
+    void planRoute();
+  }
+};
+
 const ensureTool = () => {
   const map = MapInstance.value;
   if (!isOlMap(map)) return null;
@@ -47,7 +62,7 @@ const ensureTool = () => {
     resultTool.destroy();
     resultTool = null;
   }
-  if (!resultTool) resultTool = new SearchResultTool({ map });
+  if (!resultTool) resultTool = new SearchResultTool({ map, onEndpointDragEnd });
   return resultTool;
 };
 
@@ -392,7 +407,7 @@ const planRoute = async () => {
     tmcExpanded.value = {};
     const selected = sorted[0];
     tool.showRouteOptions(sorted, 0);
-    tool.fitPoints(selected.coords);
+    tool.fitRoute(selected.coords);
     routeSummary.value = {
       distance: selected.distanceMeters,
       duration: selected.durationSeconds,
@@ -414,7 +429,7 @@ const onSelectOption = (option: RoutePlanOption) => {
   activeStep.value = null;
   tool.clearFocus();
   tool.showRouteOptions(routeOptions.value, option.index);
-  tool.fitPoints(option.coords);
+  tool.fitRoute(option.coords);
 };
 
 /** 折叠 / 展开某方案的次栏与指引区。 */
@@ -1110,6 +1125,7 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-md);
   background: var(--panel-bg-solid);
   overflow: hidden;
+  cursor: pointer;
 }
 
 /* 选中方案用强调色描边，与备选方案区分 */
@@ -1122,7 +1138,6 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: var(--space-xs);
   padding: 6px 8px;
-  cursor: pointer;
   background: var(--header-bg);
 }
 

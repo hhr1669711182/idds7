@@ -1,5 +1,5 @@
 import { MAP_ICON_SRC, FIRE_STATION_ICON, getCommonAlarmIconSrc } from './icons'
-import { ROUTE_LINE_STROKE, SELECTED_ROUTE_OUTLINE_COLOR, BUFFER_POLYGON_FILL } from './palette'
+import { ROUTE_LINE_STROKE, SELECTED_ROUTE_OUTLINE_COLOR, ALTERNATIVE_ROUTE_OUTLINE_COLOR, BUFFER_POLYGON_FILL } from './palette'
 import {
   createBoundaryStyle,
   createEndpointStyle,
@@ -8,6 +8,7 @@ import {
   createJRAlarmStyle,
   createMaskStyle,
   createSelectedRouteLineStyle,
+  createAlternativeRouteLineStyle,
   createSelectedTmcLineStyle,
   createTmcLineStyle,
   createVehicleStyle,
@@ -37,6 +38,7 @@ const STYLE_BUILDERS: StyleBuilderMap = {
   tmcLine: (params) => createTmcLineStyle(params.status, params.width ?? 6),
   selectedTmcLine: (params) => createSelectedTmcLineStyle(params.status, params.width ?? 6, params.baseZIndex),
   selectedRouteLine: (params) => createSelectedRouteLineStyle(params.color, params.width ?? 6, params.baseZIndex),
+  alternativeRouteLine: (params) => createAlternativeRouteLineStyle(params.color, params.width ?? 6, params.baseZIndex),
   vehicle: (params) => createVehicleStyle(params),
   commonAlarm: (params) => {
     const { type, colorType = 'def' } = params
@@ -80,4 +82,4 @@ export const clearStyleCache = (): void => {
 export const getStyleCacheSize = (): number => styleCache.size
 
 // 重新转出常量，保持对外单一入口（调用方只从本目录 import）
-export { ROUTE_LINE_STROKE, SELECTED_ROUTE_OUTLINE_COLOR, BUFFER_POLYGON_FILL, MAP_ICON_SRC, FIRE_STATION_ICON }
+export { ROUTE_LINE_STROKE, SELECTED_ROUTE_OUTLINE_COLOR, ALTERNATIVE_ROUTE_OUTLINE_COLOR, BUFFER_POLYGON_FILL, MAP_ICON_SRC, FIRE_STATION_ICON }

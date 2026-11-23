@@ -30,6 +30,7 @@ export type StyleKey =
   | 'tmcLine'
   | 'selectedTmcLine'
   | 'selectedRouteLine'
+  | 'alternativeRouteLine'
   | 'vehicle'
   | 'commonAlarm'
   | 'fireEngine'
@@ -51,6 +52,7 @@ export type StyleParamsMap = {
   tmcLine: { status: AmapTmcStatus; width?: number }
   selectedTmcLine: { status: AmapTmcStatus; width?: number; baseZIndex?: number }
   selectedRouteLine: { color: string; width?: number; baseZIndex?: number }
+  alternativeRouteLine: { color: string; width?: number; baseZIndex?: number }
   vehicle: {
     src: string
     rotation: number

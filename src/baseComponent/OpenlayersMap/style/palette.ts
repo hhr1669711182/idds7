@@ -19,6 +19,9 @@ export const ROUTE_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.96)'
 /** 未选中路线：半透明蓝，与 ROUTE_LINE_STROKE 同色系 */
 export const ROUTE_UNSELECTED_COLOR = 'rgba(64, 158, 255, 0.5)'
 
+/** 备选路线外描边：深蓝色，与选中路线的白色蒙层高亮形成区分 */
+export const ALTERNATIVE_ROUTE_OUTLINE_COLOR = '#1e3a8a'
+
 /** 高亮路线外圈：荧光青；实际绘制取主题强调色 */
 export const SELECTED_ROUTE_OUTLINE_COLOR = '#00f0ff'
 

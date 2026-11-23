@@ -6,7 +6,8 @@ import VectorSource from 'ol/source/Vector'
 import Feature from 'ol/Feature'
 import { LineString, Point } from 'ol/geom'
 import { Style, Circle as StyleCircle, Stroke, Fill, Icon } from 'ol/style'
-import { fromLonLat } from 'ol/proj'
+import { fromLonLat, toLonLat } from 'ol/proj'
+import Translate from 'ol/interaction/Translate'
 import type Map from 'ol/Map'
 
 import { geoserverApi } from '@/apis/geoserver'
@@ -23,8 +24,10 @@ import {
   projectCoords,
 } from '@/baseComponent/tools/routeBase'
 import {
+  createAlternativeRouteLineStyle,
   createSelectedRouteLineStyle,
   createSelectedTmcLineStyle,
+  getTmcStatusColor,
 } from '@/baseComponent/OpenlayersMap/style'
 import { normalizeTmcLevel } from '@/baseComponent/amap/routeCongestion'
 import { buildRouteAnalysis } from '@/baseComponent/tools/routeAnalysis'
@@ -46,38 +49,25 @@ export interface RouteCongestionSegment {
 const ROUTE_LINE_COLOR = '#25C2F2'
 
 /**
- * 高德路况等级 → 颜色。高德 tmcs.status 是数字编码：
- * 0=未知 1=畅通 2=缓行 3=拥堵 4=严重拥堵（部分版本用 5=极度拥堵）
- * 同时兼容返回中文/英文文案的情况。
+ * 路况等级 → 颜色，统一走共享路况色板 `getTmcStatusColor`（与选中方案同源，避免两套颜色系统分叉）。
+ * 入参可能是已归一的 `RouteTmcLevel`（unknown/smooth/slow/jam/serious_jam）或高德原始态（数字编码 1~5 / 中文文案），
+ * 一律先经 `normalizeTmcLevel` 归一，识别不到的归 `unknown` 走灰色，不再误判成线路底色蓝。
  */
-const congestionColor = (status: string | number): string => {
-  const raw = String(status ?? '').trim()
-  const key = raw.toUpperCase()
-  // 优先按数字编码匹配
-  switch (raw) {
-    case '1':
-      return '#3BA55D'
-    case '2':
-      return '#F2C744'
-    case '3':
-      return '#F08A24'
-    case '4':
-    case '5':
-      return '#E64545'
-    default:
-      break
-  }
-  if (key.includes('严重') || key.includes('极度') || key.includes('SEVERE')) return '#E64545'
-  if (key.includes('拥堵') || key.includes('CONGEST')) return '#F08A24'
-  if (key.includes('缓行') || key.includes('SLOW')) return '#F2C744'
-  if (key.includes('畅通') || key.includes('SMOOTH')) return '#3BA55D'
-  return themeAccent(ROUTE_LINE_COLOR)
-}
+const congestionColor = (status: string | number): string => getTmcStatusColor(normalizeTmcLevel(status))
+
+/** 拖拽释放后回调：role 标识起/终点，lngLat 为 WGS84 新坐标 */
+export type EndpointDragEndHandler = (role: 'start' | 'end', lngLat: [number, number]) => void
+
+/** 路线 fit 左侧预留比例：路径规划面板固定在屏幕左侧，fit 时预留 22% 屏宽，使路线在剩余视口内完整显示 */
+const ROUTE_PANEL_RESERVE_RATIO = 0.22
+
 export interface SearchResultToolOptions {
   map: Map
   /** 聚焦时的目标 zoom（缺省按当前 zoom + 2） */
   focusZoom?: number
   focusPadding?: number[]
+  /** 起/终点图标拖拽释放回调；未传则图标不可拖拽 */
+  onEndpointDragEnd?: EndpointDragEndHandler
 }
 
 /**
@@ -96,6 +86,7 @@ export class SearchResultTool {
   private focusLayer!: VectorLayer<VectorSource>
   private routeLayer!: VectorLayer<VectorSource>
   private endpointLayer!: VectorLayer<VectorSource>
+  private endpointTranslate: Translate | null = null
   private focusPulseTimer: ReturnType<typeof setInterval> | null = null
   private focusPulseFeature: Feature | null = null
   /** 最近一次上图路线的统一分析结果（P01）；无路况数据时 tmc 覆盖度为 0，忠实反映展示态 */
@@ -112,6 +103,25 @@ export class SearchResultTool {
       focusPadding: options.focusPadding ?? [80, 80, 80, 80],
     }
     this.initLayers()
+    if (options.onEndpointDragEnd) {
+      this.initEndpointTranslate(options.onEndpointDragEnd)
+    }
+  }
+
+  private initEndpointTranslate(handler: EndpointDragEndHandler) {
+    this.endpointTranslate = new Translate({
+      layers: (layer) => (layer as VectorLayer<VectorSource>) === this.endpointLayer,
+    })
+    this.endpointTranslate.on('translateend', (evt) => {
+      const feature = evt.features.item(0)
+      if (!feature) return
+      const role = (feature.get('role') ?? 'start') as 'start' | 'end'
+      const geom = feature.getGeometry()
+      if (!(geom instanceof Point)) return
+      const lngLat = toLonLat(geom.getCoordinates()) as [number, number]
+      handler(role, lngLat)
+    })
+    this.map.addInteraction(this.endpointTranslate)
   }
 
   /** 供调用方比对是否为同一个地图实例（路由切换会重建） */
@@ -398,12 +408,7 @@ export class SearchResultTool {
           const status = normalizeTmcLevel(feature.get('tmcStatus') ?? '')
           if (alternative) {
             // 备选：单层线，路况配色，zIndex 1
-            feature.setStyle(
-              new Style({
-                stroke: new Stroke({ color: congestionColor(status), width: 7 }),
-                zIndex: 1,
-              }),
-            )
+            feature.setStyle(createAlternativeRouteLineStyle(congestionColor(status), 7, 0))
           } else {
             // 选中：底座三层高亮（荧光外晕+强调内线+路况内芯），z0 起落
             feature.setStyle(createSelectedTmcLineStyle(status, 7, 0))
@@ -416,8 +421,8 @@ export class SearchResultTool {
         feature.set('routePlanIndex', option.index)
         feature.set('routeAlternative', alternative)
         if (alternative) {
-          // 备选：单层线，路线主色
-          feature.setStyle(this.routeLineStyle())
+          // 备选：深蓝描边 + 路线主色 0.5 透明，zIndex 0 起落
+          feature.setStyle(createAlternativeRouteLineStyle(themeAccent(ROUTE_LINE_COLOR), 7, 0))
         } else {
           // 选中：底座三层高亮（无路况版）
           feature.setStyle(createSelectedRouteLineStyle(themeAccent(ROUTE_LINE_COLOR), 7, 0))
@@ -447,9 +452,10 @@ export class SearchResultTool {
     const source = this.endpointLayer.getSource()
     if (!source) return
     source.clear()
-    const mark = (lngLat: [number, number] | null, img: string) => {
+    const mark = (lngLat: [number, number] | null, img: string, role: 'start' | 'end') => {
       if (!lngLat) return
       const feature = new Feature({ geometry: new Point(fromLonLat(lngLat)) })
+      feature.set('role', role)
       feature.setStyle(
         new Style({
           image: new Icon({
@@ -462,8 +468,8 @@ export class SearchResultTool {
       )
       source.addFeature(feature)
     }
-    mark(start, startImg)
-    mark(end, endImg)
+    mark(start, startImg, 'start')
+    mark(end, endImg, 'end')
   }
 
   /** Clear only the endpoint markers; the route line and focus effects are unaffected */
@@ -503,10 +509,25 @@ export class SearchResultTool {
     )
     source?.addFeature(feature)
 
-    this.fitTo(valid)
+    this.fitTo(valid, true)
   }
 
-  private fitTo(lngLats: [number, number][]) {
+  /**
+   * 路线 fit 专用 padding：左侧预留 22% 屏宽给路径规划面板，
+   * 上/右/下各留 80px 呼吸；map.getSize() 未就绪时左 padding 兜底 200px。
+   */
+  private routeFitPadding(): [number, number, number, number] {
+    const size = this.map.getSize()
+    const w = size ? size[0] : 1280
+    return [100, 80, 120, Math.round(w * ROUTE_PANEL_RESERVE_RATIO)]
+  }
+
+  /** 路线范围 fit：视口定位时左侧预留面板占位，使路线在剩余视口内完整显示 */
+  fitRoute(lngLats: [number, number][]) {
+    this.fitTo(lngLats, true)
+  }
+
+  private fitTo(lngLats: [number, number][], useRoutePadding = false) {
     const valid = lngLats.filter((c) => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
     if (!valid.length) return
     const points = valid.map((lngLat) => fromLonLat(lngLat))
@@ -518,8 +539,11 @@ export class SearchResultTool {
       Math.max(...xs),
       Math.max(...ys),
     ]
+    const padding = useRoutePadding
+      ? this.routeFitPadding()
+      : (this.options.focusPadding as [number, number, number, number])
     this.map.getView().fit(extent, {
-      padding: this.options.focusPadding as [number, number, number, number],
+      padding,
       duration: 400,
       maxZoom: this.options.focusZoom,
     })

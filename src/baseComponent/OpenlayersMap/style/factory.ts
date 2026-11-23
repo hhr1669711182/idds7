@@ -13,6 +13,7 @@ import {
   FIRE_STATION_USAGE_TRACK_COLOR,
   MASK_FILL,
   MASK_STROKE,
+  ALTERNATIVE_ROUTE_OUTLINE_COLOR,
   ROUTE_OUTLINE_COLOR,
   SELECTED_ROUTE_OUTER_COLOR,
   VEHICLE_LABEL_BG_COLOR,
@@ -25,6 +26,7 @@ import {
 } from './palette'
 import type { CachedStyle, IconAnchor, IconStyleOptions, StyleParamsMap } from './types'
 import type { AmapTmcStatus } from '@/baseComponent/amap/useAmapTools'
+import { withAlpha } from '@/utils/themeColor'
 
 const DEFAULT_ICON_ANCHOR: IconAnchor = [0.5, 1]
 const CENTER_ICON_ANCHOR: IconAnchor = [0.5, 0.5]
@@ -123,7 +125,7 @@ const createSelectedRouteOutlineStyle = (width = 6, baseZIndex = 100): Style[] =
 export const createSelectedTmcLineStyle = (status: AmapTmcStatus, width = 6, baseZIndex = 100): Style[] => [
   ...createSelectedRouteOutlineStyle(width, baseZIndex),
   new Style({
-    zIndex: baseZIndex + 2,
+    zIndex: baseZIndex + 3,
     stroke: new Stroke({
       color: getTmcStatusColor(status),
       width,
@@ -140,9 +142,43 @@ export const createSelectedTmcLineStyle = (status: AmapTmcStatus, width = 6, bas
 export const createSelectedRouteLineStyle = (color: string, width = 6, baseZIndex = 100): Style[] => [
   ...createSelectedRouteOutlineStyle(width, baseZIndex),
   new Style({
-    zIndex: baseZIndex + 2,
+    zIndex: baseZIndex + 3,
     stroke: new Stroke({
       color,
+      width,
+      lineCap: 'round',
+      lineJoin: 'round',
+    }),
+  }),
+]
+
+/**
+ * 备选路线样式：深蓝描边 + 主色线 + 白色 0.4 透明度。
+ * 与选中路线（三层高亮）形成明显视觉区分，避免"全高亮"。
+ */
+export const createAlternativeRouteLineStyle = (color: string, width = 6, baseZIndex = 0): Style[] => [
+  new Style({
+    zIndex: baseZIndex,
+    stroke: new Stroke({
+      color: ALTERNATIVE_ROUTE_OUTLINE_COLOR,
+      width: width + 2,
+      lineCap: 'round',
+      lineJoin: 'round',
+    }),
+  }),
+  new Style({
+    zIndex: baseZIndex + 1,
+    stroke: new Stroke({
+      color: withAlpha(color, 1),
+      width: width,
+      lineCap: 'round',
+      lineJoin: 'round',
+    }),
+  }),
+  new Style({
+    zIndex: baseZIndex + 2,
+    stroke: new Stroke({
+      color: withAlpha('#fff', 0.4),
       width,
       lineCap: 'round',
       lineJoin: 'round',
