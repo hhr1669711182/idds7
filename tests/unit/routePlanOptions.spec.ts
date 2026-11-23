@@ -5,6 +5,7 @@ import {
   parseTurnType,
   resolveBalancedIndex,
   resolveOptionTiers,
+  sortRoutePlanOptionsForDisplay,
   splitRoutePlans,
 } from '@/baseComponent/tools/routePlanOptions'
 import { summarizeTmc } from '@/baseComponent/amap/routeCongestion'
@@ -196,5 +197,49 @@ describe('baseComponent/tools/routePlanOptions 多方案解析', () => {
     expect(options[0].jamRatio).toBeCloseTo(0.5, 3)
     // And 覆盖度 = 有路况长度 / 全路长度（几何长度远大于 totalDistance）
     expect(options[0].coverage).toBe(1)
+  })
+
+  it('展示排序：命中档位（tag）更多的方案排在前，同 tag 数按通行时长升序', () => {
+    // Given 代理原始顺序：C(9000m,200s)=0 tag、B(1500m,120s)=0 tag、A(1000m,100s)=fastest+shortest+balanced=3 tag
+    const response = [
+      buildPlan('9000', '200', '5', ['向北行驶500米']), // C：0 tag
+      buildPlan('1500', '120', '4', ['向东行驶800米左转']), // B：0 tag
+      buildPlan('1000', '100', '3', ['向南行驶500米调头']), // A：fastest + shortest + balanced（3 tag）
+    ]
+    // When 构建（保持代理原始顺序）
+    const parsed = buildRoutePlanOptions(response, noTmc)
+    expect(parsed.map((o) => o.distanceMeters)).toEqual([9000, 1500, 1000])
+    // When 按展示排序
+    const options = sortRoutePlanOptionsForDisplay(parsed)
+    // Then tag 数量分布（A=3，B=0，C=0），A 被提到首位
+    expect(options.map((o) => o.tiers.length)).toEqual([3, 0, 0])
+    expect(options[0].distanceMeters).toBe(1000)
+    expect(options[0].durationSeconds).toBe(100)
+    // Then 同 tag 数（B、C 均 0）按时长升序：B(120s) 在 C(200s) 前
+    expect(options[1].durationSeconds).toBe(120)
+    expect(options[2].durationSeconds).toBe(200)
+    // Then 排序后 index 连续重编 0/1/2，id 重编
+    expect(options.map((o) => o.index)).toEqual([0, 1, 2])
+    expect(options.map((o) => o.id)).toEqual(['option-1', 'option-2', 'option-3'])
+  })
+
+  it('展示排序：各方案 tag 数相同（都 1 tag）时按通行时长升序重排', () => {
+    // Given 代理原始顺序：S1(3000m,100s)=fastest；S2(1000m,300s)=shortest；S3(2000m,200s)=balanced
+    const response = [
+      buildPlan('3000', '100', '3', ['向北行驶500米']), // S1：fastest
+      buildPlan('1000', '300', '4', ['向东行驶800米左转']), // S2：shortest
+      buildPlan('2000', '200', '5', ['向南行驶500米调头']), // S3：balanced
+    ]
+    // When 构建（保持代理原始顺序）
+    const parsed = buildRoutePlanOptions(response, noTmc)
+    expect(parsed.map((o) => o.distanceMeters)).toEqual([3000, 1000, 2000])
+    // When 按展示排序
+    const options = sortRoutePlanOptionsForDisplay(parsed)
+    // Then 三个方案 tag 数都是 1
+    expect(options.map((o) => o.tiers.length)).toEqual([1, 1, 1])
+    // Then 同 tag 数按 durationSeconds 升序：S1(100s) → S3(200s) → S2(300s)
+    expect(options.map((o) => o.durationSeconds)).toEqual([100, 200, 300])
+    // Then index 连续重编 0/1/2
+    expect(options.map((o) => o.index)).toEqual([0, 1, 2])
   })
 })

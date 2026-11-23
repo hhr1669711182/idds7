@@ -7,6 +7,8 @@ import {
   createIconStyle,
   createJRAlarmStyle,
   createMaskStyle,
+  createSelectedRouteLineStyle,
+  createSelectedTmcLineStyle,
   createTmcLineStyle,
   createVehicleStyle,
 } from './factory'
@@ -33,6 +35,8 @@ const STYLE_BUILDERS: StyleBuilderMap = {
   jrAlarm: (params) => createJRAlarmStyle(params),
   mask: () => createMaskStyle(),
   tmcLine: (params) => createTmcLineStyle(params.status, params.width ?? 6),
+  selectedTmcLine: (params) => createSelectedTmcLineStyle(params.status, params.width ?? 6, params.baseZIndex),
+  selectedRouteLine: (params) => createSelectedRouteLineStyle(params.color, params.width ?? 6, params.baseZIndex),
   vehicle: (params) => createVehicleStyle(params),
   commonAlarm: (params) => {
     const { type, colorType = 'def' } = params

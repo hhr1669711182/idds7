@@ -232,6 +232,8 @@ export const buildRoutePlanOptions = (
   const tiersByOption = resolveOptionTiers(metrics)
   const balancedIndex = resolveBalancedIndex(metrics)
 
+  // 按代理原始顺序构建视图模型。档位判定与综合最优（balancedIndex）都基于原顺序，
+  // 本函数只做解析、不重排 —— 排序属于展示层，交给 sortRoutePlanOptionsForDisplay。
   return parsed.map((item, index) => {
     const tiers = [...tiersByOption[index]]
     if (index === balancedIndex && !tiers.includes('balanced')) tiers.push('balanced')
@@ -254,6 +256,25 @@ export const buildRoutePlanOptions = (
       primaryLabel: ROUTE_OPTION_LABELS[primaryTier],
     }
   })
+}
+
+/**
+ * 多方案展示排序：命中档位（tag）越多的方案越靠前；同 tag 数按通行时长升序。
+ * 与 buildRoutePlanOptions 解耦 —— 该函数只解析、保持代理原始顺序（回归测试据此锁定档位/转向），
+ * 重排属于展示决策，放在此独立函数，便于单独测试与回退。
+ * 返回新数组并重编 index（0 起）/id，调用方随后把「方案1」当首选高亮。
+ * Array.prototype.sort 稳定，时长相同保持原代理顺序，不产生额外漂移。
+ */
+export const sortRoutePlanOptionsForDisplay = (options: RoutePlanOption[]): RoutePlanOption[] => {
+  const ordered = [...options].sort((a, b) => {
+    if (b.tiers.length !== a.tiers.length) return b.tiers.length - a.tiers.length
+    return a.durationSeconds - b.durationSeconds
+  })
+  return ordered.map((option, index) => ({
+    ...option,
+    id: `option-${index + 1}`,
+    index,
+  }))
 }
 
 /** 路况等级 → 展示文案（面板与指引区共用）。 */

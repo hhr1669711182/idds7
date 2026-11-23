@@ -62,6 +62,7 @@ export {
   createRouteLineStyle,
   createTmcLineStyle,
   createSelectedTmcLineStyle,
+  createSelectedRouteLineStyle,
   createRouteDirectionArrowStyle,
   createEndpointStyle,
   createVehicleStyle,

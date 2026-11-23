@@ -1,5 +1,4 @@
-﻿import { ZOOM } from '@/baseComponent/OpenlayersMap/const.map'
-import Map from 'ol/Map'
+﻿import Map from 'ol/Map'
 import { Extent } from 'ol/extent'
 import * as olProj from 'ol/proj'
 export interface UseExtentResult {
@@ -83,13 +82,17 @@ export const useExtent = (
 
     if (newCenter[0] !== center[0] || newCenter[1] !== center[1]) {
       view.setCenter(newCenter)
+    }
 
-      // 限制缩放层级:visible > limit 时拉回
-      const maxAllowedResolution: number = Math.max((maxX - minX) / size[0], (maxY - minY) / size[1])
+    // 限制缩放层级:visible > limit 时拉回。与中心钳制相互独立 ——
+    // 纯缩放（center 未越界）时分辨率仍可能超阈值，必须单独判断拉回。
+    // 直接钳分辨率而非 setZoom：getZoomForResolution 返回小数 zoom，加 +0.5/+1 后
+    // 落在刻度边界上会因「整数不触发、小数一直重设」死循环；setResolution 让分辨率
+    // 精确等于允许最大值，下次重入 resolution>maxAllowed 即 false，循环终止且与刻度无关。
+    const maxAllowedResolution: number = Math.max((maxX - minX) / size[0], (maxY - minY) / size[1])
 
-      if (resolution > maxAllowedResolution) {
-        view.setZoom((view.getZoomForResolution(maxAllowedResolution) || ZOOM.INIT || 0) + 0.1)
-      }
+    if (resolution > maxAllowedResolution) {
+      view.setResolution(maxAllowedResolution)
     }
 
     isConstraining = false

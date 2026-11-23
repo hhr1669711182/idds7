@@ -28,6 +28,8 @@ export type StyleKey =
   | 'jrAlarm'
   | 'mask'
   | 'tmcLine'
+  | 'selectedTmcLine'
+  | 'selectedRouteLine'
   | 'vehicle'
   | 'commonAlarm'
   | 'fireEngine'
@@ -47,6 +49,8 @@ export type StyleParamsMap = {
   jrAlarm: { status: JRAlarmStatus; scale?: number }
   mask: undefined
   tmcLine: { status: AmapTmcStatus; width?: number }
+  selectedTmcLine: { status: AmapTmcStatus; width?: number; baseZIndex?: number }
+  selectedRouteLine: { color: string; width?: number; baseZIndex?: number }
   vehicle: {
     src: string
     rotation: number

@@ -1,0 +1,2 @@
+patchedDependencies:
+  undici@8.12.1: patches/undici@8.12.1.patch

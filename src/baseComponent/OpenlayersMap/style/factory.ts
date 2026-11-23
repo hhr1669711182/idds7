@@ -92,10 +92,15 @@ export const createRouteLineStyle = (color: string, width = 6): Style[] => [
 export const createTmcLineStyle = (status: AmapTmcStatus, width = 6) =>
   createRouteLineStyle(getTmcStatusColor(status), width)
 
-/** 高亮外线与路况内线共用同一几何，避免蓝线露出为填充。 */
-const createSelectedRouteOutlineStyle = (width = 6): Style[] => [
+/**
+ * 高亮三层结构：荧光外晕（+10w）→ 主题强调内线（+4w）→ 内芯（原宽）。
+ * 共用同一几何，避免外线漏出为填充。
+ * baseZIndex 供调用方按所在图层排布（默认 100，与既有调派侧调用保持零变化；
+ * 路径规划侧传 0，让方向箭头 z20 仍在线层之上）。
+ */
+const createSelectedRouteOutlineStyle = (width = 6, baseZIndex = 100): Style[] => [
   new Style({
-    zIndex: 100,
+    zIndex: baseZIndex,
     stroke: new Stroke({
       color: SELECTED_ROUTE_OUTER_COLOR,
       width: width + 10,
@@ -104,7 +109,7 @@ const createSelectedRouteOutlineStyle = (width = 6): Style[] => [
     }),
   }),
   new Style({
-    zIndex: 101,
+    zIndex: baseZIndex + 1,
     stroke: new Stroke({
       color: getSelectedRouteInnerColor(),
       width: width + 4,
@@ -115,12 +120,29 @@ const createSelectedRouteOutlineStyle = (width = 6): Style[] => [
 ]
 
 /** 先绘制荧光蓝外描边，再用原路况内线覆盖中心，仅保留两侧蓝边。 */
-export const createSelectedTmcLineStyle = (status: AmapTmcStatus, width = 6): Style[] => [
-  ...createSelectedRouteOutlineStyle(width),
+export const createSelectedTmcLineStyle = (status: AmapTmcStatus, width = 6, baseZIndex = 100): Style[] => [
+  ...createSelectedRouteOutlineStyle(width, baseZIndex),
   new Style({
-    zIndex: 102,
+    zIndex: baseZIndex + 2,
     stroke: new Stroke({
       color: getTmcStatusColor(status),
+      width,
+      lineCap: 'round',
+      lineJoin: 'round',
+    }),
+  }),
+]
+
+/**
+ * 无路况的选中路线高亮：三层结构与 tmc 版一致，内芯用路线主色
+ * （避免误用路况配色——无路况时 unknown 灰会削弱高亮辨识度）。
+ */
+export const createSelectedRouteLineStyle = (color: string, width = 6, baseZIndex = 100): Style[] => [
+  ...createSelectedRouteOutlineStyle(width, baseZIndex),
+  new Style({
+    zIndex: baseZIndex + 2,
+    stroke: new Stroke({
+      color,
       width,
       lineCap: 'round',
       lineJoin: 'round',

@@ -38,6 +38,7 @@ dist-lib
 *.agnes*
 *.hermes*
 mds/hhr*
+docs/es*
 skills*
 .env.local
 !.env.local.example

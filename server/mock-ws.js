@@ -271,5 +271,6 @@ wss.on('connection', (ws, kind) => {
 server.on('error', error => { console.error(error.message); process.exit(1); });
 server.listen(Number(process.env.PORT || 18080), process.env.HOST || '127.0.0.1', () => {
   console.log(`mock 数据中心：${getActiveRegionKey()}（${region.name}，adcode=${region.adcode}，center=${region.center}，plate=${region.platePrefix}）`);
-  console.log(`WS 测试控制台：http://localhost:${server.address().port}/__test/`);
+  console.log(`单元测试控制台：http://localhost:${server.address().port}/__test/`);
+  console.log(`自动化流程测试控制台：http://localhost:${server.address().port}/test-ui/`);
 });

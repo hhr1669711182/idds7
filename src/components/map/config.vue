@@ -167,7 +167,7 @@ import {
 } from "@/config/mapConfig.ts";
 
 type SliderKey = "minZoom" | "maxZoom" | "alarmZoom";
-type SwitchKey = Exclude<keyof FeatureSettings, SliderKey | "bufferKm" | "mapMode">;
+type SwitchKey = Exclude<keyof FeatureSettings, SliderKey | "bufferKm" | "mapMode" | "viewLimitMode" | "viewLimitExtent">;
 type FeatureValue = FeatureSettings[keyof FeatureSettings];
 
 type SliderField = {
@@ -247,6 +247,7 @@ const featureFieldGroups: FeatureGroup[] = [
       { kind: "switch", key: "showEagleEye", label: "鹰眼" },
       { kind: "switch", key: "showCompass", label: "指北针" },
       { kind: "switch", key: "showScaleLine", label: "比例尺" },
+      { kind: "switch", key: "showViewLimit", label: "限制视图" },
     ],
   },
   {

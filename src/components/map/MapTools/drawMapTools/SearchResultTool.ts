@@ -20,9 +20,13 @@ import {
   createRouteLineFeature,
   createRouteOverlayLayer,
   createRouteTmcFeatures,
-  dimRouteStyle,
   projectCoords,
 } from '@/baseComponent/tools/routeBase'
+import {
+  createSelectedRouteLineStyle,
+  createSelectedTmcLineStyle,
+} from '@/baseComponent/OpenlayersMap/style'
+import { normalizeTmcLevel } from '@/baseComponent/amap/routeCongestion'
 import { buildRouteAnalysis } from '@/baseComponent/tools/routeAnalysis'
 import type { RouteAnalysisDTO, RoutePlanOption } from '@/types/routeAnalysis'
 import type { LngLat } from '@/utils/coordTransform'
@@ -391,11 +395,19 @@ export class SearchResultTool {
           feature.setId(`search_route_option_${option.index}_${index}`)
           feature.set('routePlanIndex', option.index)
           feature.set('routeAlternative', alternative)
-          const style = new Style({
-            stroke: new Stroke({ color: congestionColor(option.tmcs[index]?.status ?? ''), width: 7 }),
-            zIndex: 1,
-          })
-          feature.setStyle(alternative ? dimRouteStyle(style) : style)
+          const status = normalizeTmcLevel(feature.get('tmcStatus') ?? '')
+          if (alternative) {
+            // 备选：单层线，路况配色，zIndex 1
+            feature.setStyle(
+              new Style({
+                stroke: new Stroke({ color: congestionColor(status), width: 7 }),
+                zIndex: 1,
+              }),
+            )
+          } else {
+            // 选中：底座三层高亮（荧光外晕+强调内线+路况内芯），z0 起落
+            feature.setStyle(createSelectedTmcLineStyle(status, 7, 0))
+          }
         })
         tmcFeatures.forEach((feature) => source?.addFeature(feature))
       } else {
@@ -403,11 +415,13 @@ export class SearchResultTool {
         feature.setId(`search_route_option_${option.index}_0`)
         feature.set('routePlanIndex', option.index)
         feature.set('routeAlternative', alternative)
-        const style = new Style({
-          stroke: new Stroke({ color: themeAccent(ROUTE_LINE_COLOR), width: 7 }),
-          zIndex: 1,
-        })
-        feature.setStyle(alternative ? dimRouteStyle(style) : style)
+        if (alternative) {
+          // 备选：单层线，路线主色
+          feature.setStyle(this.routeLineStyle())
+        } else {
+          // 选中：底座三层高亮（无路况版）
+          feature.setStyle(createSelectedRouteLineStyle(themeAccent(ROUTE_LINE_COLOR), 7, 0))
+        }
         source?.addFeature(feature)
       }
 

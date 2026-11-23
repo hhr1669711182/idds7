@@ -202,8 +202,8 @@ describe('components/map/routePlanPanel 路径规划面板', () => {
     expect(cards).toHaveLength(2)
     expect(cards[0].find('.rp-option-index').text()).toBe('方案1')
     expect(cards[1].find('.rp-option-index').text()).toBe('方案2')
-    // 次栏指标
-    expect(cards[0].find('.rp-option-meta').text()).toContain('6.35')
+    // 次栏指标（展示排序后：时长最短 6154m/999s 的方案排首位 → 6.15）
+    expect(cards[0].find('.rp-option-meta').text()).toContain('6.15')
     expect(cards[0].find('.rp-option-meta').text()).toContain('红绿灯3个')
   })
 

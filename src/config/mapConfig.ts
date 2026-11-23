@@ -62,7 +62,16 @@ export interface FeatureSettings {
   queryCustomPoi: boolean
   showCaseClosedStyle: boolean
   showUavTrack: boolean
+  /** 限制视图范围工具（唤醒 useExtent，越界拉回） */
+  showViewLimit: boolean
+  /** 限制视图模式：flex=moveend 拉回 / fixed=持续约束 */
+  viewLimitMode: 'flex' | 'fixed'
+  /** 限制范围（WGS84 [minLng, minLat, maxLng, maxLat]）；useExtent 内部投影到 3857 */
+  viewLimitExtent: number[]
 }
+
+/** 默认限制范围：中国大陆 WGS84（东经 73~135、北纬 18~54）。 */
+export const DEFAULT_VIEW_LIMIT_EXTENT: number[] = [73, 18, 135, 54]
 
 /** FeatureSettings 的布尔展示键（模式 overlay 只 mask 这些键；数值/非布尔键不参与） */
 export type FeatureBoolKey = {
@@ -102,6 +111,9 @@ export const DEFAULT_FEATURE_SETTINGS: FeatureSettings = {
   queryCustomPoi: true,
   showCaseClosedStyle: true,
   showUavTrack: true,
+  showViewLimit: false,
+  viewLimitMode: 'flex',
+  viewLimitExtent: [...DEFAULT_VIEW_LIMIT_EXTENT],
 }
 
 export interface MapLayerResource extends LayerConfig {
@@ -244,6 +256,16 @@ export const normalizeMapConfig = (payload: MapConfigPayload): MapConfigPayload 
   next.feature.minZoom = clamp(next.feature.minZoom, FEATURE_ZOOM_LIMITS.minZoom.min, FEATURE_ZOOM_LIMITS.minZoom.max)
   next.feature.maxZoom = clamp(next.feature.maxZoom, FEATURE_ZOOM_LIMITS.maxZoom.min, FEATURE_ZOOM_LIMITS.maxZoom.max)
   next.feature.alarmZoom = clamp(next.feature.alarmZoom, next.feature.minZoom, next.feature.maxZoom)
+  // 视图限制三字段兜底（向后兼容：旧 localStorage 数据缺失/非法时回默认全国）
+  next.feature.showViewLimit = typeof next.feature.showViewLimit === 'boolean' ? next.feature.showViewLimit : false
+  next.feature.viewLimitMode = next.feature.viewLimitMode === 'fixed' ? 'fixed' : 'flex'
+  const viewLimitExtentRaw = next.feature.viewLimitExtent
+  next.feature.viewLimitExtent =
+    Array.isArray(viewLimitExtentRaw) &&
+    viewLimitExtentRaw.length === 4 &&
+    viewLimitExtentRaw.every((n) => Number.isFinite(Number(n)))
+      ? viewLimitExtentRaw.map((n) => Number(n))
+      : [...DEFAULT_VIEW_LIMIT_EXTENT]
   next.layer.groups = buildLayerGroups(next.layer)
 
   return next

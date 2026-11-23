@@ -8,14 +8,75 @@ import {
 } from '@/types/search'
 import { getSearchViewOptions, getLayerNameMap, runSearch, searchGisResources, searchAmapAddress } from '@/apis/searchQuery'
 import { useSearchPanelStore } from '@/store/useSearchPanelStore'
+import { amapApi } from '@/apis/amap'
 
 /** 资源检索分页每页大小（WFS 2.0.0 count 参数） */
 const RESOURCE_PAGE_SIZE = 100
 
+/** 输入联想候选上限（避免过多候选影响交互；高德 input-tips 单页默认 ≤ 10） */
+const SUGGESTION_LIMIT = 8
+
 const emptyBucket = (): SearchResultBucket => ({ items: [], truncated: false, failedLayers: 0 })
+
+/**
+ * 资源检索输入联想候选（高德第三方模糊地址，走 amapApi.inputTips）。
+ * 与 NavPanel 的 el-autocomplete 一致：仅关键词变化触发，聚焦/空输入不请求。
+ */
+export type SearchSuggestionItem = {
+  /** el-autocomplete 展示文本（name + district + address 拼接） */
+  value: string
+  /** POI 名（用于回填输入框与后续查询） */
+  name: string
+  /** 行政/区县名 */
+  district: string
+  /** 详细地址 */
+  address: string
+  /** 行政区划码 */
+  adcode: string
+  /** 经纬度 [lng, lat]（WGS84；代理已转换，前端不再纠偏） */
+  location: [number, number] | null
+}
 
 export function useSearchActions() {
   const store = useSearchPanelStore()
+
+  /**
+   * 高德输入提示：仅在用户输入了非空关键词时请求；空/异常回 []。
+   * 采用 el-autocomplete 的回调模式（返回 void，结果经 callback 交付）；
+   * debounce 由 el-autocomplete 的 `debounce` 属性承担（默认 300ms），本方法不再叠加。
+   */
+  const fetchSuggestions = (queryString: string, callback: (items: SearchSuggestionItem[]) => void): void => {
+    const keyword = (queryString ?? '').trim()
+    if (!keyword) {
+      callback([])
+      return
+    }
+    amapApi
+      .inputTips({ keywords: keyword, cityLimit: true })
+      .then((response) => {
+        const features = Array.isArray(response?.features) ? response.features : []
+        const items: SearchSuggestionItem[] = features
+          .slice(0, SUGGESTION_LIMIT)
+          .map((feature) => {
+            const p = feature?.properties
+            const coords = feature?.geometry?.coordinates
+            const location: [number, number] | null =
+              Array.isArray(coords) && Number.isFinite(Number(coords[0])) && Number.isFinite(Number(coords[1]))
+                ? [Number(coords[0]), Number(coords[1])]
+                : null
+            const name = String(p?.name ?? '').trim()
+            const district = String(p?.district ?? '').trim()
+            const address = String(p?.address ?? '').trim()
+            const adcode = String(p?.adcode ?? '').trim()
+            const value = [name, district, address].filter(Boolean).join(' ')
+            if (!value) return null
+            return { value, name, district, address, adcode, location }
+          })
+          .filter((item): item is SearchSuggestionItem => item !== null)
+        callback(items)
+      })
+      .catch(() => callback([]))
+  }
 
   /** 视图下拉可选项：name 仅展示，id 为唯一数据依据 */
   const viewOptions = computed<SearchViewOption[]>(() => getSearchViewOptions())
@@ -167,5 +228,5 @@ export function useSearchActions() {
     }
   }
 
-  return { viewOptions, runKeywordSearch, runViewSearch, runCircleSearch, loadMoreResource }
+  return { viewOptions, fetchSuggestions, runKeywordSearch, runViewSearch, runCircleSearch, loadMoreResource }
 }

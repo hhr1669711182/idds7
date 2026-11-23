@@ -13,8 +13,9 @@ import { ScaleLine, OverviewMap } from "ol/control";
 import { readScaleLineUnit } from "@/config/scaleLine.ts";
 // import { KeyboardPan } from "ol/interaction";
 import { FeatureClickQuery, getOrCreateSharedFeatureClickQuery, releaseSharedFeatureClickQuery } from "./FeatureClickQuery.ts";
-// 限制视图范围 要保留 lint检查不清除
-// import { useExtent } from "@/components/map/MapTools/commonTools/useExtent.ts";
+// 限制视图范围工具（唤醒后由 feature.showViewLimit 门控）
+import { useExtent, type UseExtentResult } from "@/components/map/MapTools/commonTools/useExtent.ts";
+import type { Extent } from "ol/extent";
 import { GOOGLE_LAYER, TEMP_FRONTEND_LAYER_IDS, VECTOR_LAYER } from "./layers.ts";
 import { useBaseMapLayer } from "./useBaseMapLayer.ts";
 import { TrafficTools } from "@/components/map/MapTools";
@@ -105,6 +106,10 @@ let fireManager: any = null;
 let alarmOverlayManager: any = null;
 let jrAlarmManager: any = null;
 let weatherRingController: UnclosedWeatherRingController | null = null;
+/** 限制视图范围工具实例（由 feature.showViewLimit 门控；initMap 创建，cleanup 销毁） */
+let extentCtrl: UseExtentResult | null = null;
+/** 限制视图当前生效模式（useExtent 的监听在创建时固化，模式变化需重建实例） */
+let extentCtrlMode: 'flex' | 'fixed' = 'flex';
 let featureClickQuery: FeatureClickQuery | null = null;
 let detachBusinessMap: (() => void) | null = null;
 let genericCtrl: GenericController | null = null;
@@ -219,6 +224,35 @@ watch(
   syncConfiguredControls,
 );
 
+/** 限制视图范围：门控开关 + 模式变化时重建 useExtent 实例（监听在创建时按模式固化） */
+const applyViewLimit = () => {
+  const m = map;
+  if (!m) return;
+  const feature = mapConfigStore.feature;
+  if (!feature.showViewLimit) {
+    extentCtrl?.destroy();
+    extentCtrl = null;
+    return;
+  }
+  const [minLng, minLat, maxLng, maxLat] = feature.viewLimitExtent;
+  // store 中为 WGS84 [minLng,minLat,maxLng,maxLat]，useExtent 内部做 4326→3857 投影
+  const extent: Extent = [minLng, minLat, maxLng, maxLat];
+  const mode = feature.viewLimitMode;
+  // 模式变化需重建（useExtent 的 moveend / center / resolution 监听在创建时按 mode 绑定）
+  if (extentCtrl && extentCtrlMode === mode) {
+    extentCtrl.setExtent(extent);
+    return;
+  }
+  extentCtrl?.destroy();
+  extentCtrlMode = mode;
+  extentCtrl = useExtent(m, extent, { mode, enabled: true });
+};
+watch(
+  () => [mapConfigStore.feature.showViewLimit, mapConfigStore.feature.viewLimitMode, mapConfigStore.feature.viewLimitExtent],
+  applyViewLimit,
+  { deep: true },
+);
+
 const addLayer = (id: string, visible?: boolean) => gisBaseMap.addLayer(id, visible);
 
 const removeLayer = (id: string) => gisBaseMap.removeLayer(id);
@@ -286,10 +320,8 @@ const initMap = async () => {
   await startup.ready;
   if (disposed) return;
 
-    // TODO: 使用注册中心 接收源（服务|辖区围栏around|机构围栏around|客户区划围栏around）extent变化
-    // const extent = map.getView().calculateExtent(map.getSize());
-    // const extent = [113.713367, 22.4543543, 114.633333, 22.8667432];  // 临时限制
-    // useExtent(map, extent)
+  // 限制视图范围：按功能配置门控唤醒（feature.showViewLimit），未启用则不创建工具
+  applyViewLimit();
 
   // 全量预注册wms图层（需要预处理时开启）
   // layersStore.layerConfigs.forEach(({ id }) => {
@@ -497,6 +529,9 @@ const cleanup = () => {
   jrAlarmManager?.destroy();
   weatherRingController?.destroy();
   weatherRingController = null;
+  // 限制视图工具：解绑 moveend / center / resolution 监听
+  extentCtrl?.destroy();
+  extentCtrl = null;
   carManager?.destroy();
   ssrkManager?.destroy();
   ssrkManager = null;

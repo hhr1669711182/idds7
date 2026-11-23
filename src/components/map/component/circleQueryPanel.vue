@@ -42,7 +42,7 @@ const {
 } = storeToRefs(searchStore);
 
 // 检索 API 调用（从 composable 拿，store 只管状态）
-const { viewOptions, runKeywordSearch, runViewSearch, runCircleSearch, loadMoreResource } = useSearchActions();
+const { viewOptions, fetchSuggestions, runKeywordSearch, runViewSearch, runCircleSearch, loadMoreResource } = useSearchActions();
 
 // 列表滚动容器引用（挂 @scroll 触发资源分页加载）
 const cqListRef = ref<HTMLDivElement | null>(null);
@@ -267,6 +267,19 @@ const onQueryCoordinate = async (lngLat: [number, number]) => {
   }
 };
 
+/** 输入联想候选变化：有联想输入时收起视图下拉，避免两个下拉同时弹出 */
+const onSuggestInput = () => {
+  viewSelectVisible.value = false;
+};
+
+/** 选中联想候选：回填 POI 名并直接发起检索（第三方模糊地址，非 GIS 库） */
+const onSelectSuggestion = (item: { name?: string; value?: string }) => {
+  const text = (item?.name ?? item?.value ?? "").trim();
+  if (!text) return;
+  queryText.value = text;
+  void onQuery();
+};
+
 const onQuery = async () => {
   const tool = ensureResultTool();
   if (!tool) return;
@@ -404,12 +417,16 @@ onBeforeUnmount(() => {
             <use xlink:href="#icon-route"></use>
           </svg>
         </span>
-        <el-input
+        <el-autocomplete
           v-model="queryText"
           class="input-el"
           placeholder="输入关键词查询地址 / 消防资源"
+          :fetch-suggestions="fetchSuggestions"
+          :trigger-on-focus="false"
           clearable
           @focus="onFocusInput"
+          @input="onSuggestInput"
+          @select="onSelectSuggestion"
         />
         <el-button class="input-search-btn" :loading="loading" :disabled="!queryText.trim()" @click.stop="onQuery">
           查询

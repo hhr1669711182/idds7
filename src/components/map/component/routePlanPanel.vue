@@ -16,7 +16,7 @@ import { appEnv } from "@/config/env";
 import { SearchResultTool } from "../MapTools/drawMapTools/SearchResultTool";
 import type { RouteVehicleType } from "@/types/search";
 import { createRouteContinuityWorker } from "@/hooks/useRouteContinuityWorker";
-import { buildRoutePlanOptions, ROUTE_OPTION_LABELS } from "@/baseComponent/tools/routePlanOptions";
+import { buildRoutePlanOptions, sortRoutePlanOptionsForDisplay, ROUTE_OPTION_LABELS } from "@/baseComponent/tools/routePlanOptions";
 import { summarizeTmc } from "@/baseComponent/amap/routeCongestion";
 import type { RoutePlanOption, RouteStepInstruction } from "@/types/routeAnalysis";
 
@@ -382,13 +382,16 @@ const planRoute = async () => {
       });
     }
 
-    routeOptions.value = prepared;
+    // 展示排序：命中档位（tag）越多的方案越靠前；同 tag 数按通行时长升序。
+    // 排序后 index/id 重编，「方案1」即 tag 最多的首选方案，默认高亮它。
+    const sorted = sortRoutePlanOptionsForDisplay(prepared);
+    routeOptions.value = sorted;
     activeStep.value = null;
     selectedOptionIndex.value = 0;
     optionExpanded.value = {};
     tmcExpanded.value = {};
-    const selected = prepared[0];
-    tool.showRouteOptions(prepared, 0);
+    const selected = sorted[0];
+    tool.showRouteOptions(sorted, 0);
     tool.fitPoints(selected.coords);
     routeSummary.value = {
       distance: selected.distanceMeters,
@@ -644,9 +647,10 @@ onBeforeUnmount(() => {
             v-for="option in routeOptions"
             :key="option.id"
             :class="['rp-option', { selected: isOptionSelected(option) }]"
+            @click="onSelectOption(option)"
           >
             <!-- 顶栏：方案序号 + 档位标签 + 折叠箭头 -->
-            <div class="rp-option-head" @click="onSelectOption(option)">
+            <div class="rp-option-head">
               <span class="rp-option-index">方案{{ option.index + 1 }}</span>
               <span class="rp-option-tags">
                 <span
@@ -697,7 +701,7 @@ onBeforeUnmount(() => {
 
               <!-- 路况分布：默认收起，标题行直接给出畅通率 -->
               <div class="rp-tmc">
-                <div class="rp-tmc-head" @click="onToggleTmc(option)">
+                <div class="rp-tmc-head" @click.stop="onToggleTmc(option)">
                   <span class="rp-tmc-title">路况分布</span>
                   <span class="rp-tmc-summary">
                     畅通率 {{ option.coverage > 0 ? formatRatio(option.smoothRatio) : '暂无数据' }}
@@ -754,7 +758,7 @@ onBeforeUnmount(() => {
                   role="button"
                   tabindex="0"
                   title="定位到该路段"
-                  @click="onSelectStep(option, step)"
+                  @click.stop="onSelectStep(option, step)"
                   @keydown.enter="onSelectStep(option, step)"
                   @keydown.space.prevent="onSelectStep(option, step)"
                 >

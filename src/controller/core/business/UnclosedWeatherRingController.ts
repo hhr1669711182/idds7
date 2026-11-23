@@ -26,19 +26,6 @@ const MAX_CONCURRENT = 6
 const CIRCLE_Z_INDEX = 54
 const MIN_ZOOM = 12
 
-/** 天气描述 → emoji 图标映射 */
-const weatherWeatherIcon = (desc: string): string => {
-  if (!desc) return '🌤️'
-  if (desc.includes('晴')) return '☀️'
-  if (desc.includes('多云')) return '🌤️'
-  if (desc.includes('阴')) return '☁️'
-  if (desc.includes('雨')) return '🌧️'
-  if (desc.includes('雪')) return '🌨️'
-  if (desc.includes('雷')) return '⛈️'
-  if (desc.includes('雾') || desc.includes('霾')) return '🌫️'
-  return '🌤️'
-}
-
 /**
  * 根据 WFS 反查结果决定天气查询 adcode：
  * - addrlevel_id < 4（省/市/区县）：直接用 area_id
@@ -366,11 +353,21 @@ export class UnclosedWeatherRingController {
       'gap:4px',
     ].join(';')
 
-    // 天气图标（emoji 映射）
-    const iconEl = document.createElement('div')
-    iconEl.textContent = weatherWeatherIcon(weather.weather)
-    iconEl.style.cssText = 'font-size:32px;line-height:1;'
-    left.appendChild(iconEl)
+    // 天气图标：命中全局 svg sprite（src/assets/icons-svg/weather-svg/），
+    // 与 WeatherPanel 的 svg-icon:weather-svg-${天气名} 同一套；命中不到则不展示图标。
+    const descText = weather.weather?.trim()
+    if (descText) {
+      const SVG_NS = 'http://www.w3.org/2000/svg'
+      const XLINK_NS = 'http://www.w3.org/1999/xlink'
+      const iconEl = document.createElementNS(SVG_NS, 'svg')
+      iconEl.setAttribute('viewBox', '0 0 1024 1024')
+      iconEl.setAttribute('aria-hidden', 'true')
+      iconEl.style.cssText = 'width:32px;height:32px;flex:none;'
+      const useEl = document.createElementNS(SVG_NS, 'use')
+      useEl.setAttributeNS(XLINK_NS, 'xlink:href', `#icon-weather-svg-${descText}`)
+      iconEl.appendChild(useEl)
+      left.appendChild(iconEl)
+    }
 
     // 天气描述
     const descEl = document.createElement('div')
@@ -406,8 +403,9 @@ export class UnclosedWeatherRingController {
 
     const overlay = new Overlay({
       element: el,
-      positioning: 'center-right',
-      offset: [16, -8],
+      // bottom-left：卡片左下角对齐锚点，整体落在点位的右上方，不遮挡图标
+      positioning: 'bottom-left',
+      offset: [4, -28],
       stopEvent: false,
     })
     overlay.setPosition(fromLonLat([lng, lat]))
