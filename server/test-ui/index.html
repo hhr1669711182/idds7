@@ -75,6 +75,23 @@
       <label><input type="checkbox" id="full" /> 全流程（含 extra 步骤）</label>
     </div>
     <div class="row">
+      <label>环境</label>
+      <select id="mockEnv"><option value="加载中…">加载中…</option></select>
+      <span id="mockEnvStatus" style="font-size:12px;color:var(--dim)"></span>
+    </div>
+    <div class="row">
+      <label>局部模拟</label>
+      <span id="mockGroups"></span>
+      <a href="#" id="mockGroupsAll" style="font-size:12px;margin-left:8px">全选</a>
+      <a href="#" id="mockGroupsNone" style="font-size:12px;margin-left:4px">全不选</a>
+      <span style="font-size:12px;color:var(--dim);margin-left:8px">取消勾选 = 该接口透传真实后端</span>
+    </div>
+    <div class="row">
+      <label>BFF mock 数据集</label>
+      <select id="mockDataset"><option value="加载中…">加载中…</option></select>
+      <span id="mockDatasetStatus" style="font-size:12px;color:var(--dim)"></span>
+    </div>
+    <div class="row">
       <label>目标身份（userId / sessionState）</label>
       <input type="text" id="userId" placeholder="留空 = 默认 gis-test-user" style="width:180px" />
       <input type="text" id="sessionState" placeholder="留空 = 默认 gis-test-session" style="width:200px" />

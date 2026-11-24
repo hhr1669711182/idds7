@@ -58,6 +58,8 @@ declare module 'vue' {
     FeatureEditorPanel: typeof import('./../components/MarkDraw/form/FeatureEditorPanel.vue')['default']
     FeatureListPanel: typeof import('./../components/MarkDraw/view/FeatureListPanel.vue')['default']
     FontLoader: typeof import('./../components/three/fontLoader.vue')['default']
+    GeoPickerSurface: typeof import('./../components/GeoPicker/GeoPickerSurface.vue')['default']
+    GeoPickerToolbar: typeof import('./../components/GeoPicker/GeoPickerToolbar.vue')['default']
     GridControl: typeof import('./../components/map/dragPanel/gridControl.vue')['default']
     Icon: typeof import('./../components/Icon/src/Icon.vue')['default']
     LayerHierarchyPanel: typeof import('./../components/MarkDraw/view/LayerHierarchyPanel.vue')['default']

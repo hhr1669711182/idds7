@@ -165,8 +165,10 @@ function recordState(report, statePhase, mode, stateAlarm, incidentId) {
  * @returns {{entry: (object|null), warn: (string|null)}}
  */
 function preGateState(def0, report, incidentId) {
-  // 非业务步：仅显式 statePhase/stateAlarm 时做纯状态迁移
-  if (def0.type === 'connect' || def0.type === 'wait' || def0.type === 'geoassert') {
+  // 非业务步：仅显式 statePhase/stateAlarm 时做纯状态迁移。
+  // sharedState 自行在执行分支写携带 lifecycleStage 的 stateLog，这里不预先推导门禁。
+  // mockDataset 只切换 mock 内存状态，不写门禁、不推消息。
+  if (def0.type === 'connect' || def0.type === 'wait' || def0.type === 'geoassert' || def0.type === 'sharedState' || def0.type === 'mockDataset') {
     if (def0.statePhase !== undefined || def0.stateAlarm !== undefined) {
       const phase = def0.statePhase;
       const alarm = def0.stateAlarm !== undefined ? def0.stateAlarm : (phase ? null : undefined);
@@ -313,6 +315,35 @@ async function runScenario(def, opts, control) {
         if (def0.afterMs) await sleep(def0.afterMs);
         step.status = 'PASS';
         step.detail = `注入 ${vehicles.length} 辆模拟派车（seat-shared-state-mock → 多方案上图 + 沿路动画）`;
+      } else if (def0.type === 'sharedState') {
+        // 写共享态字段（如 currentAlarm.lifecycleStage）→ test-ui 轮询落 localStorage → GIS 页
+        // storage 事件 → useUserStore.applySharedState → 前端 watcher(flush:sync) 触发。
+        // 绕过 messageStagePolicy 门禁时序：不推 WS，靠共享态热更新驱动终态链路。
+        // 强制携带 phase=inquiry + alarm=incidentId，保证 currentAlarm 存在（watcher 依赖 incidentId）。
+        report.stateLog.push({
+          at: new Date().toISOString(),
+          phase: 'inquiry',
+          mode: def0.mode,
+          alarm: ids.incidentId,
+          _stage: 'dispatch',
+          lifecycleStage: def0.lifecycleStage,
+        });
+        if (def0.afterMs) await sleep(def0.afterMs);
+        step.status = 'PASS';
+        step.detail = `写共享态 lifecycleStage=${def0.lifecycleStage}（currentAlarm 同步 incidentId=${ids.incidentId}，前端 watcher 触发）`;
+      } else if (def0.type === 'mockDataset') {
+        // 切换 BFF mock 数据集：进程内调 mock-ws.js 暴露的控制句柄，handleBffMock 按数据集返回不同数据。
+        // 用于全流程（extra）造假数据，测空态降级 / 接口失败等。非 mock 进程下 WARN 不阻塞。
+        const ctrl = globalThis.__idsMockControl;
+        if (ctrl && typeof ctrl.setBffMockDataset === 'function') {
+          ctrl.setBffMockDataset(def0.dataset);
+          step.status = 'PASS';
+          step.detail = `BFF mock 数据集 → ${def0.dataset}`;
+        } else {
+          step.status = 'WARN';
+          step.detail = `BFF mock 控制不可用（非 mock-ws 进程），跳过数据集切换：${def0.dataset}`;
+        }
+        if (def0.afterMs) await sleep(def0.afterMs);
       } else if (def0.type === 'wait') {
         await sleep(def0.ms ?? 1000);
         step.status = 'PASS';

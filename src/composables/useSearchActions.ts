@@ -9,6 +9,7 @@ import {
 import { getSearchViewOptions, getLayerNameMap, runSearch, searchGisResources, searchAmapAddress } from '@/apis/searchQuery'
 import { useSearchPanelStore } from '@/store/useSearchPanelStore'
 import { amapApi } from '@/apis/amap'
+import { appEnv } from '@/config/env'
 
 /** 资源检索分页每页大小（WFS 2.0.0 count 参数） */
 const RESOURCE_PAGE_SIZE = 100
@@ -52,7 +53,7 @@ export function useSearchActions() {
       return
     }
     amapApi
-      .inputTips({ keywords: keyword, cityLimit: true })
+      .inputTips({ keywords: keyword, city: appEnv.mapAdcode, cityLimit: true })
       .then((response) => {
         const features = Array.isArray(response?.features) ? response.features : []
         const items: SearchSuggestionItem[] = features

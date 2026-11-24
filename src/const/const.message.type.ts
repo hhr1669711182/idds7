@@ -165,6 +165,15 @@ export const MESSAGE_EVENT_KEY = {
   ADDRESS_ROBOT_GIS_SEARCH: 'address_robot.gis_search', // GIS地址机器人数据接收
   // ADDRESS_ROBOT_GIS_CANDIDATES: 'address_robot.gis_candidates',
   // ADDRESS_ROBOT_CLEAR: 'address_robot.clear',
+
+  // GeoPicker 对外选点/选辖区（iframe 嵌入 + postMessage）
+  GEO_PICKER_READY: 'geoPicker.ready', // 子→宿主：地图就绪
+  GEO_PICKER_POINT: 'geoPicker.pointPicked', // 子→宿主：画点结果回传
+  GEO_PICKER_JURISDICTION: 'geoPicker.jurisdictionPicked', // 子→宿主：画辖区结果回传
+  GEO_PICKER_CLEARED: 'geoPicker.cleared', // 子→宿主：已清除当前绘制
+  GEO_PICKER_LOCATE: 'geoPicker.locate', // 宿主→子：飞到指定经纬度
+  GEO_PICKER_CLEAR: 'geoPicker.clear', // 宿主→子：清空当前绘制
+  GEO_PICKER_THEME: 'geoPicker.theme', // 宿主→子：切换日间/夜间主题（data: { theme: 'day' | 'night' }）
 } as const
 
 export type MessageEventKey = (typeof MESSAGE_EVENT_KEY)[keyof typeof MESSAGE_EVENT_KEY]

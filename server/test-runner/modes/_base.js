@@ -73,6 +73,32 @@ const withMode = (s, modeStr) => ({ ...s, mode: modeStr });
 const mockVehicles = (id, name, vehicles, { afterMs = 1500 } = {}) =>
   step(id, name, 'mockVehicles', { vehicles, afterMs, options: {} });
 
+/**
+ * 写共享态 currentAlarm.lifecycleStage（sharedState）→ 引擎记 stateLog.lifecycleStage
+ * → test-ui 轮询写 seat-shared-state.currentAlarm.lifecycleStage → GIS 页 storage 事件
+ * → useUserStore.applySharedState → useDispatchEntangled watcher(onLifecycleStageChange, flush:sync) 触发。
+ *
+ * 为什么不走 WS 终态消息：引擎 preGateState 写 stateLog 后立即推 WS，但 test-ui 需 ~250ms 轮询
+ * 才落 localStorage、GIS 页还要消化 storage 事件，消息到达时门禁 stage 未就绪会被 messageStagePolicy
+ * 静默丢弃。共享态 watcher 链路绕过该时序，storage 事件后 sync 触发 markTerminal + beginVehicleTrack。
+ *
+ * 引擎分支会强制携带 phase=inquiry + alarm=incidentId，保证 currentAlarm 存在
+ * （watcher 依赖 currentAlarm.incidentId + currentAlarm.lifecycleStage）。
+ * @param {string} value lifecycleStage 目标值，通常 'closed'（触发历史轨迹）；空串撤销终态标记。
+ */
+const setLifecycleStage = (id, name, value, { afterMs = 800 } = {}) =>
+  step(id, name, 'sharedState', { lifecycleStage: value, afterMs });
+
+/**
+ * 切换 BFF mock 数据集（mockDataset）→ 引擎调用 globalThis.__idsMockControl.setBffMockDataset
+ * → mock-ws.js handleBffMock 按数据集返回不同数据（withTrack/single/noVehicles/noTrack/serviceError）。
+ * 用于在全流程（extra）中造假数据，测试空态降级、接口失败等场景。
+ * 仅 mock-ws.js 进程内有效（test-runner 与 mock-ws 同进程）；非 mock 环境下 step 标记 warn 但不阻塞。
+ * @param {string} dataset 数据集名：withTrack / single / noVehicles / noTrack / serviceError。
+ */
+const setMockDataset = (id, name, dataset, { afterMs = 300 } = {}) =>
+  step(id, name, 'mockDataset', { dataset, afterMs });
+
 const FULL_INCIDENT_STATES = ['CREATED', 'FORMAL_DISPATCHED', 'DISPATCHED', 'ARRIVED', 'OPERATION_COMPLETED', 'RETURNING', 'RETURNED'];
 const CORE_INCIDENT_STATES = ['CREATED', 'FORMAL_DISPATCHED', 'DISPATCHED', 'ARRIVED', 'RETURNED'];
 
@@ -87,6 +113,8 @@ module.exports = {
   carSequence,
   incidentFlow,
   mockVehicles,
+  setLifecycleStage,
+  setMockDataset,
   FULL_INCIDENT_STATES,
   CORE_INCIDENT_STATES,
 };

@@ -11,4 +11,6 @@ export const ROUTE_NAMES = {
   DISPATCH: 'dispatch',
   AMAP_DEMO: 'amapDemo',
   MARK_DRAW: 'markDraw',
+  PICK_POINT: 'pickPoint',
+  PICK_JURISDICTION: 'pickJurisdiction',
 } as const

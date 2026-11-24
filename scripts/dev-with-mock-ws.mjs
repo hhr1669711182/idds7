@@ -95,6 +95,7 @@ const vite = spawnProc('vite', VITE_COMMAND, VITE_ARGS)
 
 console.log(`[dev] mock-ws   → http://127.0.0.1:18080 （测试台 /test-ui/，API /api/test/*）`)
 console.log(`[dev] vite dev  → http://localhost:8888 （mode=${mode}，前端登录即无缝接入本地测试链路）`)
+console.log('[dev:local:test] test-ui   测试台 → http://127.0.0.1:18080/test-ui/ （模式选择 / 环境切换 / 局部模拟 / 打开 GIS）')
 
 let exiting = false
 const cleanup = code => {

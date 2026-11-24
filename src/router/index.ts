@@ -125,6 +125,22 @@ export const staticRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/pickPoint',
+    name: ROUTE_NAMES.PICK_POINT,
+    component: () => import('@/views/pickPoint/index.vue'),
+    meta: {
+      title: '选点',
+    },
+  },
+  {
+    path: '/pickJurisdiction',
+    name: ROUTE_NAMES.PICK_JURISDICTION,
+    component: () => import('@/views/pickJurisdiction/index.vue'),
+    meta: {
+      title: '选辖区',
+    },
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/map',
   },

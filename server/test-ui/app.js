@@ -63,6 +63,14 @@ function applyReportState(report) {
       if (entry.alarm !== undefined) {
         cur.currentAlarm = entry.alarm ? { incidentId: entry.alarm } : null;
       }
+      // sharedState 步：写 currentAlarm.lifecycleStage（受理席终态兜底链路）。
+      // 必须保证 currentAlarm 存在（watcher 依赖 incidentId + lifecycleStage）。
+      if (entry.lifecycleStage !== undefined) {
+        if (!cur.currentAlarm || typeof cur.currentAlarm !== 'object') {
+          cur.currentAlarm = { incidentId: entry.alarm ?? null };
+        }
+        cur.currentAlarm.lifecycleStage = entry.lifecycleStage;
+      }
       cur.updatedAt = Date.now();
       localStorage.setItem('seat-shared-state', JSON.stringify(cur));
       // B+c：stateLog 携带 dispatchVehicles 时写入 seat-shared-state-mock。
@@ -228,6 +236,82 @@ function stopRun() {
   $('stop').disabled = true;
 }
 
+// BFF mock 配置：环境 / 局部模拟分组 / 数据形态（统一走 /__test/api/mock-config）
+const DATASET_LABELS = {
+  withTrack: '正常：2 车 + 轨迹',
+  single: '单车：1 车 + 轨迹',
+  noVehicles: '空态：无出动车辆',
+  noTrack: '空态：有车无轨迹点',
+  serviceError: '降级：接口 500',
+};
+const GROUP_LABELS = {
+  profile: '警情画像',
+  detail: '警情详情',
+  turnoutVehicles: '出动车辆',
+  carTrack: '历史轨迹',
+};
+
+function renderMockConfig(data) {
+  // 环境下拉
+  const envSel = $('mockEnv');
+  if (envSel) {
+    envSel.innerHTML = '';
+    for (const e of data.envs || []) {
+      const opt = document.createElement('option');
+      opt.value = e; opt.textContent = e;
+      envSel.appendChild(opt);
+    }
+    envSel.value = data.env;
+    const st = $('mockEnvStatus');
+    if (st) st.textContent = data.env ? `当前：${data.env}` : '';
+  }
+  // 局部模拟分组复选框（勾选=mock，取消=透传真实后端）
+  const box = $('mockGroups');
+  if (box) {
+    box.innerHTML = '';
+    for (const k of data.groupKeys || []) {
+      const lab = document.createElement('label');
+      lab.style.marginRight = '10px';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.dataset.group = k; cb.checked = !!data.groups?.[k];
+      cb.addEventListener('change', () => updateMockConfig({ groups: { [k]: cb.checked } }));
+      lab.appendChild(cb);
+      lab.appendChild(document.createTextNode(GROUP_LABELS[k] || k));
+      box.appendChild(lab);
+    }
+  }
+  // 数据形态下拉
+  const sel = $('mockDataset');
+  if (sel) {
+    sel.innerHTML = '';
+    for (const d of data.datasets || []) {
+      const opt = document.createElement('option');
+      opt.value = d; opt.textContent = `${d}（${DATASET_LABELS[d] || d}）`;
+      sel.appendChild(opt);
+    }
+    sel.value = data.dataset;
+    const st = $('mockDatasetStatus');
+    if (st) st.textContent = `当前：${data.dataset}（${DATASET_LABELS[data.dataset] || ''}）`;
+  }
+}
+
+async function loadMockConfig() {
+  try {
+    const res = await fetch('/__test/api/mock-config');
+    renderMockConfig(await res.json());
+  } catch { /* 非 mock 环境无此接口，静默忽略 */ }
+}
+async function updateMockConfig(partial) {
+  try {
+    const res = await fetch('/__test/api/mock-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(partial),
+    });
+    renderMockConfig(await res.json());
+  } catch { /* ignore */ }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   $('run').addEventListener('click', runScenario);
   $('stop').addEventListener('click', stopRun);
@@ -235,9 +319,15 @@ document.addEventListener('DOMContentLoaded', () => {
   $('oneClick').addEventListener('click', oneClickConnect);
   $('writeLogin').addEventListener('click', writeLoginState);
   $('openGis').addEventListener('click', openGis);
+  $('mockEnv').addEventListener('change', e => updateMockConfig({ env: e.target.value }));
+  $('mockDataset').addEventListener('change', e => updateMockConfig({ dataset: e.target.value }));
+  const allGroups = () => Object.keys(GROUP_LABELS);
+  $('mockGroupsAll').addEventListener('click', e => { e.preventDefault(); const g = {}; for (const k of allGroups()) g[k] = true; updateMockConfig({ groups: g }); });
+  $('mockGroupsNone').addEventListener('click', e => { e.preventDefault(); const g = {}; for (const k of allGroups()) g[k] = false; updateMockConfig({ groups: g }); });
   loadRegion();
   loadModes();
   loadHistory();
   loadClients();
+  loadMockConfig();
   setInterval(loadClients, 2500);
 });

@@ -1,0 +1,183 @@
+/*
+ * 调色盘 —— 每个主题/预设盘是一组 CSS 变量。
+ *
+ * 切换主题 = 换 data-theme 属性；切换预设盘 = 换 data-palette 属性。
+ * 业务代码只消费 var(--token)，两种切换都无需改业务代码。
+ *
+ * 优先级：:root[data-palette] > :root[data-theme]
+ * 规范见 herness/05-共享上下文/代码样式规范.md
+ */
+
+/* ============================================================
+ * 与主题无关的全局变量（圆角 / 间距）
+ *
+ * 这类值不随主题变化，统一挂在 :root 上，任何调色盘下都能取到。
+ * 切勿只写 Less 变量：否则 var(--radius-md) 取不到值，
+ * 浏览器会回退成 0（圆角直接消失）。
+ * ============================================================ */
+:root {
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+
+  /* 右上角操作簇（主题开关 / 功能配置 / 调色盘）的布局常量。
+     与主题无关，与 tokens.less 同值。天气面板按 --top-actions-cluster-width 让位。 */
+  --top-actions-right: 8px;
+  --top-actions-center: 30px;
+  --top-actions-gap: 10px;
+  --top-actions-size: 30px;
+  --top-actions-switch-width: 50px;
+  --top-actions-switch-height: 40px;
+  --weather-panel-width: 320px;
+  --weather-panel-district-columns: 3;
+  --weather-panel-street-columns: 5;
+  --weather-panel-dropdown-width: 390px;
+
+  /* 交互态兜底：调色盘若未显式覆盖，这里保证 var(--hover-bg) 等永远有值。
+     没有兜底时浏览器会把声明判为 invalid，hover / checked 底色直接消失。 */
+  --hover-bg: color-mix(in srgb, var(--accent-cyan, #22d3ee) 12%, transparent);
+  --hover-border: color-mix(in srgb, var(--accent-cyan, #22d3ee) 45%, transparent);
+  --active-bg: color-mix(in srgb, var(--accent-cyan, #22d3ee) 18%, transparent);
+  --active-border: var(--accent-cyan, #22d3ee);
+  --active-text: var(--accent-cyan, #22d3ee);
+
+  /* 地址机器人抽屉：压在 header 底色之上的前景色。
+     与 tokens.less 同值（双写铁律，check-css-vars.mjs 逐字比对阻断）。 */
+  --addr-robot-header-fg: #ffffff;
+  --addr-robot-header-fg-muted: rgba(255, 255, 255, 0.8);
+  --addr-robot-header-fg-subtle: rgba(255, 255, 255, 0.7);
+  --addr-robot-header-surface: rgba(255, 255, 255, 0.12);
+  --addr-robot-header-surface-hover: rgba(255, 255, 255, 0.18);
+  --addr-robot-header-track: rgba(255, 255, 255, 0.2);
+  --addr-robot-dot: #ffffff;
+  --addr-robot-dot-glow: rgba(255, 255, 255, 0.85);
+}
+
+/* 移动端：窄屏放不下「天气面板 + 三按钮」的完整横排，
+   收窄面板与间距，避免最左侧的主题开关被挤出屏幕（实测 x = -46）。 */
+@media (max-width: 768px) {
+  :root {
+    --top-actions-gap: 6px;
+    --weather-panel-width: 190px;
+  }
+}
+
+/* ---------- 夜间科技盘（默认） ---------- */
+:root[data-theme='NIGHT'] {
+  --accent-cyan: @cyan-500;
+  --accent-cyan-soft: rgba(34, 211, 238, 0.16);
+  --accent-cyan-strong: @cyan-400;
+  --accent-glow: @cyan-glow;
+  --accent-gold: @gold-500;
+  --accent-gold-soft: rgba(251, 191, 36, 0.18);
+
+  --panel-bg: @night-panel;
+  --panel-bg-solid: @night-panel-solid;
+  --panel-border: @night-border;
+  --panel-shadow: @shadow-panel-night;
+
+  --header-bg: @night-header;
+  --header-text: @night-text;
+  --header-border: @night-border;
+
+  --card-bg: @night-card;
+  --card-border: @night-border-soft;
+  --card-shadow: none;
+
+  --card-box-bg: rgba(18, 40, 68, 0.55);
+  --card-box-border: @night-border-soft;
+
+  --widget-bg: @glass-bg-night;
+  --widget-border: @night-border;
+  --widget-text: @night-text-secondary;
+
+  --text-primary: @night-text;
+  --text-secondary: @night-text-secondary;
+  --text-muted: @night-text-muted;
+
+  --hover-bg: rgba(34, 211, 238, 0.12);
+  --hover-border: @cyan-600;
+  --active-bg: rgba(34, 211, 238, 0.18);
+  --active-border: @cyan-500;
+  --active-text: @cyan-300;
+
+  /* 图层工具栏：深色玻璃底 + 主色描边（沿用原设计语言，仅色值走变量） */
+  --toolbar-bg: rgba(16, 26, 43, 0.94);
+  --toolbar-border: rgba(51, 220, 255, 0.35);
+  --toolbar-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  --toolbar-tile-bg: rgba(10, 98, 120, 0.55);
+  --toolbar-tile-border: rgba(51, 220, 255, 0.28);
+  --toolbar-tile-hover-bg: rgba(16, 116, 142, 0.7);
+  --toolbar-tile-hover-border: rgba(51, 220, 255, 0.55);
+  --toolbar-tile-active-bg: rgba(160, 100, 40, 0.55);
+  --toolbar-tile-active-border: rgba(255, 205, 110, 0.55);
+  --toolbar-tile-text: rgba(255, 255, 255, 0.92);
+  --toolbar-tile-active-text: #fff;
+  --toolbar-badge-bg: rgba(255, 165, 35, 0.95);
+
+  /* OpenLayers 原生控件：桥接到 OL10 官方 --ol-* 变量 */
+  --ol-background-color: #0d1929;
+  --ol-foreground-color: @night-text;
+  --ol-accent-background-color: #16304e;
+  --ol-subtle-background-color: rgba(34, 211, 238, 0.18);
+  --ol-subtle-foreground-color: @night-text-secondary;
+  --ol-brand-color: @cyan-500;
+
+  --primary-color: rgba(10, 22, 40, 0.82);
+  --primary-text-color: @night-text;
+  --primary-svg-color: @night-text-secondary;
+  --primary-svg-hover-color: rgba(34, 211, 238, 0.18);
+  --primary-li-bottom-color: @night-border;
+
+  --glass-bg: @glass-bg-night;
+  --glass-blur: 8px;
+  --radius-md: 8px;
+
+  --filter-hue-rotate: 180deg;
+  --filter-invert: 100%;
+  --filter-saturate: 1600%;
+  --filter-brightness: 80%;
+  --filter-contrast: 90%;
+
+  --tag-default-bg: @tag-default-bg;
+  --tag-default-text: @tag-default-text;
+  --tag-default-border: @tag-default-border;
+  --tag-primary-bg: @tag-primary-bg;
+  --tag-primary-text: @tag-primary-text;
+  --tag-primary-border: @tag-primary-border;
+  --tag-success-bg: @tag-success-bg;
+  --tag-success-text: @tag-success-text;
+  --tag-success-border: @tag-success-border;
+  --tag-warning-bg: @tag-warning-bg;
+  --tag-warning-text: @tag-warning-text;
+  --tag-warning-border: @tag-warning-border;
+  --tag-danger-bg: @tag-danger-bg;
+  --tag-danger-text: @tag-danger-text;
+  --tag-danger-border: @tag-danger-border;
+  --tag-info-bg: @tag-info-bg;
+  --tag-info-text: @tag-info-text;
+  --tag-info-border: @tag-info-border;
+
+  /* 地址机器人抽屉头部前景色：夜间 header 底色深，前景保持亮白。 */
+  --addr-robot-header-fg: #ffffff;
+  --addr-robot-header-fg-muted: rgba(255, 255, 255, 0.8);
+  --addr-robot-header-fg-subtle: rgba(255, 255, 255, 0.7);
+  --addr-robot-header-surface: rgba(255, 255, 255, 0.12);
+  --addr-robot-header-surface-hover: rgba(255, 255, 255, 0.18);
+  --addr-robot-header-track: rgba(255, 255, 255, 0.2);
+  --addr-robot-dot: #ffffff;
+  --addr-robot-dot-glow: rgba(255, 255, 255, 0.85);
+
+  /* 模型研判模块配色 */
+  --ma-bg: #0a0e1a;
+  --ma-bg-card: #0000004b;
+  --ma-bg-panel: #1a2236;
+  --ma-bg-deep: #0d1322;
+  --ma-border: #1f2940;
+  --ma-border-light: #2a3556;
+  --ma-orange: 

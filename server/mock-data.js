@@ -12,6 +12,9 @@
 // 浏览器侧（__test/ 静态页）加载的 protocols.js 不引用本模块（保持向后兼容），
 // Node 侧（mock-ws / test-runner）通过 require('./mock-data') 取当前 region。
 
+const path = require('node:path');
+const fs = require('node:fs');
+
 const REGIONS = {
   shenzhen: {
     name: '深圳',
@@ -143,11 +146,186 @@ function getActiveRegion() {
   return REGIONS[getActiveRegionKey()];
 }
 
-/** 当前生效 region 的 4 条车辆轨迹路径 */
+/** 当前生效 region 的 4 条车辆轨迹路径（仅坐标） */
 function getCarPoints() {
   return generateCarPoints(getActiveRegionKey());
 }
 
-const api = { REGIONS, REGION_KEYS, DEFAULT_REGION, CAR_ROUTE_LENGTHS, getActiveRegionKey, getActiveRegion, getCarPoints, generateCarPoints };
+/* ============================================================
+ * 持久化轨迹 JSON 支持（高德接口生成的真实道路轨迹）
+ * ============================================================
+ * 生成方式：pnpm generate:track-mock [--region shenzhen|beijing|guizhou]
+ * 输出文件：server/mock-data/track-<region>.json
+ *
+ * JSON 结构：
+ * {
+ *   "region": "shenzhen",
+ *   "generatedAt": "2026-11-24T08:00:00.000Z",
+ *   "routes": [
+ *     {
+ *       "vehicleIndex": 0,
+ *       "vehicleId": "TEST-CAR-001",
+ *       "plateNumber": "粤B·12345",
+ *       "stationId": "...",
+ *       "stationName": "...",
+ *       "startTime": "2026-11-24 08:30:00",
+ *       "endTime": "2026-11-24 09:00:00",
+ *       "points": [
+ *         { "lng": 113.95, "lat": 22.54, "gpsTime": "2026-11-24 08:30:05", "speedMps": 5.2 },
+ *         ...
+ *       ]
+ *     }
+ *   ]
+ * }
+ */
+
+/** 持久化 JSON 缓存（进程内只读一次） */
+let _persistentCache = null;
+
+/**
+ * 加载当前 region 的持久化轨迹 JSON。
+ * 优先读 server/mock-data/track-<region>.json（由高德接口脚本生成）。
+ * @returns {Array|null} routes 数组，格式见上方注释；不存在或解析失败返回 null
+ */
+function loadPersistentTrack() {
+  const regionKey = getActiveRegionKey();
+  if (_persistentCache && _persistentCache.region === regionKey) {
+    return _persistentCache.routes;
+  }
+  const file = path.join(__dirname, 'mock-data', `track-${regionKey}.json`);
+  try {
+    if (!fs.existsSync(file)) {
+      _persistentCache = { region: regionKey, routes: null };
+      return null;
+    }
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (data.region !== regionKey || !Array.isArray(data.routes) || !data.routes.length) {
+      _persistentCache = { region: regionKey, routes: null };
+      return null;
+    }
+    _persistentCache = { region: regionKey, routes: data.routes };
+    return data.routes;
+  } catch {
+    _persistentCache = { region: regionKey, routes: null };
+    return null;
+  }
+}
+
+/**
+ * 获取完整的车辆轨迹数据（坐标 + 预计算时间戳 + 速度段）。
+ *
+ * 优先级：
+ *  1. 持久化 JSON（高德真实道路轨迹 + 速度段 + 过去时间戳）
+ *  2. 合成轨迹（确定性伪随机，过去时间戳，模拟速度段）
+ *
+ * @returns {Array<{
+ *   vehicleIndex: number,
+ *   vehicleId: string,
+ *   plateNumber: string,
+ *   stationId: string|null,
+ *   stationName: string|null,
+ *   startTime: string,
+ *   endTime: string,
+ *   points: number[][],
+ *   speeds: number[],
+ *   gpsTimes: string[]
+ * }>}
+ */
+function getCarTrackFullData() {
+  const regionKey = getActiveRegionKey();
+  const region = REGIONS[regionKey];
+
+  // 1. 尝试读持久化 JSON
+  const persistentRoutes = loadPersistentTrack();
+  if (persistentRoutes) {
+    return persistentRoutes.map((route, i) => ({
+      vehicleIndex: i,
+      vehicleId: route.vehicleId || (region.vehicles[i]?.vehicleId ?? `CAR-${i}`),
+      plateNumber: route.plateNumber || (region.vehicles[i]?.plateNo ?? 'UNKNOWN'),
+      stationId: route.stationId ?? region.vehicles[i]?.stationId ?? null,
+      stationName: route.stationName ?? region.vehicles[i]?.stationName ?? null,
+      startTime: route.startTime || '',
+      endTime: route.endTime || '',
+      points: route.points.map(p => [p.lng, p.lat]),
+      speeds: route.points.map(p => p.speedMps || 0),
+      gpsTimes: route.points.map(p => p.gpsTime),
+    }));
+  }
+
+  // 2. 合成回退：确定性伪随机路径 + PAST 时间戳 + 模拟速度段
+  const syntheticRoutes = generateCarPoints(regionKey);
+  // 事件发生在 ~25 分钟前；各车出动时间依次 +2min
+  const now = Date.now();
+  const incidentMs = now - 30 * 60 * 1000;
+  const dispatchBaseMs = incidentMs + 5 * 60 * 1000; // 接警后 5min 出发
+  const pointIntervalMs = 5000; // GPS 采样间隔 5s
+
+  return syntheticRoutes.map((route, i) => {
+    const routeStartMs = dispatchBaseMs + i * 2 * 60 * 1000;
+    const gpsTimes = route.map((_, idx) => {
+      const t = new Date(routeStartMs + idx * pointIntervalMs);
+      return t.toISOString().slice(0, 19).replace('T', ' ');
+    });
+    // 模拟速度段：根据位置做周期性波动（模拟城市道路 10-20 m/s）
+    const speeds = route.map((_, idx) => {
+      const base = 12 + 8 * Math.sin(idx * 0.25 + i * 1.5);
+      return Math.max(2, Math.round(base * 10) / 10);
+    });
+    return {
+      vehicleIndex: i,
+      vehicleId: region.vehicles[i]?.vehicleId || `CAR-${i}`,
+      plateNumber: region.vehicles[i]?.plateNo || 'UNKNOWN',
+      stationId: region.vehicles[i]?.stationId ?? null,
+      stationName: region.vehicles[i]?.stationName ?? null,
+      startTime: gpsTimes[0],
+      endTime: gpsTimes[gpsTimes.length - 1],
+      points: route,
+      speeds,
+      gpsTimes,
+    };
+  });
+}
+
+/**
+ * 获取出动车辆的时间信息（PAST 时间戳，供 mock-ws.js turnout-vehicles 使用）。
+ * 模拟：警情发生 30min 前，车辆依次在 5min、7min 后出动。
+ * @returns {Array<{ vehicleId, plateNumber, stationId, stationName, startTime, endTime }>}
+ */
+function getTurnoutVehicleTimes() {
+  const region = getActiveRegion();
+  const now = Date.now();
+  // 警情发生 ~30min 前；接警后 5min 开始出动，每辆 +2min
+  const incidentMs = now - 30 * 60 * 1000;
+  const dispatchBaseMs = incidentMs + 5 * 60 * 1000;
+  const returnBaseMs = now - 5 * 60 * 1000; // 归队时间：~5min 前（部分车已归队）
+
+  return region.vehicles.map((v, i) => {
+    const startMs = dispatchBaseMs + i * 2 * 60 * 1000;
+    const endMs = returnBaseMs + i * 30 * 1000;
+    return {
+      vehicleId: v.vehicleId,
+      plateNumber: v.plateNo,
+      stationId: v.stationId,
+      stationName: v.stationName,
+      startTime: new Date(startMs).toISOString(),
+      endTime: i < 1 ? new Date(endMs).toISOString() : null, // 第一辆已归队，第二辆仍在途中
+    };
+  });
+}
+
+const api = {
+  REGIONS,
+  REGION_KEYS,
+  DEFAULT_REGION,
+  CAR_ROUTE_LENGTHS,
+  getActiveRegionKey,
+  getActiveRegion,
+  getCarPoints,
+  generateCarPoints,
+  // 新增
+  getCarTrackFullData,
+  getTurnoutVehicleTimes,
+  loadPersistentTrack,
+};
 module.exports = api;
 if (typeof globalThis !== 'undefined') globalThis.MockDataCenter = api;

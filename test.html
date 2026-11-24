@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>GeoPicker 宿主测试页</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #1a1d23; color: #e6e6e6; height: 100vh; display: flex; flex-direction: column; }
+
+  header { padding: 12px 20px; background: #252931; border-bottom: 1px solid #333; display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+  header h1 { margin: 0; font-size: 16px; font-weight: 600; color: #fff; }
+  header .hint { color: #888; font-size: 12px; }
+
+  .tabs { display: flex; gap: 4px; }
+  .tab { padding: 6px 14px; background: #333; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px 4px 0 0; font-size: 13px; }
+  .tab.active { background: #4e7cff; color: #fff; border-color: #4e7cff; }
+
+  main { flex: 1; display: flex; overflow: hidden; }
+
+  .left { flex: 1; display: flex; flex-direction: column; border-right: 1px solid #333; }
+  .url-bar { padding: 8px 12px; background: #252931; border-bottom: 1px solid #333; display: flex; gap: 8px; align-items: center; }
+  .url-bar label { font-size: 12px; color: #aaa; white-space: nowrap; }
+  .url-bar input { flex: 1; padding: 6px 10px; background: #1a1d23; border: 1px solid #444; color: #e6e6e6; border-radius: 4px; font-size: 13px; }
+  .url-bar input:focus { outline: none; border-color: #4e7cff; }
+
+  iframe { flex: 1; border: 0; width: 100%; }
+
+  .right { width: 380px; display: flex; flex-direction: column; flex-shrink: 0; }
+
+  .panel-header { padding: 10px 14px; background: #252931; border-bottom: 1px solid #333; font-size: 13px; font-weight: 600; color: #ccc; display: flex; justify-content: space-between; align-items: center; }
+  .panel-header .count { color: #4e7cff; font-size: 12px; font-weight: 400; }
+
+  .controls { padding: 12px; border-bottom: 1px solid #333; display: flex; flex-direction: column; gap: 8px; }
+  .controls h3 { margin: 0 0 6px; font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+  .ctrl-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn { padding: 6px 12px; background: #3a3f4b; border: 1px solid #4a4f5b; color: #ddd; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.15s; }
+  .btn:hover { background: #4a4f5b; border-color: #5a5f6b; }
+  .btn.primary { background: #4e7cff; border-color: #4e7cff; color: #fff; }
+  .btn.primary:hover { background: #5e8cff; }
+  .btn.danger { background: #d04848; border-color: #d04848; color: #fff; }
+  .btn.danger:hover { background: #e05858; }
+
+  .coord-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .coord-row label { font-size: 12px; color: #aaa; }
+  .coord-row input { width: 100px; padding: 5px 8px; background: #1a1d23; border: 1px solid #444; color: #e6e6e6; border-radius: 4px; font-size: 12px; font-family: Consolas, Monaco, monospace; }
+  .coord-row input:focus { outline: none; border-color: #4e7cff; }
+  .coord-row input.invalid { border-color: #d04848; }
+
+  .log { flex: 1; overflow-y: auto; padding: 8px; font-family: "Consolas", "Monaco", monospace; font-size: 11px; }
+  .log-item { padding: 6px 8px; margin-bottom: 4px; border-radius: 4px; border-left: 3px solid #666; background: #1f2229; word-break: break-all; }
+  .log-item .time { color: #666; margin-right: 6px; }
+  .log-item .direction { font-weight: 600; margin-right: 6px; }
+  .log-item.in { border-left-color: #4e7cff; }
+  .log-item.in .direction { color: #4e7cff; }
+  .log-item.out { border-left-color: #3ab97e; }
+  .log-item.out .direction { color: #3ab97e; }
+  .log-item.error { border-left-color: #d04848; background: #2a1f1f; }
+  .log-item .data { margin-top: 4px; padding: 4px 6px; background: #15171c; border-radius: 3px; color: #aaa; white-space: pre-wrap; font-size: 10.5px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>GeoPicker 宿主测试</h1>
+  <div class="tabs">
+    <div class="tab active" data-mode="pickPoint">选点 pickPoint</div>
+    <div class="tab" data-mode="pickJurisdiction">选辖区 pickJurisdiction</div>
+  </div>
+  <span class="hint">开发服务器默认 http://localhost:8888（若端口占用自动顺延）</span>
+</header>
+
+<main>
+  <section class="left">
+    <div class="url-bar">
+      <label>iframe URL:</label>
+      <input id="iframeUrl" value="http://localhost:8888/#/pickPoint?lng=116.40&lat=39.90&zoom=14">
+      <button class="btn primary" id="reloadBtn">重载</button>
+    </div>
+    <iframe id="gp" src="about:blank"></iframe>
+  </section>
+
+  <aside class="right">
+    <div class="panel-header">
+      控制台
+      <div>
+        <span class="count" id="logCount">0 条</span>
+        <button class="btn" id="clearLogBtn" style="margin-left:8px;padding:3px 8px;font-size:11px">清空</button>
+      </div>
+    </div>
+
+    <div class="controls">
+      <h3>经纬度定位</h3>
+      <div class="coord-row">
+        <label>经度</label><input id="lngInput" type="number" step="0.0001" value="116.40">
+        <label>纬度</label><input id="latInput" type="number" step="0.0001" value="39.90">
+        <label>缩放</label><input id="zoomInput" type="number" step="1" value="14" style="width:60px">
+        <button class="btn primary" id="customLocateBtn">定位</button>
+      </div>
+    </div>
+
+    <div class="controls">
+      <h3>主题切换</h3>
+      <div class="ctrl-row">
+        <button class="btn" data-theme="day">日间</button>
+        <button class="btn" data-theme="night">夜间</button>
+      </div>
+    </div>
+
+    <div class="controls">
+      <h3>快捷指令</h3>
+      <div class="ctrl-row">
+        <button class="btn primary" data-cmd="locate-beijing">定位北京</button>
+        <button class="btn primary" data-cmd="locate-shanghai">定位上海</button>
+        <button class="btn danger" data-cmd="clear">清空</button>
+      </div>
+    </div>
+
+    <div class="log" id="log"></div>
+  </aside>
+</main>
+
+<script>
+(function () {
+  const iframe = document.getElementById('gp');
+  const urlInput = document.getElementById('iframeUrl');
+  const logEl = document.getElementById('log');
+  const logCount = document.getElementById('logCount');
+  let logEntries = 0;
+
+  function log(direction, eventKey, data) {
+    logEntries++;
+    logCount.textContent = logEntries + ' 条';
+    const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    const div = document.createElement('div');
+    div.className = 'log-item ' + direction;
+    let dataStr = '';
+    if (data !== undefined && data !== null) {
+      try { dataStr = JSON.stringify(data, null, 2); }
+      catch { dataStr = String(data); }
+    }
+    div.innerHTML =
+      '<span class="time">[' + time + ']</span>' +
+      '<span class="direction">' + (direction === 'in' ? '← 入' : '→ 出') + '</span>' +
+      '<b>' + eventKey + '</b>' +
+      (dataStr ? '<div class="data">' + dataStr + '</div>' : '');
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function loadIframe() {
+    const url = urlInput.value.trim();
+    if (!url) return;
+    log('out', 'reload', url);
+    iframe.src = url;
+  }
+
+  // Tab 切换
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const mode = tab.dataset.mode;
+      console.log(mode);
+      const host = urlInput.value.replace(/^https?:\/\/[^\/]+/, 'http://localhost:8888');
+      urlInput.value = 'http://localhost:8888/#/' + mode + '?lng=116.40&lat=39.90&zoom=14';
+      loadIframe();
+    });
+  });
+
+  document.getElementById('reloadBtn').addEventListener('click', loadIframe);
+  document.getElementById('clearLogBtn').addEventListener('click', () => {
+    logEl.innerHTML = '';
+    logEntries = 0;
+    logCount.textContent = '0 条';
+  });
+
+  const lngInput = document.getElementById('lngInput');
+  const latInput = document.getElementById('latInput');
+  const zoomInput = document.getElementById('zoomInput');
+  const customLocateBtn = document.getElementById('customLocateBtn');
+
+  // 从 iframe URL hash query 同步经纬度输入框默认值
+  function syncCoordFromUrl() {
+    const hash = urlInput.value.split('#')[1] || '';
+    const q = hash.split('?')[1] || '';
+    const params = new URLSearchParams(q);
+    if (params.get('lng')) lngInput.value = params.get('lng');
+    if (params.get('lat')) latInput.value = params.get('lat');
+    if (params.get('zoom')) zoomInput.value = params.get('zoom');
+  }
+  syncCoordFromUrl();
+
+  // 自定义经纬度定位
+  function doCustomLocate() {
+    const lng = parseFloat(lngInput.value);
+    const lat = parseFloat(latInput.value);
+    const zoom = parseInt(zoomInput.value, 10);
+    const ok = Number.isFinite(lng) && Number.isFinite(lat)
+      && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
+    lngInput.classList.toggle('invalid', !ok);
+    latInput.classList.toggle('invalid', !ok);
+    if (!ok) return;
+    const payload = {
+      eventKey: 'geoPicker.locate',
+      data: { lng, lat, zoom: Number.isFinite(zoom) ? zoom : undefined },
+    };
+    log('out', payload.eventKey, payload.data);
+    iframe.contentWindow.postMessage(payload, '*');
+  }
+  customLocateBtn.addEventListener('click', doCustomLocate);
+  [lngInput, latInput, zoomInput].forEach(el => {
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') doCustomLocate(); });
+  });
+
+  // Tab 切换后同步输入框
+  const origLoadIframe = loadIframe;
+  loadIframe = function() { origLoadIframe(); syncCoordFromUrl(); };
+  // Tab 切换直接调 URL 改值，手动监听
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      setTimeout(syncCoordFromUrl, 0);
+    });
+  });
+
+  // 宿主发指令
+  document.querySelectorAll('[data-cmd]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cmd = btn.dataset.cmd;
+      let payload;
+      if (cmd === 'locate-beijing') {
+        payload = { eventKey: 'geoPicker.locate', data: { lng: 116.40, lat: 39.90, zoom: 14 } };
+      } else if (cmd === 'locate-shanghai') {
+        payload = { eventKey: 'geoPicker.locate', data: { lng: 121.47, lat: 31.23, zoom: 14 } };
+      } else if (cmd === 'clear') {
+        payload = { eventKey: 'geoPicker.clear', data: {} };
+      }
+      if (!payload) return;
+      log('out', payload.eventKey, payload.data);
+      iframe.contentWindow.postMessage(payload, '*');
+    });
+  });
+
+  // 主题切换
+  document.querySelectorAll('[data-theme]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const payload = { eventKey: 'geoPicker.theme', data: { theme: btn.dataset.theme } };
+      log('out', payload.eventKey, payload.data);
+      iframe.contentWindow.postMessage(payload, '*');
+    });
+  });
+
+  // 接收 GeoPicker 消息
+  window.addEventListener('message', (e) => {
+    const data = e.data;
+    if (!data || !data.eventKey) return;
+    log('in', data.eventKey, data.data);
+  });
+
+  // 初始加载
+  loadIframe();
+})();
+</script>
+</body>
+</html>

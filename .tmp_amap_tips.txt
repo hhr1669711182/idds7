@@ -1,0 +1,48 @@
+7:  * @FilePath: \ids-gis-web\src\apis\amap.ts
+9: import { alovaMapProxyInstance } from '@/service/alovaMapProxy'
+35:   city: string
+36:   adcode: string
+79:     adcode?: string
+146: export interface AmapWeatherData {
+147:   lives: AmapWeatherLive[]
+150: export interface AmapWeatherLive {
+152:   city: string
+153:   adcode: string
+163: export const AMAP_ERROR_CODES = {
+164:   /** 未配置 amap.key / amap.keys 环境变量 */
+165:   KEY_NOT_CONFIGURED: 'AMAP_KEY_NOT_CONFIGURED',
+167:   NETWORK_ERROR: 'AMAP_NETWORK_ERROR',
+169:   RESPONSE_PARSE_ERROR: 'AMAP_RESPONSE_PARSE_ERROR',
+171:   ROUTE_NOT_FOUND: 'AMAP_ROUTE_NOT_FOUND',
+173:   GEOCODE_NOT_FOUND: 'AMAP_GEOCODE_NOT_FOUND',
+175:   WEATHER_NOT_FOUND: 'AMAP_WEATHER_NOT_FOUND',
+177:   UNKNOWN_ERROR: 'AMAP_UNKNOWN_ERROR',
+180: export type AmapErrorCode = (typeof AMAP_ERROR_CODES)[keyof typeof AMAP_ERROR_CODES]
+183: // amapApi（12 个方法，命名按文档英文路径转 camelCase）
+190:   city?: string
+191:   cityLimit?: boolean
+194: }) => alovaMapProxyInstance.Get<PoiFeatureCollection>('/api/amap/poi/keyword-search', { params })
+201:   city?: string
+206: }) => alovaMapProxyInstance.Get<PoiFeatureCollection>('/api/amap/poi/around-search', { params })
+215: }) => alovaMapProxyInstance.Get<PoiFeatureCollection>('/api/amap/poi/polygon-search', { params })
+219:   alovaMapProxyInstance.Get<PoiFeatureCollection>('/api/amap/poi/polygon-detail', { params })
+223:   alovaMapProxyInstance.Get<PoiFeature>('/api/amap/poi/detail', { params })
+226: export const inputTips = (params: {
+228:   cityLimit?: boolean
+230:   city?: string
+232: }) => alovaMapProxyInstance.Get<PoiFeatureCollection>('/api/amap/poi/input-tips', { params })
+236:   alovaMapProxyInstance.Get<RegeoData>('/api/amap/geo/regeo', { params })
+241: //   city?: string
+242: // }) => alovaMapProxyInstance.Get<GeocodeData>(
+243: //   '/api/amap/geo/geocode',
+248: export const analyzeAddress = (params: { address: string; city?: string }) =>
+249:   alovaMapProxyInstance.Get<AnalyzeAddressData>('/api/amap/geo/analyze-address', { params })
+265: }) => alovaMapProxyInstance.Get<RouteResultResponse>('/api/amap/route/driving', { params, cacheFor: 0 })
+280: }) => alovaMapProxyInstance.Get<RouteResultResponse>('/api/amap/route/driving-v2', { params, cacheFor: 0 })
+288:   return alovaMapProxyInstance.Get<RouteResult[]>('/api/amap/route/multi-waypoint?' + query.toString(), { cacheFor: 0 })
+292: export const weather = (params: { city: string }) =>
+293:   alovaMapProxyInstance.Get<AmapWeatherData>('/api/weather', {
+294:     params: { areaCode: params.city },
+298: export const amapApi = {
+304:   inputTips,
+314: export type AmapApi = typeof amapApi

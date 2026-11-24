@@ -101,6 +101,19 @@ export type {
 } from '../../src/controller/core/protocol/IncidentLocationProtocol';
 
 /**
+ * 对外选点/选辖区（GeoPicker）iframe 嵌入通信 DTO：
+ * - GeoPickerPointResult：画点回传，WGS84 [lng, lat]
+ * - GeoPickerJurisdictionResult：画辖区回传，GeoJSON Polygon coordinates（WGS84）
+ * - GeoPickerLocateCommand：宿主→子，飞到指定经纬度（zoom 可选）
+ * - GeoPickerReadyEvent：子→宿主，地图就绪通知
+ * 通道：postMessage（system=host）；事件键见 const.message.type.ts 的 GEO_PICKER_*。
+ */
+export type {
+  GeoPickerPointResult, GeoPickerJurisdictionResult,
+  GeoPickerLocateCommand, GeoPickerReadyEvent,
+} from '../../src/controller/core/protocol/GeoPickerProtocol';
+
+/**
  * IncidentLocationAcceptance 拒绝原因含 'terminal'：
  * 警情处于 5 个终态（ARRIVED / OPERATION_COMPLETED / RETURNED / CLOSED /
  * POST_ACTION_REVIEWED）时不再上图，由车辆历史轨迹链路接管，并 clearAll。

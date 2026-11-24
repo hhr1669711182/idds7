@@ -1,0 +1,5 @@
+22:  * 资源检索输入联想候选（高德第三方模糊地址，走 amapApi.inputTips）。
+35:   adcode: string
+55:       .inputTips({ keywords: keyword, cityLimit: true })
+70:             const adcode = String(p?.adcode ?? '').trim()
+73:             return { value, name, district, address, adcode, location }

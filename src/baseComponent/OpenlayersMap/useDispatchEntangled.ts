@@ -1651,12 +1651,15 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
 
     // 多车新模式：trackEntries 非空时优先用 renderMulti
     if (vehicleTrackStore.trackEntries.size > 0) {
-      const entries = [...vehicleTrackStore.trackEntries.values()]
+      // 只渲染 activeRouteKey 下的 entries，切路线时地图随之过滤（不显示其他路线车辆）
+      const activeKey = vehicleTrackStore.activeRouteKey
+      const entries = activeKey
+        ? [...vehicleTrackStore.trackEntries.values()].filter((e) => e.routeKey === activeKey)
+        : [...vehicleTrackStore.trackEntries.values()]
       if (!entries.length) {
         renderer.clear()
         return
       }
-      // 以 activeRoute 下的轨迹时间跨度为准 fit；所有分组 setCursorAll 同步推进
       renderer.renderMulti(entries, { fit })
       renderer.setCursorAll(vehicleTrackStore.cursor)
       return
@@ -1926,6 +1929,12 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
     vehicleTrackRenderer?.setCursor(cursor)
   }
 
+  /** 路线切换（activeRouteKey 变化）：重渲染地图，只显示当前选中路线的车辆 */
+  const onActiveRouteKeyChange = () => {
+    if (!vehicleTrackStore.panelVisible) return
+    syncVehicleTrackLayer(false)
+  }
+
   /** 共享态 currentAlarm 变为 closed（可能没有 WS 终态消息）：同步终态标记 */
   const onLifecycleStageChange = (key: string) => {
     const [incidentId, lifecycleStage] = JSON.parse(key) as [string, string]
@@ -2114,6 +2123,7 @@ export const useDispatchEntangled = (deps: DispatchEntangledDeps) => {
     registerWatcher(watch(() => vehicleTrackStore.reloadToken, onVehicleTrackReload))
     registerWatcher(watch(() => vehicleTrackStore.panelVisible, onVehicleTrackPanelVisible))
     registerWatcher(watch(() => vehicleTrackStore.cursor, onVehicleTrackCursor))
+    registerWatcher(watch(() => vehicleTrackStore.activeRouteKey, onActiveRouteKeyChange))
     registerWatcher(
       watch(
         () => JSON.stringify([String(userStore.currentAlarm?.incidentId ?? '').trim(), readCurrentLifecycleStage()]),

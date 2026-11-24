@@ -32,6 +32,7 @@
     "mock:server": "node server/index.js",
     "mock:server:restart": "node scripts/restart-mock-server.mjs",
     "mock:server:stop": "node scripts/restart-mock-server.mjs --stop",
+    "generate:track-mock": "node scripts/generate-track-mock.mjs",
     "prebuild": "node scripts/fix-js-clipper-utf8.mjs",
     "postinstall": "patch-package",
     "lint": "vue-tsc --noEmit",

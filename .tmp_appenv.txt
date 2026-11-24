@@ -1,0 +1,67 @@
+src\apis\router.ts:1:import { appEnv, joinUrl } from '@/config/env'
+src\apis\router.ts:20:  return joinUrl(appEnv.apiBaseUrl, 'api/routes')
+src\apis\searchQuery.ts:1:import { appEnv } from '@/config/env'
+src\apis\searchQuery.ts:153:      city: appEnv.mapCity,
+src\baseComponent\OpenlayersMap\baseSource.ts:11:import { appEnv } from '@/config/env.ts'
+src\baseComponent\OpenlayersMap\baseSource.ts:177:      `${appEnv.geoserverBaseUrl}wc/service/tms/1.0.0/mbtiles:${DEFAULT_OFFLINE_SOURCE}@WebMercatorQuad@png/{z}/{x}/{-y}.png`,
+src\baseComponent\OpenlayersMap\const.map.ts:9:import { appEnv } from '@/config/env'
+src\baseComponent\OpenlayersMap\const.map.ts:17:export const CENTER = appEnv.mapCenter
+src\baseComponent\OpenlayersMap\map.vue:33:import { appEnv } from "@/config/env";
+src\baseComponent\OpenlayersMap\map.vue:352:    xzKeywords: appEnv.mapAdcode || "",
+src\baseComponent\OpenlayersMap\NavPanel.vue:6:import { appEnv } from "@/config/env";
+src\baseComponent\OpenlayersMap\NavPanel.vue:82:      city: appEnv.mapCity,
+src\baseComponent\OpenlayersMap\useDispatchEntangled.ts:104:import { appEnv } from '@/config/env'
+src\baseComponent\OpenlayersMap\useDispatchEntangled.ts:897:                city: appEnv.mapCity,
+src\baseComponent\OpenlayersMap\useDispatchEntangled.ts:1311:      city: appEnv.mapCity,
+src\baseComponent\OpenlayersMap\useDispatchEntangled.ts:1365:        city: appEnv.mapCity,
+src\components\common\WeatherPanel.vue:6:import { appEnv } from "@/config/env";
+src\components\common\WeatherPanel.vue:16:const defaultAdcode = appEnv.mapAdcode;
+src\components\common\WeatherPanel.vue:35:const currentLabel = computed(() => selected.value?.areaName ?? appEnv.mapCity);
+src\components\common\WeatherPanel.vue:148:            {{ appEnv.mapCity }}
+src\components\map\component\routePlanPanel.vue:15:import { appEnv } from "@/config/env";
+src\components\map\component\routePlanPanel.vue:183:    const response = (await amapApi.inputTips({ keywords: text, city: appEnv.mapAdcode, cityLimit: true })) as PoiFeatureCollection | undefined;
+src\config\env.ts:11:export const appEnv = {
+src\config\env.ts:35:  // wsUrl 已在上方 appEnv.wsUrl 提供（VITE_WS_URL 门控：本地 mock 测试服务直连 / 留空则按 VITE_MESSAGE_SERVICE_ORIGIN 动态拼接）。
+src\config\env.ts:63:  if (servicePath === 'wms' && appEnv.geoserverWmsUrl) {
+src\config\env.ts:64:    if (appEnv.geoserverWmsUrl.includes('{workspace}')) {
+src\config\env.ts:65:      return appEnv.geoserverWmsUrl.replace('{workspace}', normalizedWorkspace)
+src\config\env.ts:68:    if (appEnv.geoserverWmsUrl.endsWith('/wms')) {
+src\config\env.ts:69:      return appEnv.geoserverWmsUrl
+src\config\env.ts:73:  return joinUrl(appEnv.geoserverBaseUrl, `${normalizedWorkspace}/${servicePath}`)
+src\config\env.ts:74:  // return joinUrl(appEnv.geoserverBaseUrl, `/${servicePath}`)
+src\const\assetPaths.ts:13:import { appEnv } from '@/config/env'
+src\const\assetPaths.ts:37:  model: withAssetBase(appEnv.assetBase, 'model3d/'),
+src\const\assetPaths.ts:39:  font: withAssetBase(appEnv.assetBase, 'fonts/'),
+src\const\assetPaths.ts:41:  video: withAssetBase(appEnv.assetBase, 'video/'),
+src\const\assetPaths.ts:43:  tile: withAssetBase(appEnv.assetBase, 'assets/tiles/'),
+src\const\assetPaths.ts:45:  publicRoot: withAssetBase(appEnv.assetBase),
+src\controller\core\business\AreaWeatherController.ts:18:import { appEnv } from '@/config/env'
+src\controller\core\business\AreaWeatherController.ts:309:    if (appEnv.weatherSource === 'amap') {
+src\controller\core\business\UnclosedWeatherRingController.ts:21:import { appEnv } from '@/config/env'
+src\controller\core\business\UnclosedWeatherRingController.ts:36:  if (!match) return appEnv.mapAdcode
+src\controller\core\business\UnclosedWeatherRingController.ts:37:  if (match.addrlevelId > 4) return appEnv.mapAdcode
+src\controller\core\business\UnclosedWeatherRingController.ts:38:  if (match.addrlevelId === 4) return match.parentCode || appEnv.mapAdcode
+src\controller\core\business\UnclosedWeatherRingController.ts:39:  return match.areaId || appEnv.mapAdcode
+src\controller\core\business\UnclosedWeatherRingController.ts:176:          console.warn('[UnclosedWeatherRing] WFS 反查未命中，使用默认 adcode', appEnv.mapAdcode)
+src\hooks\useRouteContinuityWorker.ts:3:import { appEnv } from '@/config/env'
+src\hooks\useRouteContinuityWorker.ts:26:  if (!appEnv.routeContinuityEnabled) {
+src\register\initMessage.ts:13:import { appEnv } from '@/config/env'
+src\register\initMessage.ts:79:    if (appEnv.usePostMessage)
+src\register\initMessage.ts:86:    if (appEnv.useBroadcastChannel)
+src\register\initMessage.ts:90:          name: appEnv.relayChannelName,
+src\register\initMessage.ts:97:        if (disposed || !appEnv.useWS) return
+src\register\initMessage.ts:115:          appEnv.wsUrl || buildMessageWebSocketUrl(appEnv.messageServiceOrigin || window.location.origin)
+src\register\initMessage.ts:129:                  clientId: appEnv.messageClient || 'ids-seat-web',
+src\service\alova.ts:6:import { appEnv } from '@/config/env'
+src\service\alova.ts:10:const baseURL = appEnv.apiBaseUrl
+src\service\alova.ts:13:if (appEnv.useMock) {
+src\service\alovaMapProxy.ts:13:import { appEnv } from '@/config/env'
+src\service\alovaMapProxy.ts:21:  baseURL: appEnv.mapApiBaseUrl + '/address-query-client',
+src\service\authHeaders.ts:7:import { appEnv } from '@/config/env'
+src\service\authHeaders.ts:12:const clientId = () => appEnv.messageClient || 'ids-seat-web'
+src\utils\assetUrl.ts:10:import { appEnv } from '@/config/env'
+src\utils\assetUrl.ts:20:export const resolveAssetUrl = (path: string, base: string = appEnv.assetBase): string => {
+src\utils\logger.ts:8: * 注：resolveLevel 直接读 import.meta.env 而非 appEnv，是为保持本文件自包含、
+src\utils\logger.ts:9: * 不污染 appEnv（appEnv 未新增 logLevel 字段）。正式接入时需改回 appEnv 读取。
+src\views\amap\AmapApiDemo.vue:106:import { appEnv } from "@/config/env"
+src\views\amap\AmapApiDemo.vue:139:const baseUrl = computed(() => appEnv.mapApiBaseUrl)
